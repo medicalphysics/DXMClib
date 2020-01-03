@@ -30,3 +30,7 @@
 *.exe
 *.out
 *.app
+*.sqlite
+/.vs*
+/out*
+/CMakeSettings.json
