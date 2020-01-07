@@ -23,14 +23,13 @@ IF(WIN32)
     set(XRAYLIB_INCLUDES "${XRAYLIB_INSTALL_PATH}/Include")
 	set(XRAYLIB_LIBRARY_SHARED_NAME "libxrl-7.dll")
 	set(XRAYLIB_LIBRARY_SHARED_PATH "C:/Windows/sysnative/${XRAYLIB_LIBRARY_SHARED_NAME}")
-    find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
+    find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")
 ENDIF(WIN32)
 IF(UNIX AND NOT APPLE)
     set(XRAYLIB_INSTALL_PATH "/usr/local/lib" CACHE PATH "Install path for xraylib (https://github.com/tschoonj/xraylib)")
     set(XRAYLIB_INCLUDES "/usr/local/include/xraylib")
     find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
 ENDIF()
-find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
 
 
 # You should usually split this into folders, but this is a simple example
