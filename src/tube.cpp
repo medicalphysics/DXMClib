@@ -23,7 +23,7 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <string>
 
-#include "tube.h"
+#include "dxmc/tube.h"
 #include "xraylib.h"
 
 //ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN

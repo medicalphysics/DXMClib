@@ -19,14 +19,12 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 
 
-#include "dxmcrandom.h"
-#include "beamfilters.h"
-#include "exposure.h"
-#include "beamfilters.h"
-#include "progressbar.h"
-#include "tube.h"
-#include "world.h"
-#include "dxmcrandom.h"
+#include "dxmc/dxmcrandom.h"
+#include "dxmc/beamfilters.h"
+#include "dxmc/exposure.h"
+#include "dxmc/progressbar.h"
+#include "dxmc/tube.h"
+#include "dxmc/world.h"
 
 #include <vector>
 #include <memory>

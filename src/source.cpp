@@ -16,11 +16,9 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "source.h"
-#include "vectormath.h"
-#include "material.h"
-#include "dxmcrandom.h"
-#include "transport.h"
+#include "dxmc/source.h"
+#include "dxmc/vectormath.h"
+#include "dxmc/transport.h"
 
 #include <future>
 #include <numeric>

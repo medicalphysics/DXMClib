@@ -16,8 +16,8 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "exposure.h"
-#include "vectormath.h"
+#include "dxmc/exposure.h"
+#include "dxmc/vectormath.h"
 Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter)
 {
 	for (std::size_t i = 0; i < 3; ++i)

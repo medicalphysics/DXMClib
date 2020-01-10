@@ -16,7 +16,7 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "dxmcrandom.h"
+#include "dxmc/dxmcrandom.h"
 #include <numeric>
 #include <random>
 

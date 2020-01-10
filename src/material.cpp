@@ -16,9 +16,9 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "material.h"
-#include "tube.h"
+#include "dxmc/material.h"
 #include "xraylib.h"
+
 #include <numeric>
 #include <algorithm>
 #include <execution>

@@ -17,12 +17,12 @@ Copyright 2019 Erlend Andersen
 */
 
 #pragma once
-#include "world.h"
-#include "exposure.h"
-#include "source.h"
-#include "dxmcrandom.h"
-#include "vectormath.h"
-#include "progressbar.h"
+#include "dxmc/world.h"
+#include "dxmc/exposure.h"
+#include "dxmc/source.h"
+#include "dxmc/dxmcrandom.h"
+#include "dxmc/vectormath.h"
+#include "dxmc/progressbar.h"
 
 #include <memory>
 #include <algorithm>

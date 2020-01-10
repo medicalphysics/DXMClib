@@ -17,7 +17,7 @@ Copyright 2019 Erlend Andersen
 */
 
 #pragma once
-#include "world.h"
+#include "dxmc/world.h"
 #include <vector>
 #include <array>
 

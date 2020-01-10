@@ -16,7 +16,7 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "beamfilters.h"
+#include "dxmc/beamfilters.h"
 #include <vector>
 #include <algorithm>
 #include <numeric>

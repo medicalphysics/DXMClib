@@ -18,9 +18,9 @@ Copyright 2019 Erlend Andersen
 
 #pragma once // include guard
 
-#include "material.h"
-#include "tube.h"
-#include "attenuationlut.h"
+#include "dxmc/material.h"
+#include "dxmc/tube.h"
+#include "dxmc/attenuationlut.h"
 
 #include <algorithm>
 #include <vector>

@@ -16,7 +16,7 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "attenuationlut.h"
+#include "dxmc/attenuationlut.h"
 
 #include <algorithm>
 #include <cmath>

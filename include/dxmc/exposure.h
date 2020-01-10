@@ -19,8 +19,8 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 
 
-#include "dxmcrandom.h"
-#include "beamfilters.h"
+#include "dxmc/dxmcrandom.h"
+#include "dxmc/beamfilters.h"
 #include <vector>
 #include <array>
 

@@ -16,13 +16,7 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "transport.h"
-#include "xraylib.h"
-#include "world.h"
-#include "exposure.h"
-#include "dxmcrandom.h"
-#include "vectormath.h"
-#include "attenuationlut.h"
+#include "dxmc/transport.h"
 
 #include <algorithm>
 #include <mutex>

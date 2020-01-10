@@ -10,7 +10,7 @@ project(dxmclib VERSION 1.0 LANGUAGES CXX)
 
 # If you set any CMAKE_ variables, that can go here.
 # (But usually don't do this, except maybe for C++ standard)
-set(CMAKE_CXX_STANDARD 20)
+set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
 # Find packages go here.
@@ -38,7 +38,7 @@ ENDIF()
 # Other common choices are STATIC, SHARED, and MODULE
 # Including header files here helps IDEs but is not required.
 # Output libname matches target name, with the usual extensions on your system
-add_library(dxmclib 
+add_library(dxmc 
     src/world.cpp
     src/source.cpp
     src/exposure.cpp
@@ -49,13 +49,13 @@ add_library(dxmclib
     src/transport.cpp
 	src/attenuationlut.cpp
 	)
-target_include_directories(dxmclib PUBLIC include)
-target_include_directories(dxmclib PRIVATE ${XRAYLIB_INCLUDES})
+target_include_directories(dxmc PUBLIC include)
+target_include_directories(dxmc PRIVATE ${XRAYLIB_INCLUDES})
 
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
-target_link_libraries(dxmclib PRIVATE 
+target_link_libraries(dxmc PRIVATE 
     Threads::Threads
     ${XRAYLIB_LIBRARY}
     )

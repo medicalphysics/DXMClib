@@ -16,9 +16,9 @@ along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "world.h"
-#include "vectormath.h"
-#include "material.h"
+#include "dxmc/world.h"
+#include "dxmc/vectormath.h"
+#include "dxmc/material.h"
 #include <algorithm>
 #include <future>
 #include <execution>
