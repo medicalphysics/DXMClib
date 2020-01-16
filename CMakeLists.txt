@@ -40,7 +40,7 @@ ENDIF()
 # Output libname matches target name, with the usual extensions on your system
 
 set(HEADER_LIST 
-    "${dxmclib_SOURCE_DIR}/include/dxmc/attenuatonlut.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationlut.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beamfilters.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/exposure.h"
@@ -75,4 +75,12 @@ target_link_libraries(libdxmc PRIVATE
     ${XRAYLIB}
     )
 
-
+install(TARGETS libdxmc 
+    EXPORT libdxmc
+    LIBRARY DESTINATION lib
+    ARCHIVE DESTINATION lib
+    RUNTIME DESTINATION bin
+    INCLUDES DESTINATION include
+    )
+install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH} DESTINATION lib)
+install(FILES ${HEADER_LIST} DESTINATION include)
