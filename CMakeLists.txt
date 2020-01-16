@@ -23,12 +23,12 @@ IF(WIN32)
     set(XRAYLIB_INCLUDES "${XRAYLIB_INSTALL_PATH}/Include")
 	set(XRAYLIB_LIBRARY_SHARED_NAME "libxrl-7.dll")
 	set(XRAYLIB_LIBRARY_SHARED_PATH "C:/Windows/sysnative/${XRAYLIB_LIBRARY_SHARED_NAME}")
-    find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")
+    find_library(XRAYLIB NAMES libxrl.lib libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")
 ENDIF(WIN32)
 IF(UNIX AND NOT APPLE)
     set(XRAYLIB_INSTALL_PATH "/usr/local/lib" CACHE PATH "Install path for xraylib (https://github.com/tschoonj/xraylib)")
     set(XRAYLIB_INCLUDES "/usr/local/include/xraylib")
-    find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
+    find_library(XRAYLIB NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
 ENDIF()
 
 
@@ -38,7 +38,22 @@ ENDIF()
 # Other common choices are STATIC, SHARED, and MODULE
 # Including header files here helps IDEs but is not required.
 # Output libname matches target name, with the usual extensions on your system
-add_library(dxmc 
+
+set(HEADER_LIST 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/attenuatonlut.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beamfilters.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/exposure.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/progressbar.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/source.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/transport.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/tube.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world.h"
+    )
+
+add_library(libdxmc 
     src/world.cpp
     src/source.cpp
     src/exposure.cpp
@@ -49,14 +64,15 @@ add_library(dxmc
     src/transport.cpp
 	src/attenuationlut.cpp
 	)
-target_include_directories(dxmc PUBLIC include)
-target_include_directories(dxmc PRIVATE ${XRAYLIB_INCLUDES})
+target_include_directories(libdxmc PUBLIC include)
+target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
 
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
-target_link_libraries(dxmc PRIVATE 
+target_link_libraries(libdxmc PRIVATE 
     Threads::Threads
-    ${XRAYLIB_LIBRARY}
+    ${XRAYLIB}
     )
+
 
