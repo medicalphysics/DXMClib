@@ -97,7 +97,14 @@ namespace transport {
 		return interp(x, x0, x1, y0, y1);
 	}
 
-
+	/*
+	//waiting for c++ 20 where we get atomic references. We then have lockless threadsafe update of values in dose array 
+	inline void safeValueAdd(double& value, const double addValue)
+	{
+		std::atomic_ref<double> atomicValue(value);
+		atomicValue.fetch_add(addValue);
+	}
+	*/
 
 	inline void safeValueAdd(double& value, const double addValue)
 	{
