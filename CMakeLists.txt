@@ -83,4 +83,4 @@ install(TARGETS libdxmc
     INCLUDES DESTINATION include
     )
 install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH} DESTINATION bin)
-install(FILES ${HEADER_LIST} DESTINATION include)
+#install(FILES ${HEADER_LIST} DESTINATION include)
