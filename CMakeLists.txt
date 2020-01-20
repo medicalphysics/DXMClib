@@ -28,8 +28,8 @@ IF(WIN32)
     set(XRAYLIB_LIBRARY_SHARED_INSTALL_PATH "C:/Windows/system32/${XRAYLIB_LIBRARY_SHARED_NAME}")
     find_library(XRAYLIB_LIBRARY NAMES libxrl.lib libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")
 
-    add_library(xraylib SHARED IMPORTED)
-    set_property(TARGET xraylib PROPERTY IMPORTED_LOCATION "${XRAYLIB_LIBRARY}" "${XRAYLIB_LIBRARY_SHARED_INSTALL_PATH}")
+    #add_library(xraylib SHARED IMPORTED)
+    #set_property(TARGET xraylib PROPERTY IMPORTED_LOCATION "${XRAYLIB_LIBRARY}" "${XRAYLIB_LIBRARY_SHARED_INSTALL_PATH}")
 
 ENDIF(WIN32)
 IF(UNIX AND NOT APPLE)
@@ -83,8 +83,7 @@ set_target_properties(libdxmc PROPERTIES PUBLIC_HEADER "${HEADER_LIST}")
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 
     Threads::Threads
-    PUBLIC
-    xraylib
+    XRAYLIB_LIBRARY
     )
 include(GNUInstallDirs)
 install(TARGETS libdxmc
