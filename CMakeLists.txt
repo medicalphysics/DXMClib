@@ -13,7 +13,7 @@ project(dxmclib VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
-set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
+#set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
 
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support
