@@ -13,6 +13,8 @@ project(dxmclib VERSION 1.0 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+#set_property(GLOBAL PROPERTY FIND_LIBRARY_USE_LIB64_PATHS)
+
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support
 
@@ -23,12 +25,17 @@ IF(WIN32)
     set(XRAYLIB_INCLUDES "${XRAYLIB_INSTALL_PATH}/Include")
 	set(XRAYLIB_LIBRARY_SHARED_NAME "libxrl-7.dll")
 	set(XRAYLIB_LIBRARY_SHARED_PATH "C:/Windows/sysnative/${XRAYLIB_LIBRARY_SHARED_NAME}")
-    find_library(XRAYLIB NAMES libxrl.lib libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")
+    set(XRAYLIB_LIBRARY_SHARED_INSTALL_PATH "C:/Windows/system32/${XRAYLIB_LIBRARY_SHARED_NAME}")
+    find_library(XRAYLIB_LIBRARY NAMES libxrl.lib libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")
+
+    #add_library(xraylib SHARED IMPORTED)
+    #set_property(TARGET xraylib PROPERTY IMPORTED_LOCATION "${XRAYLIB_LIBRARY}" "${XRAYLIB_LIBRARY_SHARED_INSTALL_PATH}")
+
 ENDIF(WIN32)
 IF(UNIX AND NOT APPLE)
     set(XRAYLIB_INSTALL_PATH "/usr/local/lib" CACHE PATH "Install path for xraylib (https://github.com/tschoonj/xraylib)")
     set(XRAYLIB_INCLUDES "/usr/local/include/xraylib")
-    find_library(XRAYLIB NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
+    find_library(XRAYLIB_LIBRARY NAMES libxrl libxrl-7 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
 ENDIF()
 
 
@@ -63,24 +70,28 @@ add_library(libdxmc
     src/material.cpp
     src/transport.cpp
 	src/attenuationlut.cpp
+    ${HEADER_LIST}
 	)
-target_include_directories(libdxmc PUBLIC include)
+
+target_include_directories(libdxmc PUBLIC ${CMAKE_CURRENT_SOURCE_DIR}/include)
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
+
+set_target_properties(libdxmc PROPERTIES PUBLIC_HEADER "${HEADER_LIST}")
 
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 
     Threads::Threads
-    ${XRAYLIB}
+    XRAYLIB_LIBRARY
     )
-
-install(TARGETS libdxmc 
-    EXPORT libdxmc
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-    INCLUDES DESTINATION include
+include(GNUInstallDirs)
+install(TARGETS libdxmc
+    #EXPORT libdxmc
+    LIBRARY DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    ARCHIVE DESTINATION ${CMAKE_INSTALL_LIBDIR}
+    RUNTIME DESTINATION ${CMAKE_INSTALL_BINDIR}
+    INCLUDES DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxmclib
+    PUBLIC_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxmclib
+    PRIVATE_HEADER DESTINATION ${CMAKE_INSTALL_INCLUDEDIR}/dxmclib
     )
-install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH} DESTINATION bin)
-install(FILES ${HEADER_LIST} DESTINATION include)
