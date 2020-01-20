@@ -83,6 +83,7 @@ set_target_properties(libdxmc PROPERTIES PUBLIC_HEADER "${HEADER_LIST}")
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 
     Threads::Threads
+    PUBLIC
     XRAYLIB_LIBRARY
     )
 include(GNUInstallDirs)
