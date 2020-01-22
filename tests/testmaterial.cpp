@@ -1,7 +1,7 @@
  
 
-#include "material.h"
-#include "transport.h"
+#include "dxmc/material.h"
+#include "dxmc/transport.h"
 #include <iostream>
 #include <numeric>
 

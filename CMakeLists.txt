@@ -64,10 +64,11 @@ add_library(libdxmc
     src/material.cpp
     src/transport.cpp
 	src/attenuationlut.cpp
+    ${HEADER_LIST}
 	)
-target_include_directories(libdxmc PUBLIC include)
+target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
-
+MESSAGE("libdxmc includes: ${dxmclib_INCLUDE_DIRECTORIES} ${INCLUDE_DIRECTORIES}")
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
@@ -83,6 +84,29 @@ install(TARGETS libdxmc
     RUNTIME DESTINATION bin
     INCLUDES DESTINATION include
     )
-install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH} DESTINATION bin OPTIONAL)
-install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH_64} DESTINATION bin OPTIONAL)
+
+# Due to windows not being windows on 34/64 bits and xraylib puts it's dll in system32 folder we try to install 
+# the library from system32 folder regardless of cmake or NSIS being 64 or 32 bits
+if(WIN32)
+    install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH} DESTINATION bin OPTIONAL)
+    install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH_64} DESTINATION bin OPTIONAL)
+endif(WIN32)
 install(FILES ${HEADER_LIST} DESTINATION include)
+
+# Testing
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    include(CTest)
+endif()
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+    add_subdirectory(tests)
+endif()
+
+# Docs by doxygen
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    find_package(Doxygen)
+    if(Doxygen_FOUND)
+	    add_subdirectory(docs)
+    else()
+	    message(STATUS "Doxygen not found, not building docs")
+    endif()
+endif()
