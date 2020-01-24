@@ -68,7 +68,6 @@ add_library(libdxmc
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
-MESSAGE("libdxmc includes: ${dxmclib_INCLUDE_DIRECTORIES} ${INCLUDE_DIRECTORIES}")
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
@@ -77,6 +76,7 @@ target_link_libraries(libdxmc PRIVATE
     ${XRAYLIB}
     )
 
+## Install
 install(TARGETS libdxmc 
     EXPORT libdxmc
     LIBRARY DESTINATION lib
@@ -108,5 +108,13 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
 	    add_subdirectory(docs)
     else()
 	    message(STATUS "Doxygen not found, not building docs")
+    endif()
+endif()
+
+# Examples
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    option(BUILD_EXAMPLES "Build examples" ON)
+    if(BUILD_EXAMPLES)
+        add_subdirectory(examples)
     endif()
 endif()

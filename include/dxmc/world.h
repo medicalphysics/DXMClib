@@ -91,8 +91,8 @@ private:
 	std::array<double, 6> m_worldExtent; // {x0, x1, y0, y1, z0, z1}
 
 	// m_density and m_materialIndex must outlive member variables of this class, i.e shared pointers
-    std::shared_ptr<std::vector<double>> m_density;
-    std::shared_ptr<std::vector<unsigned char>> m_materialIndex;
+    std::shared_ptr<std::vector<double>> m_density = nullptr;
+    std::shared_ptr<std::vector<unsigned char>> m_materialIndex = nullptr;
     
 	std::vector<Material> m_materialMap;
 	AttenuationLut m_attLut;
@@ -110,5 +110,5 @@ public:
 
 private:
 	std::array<std::vector<std::size_t>, 5> m_holePositions;
-	double m_airDensity = 0.0;
+	double m_airDensity = 0.001205; // g/cm3
 };

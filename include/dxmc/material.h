@@ -28,7 +28,7 @@ public:
     Material(int atomicNumber);
 	bool isValid(void) const { return m_valid && m_hasDensity; }
 	const std::string& name(void) const { return m_name; }
-	const std::string& prettyName(void) const { return m_prettyName; }
+	const std::string& prettyName(void);
 
     bool hasStandardDensity(void) const {return m_hasDensity;}
     double standardDensity(void) const {return m_density;}

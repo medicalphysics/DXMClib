@@ -63,6 +63,13 @@ Material::Material(int atomicNumber)
 	setByAtomicNumber(atomicNumber);
 }
 
+const std::string& Material::prettyName(void)
+{
+	if (m_prettyName.empty())
+		return m_name;
+	return m_prettyName;
+}
+
 
 
 Material::Material(const std::string& xraylibMaterialNameOrCompound, const std::string& prettyName)
