@@ -63,7 +63,7 @@ Material::Material(int atomicNumber)
 	setByAtomicNumber(atomicNumber);
 }
 
-const std::string& Material::prettyName(void)
+const std::string& Material::prettyName(void) const
 {
 	if (m_prettyName.empty())
 		return m_name;
