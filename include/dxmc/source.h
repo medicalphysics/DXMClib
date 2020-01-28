@@ -215,7 +215,6 @@ public:
 	
 	virtual std::uint64_t exposuresPerRotatition() const;
 	
-
 	bool isValid(void) const override { return m_specterValid; };
 	virtual bool validate(void) override { updateSpecterDistribution(); return m_specterValid; };
 
@@ -242,41 +241,28 @@ class CTSpiralSource : public CTSource
 {
 public:
 	CTSpiralSource();
-	
 	bool getExposure(Exposure& exposure, std::uint64_t i) const override;
-	std::array<double, 3> getExposurePosition(std::uint64_t i) const;
-	
 	void setPitch(double pitch);
 	double pitch(void) const;
-
-	//void setScanLenght(double scanLenght) override;
-
 	std::uint64_t totalExposures(void) const override;
 	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
 protected:
 private:
 	double m_pitch;
-
 };
 
 class CTAxialSource : public CTSource
 {
 public:
 	CTAxialSource();
-
 	bool getExposure(Exposure& exposure, std::uint64_t i) const override;
-	std::array<double, 3> getExposurePosition(std::size_t i) const;
-
 	void setStep(double step);
 	double step(void) const;
 	void setScanLenght(double scanLenght) override;
-
 	std::uint64_t totalExposures(void) const override;
-	
 protected:
 private:
 	double m_step;
-
 };
 
 class CTDualSource :public CTSource
@@ -286,7 +272,6 @@ public:
 	//Source overrides
 	CTDualSource();
 	bool getExposure(Exposure& exposure, std::uint64_t i) const override;
-	std::array<double, 3> getExposurePosition(std::uint64_t i) const;
 
 	double tubeAmas() const { return m_tubeAmas; }
 	double tubeBmas() const { return m_tubeBmas; }
@@ -298,12 +283,9 @@ public:
 
 	double maxPhotonEnergyProduced()const override { return std::max(m_tube.voltage(), m_tubeB.voltage()); }
 
-
 	std::uint64_t totalExposures(void) const override;
 	std::uint64_t exposuresPerRotatition() const override;
 	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
-
-	// CT
 
 	void setBowTieFilterB(std::shared_ptr<BeamFilter> filter) { m_bowTieFilterB = filter; }
 	std::shared_ptr<BeamFilter> bowTieFilterB(void) { return m_bowTieFilterB; }

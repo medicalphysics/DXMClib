@@ -491,28 +491,6 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 	return true;
 }
 
-std::array<double, 3> CTSpiralSource::getExposurePosition(std::uint64_t exposureIndex) const
-{
-
-	std::array<double, 3> pos = { 0,m_sdd / 2.0,0 };
-
-	const double angle = m_startAngle + m_exposureAngleStep * exposureIndex;
-
-	std::array<double, 3> rotationAxis, beamAxis, otherAxis;
-	for (std::size_t i = 0; i < 3; ++i)
-	{
-		rotationAxis[i] = m_directionCosines[i + 3];
-		otherAxis[i] = m_directionCosines[i];
-	}
-	vectormath::cross(rotationAxis.data(), otherAxis.data(), beamAxis.data());
-	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += rotationAxis[i] * (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
-
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += m_position[i];
-	return pos;
-}
 
 std::uint64_t CTSpiralSource::totalExposures() const
 {
@@ -593,33 +571,6 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 	return true;
 }
 
-std::array<double, 3> CTAxialSource::getExposurePosition(std::size_t exposureIndex) const
-{
-	std::array<double, 3> pos = { 0,m_sdd / 2.0,0 };
-
-	const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_2 / m_exposureAngleStep);
-	const std::uint64_t rotationNumber = exposureIndex / anglesPerRotation;
-	const double angle = m_startAngle + m_exposureAngleStep * (exposureIndex - (rotationNumber*anglesPerRotation));
-
-	std::array<double, 3> rotationAxis, otherAxis;
-	for (std::size_t i = 0; i < 3; ++i)
-	{
-		rotationAxis[i] = m_directionCosines[i + 3];
-		otherAxis[i] = m_directionCosines[i];
-	}
-	
-	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += rotationAxis[i] * m_step * rotationNumber;
-	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-	{
-		pos[i] += m_position[i];
-		otherAxis[i] = -otherAxis[i];
-	}
-
-	return pos;
-}
 
 std::uint64_t CTAxialSource::totalExposures() const
 {
@@ -643,39 +594,6 @@ CTDualSource::CTDualSource()
 	m_tubeB.setAlFiltration(7.0);
 }
 
-std::array<double, 3 > CTDualSource::getExposurePosition(std::uint64_t exposureIndexTotal) const
-{
-
-	double sdd, startAngle;
-	uint64_t exposureIndex = exposureIndexTotal / 2;
-	if (exposureIndexTotal % 2 == 0)
-	{
-		sdd = m_sdd;
-		startAngle = m_startAngle;
-	}
-	else
-	{
-		sdd = m_sddB;
-		startAngle = m_startAngleB;
-	}
-	std::array<double, 3> pos = { 0, sdd / 2.0,0 };
-	
-	const double angle = startAngle + m_exposureAngleStep * exposureIndex;
-
-	std::array<double, 3> rotationAxis, beamAxis, otherAxis;
-	for (std::size_t i = 0; i < 3; ++i)
-	{
-		rotationAxis[i] = m_directionCosines[i + 3];
-		otherAxis[i] = m_directionCosines[i];
-	}
-	vectormath::cross(rotationAxis.data(), otherAxis.data(), beamAxis.data());
-	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += rotationAxis[i] * (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += m_position[i];
-	return pos;
-}
 
 bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTotal) const
 {
