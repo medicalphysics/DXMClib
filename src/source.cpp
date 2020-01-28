@@ -489,16 +489,14 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 	std::array<double, 3> tiltAxis = { 1,0,0 };
 	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
-
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += rotationAxis[i] * (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
+	
+	//ading transverse step
+	pos[2] += (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
 
 	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
-	{
 		pos[i] += m_position[i];
-	}
 
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
@@ -571,15 +569,12 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 	std::array<double, 3> tiltAxis = { 1,0,0 };
 	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
-
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += rotationAxis[i] * m_step * rotationNumber;
+	pos[2] += m_step * rotationNumber;
 	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
-	{
 		pos[i] += m_position[i];
-	}
+
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
 	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / (m_sdd / 2.0)) * 2.0);
@@ -655,16 +650,12 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	std::array<double, 3> tiltAxis = { 1,0,0 };
 	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
-
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	for (std::size_t i = 0; i < 3; ++i)
-		pos[i] += rotationAxis[i] * (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
+	pos[2] += (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
 	
 	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
-	{
 		pos[i] += m_position[i];
-	}
 
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
