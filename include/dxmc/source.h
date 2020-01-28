@@ -184,6 +184,12 @@ public:
     
 	void setFieldOfView(double fov);
     double fieldOfView(void) const;
+	
+	void setGantryTiltAngle(double angle);
+	double gantryTiltAngle() const;
+	void setGantryTiltAngleDeg(double angle);
+	double gantryTiltAngleDeg() const;
+
 
     void setStartAngle(double angle);
     double startAngle(void) const;
@@ -228,6 +234,7 @@ protected:
     double m_exposureAngleStep;
     double m_scanLenght;
 	double m_ctdivol = 1.0;
+	double m_gantryTiltAngle = 0.0;
 	std::uint64_t m_ctdiPhantomDiameter = 320;
 	std::shared_ptr<BeamFilter> m_bowTieFilter;
 	XCareFilter m_xcareFilter;

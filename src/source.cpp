@@ -264,9 +264,6 @@ CTSource::CTSource()
 }
 
 
-
-
-
 void CTSource::setSourceDetectorDistance(double sdd)
 {
 	m_sdd = std::abs(sdd);
@@ -297,6 +294,31 @@ double CTSource::fieldOfView(void) const
 	return m_fov;
 }
 
+void CTSource::setGantryTiltAngle(double angle)
+{
+	if (angle < -PI)
+		m_gantryTiltAngle = -PI;
+	else if (angle > PI)
+		m_gantryTiltAngle = PI;
+	else
+		m_gantryTiltAngle = angle;
+}
+
+double CTSource::gantryTiltAngle() const
+{
+	return m_gantryTiltAngle;
+}
+
+void CTSource::setGantryTiltAngleDeg(double angle)
+{
+	setGantryTiltAngle(angle * DEG_TO_RAD);
+}
+
+double CTSource::gantryTiltAngleDeg() const
+{
+	return m_gantryTiltAngle * RAD_TO_DEG;
+}
+
 void CTSource::setStartAngle(double angle)
 {
     m_startAngle = angle;
@@ -308,7 +330,7 @@ double CTSource::startAngle(void) const
 }
 void CTSource::setStartAngleDeg(double angle)
 {
-	m_startAngle = DEG_TO_RAD *angle;
+	m_startAngle = DEG_TO_RAD * angle;
 }
 
 double CTSource::startAngleDeg(void) const
@@ -454,17 +476,20 @@ double CTSpiralSource::pitch(void) const
 }
 bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
 {
-	std::array<double, 3> pos = { 0, m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0, -m_sdd / 2.0,0 };
 
 	const double angle = m_startAngle + m_exposureAngleStep * exposureIndex;
 
-	std::array<double, 3> rotationAxis, beamAxis, otherAxis;
+	std::array<double, 3> rotationAxis, otherAxis;
 	for (std::size_t i = 0; i < 3; ++i)
 	{
 		rotationAxis[i] = m_directionCosines[i + 3];
 		otherAxis[i] = m_directionCosines[i];
 	}
-	vectormath::cross(rotationAxis.data(), otherAxis.data(), beamAxis.data());
+	std::array<double, 3> tiltAxis = { 1,0,0 };
+	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
+	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
+
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
 		pos[i] += rotationAxis[i] * (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
@@ -473,7 +498,6 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 	for (std::size_t i = 0; i < 3; ++i)
 	{
 		pos[i] += m_position[i];
-		otherAxis[i] = -otherAxis[i];
 	}
 
 	exposure.setPosition(pos);
@@ -501,8 +525,6 @@ double CTSpiralSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar
 {
 	return CTSource::getCalibrationValue(nHistories, progressBar) * m_pitch;
 }
-
-
 
 
 CTAxialSource::CTAxialSource()
@@ -533,7 +555,7 @@ void CTAxialSource::setScanLenght(double scanLenght)
 bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
 {
 	//calculating position
-	std::array<double, 3> pos = { 0,m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0,-m_sdd / 2.0,0 };
 	
 	const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_2 / m_exposureAngleStep);
 	const std::uint64_t rotationNumber = exposureIndex / anglesPerRotation;
@@ -546,7 +568,10 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 		rotationAxis[i] = m_directionCosines[i + 3];
 		otherAxis[i] = m_directionCosines[i];
 	}
-	vectormath::cross(rotationAxis.data(), otherAxis.data(), beamAxis.data());
+	std::array<double, 3> tiltAxis = { 1,0,0 };
+	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
+	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
+
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
 		pos[i] += rotationAxis[i] * m_step * rotationNumber;
@@ -554,7 +579,6 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 	for (std::size_t i = 0; i < 3; ++i)
 	{
 		pos[i] += m_position[i];
-		otherAxis[i] = -otherAxis[i];
 	}
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
@@ -617,17 +641,21 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 		bowTie = m_bowTieFilterB.get();
 		specterDistribution = m_specterDistributionB.get();
 	}
-	std::array<double, 3> pos = { 0,m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0,-m_sdd / 2.0,0 };
 
 	const double angle = startAngle + m_exposureAngleStep * exposureIndex;
 
-	std::array<double, 3> rotationAxis, beamAxis, otherAxis;
+	std::array<double, 3> rotationAxis, otherAxis;
 	for (std::size_t i = 0; i < 3; ++i)
 	{
 		rotationAxis[i] = m_directionCosines[i + 3];
 		otherAxis[i] = m_directionCosines[i];
 	}
-	vectormath::cross(rotationAxis.data(), otherAxis.data(), beamAxis.data());
+	
+	std::array<double, 3> tiltAxis = { 1,0,0 };
+	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
+	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
+
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
 		pos[i] += rotationAxis[i] * (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
@@ -636,7 +664,6 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	for (std::size_t i = 0; i < 3; ++i)
 	{
 		pos[i] += m_position[i];
-		otherAxis[i] = -otherAxis[i];
 	}
 
 	exposure.setPosition(pos);
