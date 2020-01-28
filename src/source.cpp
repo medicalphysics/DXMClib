@@ -487,12 +487,14 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 		otherAxis[i] = m_directionCosines[i];
 	}
 	std::array<double, 3> tiltAxis = { 1,0,0 };
+	auto tiltCorrection = pos;
+	vectormath::rotate(tiltCorrection.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
 	
 	//ading transverse step
-	pos[2] += (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
+	pos[2] += (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2 + tiltCorrection[2];
 
 	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
@@ -560,17 +562,19 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 
 	const double angle = m_startAngle + m_exposureAngleStep * (exposureIndex - (rotationNumber*anglesPerRotation));
 
-	std::array<double, 3> rotationAxis, beamAxis, otherAxis;
+	std::array<double, 3> rotationAxis, otherAxis;
 	for (std::size_t i = 0; i < 3; ++i)
 	{
 		rotationAxis[i] = m_directionCosines[i + 3];
 		otherAxis[i] = m_directionCosines[i];
 	}
 	std::array<double, 3> tiltAxis = { 1,0,0 };
+	auto tiltCorrection = pos;
+	vectormath::rotate(tiltCorrection.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	pos[2] += m_step * rotationNumber;
+	pos[2] += m_step * rotationNumber + tiltCorrection[2];
 	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
 		pos[i] += m_position[i];
@@ -648,10 +652,12 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	}
 	
 	std::array<double, 3> tiltAxis = { 1,0,0 };
+	auto tiltCorrection = pos;
+	vectormath::rotate(tiltCorrection.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(rotationAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(otherAxis.data(), tiltAxis.data(), m_gantryTiltAngle);
 	vectormath::rotate(pos.data(), rotationAxis.data(), angle);
-	pos[2] += (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2;
+	pos[2] += (exposureIndex * m_exposureAngleStep) * m_collimation * m_pitch / PI_2 + tiltCorrection[2];
 	
 	vectormath::rotate(otherAxis.data(), rotationAxis.data(), angle);
 	for (std::size_t i = 0; i < 3; ++i)
