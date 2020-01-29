@@ -27,12 +27,32 @@ Copyright 2019 Erlend Andersen
 #include <array>
 
 
-
+/**
+ * @brief Attenuation look up tables. 
+ * 
+ * Class for generation and fast access of total and partial attenuation coefficients for materials specified.
+ */
 class AttenuationLut
 {
 public:
+	/**
+	 * @brief Construct a new Attenuation Lut object
+	 * 
+	 */
 	AttenuationLut() {};
+	/**
+	 * @brief Energy resolution of the lookup table
+	 * 
+	 * Sets the energy resolution of the lookup table, minimum value is 0.1
+	 * @param keV Energy resolution in keV, default value is 1.0
+	 */
 	void setEnergyResolution(double keV) { m_energyStep = keV > 0.1 ? keV : 0.1; }
+
+	/**
+	 * @brief Returns energy resolution in keV
+	 * 
+	 * @return double 
+	 */
 	double energyResolution()const { return m_energyStep; }
 	void generate(const std::vector<Material>& materials, double minEnergy=0.0, double maxEnergy = 150.0);
 	void generate(const std::vector<Material>& materials, const std::vector<double>& energies);

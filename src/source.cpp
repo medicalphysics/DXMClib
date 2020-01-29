@@ -52,7 +52,6 @@ Source::Source()
     m_historiesPerExposure = 1000000;
 }
 
-
 void Source::setDirectionCosines(const std::array<double, 6>& cosines)
 {
 	m_directionCosines = cosines;
@@ -61,7 +60,7 @@ void Source::setDirectionCosines(const std::array<double, 6>& cosines)
 
 void Source::normalizeDirectionCosines()
 {
-	vectormath::normalize(m_directionCosines.data());
+	vectormath::normalize(&m_directionCosines[0]);
 	vectormath::normalize(&m_directionCosines[3]);
 }
 
