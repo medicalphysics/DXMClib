@@ -37,46 +37,174 @@ public:
 	 * 
 	 */
 	AttenuationLut() {};
+	
 	/**
 	 * @brief Energy resolution of the lookup table
 	 * 
-	 * Sets the energy resolution of the lookup table, minimum value is 0.1
-	 * @param keV Energy resolution in keV, default value is 1.0
+	 * Sets the energy resolution of the lookup table, minimum value is 0.1 keV
+	 * @param keV Energy resolution in keV, default value is 1.0 keV
 	 */
 	void setEnergyResolution(double keV) { m_energyStep = keV > 0.1 ? keV : 0.1; }
 
 	/**
-	 * @brief Returns energy resolution in keV
+	 * @brief Energy resolution in keV
 	 * 
 	 * @return double 
 	 */
 	double energyResolution()const { return m_energyStep; }
+	
+	/**
+	 * @brief Generate lookup tables for attenuation data
+	 * The order of materials matters, i.e the first material will get index 0, second has index 1 etc...
+	 * @param materials Vector of materials to generate attenuation table
+	 * @param minEnergy Minimum energy to consider in keV
+	 * @param maxEnergy Maximum energy to consider in keV
+	 */
 	void generate(const std::vector<Material>& materials, double minEnergy=0.0, double maxEnergy = 150.0);
+	
+	/**
+	 * @brief Generate lookup tables for attenuation data
+	 * The order of materials matters, i.e the first material will get index 0, second has index 1 etc...
+	 * @param materials Vector of materials to generate attenuation table
+	 * @param energies Vector of energies to generate in lookup table (in keV)
+	 */
 	void generate(const std::vector<Material>& materials, const std::vector<double>& energies);
 	
+	/**
+	 * @brief Return the maximum mass attenuation value for all materials at spesific photon energy
+	 * 
+	 * @param energy Photon energy for maximum mass attenuation in table 
+	 * @return double 
+	 */
 	double maxMassTotalAttenuation(double energy) const;
+	
+	/**
+	 * @brief Calculate max total mass attenuation for a material and density array
+	 * This templated function will iterate over material indices and density indices and calculate maximum total mass attenuation value for each photon energy in the lookup table
+	 * 
+	 * @param materialIndexBegin Pointer or iterator pointing to the first index in the material array
+	 * @param materialIndexEnd Pointer or iterator pointing to the last + 1 index in the material array
+	 * @param densityBegin Pointer or iterator pointing to the first index in the density array
+	 */
 	template<typename It1, typename It2>
 	void generateMaxMassTotalAttenuation(It1 materialIndexBegin, It1 materialIndexEnd, It2 densityBegin);
 
+	/**
+	 * @brief Total mass attenuation for a material at specified photon energy
+	 * 
+	 * @param material material index
+	 * @param energy photon energy in keV
+	 * @return double 
+	 */
 	double totalAttenuation(std::size_t material, double energy) const;
+
+	/**
+	 * @brief Rayleigh mass attenuation for a material at specified photon energy
+	 * 
+	 * @param material material index
+	 * @param energy photon energy in keV
+	 * @return double 
+	 */
 	double rayleightAttenuation(std::size_t material, double energy) const;
+
+	/**
+	 * @brief Photoelectric mass attenuation for a material at specified photon energy
+	 * 
+	 * @param material material index
+	 * @param energy photon energy in keV
+	 * @return double 
+	 */
 	double photoelectricAttenuation(std::size_t material, double energy) const;
+
+	/**
+	 * @brief Compton mass attenuation for a material at specified photon energy
+	 * 
+	 * @param material material index
+	 * @param energy photon energy in keV
+	 * @return double 
+	 */
 	double comptonAttenuation(std::size_t material, double energy) const;
+
+	/**
+	 * @brief Shortcut to returning photoelectric, compton and rayleigh, respectivly, mass attenuation for a material at specified photon energy
+	 * 
+	 * @param material material index
+	 * @param energy photon energy in keV
+	 * @return std::array<double, 3>
+	 */
 	std::array<double, 3> photoComptRayAttenuation(std::size_t material, double energy) const;
 
+	/**
+	 * @brief Iterator to the first element of photon energy data
+	 * 
+	 * @return std::vector<double>::iterator 
+	 */
 	std::vector<double>::iterator energyBegin() { return m_attData.begin(); }
+
+	/**
+	 * @brief Iterator to the end of photon energy data
+	 * 
+	 * @return std::vector<double>::iterator 
+	 */
 	std::vector<double>::iterator energyEnd() { return m_attData.begin() + m_energyResolution; }
+
+	/**
+	 * @brief Iterator to the first element of total attenuation data for specified material
+	 * 
+	 * @param material Material index 
+	 * @return std::vector<double>::iterator 
+	 */
 	std::vector<double>::iterator attenuationTotalBegin(std::size_t material) { return m_attData.begin() + m_energyResolution + m_energyResolution * 4 * material; } // todo error checking
+	
+	/**
+	 * @brief Iterator to the end of total attenuation data for specified material
+	 * 
+	 * @param material Material index 
+	 * @return std::vector<double>::iterator 
+	 */
 	std::vector<double>::iterator attenuationTotalEnd(std::size_t material) { return m_attData.begin() + m_energyResolution + m_energyResolution * 4 * material + m_energyResolution; } // todo error checking
 
+	/**
+	 * @brief Calculate squared momentumtransfer for a material at a cummulative squared atomic form factor
+	 * 
+	 * @param material Material index
+	 * @param cumFormFactorSquared cummulative atomic form factor
+	 * @return double 
+	 */
+	double momentumTransferSquared(std::size_t material, double cumFormFactorSquared) const;
 
-	double momentumTransferSquared(std::size_t material, double momentumTransferSquared) const;
-	double cumFormFactorSquared(std::size_t material, double cumFormFactorSquared) const;
+	/**
+	 * @brief Calculate cummulative atomic form factor squared from the squared momentum transfer for a specified material
+	 * 
+	 * @param material Material index
+	 * @param momentumTransferSquared squared of momentum transfer 
+	 * @return double 
+	 */
+	double cumFormFactorSquared(std::size_t material, double momentumTransferSquared) const;
 	
+	/**
+	 * @brief Momentum transfer for Rayleigh scattering
+	 * 
+	 * @param energy Photon energy in keV
+	 * @param angle Scattering angle in radians
+	 * @return double 
+	 */
 	static double momentumTransfer(double energy, double angle);
+
+	/**
+	 * @brief Max of momentum transfer for a Rayleigh scattering 
+	 * 
+	 * @param energy Photon energy in keV
+	 * @return double 
+	 */
 	static double momentumTransferMax(double energy);
 
 protected:
+	/**
+	 * @brief Generate atomic form factors for materials specified.
+	 * 
+	 * @param materials Vector of Materials
+	 */
 	void generateFFdata(const std::vector<Material>& materials);
 private:
 	double m_minEnergy = 0;
