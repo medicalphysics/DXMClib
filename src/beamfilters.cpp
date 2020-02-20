@@ -75,7 +75,6 @@ double BowTieFilter::sampleIntensityWeight(const double anglePlusAndMinus) const
     std::advance(it, mid);
     while (it != first)
     {
-
         if (angle < it->first)
         {
             last = it;

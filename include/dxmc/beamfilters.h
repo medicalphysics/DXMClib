@@ -21,10 +21,25 @@ Copyright 2019 Erlend Andersen
 #include <vector>
 #include <array>
 
+/**
+ * @brief Base class for filters on a photon beam
+ * 
+ * Base class for various filters on a photon beam based on angle of photom from beam direction along the first direction cosine vector of the source 
+ */
 class BeamFilter
 {
 public:
+	/**
+	 * @brief Construct a new Beam Filter object
+	 * 
+	 */
 	BeamFilter() {};
+	/**
+	 * @brief Sample intensity weigh
+	 * Sample the photon weight from this filter. The mean of photon weights sampled is 1.0 for N samples when N->infinity.  
+	 * @param angle Angle in radians.
+	 * @return double Photon weigh
+	 */
 	virtual double sampleIntensityWeight(const double angle) const = 0;
 };
 
