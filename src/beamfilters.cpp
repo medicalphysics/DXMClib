@@ -396,3 +396,10 @@ double AECFilter::interpolateMassWeight(double mass) const
 	return p0.second + (p1.second-p0.second) * (mass-p0.first) / (p1.first-p0.first);
 }
 
+HeelFilter::HeelFilter(const Tube& tube, const double heel_angle_span)
+{
+	// making specters and normalize them to
+	//std::vector<double> energies {1...tube kv}
+	//auto tube.getSpecter(energies, normalize = false);
+	//normalize according to heel_angle_span==0
+}

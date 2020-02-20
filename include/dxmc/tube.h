@@ -29,7 +29,7 @@ constexpr double TUBEMINVOLTAGE = 50.0;
 class Tube
 {
 public:
-	Tube(double tubeVoltage = 120.0, double tubeAngle = 12.0, double energyResolution = 1.0);
+	Tube(double tubeVoltage = 120.0, double tubeAngleDeg = 12.0, double energyResolution = 1.0);
 
 	double voltage() const { return m_voltage; }
 	void setVoltage(double voltage);

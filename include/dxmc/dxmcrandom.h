@@ -26,8 +26,6 @@ Copyright 2019 Erlend Andersen
 /*
  * We roll our own random number generator */
 
-
-
 inline std::uint64_t xoroshiro128plus(std::uint64_t s[2]) noexcept
 {
     std::uint64_t s0 = s[0];
@@ -86,10 +84,8 @@ class SpecterDistribution : public RandomDistribution
 {
 public:
 	SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
-	SpecterDistribution(const std::vector<std::pair<double, double>>& energyWeights);
 	double sampleValue();
 	double sampleValue(std::uint64_t seed[2]) const ; // thread safe
-	
 private:
 	std::vector<double> m_energies;
 };

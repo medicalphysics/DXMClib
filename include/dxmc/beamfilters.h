@@ -18,6 +18,8 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 #include "dxmc/world.h"
+#include "dxmc/tube.h"
+
 #include <vector>
 #include <array>
 
@@ -42,6 +44,7 @@ public:
 	 */
 	virtual double sampleIntensityWeight(const double angle) const = 0;
 };
+
 
 class BowTieFilter : public BeamFilter
 {
@@ -90,6 +93,15 @@ private:
 	double m_spanAngle;
 	double m_rampAngle;
 	double m_lowWeight;
+};
+
+class HeelFilter
+{
+public:
+	HeelFilter(const Tube& tube, const double heel_angle_span = 0.0);
+	double sampleIntensityWeight(const double angle, const double energy) const;
+private:
+
 };
 
 
