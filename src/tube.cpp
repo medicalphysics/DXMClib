@@ -375,6 +375,14 @@ Tube::Tube(double tubeVoltage, double tubeAngleDeg, double energyResolution)
 	setTubeAngleDeg(tubeAngleDeg);
 }
 
+Tube::Tube(const Tube& other)
+{
+	m_angle = other.tubeAngle();
+	m_voltage = other.voltage();
+	m_energyResolution = other.energyResolution();
+	m_filtrationMaterials = other.filtrationMaterials();
+}
+
 void Tube::setTubeAngle(double angle)
 {
 	auto a = std::abs(angle);

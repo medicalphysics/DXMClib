@@ -30,7 +30,7 @@ class Tube
 {
 public:
 	Tube(double tubeVoltage = 120.0, double tubeAngleDeg = 12.0, double energyResolution = 1.0);
-
+	Tube(const Tube& other);
 	double voltage() const { return m_voltage; }
 	void setVoltage(double voltage);
 	static constexpr double maxVoltage() { return TUBEMAXVOLTAGE; }
