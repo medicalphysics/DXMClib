@@ -398,8 +398,56 @@ double AECFilter::interpolateMassWeight(double mass) const
 
 HeelFilter::HeelFilter(const Tube& tube, const double heel_angle_span)
 {
+	update(tube, heel_angle_span);
 	// making specters and normalize them to
 	//std::vector<double> energies {1...tube kv}
 	//auto tube.getSpecter(energies, normalize = false);
 	//normalize according to heel_angle_span==0
+}
+
+void HeelFilter::update(const Tube& tube, const double heel_angle_span)
+{
+	// recalculating energy range
+	m_energySize = static_cast<std::size_t>((tube.voltage() - m_energyStart) / m_energyStep);
+	if (m_energySize < 1)
+		m_energySize = 1;
+	m_energies.clear();
+	m_energies.reserve(m_energySize);
+	for (std::size_t i = 0; i < m_energySize; ++i)
+		m_energies.push_back(m_energyStart + i * m_energyStep);
+
+	// recalculating weights
+	const double abs_span_angle = std::abs(heel_angle_span);
+	if (tube.anodeAngle < abs_span_angle * 0.5) // minimum span angle is greater than anode angle
+		m_angleStart = 0;
+	else
+		m_angleStart = tube.anodeAngle() - abs_span_angle * 0.5;
+	m_angleStep = static_cast<std::size_t>((tube.anodeAngle() + abs_span_angle * 0.5 - m_angleStart) / m_angleSize);
+
+	m_weights.clear();
+	m_weights.resize(m_energySize * m_angleSize);
+	for (std::size_t i = 0; i < m_angleSize; ++i)
+	{
+		const double angle = m_angleStart + i * m_angleStep;
+		auto specter = tube.getSpecter(m_energies, angle, false);
+		for (std::size_t j = 0; j < m_energySize; ++j)
+			m_weights[j * m_angleSize + i] = specter[j];
+	}
+	//normalizing weights
+	auto w_start = m_weights.begin();
+	for (std::size_t i = 0; i < m_energySize; ++i)
+	{
+		auto w_end = w_start + m_angleSize;
+		//normalize to mean
+		const double sum = std::reduce(w_start, w_end, 0.0) / m_angleSize;
+		w_start = std::transform(w_start, w_end, w_start,  [=](double w) ->double {return w / sum; });
+	}
+}
+
+double HeelFilter::sampleIntensityWeight(const double angle, const double energy) const
+{
+	std::size_t e_index = (energy - m_energyStart) / m_energyStep;
+
+
+	return 0.0;
 }

@@ -372,32 +372,32 @@ std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, 
 Tube::Tube(double tubeVoltage, double tubeAngleDeg, double energyResolution)
 	:m_voltage(tubeVoltage), m_energyResolution(energyResolution)
 {
-	setTubeAngleDeg(tubeAngleDeg);
+	setAnodeAngleDeg(tubeAngleDeg);
 }
 
 Tube::Tube(const Tube& other)
 {
-	m_angle = other.tubeAngle();
+	m_anodeAngle = other.anodeAngle();
 	m_voltage = other.voltage();
 	m_energyResolution = other.energyResolution();
 	m_filtrationMaterials = other.filtrationMaterials();
 }
 
-void Tube::setTubeAngle(double angle)
+void Tube::setAnodeAngle(double angle)
 {
 	auto a = std::abs(angle);
 	if (a > PIVAL / 2.0)
 		a = PIVAL / 2.0;
-	m_angle =  a;
+	m_anodeAngle =  a;
 }
 
-void Tube::setTubeAngleDeg(double angle)
+void Tube::setAnodeAngleDeg(double angle)
 {
-	setTubeAngle(angle*DEG_TO_RAD);
+	setAnodeAngle(angle*DEG_TO_RAD);
 }
-double Tube::tubeAngleDeg() const
+double Tube::anodeAngleDeg() const
 {
-	return RAD_TO_DEG * m_angle;
+	return RAD_TO_DEG * m_anodeAngle;
 }
 void Tube::setVoltage(double voltage)
 {
@@ -498,7 +498,23 @@ std::vector<double> Tube::getSpecter(const std::vector<double>& energies, bool n
 {
 	std::vector<double> specter;
 	specter.resize(energies.size());
-	std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](double hv)->double {return betheHeitlerSpectra(this->voltage(), hv, this->tubeAngle()); });
+	std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](double hv)->double {return betheHeitlerSpectra(this->voltage(), hv, this->anodeAngle()); });
+
+	//adding characteristic radiation
+	addCharacteristicEnergy(energies, specter);
+	filterSpecter(energies, specter);
+	if (normalize)
+	{
+		normalizeSpecter(specter);
+	}
+	return specter;
+}
+
+std::vector<double> Tube::getSpecter(const std::vector<double>& energies, double anodeAngle, bool normalize) const
+{
+	std::vector<double> specter;
+	specter.resize(energies.size());
+	std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](double hv)->double {return betheHeitlerSpectra(this->voltage(), hv, anodeAngle); });
 
 	//adding characteristic radiation
 	addCharacteristicEnergy(energies, specter);
@@ -541,7 +557,7 @@ void Tube::addCharacteristicEnergy(const std::vector<double>& energy, std::vecto
 {
 	auto energyBegin = energy.begin();
 	auto energyEnd = energy.end();
-	auto kEdge = characteristicTungstenKedge(this->voltage(), this->tubeAngle());
+	auto kEdge = characteristicTungstenKedge(this->voltage(), this->anodeAngle());
 	for (auto[e, n] : kEdge)
 	{
 		//find closest energy

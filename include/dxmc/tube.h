@@ -29,17 +29,17 @@ constexpr double TUBEMINVOLTAGE = 50.0;
 class Tube
 {
 public:
-	Tube(double tubeVoltage = 120.0, double tubeAngleDeg = 12.0, double energyResolution = 1.0);
+	Tube(double tubeVoltage = 120.0, double anodeAngleDeg = 12.0, double energyResolution = 1.0);
 	Tube(const Tube& other);
 	double voltage() const { return m_voltage; }
 	void setVoltage(double voltage);
 	static constexpr double maxVoltage() { return TUBEMAXVOLTAGE; }
 	static constexpr double minVoltage() { return TUBEMINVOLTAGE; }
 
-	double tubeAngle() const { return m_angle; }
-	double tubeAngleDeg() const;
-	void setTubeAngle(double angle);
-	void setTubeAngleDeg(double angle);
+	double anodeAngle() const { return m_anodeAngle; }
+	double anodeAngleDeg() const;
+	void setAnodeAngle(double angle);
+	void setAnodeAngleDeg(double angle);
 
 	void addFiltrationMaterial(const Material &filtrationMaterial, double mm) { m_filtrationMaterials.push_back(std::make_pair(filtrationMaterial, std::abs(mm))); }
 	std::vector<std::pair<Material, double>>& filtrationMaterials() { return m_filtrationMaterials; }
@@ -60,11 +60,12 @@ public:
 
 	std::vector<std::pair<double, double>> getSpecter(bool normalize = true) const;
 	std::vector<double> getSpecter(const std::vector<double> &energies, bool normalize = true) const;
+	std::vector<double> getSpecter(const std::vector<double>& energies, double anodeAngle, bool normalize = true) const;
 protected:
 	void addCharacteristicEnergy(const std::vector<double>& energy, std::vector<double>& specter) const;
 	void filterSpecter(const std::vector<double>& energies, std::vector<double>& specter) const;
 	void normalizeSpecter(std::vector<double>& specter) const;
 private:
-	double m_voltage, m_energyResolution, m_angle;
+	double m_voltage, m_energyResolution, m_anodeAngle;
 	std::vector<std::pair<Material, double>> m_filtrationMaterials;
 };

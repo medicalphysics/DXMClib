@@ -99,9 +99,18 @@ class HeelFilter
 {
 public:
 	HeelFilter(const Tube& tube, const double heel_angle_span = 0.0);
+	void update(const Tube& tube, const double heel_angle_span = 0.0);
 	double sampleIntensityWeight(const double angle, const double energy) const;
 private:
+	double m_energyStep = 2.0;
+	double m_energyStart = 20.0;
+	std::size_t m_energySize = 65;
 
+	double m_angleStep = 0.07; // about 4 deg step size
+	double m_angleStart = 0.07;
+	std::size_t m_angleSize = 5;
+	std::vector<double> m_energies;
+	std::vector<double> m_weights; //vector of m_angleSize*m_energySize weights
 };
 
 
