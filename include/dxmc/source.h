@@ -156,7 +156,7 @@ private:
 	Tube m_tube;
 	bool m_specterValid = false;
 	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
-
+	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
 };
 
 
@@ -242,6 +242,7 @@ protected:
 	bool m_specterValid = false;
 	Tube m_tube;
 	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
+	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
 };
 
 class CTSpiralSource : public CTSource
@@ -298,7 +299,7 @@ public:
 	std::shared_ptr<BeamFilter> bowTieFilterB(void) { return m_bowTieFilterB; }
 	const std::shared_ptr<BeamFilter> bowTieFilterB() const { return m_bowTieFilterB; }
 
-	void setSourceDetectorDistanceB(double sdd) { m_sddB = std::abs(sdd); }
+	void setSourceDetectorDistanceB(double sdd) { m_specterValid = false; m_sddB = std::abs(sdd); }
 	double sourceDetectorDistanceB(void) const { return m_sddB; }	
 
 	void setFieldOfViewB(double fov) { m_fovB = std::abs(fov); }
@@ -317,7 +318,7 @@ protected:
 	void updateSpecterDistribution() override;
 private:
 	Tube m_tubeB;
-	std::unique_ptr<SpecterDistribution> m_specterDistributionB=nullptr;
+	std::unique_ptr<SpecterDistribution> m_specterDistributionB = nullptr;
 	double m_sddB;
 	double m_fovB;
 	double m_startAngleB;
@@ -326,5 +327,6 @@ private:
 	double m_tubeBmas = 100.0;
 	double m_tubeBweight = -1.0;
 	double m_tubeAweight = -1.0;
-	std::shared_ptr<BeamFilter> m_bowTieFilterB;
+	std::shared_ptr<BeamFilter> m_bowTieFilterB = nullptr;
+	std::unique_ptr<HeelFilter> m_heelFilterB = nullptr;
 };

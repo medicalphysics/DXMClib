@@ -18,7 +18,7 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/exposure.h"
 #include "dxmc/vectormath.h"
-Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter)
+Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter, const HeelFilter* heelFilter)
 {
 	for (std::size_t i = 0; i < 3; ++i)
 	{
@@ -35,6 +35,7 @@ Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter)
 	m_beamIntensityWeight = 1.0;
 	m_specterDistribution = specter;
 	m_beamFilter = filter;
+	m_heelFilter = heelFilter;
 }
 
 
@@ -168,6 +169,10 @@ void Exposure::setSpecterDistribution(const SpecterDistribution* specter)
 {
 	m_specterDistribution = specter;
 }
+void Exposure::setHeelFilter(const HeelFilter* filter)
+{
+	m_heelFilter = filter;
+}
 void Exposure::setMonoenergeticPhotonEnergy(double energy)
 {
 	if (energy > 500.0)
@@ -222,5 +227,9 @@ void Exposure::sampleParticle(Particle& p, std::uint64_t seed[2]) const
 	if (m_beamFilter)
 	{
 		p.weight *= m_beamFilter->sampleIntensityWeight(theta);
+	}
+	if (m_heelFilter)
+	{
+		p.weight *= m_heelFilter->sampleIntensityWeight(phi, p.energy);
 	}
 }

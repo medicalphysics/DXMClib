@@ -124,6 +124,7 @@ bool DXSource::getExposure(Exposure& exposure, std::uint64_t i) const
 	exposure.setDirectionCosines(m_directionCosines);
 	exposure.setCollimationAngles(m_collimationAngles.data());
 	exposure.setSpecterDistribution(m_specterDistribution.get());
+	exposure.setHeelFilter(m_heelFilter.get());
 	return i < m_totalExposures;
 }
 
@@ -181,6 +182,7 @@ void DXSource::updateSpecterDistribution()
 		auto energies = m_tube.getEnergy();
 		auto n_obs = m_tube.getSpecter(energies);
 		m_specterDistribution = std::make_unique<SpecterDistribution>(n_obs, energies);
+		m_heelFilter = std::make_unique<HeelFilter>(m_tube, m_collimationAngles[1]);
 		m_specterValid = true;
 	}
 }
@@ -226,6 +228,7 @@ void DXSource::updateCollimationAngles(const std::array<double, 2>& collimationA
 		m_collimationAngles[i] = collimationAngles[i];
 		m_fieldSize[i] = std::tan(m_collimationAngles[i] * 0.5) * m_sdd * 2.0;
 	}
+	m_specterValid = false;
 }
 void DXSource::updateFieldSize(const std::array<double, 2>& fieldSize)
 {
@@ -234,6 +237,7 @@ void DXSource::updateFieldSize(const std::array<double, 2>& fieldSize)
 		m_fieldSize[i] = fieldSize[i];
 		m_collimationAngles[i] = std::atan(m_fieldSize[i] * 0.5 / m_sdd) * 2.0;
 	}
+	m_specterValid = false;
 }
 
 const std::array<double, 3> DXSource::tubePosition(void) const
@@ -266,6 +270,7 @@ CTSource::CTSource()
 void CTSource::setSourceDetectorDistance(double sdd)
 {
 	m_sdd = std::abs(sdd);
+	m_specterValid = false;
 }
 
 double CTSource::sourceDetectorDistance(void) const
@@ -276,6 +281,7 @@ double CTSource::sourceDetectorDistance(void) const
 void CTSource::setCollimation(double collimation)
 {
 	m_collimation = std::abs(collimation);
+	m_specterValid = false;
 }
 
 double CTSource::collimation(void) const
@@ -395,6 +401,8 @@ void CTSource::updateSpecterDistribution()
 		auto energies = m_tube.getEnergy();
 		auto n_obs = m_tube.getSpecter(energies);
 		m_specterDistribution = std::make_unique<SpecterDistribution>(n_obs, energies);
+		const double heel_span_angle = std::atan(m_collimation * 0.5 / m_sdd) * 2.0;
+		m_heelFilter = std::make_unique<HeelFilter>(m_tube, heel_span_angle);
 		m_specterValid = true;
 	}
 }
@@ -504,6 +512,7 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / (m_sdd / 2.0)) * 2.0);
 	exposure.setBeamFilter(m_bowTieFilter.get());
 	exposure.setSpecterDistribution(m_specterDistribution.get());
+	exposure.setHeelFilter(m_heelFilter.get());
 	exposure.setNumberOfHistories(m_historiesPerExposure);
 	double weight = 1.0;
 	if (m_positionalFilter)
@@ -582,6 +591,7 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
 	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / (m_sdd / 2.0)) * 2.0);
 	exposure.setBeamFilter(m_bowTieFilter.get());
+	exposure.setHeelFilter(m_heelFilter.get());
 	exposure.setSpecterDistribution(m_specterDistribution.get());
 	exposure.setNumberOfHistories(m_historiesPerExposure);
 	double weight = 1.0;
@@ -623,6 +633,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	uint64_t exposureIndex = exposureIndexTotal / 2;
 	BeamFilter* bowTie=nullptr;
 	SpecterDistribution* specterDistribution=nullptr;
+	HeelFilter* heelFilter = nullptr;
 	if (exposureIndexTotal % 2 == 0)
 	{
 		sdd = m_sdd;
@@ -630,6 +641,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 		fov = m_fov;
 		bowTie = m_bowTieFilter.get();
 		specterDistribution = m_specterDistribution.get();
+		heelFilter = m_heelFilter.get();
 	}
 	else
 	{
@@ -638,6 +650,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 		fov = m_fovB;
 		bowTie = m_bowTieFilterB.get();
 		specterDistribution = m_specterDistributionB.get();
+		heelFilter = m_heelFilterB.get();
 	}
 	std::array<double, 3> pos = { 0,-m_sdd / 2.0,0 };
 
@@ -667,6 +680,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	exposure.setCollimationAngles(std::atan(fov / sdd) * 2.0, std::atan(m_collimation / (sdd / 2.0)) * 2.0);
 	exposure.setBeamFilter(bowTie);
 	exposure.setSpecterDistribution(specterDistribution);
+	exposure.setHeelFilter(heelFilter);
 	exposure.setNumberOfHistories(m_historiesPerExposure);
 	double weight = 1.0;
 	if (m_positionalFilter)
@@ -737,6 +751,11 @@ void CTDualSource::updateSpecterDistribution()
 
 		m_specterDistribution = std::make_unique<SpecterDistribution>(specterA, energyA);
 		m_specterDistributionB = std::make_unique<SpecterDistribution>(specterB, energyB);
+
+		const double heel_span_angle = std::atan(m_collimation * 0.5 / m_sdd) * 2.0;
+		m_heelFilter = std::make_unique<HeelFilter>(m_tube, heel_span_angle);
+		m_heelFilterB = std::make_unique<HeelFilter>(m_tubeB, heel_span_angle);
+
 		m_specterValid = true;
 	}
 }

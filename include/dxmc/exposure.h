@@ -39,7 +39,7 @@ public:
 
 	enum CollimationType { Circular, Rectangular };
 
-	Exposure(const BeamFilter* filter=nullptr, const SpecterDistribution* specter = nullptr);
+	Exposure(const BeamFilter* filter = nullptr, const SpecterDistribution* specter = nullptr, const HeelFilter* heelFilter = nullptr);
 
 	void setPosition(double x, double y, double z);
 	void setPosition(const double pos[3]);
@@ -73,6 +73,7 @@ public:
 
 	void setBeamFilter(const BeamFilter* filter);
 	void setSpecterDistribution(const SpecterDistribution* specter);
+	void setHeelFilter(const HeelFilter* filter);
 	void setMonoenergeticPhotonEnergy(double energy);
 
 
@@ -83,10 +84,10 @@ public:
 
     void sampleParticle(Particle& p, std::uint64_t seed[2]) const; // thread safe
 
-	
-
-
 protected:
+	void normalizeDirectionCosines(void);
+	void calculateBeamDirection(void);
+private:
 	std::array<double, 3> m_position;
 	std::array<double, 6> m_directionCosines;
 	std::array<double, 3> m_beamDirection;
@@ -94,11 +95,8 @@ protected:
 	double m_beamIntensityWeight;
 	const BeamFilter* m_beamFilter;
 	const SpecterDistribution* m_specterDistribution;
+	const HeelFilter* m_heelFilter;
 	double m_monoenergeticPhotonEnergy = 0.0;
     std::size_t m_nHistories;
 	CollimationType m_collimation;
-
-private:
-	void normalizeDirectionCosines(void);
-	void calculateBeamDirection(void);
 };
