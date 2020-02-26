@@ -418,17 +418,17 @@ void HeelFilter::update(const Tube& tube, const double heel_angle_span)
 
 	// recalculating weights
 	const double abs_span_angle = std::abs(heel_angle_span);
-	if (tube.anodeAngle < abs_span_angle * 0.5) // minimum span angle is greater than anode angle
-		m_angleStart = 0;
+	if (tube.anodeAngle() < abs_span_angle * 0.5) // minimum span angle is greater than anode angle
+		m_angleStart = -tube.anodeAngle();
 	else
-		m_angleStart = tube.anodeAngle() - abs_span_angle * 0.5;
-	m_angleStep = static_cast<std::size_t>((tube.anodeAngle() + abs_span_angle * 0.5 - m_angleStart) / m_angleSize);
+		m_angleStart = -abs_span_angle * 0.5;
+	m_angleStep = (abs_span_angle * 0.5 - m_angleStart) / m_angleSize;
 
 	m_weights.clear();
 	m_weights.resize(m_energySize * m_angleSize);
 	for (std::size_t i = 0; i < m_angleSize; ++i)
 	{
-		const double angle = m_angleStart + i * m_angleStep;
+		const double angle = m_angleStart + i * m_angleStep + tube.anodeAngle();
 		auto specter = tube.getSpecter(m_energies, angle, false);
 		for (std::size_t j = 0; j < m_energySize; ++j)
 			m_weights[j * m_angleSize + i] = specter[j];
@@ -446,8 +446,27 @@ void HeelFilter::update(const Tube& tube, const double heel_angle_span)
 
 double HeelFilter::sampleIntensityWeight(const double angle, const double energy) const
 {
-	std::size_t e_index = (energy - m_energyStart) / m_energyStep;
+	std::size_t e_index = (energy - m_energyStart + 0.5 * m_energyStep) / m_energyStep;
+	if (e_index > m_energySize)
+		e_index = m_energySize - 1;
+	if (energy < m_energyStart)
+		e_index = 0;
 
+	std::size_t a_index = (angle - m_angleStart ) / m_angleStep; // we want lowest angle index since we are interpolating
+	auto test_angle_max = m_angleStart + m_angleStep * m_angleSize;
+	if (a_index > m_angleSize)
+		a_index = m_angleSize - 1;
+	if (angle < m_angleStart)
+		a_index = 0;
 
-	return 0.0;
+	std::size_t w_index = e_index * m_angleSize + a_index;
+	if (a_index < m_angleSize - 1) // we want to interpolate if not on edge
+	{
+		const double a0 = m_angleStart + m_angleStep * a_index;
+		const double a1 = m_angleStart + m_angleStep * (a_index + 1);
+		const double w0 = m_weights[w_index];
+		const double w1 = m_weights[w_index + 1];
+		return interp(a0, a1, w0, w1, angle);
+	}
+	return m_weights[w_index];
 }
