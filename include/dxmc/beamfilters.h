@@ -101,6 +101,10 @@ public:
 	HeelFilter(const Tube& tube, const double heel_angle_span = 0.0);
 	void update(const Tube& tube, const double heel_angle_span = 0.0);
 	double sampleIntensityWeight(const double angle, const double energy) const;
+
+	std::size_t energySize() const { return m_energySize; }
+	std::size_t angleSize() const { return m_angleSize; }
+	const std::vector<double>& weights() const { return m_weights; }
 private:
 	double m_energyStep = 2.0;
 	double m_energyStart = 20.0;
