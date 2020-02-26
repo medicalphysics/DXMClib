@@ -21,7 +21,7 @@ bool testUniformWeights(const HeelFilter& filter, double angle_span, double ener
 
     auto mean = acc / N;
 
-    return std::abs(mean - 1.0) < 0.001;
+    return std::abs(mean - 1.0) < 0.01;
 }
 
 
@@ -40,7 +40,7 @@ bool testWeightsSum(const HeelFilter& filter)
             sum += w[ind + j];
         }
         sum = sum / as;
-        if (std::abs(sum - 1.0) > 0.001)
+        if (std::abs(sum - 1.0) >= 0.01)
             return false;
     }
     return true;
@@ -52,12 +52,7 @@ int main(int argc, char* argv[])
     constexpr double deg2rad = 3.14159265359 / 180.0;
     Tube t;
 
-
     t.setAnodeAngle(12 * deg2rad);
-
-
-
-
 
     HeelFilter f(t, 10.0 * deg2rad);
 
