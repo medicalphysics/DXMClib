@@ -1,17 +1,17 @@
-/*This file is part of OpenDXMC.
+/*This file is part of DXMClib.
 
-OpenDXMC is free software : you can redistribute it and/or modify
+DXMClib is free software : you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-OpenDXMC is distributed in the hope that it will be useful,
+DXMClib is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
+along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
@@ -25,8 +25,6 @@ Copyright 2019 Erlend Andersen
 
 /*
  * We roll our own random number generator */
-
-
 
 inline std::uint64_t xoroshiro128plus(std::uint64_t s[2]) noexcept
 {
@@ -86,10 +84,8 @@ class SpecterDistribution : public RandomDistribution
 {
 public:
 	SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
-	SpecterDistribution(const std::vector<std::pair<double, double>>& energyWeights);
 	double sampleValue();
 	double sampleValue(std::uint64_t seed[2]) const ; // thread safe
-	
 private:
 	std::vector<double> m_energies;
 };

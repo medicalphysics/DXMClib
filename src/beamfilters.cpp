@@ -1,17 +1,17 @@
-/*This file is part of OpenDXMC.
+/*This file is part of DXMClib.
 
-OpenDXMC is free software : you can redistribute it and/or modify
+DXMClib is free software : you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-OpenDXMC is distributed in the hope that it will be useful,
+DXMClib is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
+along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
@@ -396,3 +396,76 @@ double AECFilter::interpolateMassWeight(double mass) const
 	return p0.second + (p1.second-p0.second) * (mass-p0.first) / (p1.first-p0.first);
 }
 
+HeelFilter::HeelFilter(const Tube& tube, const double heel_angle_span)
+{
+	update(tube, heel_angle_span);
+	// making specters and normalize them to
+	//std::vector<double> energies {1...tube kv}
+	//auto tube.getSpecter(energies, normalize = false);
+	//normalize according to heel_angle_span==0
+}
+
+void HeelFilter::update(const Tube& tube, const double heel_angle_span)
+{
+	// recalculating energy range
+	m_energySize = static_cast<std::size_t>((tube.voltage() - m_energyStart) / m_energyStep);
+	if (m_energySize < 1)
+		m_energySize = 1;
+	m_energies.clear();
+	m_energies.reserve(m_energySize);
+	for (std::size_t i = 0; i < m_energySize; ++i)
+		m_energies.push_back(m_energyStart + i * m_energyStep);
+
+	// recalculating weights
+	const double abs_span_angle = std::abs(heel_angle_span);
+	if (tube.anodeAngle() < abs_span_angle * 0.5) // minimum span angle is greater than anode angle
+		m_angleStart = -tube.anodeAngle();
+	else
+		m_angleStart = -abs_span_angle * 0.5;
+	m_angleStep = (abs_span_angle * 0.5 - m_angleStart) / m_angleSize;
+
+	m_weights.clear();
+	m_weights.resize(m_energySize * m_angleSize);
+	for (std::size_t i = 0; i < m_angleSize; ++i)
+	{
+		const double angle = m_angleStart + i * m_angleStep + tube.anodeAngle();
+		auto specter = tube.getSpecter(m_energies, angle, false);
+		for (std::size_t j = 0; j < m_energySize; ++j)
+			m_weights[j * m_angleSize + i] = specter[j];
+	}
+	//normalizing weights
+	auto w_start = m_weights.begin();
+	for (std::size_t i = 0; i < m_energySize; ++i)
+	{
+		auto w_end = w_start + m_angleSize;
+		//normalize to mean
+		const double sum = std::reduce(w_start, w_end, 0.0) / m_angleSize;
+		w_start = std::transform(w_start, w_end, w_start,  [=](double w) ->double {return w / sum; });
+	}
+}
+
+double HeelFilter::sampleIntensityWeight(const double angle, const double energy) const
+{
+	std::size_t e_index = (energy - m_energyStart + 0.5 * m_energyStep) / m_energyStep;
+	if (e_index > m_energySize)
+		e_index = m_energySize - 1;
+	if (energy < m_energyStart)
+		e_index = 0;
+
+	std::size_t a_index = (angle - m_angleStart ) / m_angleStep; // we want lowest angle index since we are interpolating
+	if (a_index > m_angleSize)
+		a_index = m_angleSize - 1;
+	if (angle < m_angleStart)
+		a_index = 0;
+
+	std::size_t w_index = e_index * m_angleSize + a_index;
+	if (a_index < m_angleSize - 1) // we want to interpolate if not on edge
+	{
+		const double a0 = m_angleStart + m_angleStep * a_index;
+		const double a1 = m_angleStart + m_angleStep * (a_index + 1);
+		const double w0 = m_weights[w_index];
+		const double w1 = m_weights[w_index + 1];
+		return interp(a0, a1, w0, w1, angle);
+	}
+	return m_weights[w_index];
+}

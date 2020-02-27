@@ -1,24 +1,24 @@
-/*This file is part of OpenDXMC.
+/*This file is part of DXMClib.
 
-OpenDXMC is free software : you can redistribute it and/or modify
+DXMClib is free software : you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-OpenDXMC is distributed in the hope that it will be useful,
+DXMClib is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
+along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
 
 #include "dxmc/exposure.h"
 #include "dxmc/vectormath.h"
-Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter)
+Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter, const HeelFilter* heelFilter)
 {
 	for (std::size_t i = 0; i < 3; ++i)
 	{
@@ -35,6 +35,7 @@ Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter)
 	m_beamIntensityWeight = 1.0;
 	m_specterDistribution = specter;
 	m_beamFilter = filter;
+	m_heelFilter = heelFilter;
 }
 
 
@@ -168,6 +169,10 @@ void Exposure::setSpecterDistribution(const SpecterDistribution* specter)
 {
 	m_specterDistribution = specter;
 }
+void Exposure::setHeelFilter(const HeelFilter* filter)
+{
+	m_heelFilter = filter;
+}
 void Exposure::setMonoenergeticPhotonEnergy(double energy)
 {
 	if (energy > 500.0)
@@ -222,5 +227,9 @@ void Exposure::sampleParticle(Particle& p, std::uint64_t seed[2]) const
 	if (m_beamFilter)
 	{
 		p.weight *= m_beamFilter->sampleIntensityWeight(theta);
+	}
+	if (m_heelFilter)
+	{
+		p.weight *= m_heelFilter->sampleIntensityWeight(phi, p.energy);
 	}
 }

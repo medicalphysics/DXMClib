@@ -1,23 +1,25 @@
-/*This file is part of OpenDXMC.
+/*This file is part of DXMClib.
 
-OpenDXMC is free software : you can redistribute it and/or modify
+DXMClib is free software : you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-OpenDXMC is distributed in the hope that it will be useful,
+DXMClib is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
+along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
 
 #pragma once
 #include "dxmc/world.h"
+#include "dxmc/tube.h"
+
 #include <vector>
 #include <array>
 
@@ -42,6 +44,7 @@ public:
 	 */
 	virtual double sampleIntensityWeight(const double angle) const = 0;
 };
+
 
 class BowTieFilter : public BeamFilter
 {
@@ -90,6 +93,28 @@ private:
 	double m_spanAngle;
 	double m_rampAngle;
 	double m_lowWeight;
+};
+
+class HeelFilter
+{
+public:
+	HeelFilter(const Tube& tube, const double heel_angle_span = 0.0);
+	void update(const Tube& tube, const double heel_angle_span = 0.0);
+	double sampleIntensityWeight(const double angle, const double energy) const;
+
+	std::size_t energySize() const { return m_energySize; }
+	std::size_t angleSize() const { return m_angleSize; }
+	const std::vector<double>& weights() const { return m_weights; }
+private:
+	double m_energyStep = 2.0;
+	double m_energyStart = 20.0;
+	std::size_t m_energySize = 65;
+
+	double m_angleStep = 0.07; // about 4 deg step size
+	double m_angleStart = 0.07;
+	std::size_t m_angleSize = 5;
+	std::vector<double> m_energies;
+	std::vector<double> m_weights; //vector of m_angleSize*m_energySize weights
 };
 
 

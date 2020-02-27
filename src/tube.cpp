@@ -1,17 +1,17 @@
-/*This file is part of OpenDXMC.
+/*This file is part of DXMClib.
 
-OpenDXMC is free software : you can redistribute it and/or modify
+DXMClib is free software : you can redistribute it and/or modify
 it under the terms of the GNU General Public License as published by
 the Free Software Foundation, either version 3 of the License, or
 (at your option) any later version.
 
-OpenDXMC is distributed in the hope that it will be useful,
+DXMClib is distributed in the hope that it will be useful,
 but WITHOUT ANY WARRANTY; without even the implied warranty of
 MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
 GNU General Public License for more details.
 
 You should have received a copy of the GNU General Public License
-along with OpenDXMC. If not, see < https://www.gnu.org/licenses/>.
+along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
@@ -372,24 +372,32 @@ std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, 
 Tube::Tube(double tubeVoltage, double tubeAngleDeg, double energyResolution)
 	:m_voltage(tubeVoltage), m_energyResolution(energyResolution)
 {
-	setTubeAngleDeg(tubeAngleDeg);
+	setAnodeAngleDeg(tubeAngleDeg);
 }
 
-void Tube::setTubeAngle(double angle)
+Tube::Tube(const Tube& other)
+{
+	m_anodeAngle = other.anodeAngle();
+	m_voltage = other.voltage();
+	m_energyResolution = other.energyResolution();
+	m_filtrationMaterials = other.filtrationMaterials();
+}
+
+void Tube::setAnodeAngle(double angle)
 {
 	auto a = std::abs(angle);
 	if (a > PIVAL / 2.0)
 		a = PIVAL / 2.0;
-	m_angle =  a;
+	m_anodeAngle =  a;
 }
 
-void Tube::setTubeAngleDeg(double angle)
+void Tube::setAnodeAngleDeg(double angle)
 {
-	setTubeAngle(angle*DEG_TO_RAD);
+	setAnodeAngle(angle*DEG_TO_RAD);
 }
-double Tube::tubeAngleDeg() const
+double Tube::anodeAngleDeg() const
 {
-	return RAD_TO_DEG * m_angle;
+	return RAD_TO_DEG * m_anodeAngle;
 }
 void Tube::setVoltage(double voltage)
 {
@@ -490,7 +498,23 @@ std::vector<double> Tube::getSpecter(const std::vector<double>& energies, bool n
 {
 	std::vector<double> specter;
 	specter.resize(energies.size());
-	std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](double hv)->double {return betheHeitlerSpectra(this->voltage(), hv, this->tubeAngle()); });
+	std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](double hv)->double {return betheHeitlerSpectra(this->voltage(), hv, this->anodeAngle()); });
+
+	//adding characteristic radiation
+	addCharacteristicEnergy(energies, specter);
+	filterSpecter(energies, specter);
+	if (normalize)
+	{
+		normalizeSpecter(specter);
+	}
+	return specter;
+}
+
+std::vector<double> Tube::getSpecter(const std::vector<double>& energies, double anodeAngle, bool normalize) const
+{
+	std::vector<double> specter;
+	specter.resize(energies.size());
+	std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](double hv)->double {return betheHeitlerSpectra(this->voltage(), hv, anodeAngle); });
 
 	//adding characteristic radiation
 	addCharacteristicEnergy(energies, specter);
@@ -533,7 +557,7 @@ void Tube::addCharacteristicEnergy(const std::vector<double>& energy, std::vecto
 {
 	auto energyBegin = energy.begin();
 	auto energyEnd = energy.end();
-	auto kEdge = characteristicTungstenKedge(this->voltage(), this->tubeAngle());
+	auto kEdge = characteristicTungstenKedge(this->voltage(), this->anodeAngle());
 	for (auto[e, n] : kEdge)
 	{
 		//find closest energy
