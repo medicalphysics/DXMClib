@@ -509,7 +509,7 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
-	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / (m_sdd / 2.0)) * 2.0);
+	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / m_sdd) * 2.0);
 	exposure.setBeamFilter(m_bowTieFilter.get());
 	exposure.setSpecterDistribution(m_specterDistribution.get());
 	exposure.setHeelFilter(m_heelFilter.get());
@@ -589,7 +589,7 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
-	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / (m_sdd / 2.0)) * 2.0);
+	exposure.setCollimationAngles(std::atan(m_fov / m_sdd) * 2.0, std::atan(m_collimation / m_sdd) * 2.0);
 	exposure.setBeamFilter(m_bowTieFilter.get());
 	exposure.setHeelFilter(m_heelFilter.get());
 	exposure.setSpecterDistribution(m_specterDistribution.get());
@@ -677,7 +677,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 
 	exposure.setPosition(pos);
 	exposure.setDirectionCosines(otherAxis, rotationAxis);
-	exposure.setCollimationAngles(std::atan(fov / sdd) * 2.0, std::atan(m_collimation / (sdd / 2.0)) * 2.0);
+	exposure.setCollimationAngles(std::atan(fov / sdd) * 2.0, std::atan(m_collimation / sdd) * 2.0);
 	exposure.setBeamFilter(bowTie);
 	exposure.setSpecterDistribution(specterDistribution);
 	exposure.setHeelFilter(heelFilter);
