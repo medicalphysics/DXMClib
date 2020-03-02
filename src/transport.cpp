@@ -586,16 +586,23 @@ namespace transport {
 			nJobs = 1;
 
 		if (progressbar)
+		{
 			progressbar->setTotalExposures(totalExposures);
+			progressbar->setDimensions(world.dimensions());
+			progressbar->setDoseData(dose.data());
+		}
 
 		auto nHistories = parallell_run(world, source, dose.data(), 0, totalExposures, nJobs, progressbar);
 		
 		if (progressbar)
+		{
+			progressbar->setDoseData(nullptr);
 			if (progressbar->cancel())
-			{ 
+			{
 				std::fill(dose.begin(), dose.end(), 0.0);
 				return dose;
 			}
+		}
 		double calibrationValue = source->getCalibrationValue(nHistories, progressbar);
 		//energy imparted to dose
 		energyImpartedToDose(world, source, dose, calibrationValue);

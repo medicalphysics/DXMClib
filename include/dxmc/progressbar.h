@@ -1,9 +1,29 @@
+/*This file is part of DXMClib.
+
+DXMClib is free software : you can redistribute it and/or modify
+it under the terms of the GNU General Public License as published by
+the Free Software Foundation, either version 3 of the License, or
+(at your option) any later version.
+
+DXMClib is distributed in the hope that it will be useful,
+but WITHOUT ANY WARRANTY; without even the implied warranty of
+MERCHANTABILITY or FITNESS FOR A PARTICULAR PURPOSE. See the
+GNU General Public License for more details.
+
+You should have received a copy of the GNU General Public License
+along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
+
+Copyright 2019 Erlend Andersen
+*/
+
+
 #pragma once
 #include <atomic>
 #include <chrono>
 #include <string>
 #include <sstream>
 #include <iomanip> 
+#include <mutex>
 
 class ProgressBar
 {
@@ -37,6 +57,52 @@ public:
 	{
 		return m_cancel.load();
 	}
+
+	void setDimensions(const std::array<std::size_t, 3>& doseDimensions)
+	{
+		const std::lock_guard<std::mutex> lock(m_doseMutex);
+		m_doseDimensions = doseDimensions;
+	}
+	void setDoseData(double* doseData)
+	{
+		const std::lock_guard<std::mutex> lock(m_doseMutex);
+		m_doseData = doseData;
+	}
+
+	std::array<std::size_t, 2> doseProgressImageDimensions()
+	{
+		const std::lock_guard<std::mutex> lock(m_doseMutex);
+		std::array<std::size_t, 2> dim = { m_doseDimensions[0], m_doseDimensions[2] };
+		if (!m_doseData)
+		{
+			dim[0] = 0;
+			dim[1] = 0;
+		}
+		return dim;
+	}
+
+	std::vector<double> computeDoseProgressImage()
+	{
+		const std::lock_guard<std::mutex> lock(m_doseMutex);
+		std::vector<double> doseProgressImage(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
+		if (!m_doseData)
+		{
+			doseProgressImage.clear();
+			return doseProgressImage;
+		}
+		//doing mip over Y axis
+		for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
+			for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
+				for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
+				{
+					const auto dp_idx = i + m_doseDimensions[0] * k;
+					const auto d_idx = i + m_doseDimensions[0] * j + m_doseDimensions[0] * m_doseDimensions[1] * k;
+					doseProgressImage[dp_idx] = std::max(m_doseData[d_idx], doseProgressImage[dp_idx]);
+				}
+		return doseProgressImage; // we need to return a copy since this runs multithreaded
+	}
+
+
 protected:
 	std::string makePrettyTime(double seconds) const {
 		std::stringstream ss;
@@ -48,6 +114,7 @@ protected:
 			ss << seconds << " seconds";
 		return ss.str();
 	}
+
 private:
 	std::atomic<std::uint64_t> m_totalExposures = 0;
 	std::atomic<std::uint64_t> m_currentExposures = 0;
@@ -55,4 +122,8 @@ private:
 	std::atomic<double> m_secondsElapsed;
 	std::string m_message;
 	std::atomic<bool> m_cancel = false;
+	std::mutex m_doseMutex;
+	double* m_doseData = nullptr;
+	std::array<std::size_t, 3> m_doseDimensions;
+
 };
