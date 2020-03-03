@@ -24,6 +24,17 @@ Copyright 2019 Erlend Andersen
 #include <sstream>
 #include <iomanip> 
 #include <mutex>
+#include <execution>
+#include <array>
+#include <vector>
+#include <memory>
+
+struct DoseProgressImageData
+{
+	std::array<std::size_t, 2> dimensions = { 0,0 };
+	std::vector<unsigned char> image;
+};
+
 
 class ProgressBar
 {
@@ -58,48 +69,47 @@ public:
 		return m_cancel.load();
 	}
 
-	void setDimensions(const std::array<std::size_t, 3>& doseDimensions)
-	{
-		const std::lock_guard<std::mutex> lock(m_doseMutex);
-		m_doseDimensions = doseDimensions;
-	}
-	void setDoseData(double* doseData)
+	
+	void setDoseData(double* doseData, const std::array<std::size_t, 3>& doseDimensions)
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		m_doseData = doseData;
+		m_doseDimensions = doseDimensions;
 	}
 
-	std::array<std::size_t, 2> doseProgressImageDimensions()
+	
+	std::unique_ptr<DoseProgressImageData> computeDoseProgressImage()
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
-		std::array<std::size_t, 2> dim = { m_doseDimensions[0], m_doseDimensions[2] };
+		
+		auto doseProgressImage = std::make_unique<DoseProgressImageData>();
 		if (!m_doseData)
 		{
-			dim[0] = 0;
-			dim[1] = 0;
+			return nullptr;
 		}
-		return dim;
-	}
+		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
+		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
+		doseProgressImage->dimensions[0] = m_doseDimensions[0];
+		doseProgressImage->dimensions[1] = m_doseDimensions[2];
 
-	std::vector<double> computeDoseProgressImage()
-	{
-		const std::lock_guard<std::mutex> lock(m_doseMutex);
-		std::vector<double> doseProgressImage(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
-		if (!m_doseData)
-		{
-			doseProgressImage.clear();
-			return doseProgressImage;
-		}
 		//doing mip over Y axis
-		for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
+		
+		for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
 			for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
-				for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
+				for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
 				{
 					const auto dp_idx = i + m_doseDimensions[0] * k;
 					const auto d_idx = i + m_doseDimensions[0] * j + m_doseDimensions[0] * m_doseDimensions[1] * k;
-					doseProgressImage[dp_idx] = std::max(m_doseData[d_idx], doseProgressImage[dp_idx]);
+					doseProgressData[dp_idx] = std::max(m_doseData[d_idx], doseProgressData[dp_idx]);
 				}
-		return doseProgressImage; // we need to return a copy since this runs multithreaded
+		const auto max_element = std::max_element(std::execution::par_unseq, doseProgressData.begin(), doseProgressData.end());
+		const double scalefactor = 255.0 / *max_element;
+
+		std::transform(std::execution::par_unseq, doseProgressData.cbegin(), doseProgressData.cend(), doseProgressImage->image.begin(),
+			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
+		);
+
+		return doseProgressImage; 
 	}
 
 

@@ -588,15 +588,14 @@ namespace transport {
 		if (progressbar)
 		{
 			progressbar->setTotalExposures(totalExposures);
-			progressbar->setDimensions(world.dimensions());
-			progressbar->setDoseData(dose.data());
+			progressbar->setDoseData(dose.data(), world.dimensions());
 		}
 
 		auto nHistories = parallell_run(world, source, dose.data(), 0, totalExposures, nJobs, progressbar);
 		
 		if (progressbar)
 		{
-			progressbar->setDoseData(nullptr);
+			progressbar->setDoseData(nullptr, world.dimensions());
 			if (progressbar->cancel())
 			{
 				std::fill(dose.begin(), dose.end(), 0.0);
