@@ -32,6 +32,7 @@ Copyright 2019 Erlend Andersen
 struct DoseProgressImageData
 {
 	std::array<std::size_t, 2> dimensions = { 0,0 };
+	std::array<double, 2> spacing = { 0,0 };
 	std::vector<unsigned char> image;
 };
 
@@ -70,11 +71,12 @@ public:
 	}
 
 	
-	void setDoseData(double* doseData, const std::array<std::size_t, 3>& doseDimensions)
+	void setDoseData(double* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<double, 3> doseSpacing)
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		m_doseData = doseData;
 		m_doseDimensions = doseDimensions;
+		m_doseSpacing = doseSpacing;
 	}
 
 	
@@ -82,12 +84,11 @@ public:
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		
-		std::shared_ptr<DoseProgressImageData> doseProgressImage = nullptr;
 		if (!m_doseData)
 		{
-			return doseProgressImage;
+			return nullptr;
 		}
-		doseProgressImage = std::make_shared<DoseProgressImageData>();
+		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
 		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[0];
@@ -136,5 +137,7 @@ private:
 	std::mutex m_doseMutex;
 	double* m_doseData = nullptr;
 	std::array<std::size_t, 3> m_doseDimensions;
+	std::array<double, 3> m_doseSpacing;
+
 
 };

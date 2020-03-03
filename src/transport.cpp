@@ -588,7 +588,7 @@ namespace transport {
 		if (progressbar)
 		{
 			progressbar->setTotalExposures(totalExposures);
-			progressbar->setDoseData(dose.data(), world.dimensions());
+			progressbar->setDoseData(dose.data(), world.dimensions(), world.spacing());
 		}
 
 		auto nHistories = parallell_run(world, source, dose.data(), 0, totalExposures, nJobs, progressbar);
