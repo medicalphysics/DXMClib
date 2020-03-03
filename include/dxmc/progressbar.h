@@ -78,16 +78,16 @@ public:
 	}
 
 	
-	std::unique_ptr<DoseProgressImageData> computeDoseProgressImage()
+	std::shared_ptr<DoseProgressImageData> computeDoseProgressImage()
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		
-		std::unique_ptr<DoseProgressImageData> doseProgressImage = nullptr;
+		std::shared_ptr<DoseProgressImageData> doseProgressImage = nullptr;
 		if (!m_doseData)
 		{
 			return doseProgressImage;
 		}
-		doseProgressImage = std::make_unique<DoseProgressImageData>();
+		doseProgressImage = std::make_shared<DoseProgressImageData>();
 		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[0];
