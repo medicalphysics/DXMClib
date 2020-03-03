@@ -78,6 +78,12 @@ public:
 		m_doseDimensions = doseDimensions;
 		m_doseSpacing = doseSpacing;
 	}
+	void clearDoseData()
+	{
+		m_doseData = nullptr;
+		std::fill(m_doseSpacing.begin(), m_doseSpacing.end(), 0.0);
+		std::fill(m_doseDimensions.begin(), m_doseDimensions.end(), 0);
+	}
 
 	
 	std::shared_ptr<DoseProgressImageData> computeDoseProgressImage()
@@ -93,6 +99,8 @@ public:
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[0];
 		doseProgressImage->dimensions[1] = m_doseDimensions[2];
+		doseProgressImage->spacing[0] = m_doseSpacing[0];
+		doseProgressImage->spacing[1] = m_doseSpacing[2];
 
 		//doing mip over Y axis
 		

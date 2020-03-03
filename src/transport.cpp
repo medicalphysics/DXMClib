@@ -595,7 +595,7 @@ namespace transport {
 		
 		if (progressbar)
 		{
-			progressbar->setDoseData(nullptr, world.dimensions());
+			progressbar->clearDoseData();
 			if (progressbar->cancel())
 			{
 				std::fill(dose.begin(), dose.end(), 0.0);
