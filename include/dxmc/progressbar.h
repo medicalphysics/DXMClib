@@ -82,11 +82,12 @@ public:
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		
-		auto doseProgressImage = std::make_unique<DoseProgressImageData>();
+		std::unique_ptr<DoseProgressImageData> doseProgressImage = nullptr;
 		if (!m_doseData)
 		{
-			return nullptr;
+			return doseProgressImage;
 		}
+		doseProgressImage = std::make_unique<DoseProgressImageData>();
 		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[0];
