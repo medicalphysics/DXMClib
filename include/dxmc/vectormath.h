@@ -25,6 +25,19 @@ Copyright 2019 Erlend Andersen
 namespace vectormath {
 
 
+template<typename T>
+inline T lenght_sqr(T vec[3])
+{
+    const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
+    return lsqr;
+}
+
+template<typename T>
+inline T lenght(T vec[3])
+{
+    const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
+    return std::sqrt(lsqr);
+}
 
 template<typename T>
 inline void normalize(T vec[3])
@@ -76,7 +89,7 @@ inline void rotate(T vec[3], const T axis[3], const T angle)
     vec[2] = out[2];
 }
 
-template<typename T>
+/*template<typename T>
 inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
 {
     normalize(vec1);
@@ -86,6 +99,31 @@ inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
     T cr[3];
     cross(vec1, vec2, cr);
     return std::atan2(dot(cr, planeNormal), dot(vec1, vec2));
+}*/
+
+template<typename T>
+inline double angleBetweenOnPlane(const T vec1[3], const T vec2[3], const T planeNormal[3])
+{
+    T p1[3], p2[3];
+
+    const T v1n = dot(vec1, planeNormal);
+    const T v2n = dot(vec2, planeNormal);
+    const T pn_lenght_inv = 1.0 / lenght_sqr(planeNormal);
+
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        p1[i] = vec1[i] - v1n * planeNormal[i] * pn_lenght_inv;
+        p2[i] = vec2[i] - v2n * planeNormal[i] * pn_lenght_inv;
+    }
+    normalize(p1);
+    normalize(p2);
+    const T angle = std::acos(dot(p1, p2));
+
+    T vn[3];
+    cross(p1, p2, vn);
+    if (dot(planeNormal, vn) < 0)
+        return -angle;
+    return angle;
 }
 
 template<typename U, typename T>

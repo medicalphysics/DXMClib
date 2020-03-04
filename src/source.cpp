@@ -214,12 +214,17 @@ void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 	vectormath::rotate(&cos[3], z.data(), primaryAngle);
 
 	std::array<double, 3> x = { -1.0, .0, .0 }; // -1.0 since patient x direction is reverse of our coordinate system
-	vectormath::rotate(cos.data(), x.data(), secondaryAngle);
-	vectormath::rotate(&cos[3], x.data(), secondaryAngle);
 
 	std::array<double, 3> beam_direction;
 	vectormath::cross(cos.data(), beam_direction.data());
+	if (std::abs(vectormath::dot(beam_direction.data(), x.data())) > 0.01)
+	{
+		// we only rotate secondary angle if vectors are not parallell
+		vectormath::rotate(cos.data(), x.data(), secondaryAngle);
+		vectormath::rotate(&cos[3], x.data(), secondaryAngle);
+	}
 
+	vectormath::cross(cos.data(), beam_direction.data());
 	vectormath::rotate(cos.data(), beam_direction.data(), m_tubeRotationAngle);
 	vectormath::rotate(&cos[3], beam_direction.data(), m_tubeRotationAngle);
 	setDirectionCosines(cos);
@@ -240,6 +245,7 @@ std::array<double, 2> DXSource::sourceAngles() const
 
 	std::array<double, 3> z = { .0, .0, 1.0 };
 	auto pang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), z.data());
+
 	std::array<double, 3> x = { -1.0, .0, .0 }; // -1.0 since patient x direction is reverse of our coordinate system
 	auto sang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), x.data());
 
