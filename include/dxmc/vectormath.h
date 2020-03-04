@@ -88,7 +88,23 @@ inline void rotate(T vec[3], const T axis[3], const T angle)
     vec[1] = out[1];
     vec[2] = out[2];
 }
+/*template<typename T>
+inline void rotate(T vec[3], const T axis[3], const T angle)
+{
+    const T sang = std::sin(angle);
+    const T cang = std::cos(angle);
 
+    const double dot_vax = dot(vec, axis);
+    double cross_axv[3];
+    cross(axis, vec, cross_axv);
+    double cross_axv_ax[3];
+    cross(cross_axv, axis, cross_axv_ax);
+
+    for (std::size_t i = 0; i < 3; ++i)
+    {
+        vec[i] = axis[i] * dot_vax + cang * cross_axv_ax[i] + sang * cross_axv[i];
+    }
+}*/
 /*template<typename T>
 inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
 {
