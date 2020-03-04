@@ -102,7 +102,23 @@ inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
 }*/
 
 template<typename T>
-inline double angleBetweenOnPlane(const T vec1[3], const T vec2[3], const T planeNormal[3])
+inline T angleBetween(const T vec1[3], const T vec2[3])
+{
+    // Herons formula for numeric stable angle computation
+    const T vec3[3] = { vec1[0] - vec2[0], vec1[1] - vec2[1], vec1[2] - vec2[2] };
+    const T a = lenght(vec1);
+    const T b = lenght(vec2);
+    const T c = lenght(vec3);
+
+    const T u = b >= c ? c - (a - b) : b - (a - c);
+
+    const T nom = ((a - b) + c) * u;
+    const T den = (a + (b + c)) * ((a - c) + b);
+    return static_cast<T>(2.0)* std::atan(std::sqrt(nom / den));
+}
+
+template<typename T>
+inline T angleBetweenOnPlane(const T vec1[3], const T vec2[3], const T planeNormal[3])
 {
     T p1[3], p2[3];
 
@@ -115,13 +131,12 @@ inline double angleBetweenOnPlane(const T vec1[3], const T vec2[3], const T plan
         p1[i] = vec1[i] - v1n * planeNormal[i] * pn_lenght_inv;
         p2[i] = vec2[i] - v2n * planeNormal[i] * pn_lenght_inv;
     }
-    normalize(p1);
-    normalize(p2);
-    const T angle = std::acos(dot(p1, p2));
+    
+    const T angle = angleBetween(p1, p2);
 
     T vn[3];
     cross(p1, p2, vn);
-    if (dot(planeNormal, vn) < 0)
+    if (dot(planeNormal, vn) < 0.0)
         return -angle;
     return angle;
 }
