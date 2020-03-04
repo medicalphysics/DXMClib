@@ -210,11 +210,18 @@ void DXSource::setPrimaryAngle(double angle)
 
 double DXSource::primaryAngle() const
 {
-	std::array<double, 3> x0 = { .0, -1.0, .0 };
+
+	/*std::array<double, 3> x0 = { .0, -1.0, .0 };
 	std::array<double, 3> beam_direction;
 	vectormath::cross(m_directionCosines.data(), beam_direction.data());
 	beam_direction[2] = 0.0;
 	return vectormath::angleBetween(x0.data(), beam_direction.data());
+	*/
+	std::array<double, 3> x0 = { .0, -1.0, .0 };
+	std::array<double, 3> beam_direction;
+	std::array<double, 3> cross, plane = { .0, .0, 1.0 };
+	vectormath::cross(x0.data(), beam_direction.data(), cross.data());
+	return std::atan2(vectormath::dot(cross.data(), plane.data()), vectormath::dot(x0.data(), beam_direction.data()));
 }
 
 void DXSource::setPrimaryAngleDeg(double angle)
@@ -238,11 +245,17 @@ void DXSource::setSecondaryAngle(double angle)
 
 double DXSource::secondaryAngle() const
 {
-	std::array<double, 3> x0 = { .0, -1.0, .0 };
+	/*std::array<double, 3> x0 = { .0, -1.0, .0 };
 	std::array<double, 3> beam_direction;
 	vectormath::cross(m_directionCosines.data(), beam_direction.data());
 	beam_direction[2] = 0.0;
 	return vectormath::angleBetween(x0.data(), beam_direction.data());
+	*/
+	std::array<double, 3> x0 = { .0, -1.0, .0 };
+	std::array<double, 3> beam_direction;
+	std::array<double, 3> cross, plane = { 1.0, .0, .0 };
+	vectormath::cross(x0.data(), beam_direction.data(), cross.data());
+	return std::atan2(vectormath::dot(cross.data(), plane.data()), vectormath::dot(x0.data(), beam_direction.data()));
 }
 
 void DXSource::setSecondaryAngleDeg(double angle)
