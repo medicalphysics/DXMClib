@@ -199,6 +199,95 @@ double DXSource::sourceDetectorDistance() const
 	return m_sdd;
 }
 
+void DXSource::setPrimaryAngle(double angle)
+{
+	std::array<double, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
+	std::array<double, 3> rot_ax = { .0, .0, 1.0 };
+	vectormath::rotate(cos.data(), rot_ax.data(), angle);
+	vectormath::rotate(&cos[3], rot_ax.data(), angle);
+	setDirectionCosines(cos);
+}
+
+double DXSource::primaryAngle() const
+{
+	std::array<double, 3> x0 = { .0, -1.0, .0 };
+	std::array<double, 3> beam_direction;
+	vectormath::cross(m_directionCosines.data(), beam_direction.data());
+	beam_direction[2] = 0.0;
+	return vectormath::angleBetween(x0.data(), beam_direction.data());
+}
+
+void DXSource::setPrimaryAngleDeg(double angle)
+{
+	setPrimaryAngle(angle * DEG_TO_RAD);
+}
+
+double DXSource::primaryAngleDeg() const
+{
+	return primaryAngle() * RAD_TO_DEG;
+}
+
+void DXSource::setSecondaryAngle(double angle)
+{
+	std::array<double, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
+	std::array<double, 3> rot_ax = { 1.0, .0, 0.0 };
+	vectormath::rotate(cos.data(), rot_ax.data(), angle);
+	vectormath::rotate(&cos[3], rot_ax.data(), angle);
+	setDirectionCosines(cos);
+}
+
+double DXSource::secondaryAngle() const
+{
+	std::array<double, 3> x0 = { .0, -1.0, .0 };
+	std::array<double, 3> beam_direction;
+	vectormath::cross(m_directionCosines.data(), beam_direction.data());
+	beam_direction[2] = 0.0;
+	return vectormath::angleBetween(x0.data(), beam_direction.data());
+}
+
+void DXSource::setSecondaryAngleDeg(double angle)
+{
+	setSecondaryAngle(angle * DEG_TO_RAD);
+}
+
+double DXSource::secondaryAngleDeg() const
+{
+	return secondaryAngle() * RAD_TO_DEG;
+}
+
+void DXSource::setTubeRotation(double angle)
+{
+	const double old_angle = tubeRotation();
+	const double diff_angle = angle - old_angle;
+	std::array<double, 3> beam_direction;
+	vectormath::cross(m_directionCosines.data(), beam_direction.data());
+	vectormath::rotate(m_directionCosines.data(), beam_direction.data(), diff_angle);
+	vectormath::rotate(&m_directionCosines[3], beam_direction.data(), diff_angle);
+}
+
+double DXSource::tubeRotation() const
+{
+	std::array<double, 3> cos_x = { -1,0,0 };
+	std::array<double, 3> z = { 0,0,1 };
+	std::array<double, 3> x = { 1,0,0 };
+	const double af = primaryAngle();
+	const double as = secondaryAngle();
+	vectormath::rotate(cos_x.data(), z.data(), af);
+	vectormath::rotate(cos_x.data(), x.data(), as);
+	auto dir_cosines = m_directionCosines;
+	return vectormath::angleBetween(dir_cosines.data(), cos_x.data());
+}
+
+void DXSource::setTubeRotationDeg(double angle)
+{
+	setTubeRotation(angle * DEG_TO_RAD);
+}
+
+double DXSource::tubeRotationDeg() const
+{
+	return tubeRotation() * RAD_TO_DEG;
+}
+
 double DXSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* progressBar)
 {
 	auto specter = tube().getSpecter();

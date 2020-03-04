@@ -76,6 +76,16 @@ inline void rotate(T vec[3], const T axis[3], const T angle)
     vec[2] = out[2];
 }
 
+template<typename T>
+inline double angleBetween(T vec1[3], T vec2[3])
+{
+    normalize(vec1);
+    normalize(vec2);
+    T cr[3];
+    cross(vec1, vec2, cr);
+    T sign = dot(vec1, cr);
+    return sign > 0 ? std::acos(dot(vec1, vec2)) : -std::acos(dot(vec1, vec2));
+}
 
 template<typename U, typename T>
 inline U argmin3(const T vec[3])

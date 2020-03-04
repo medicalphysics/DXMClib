@@ -105,7 +105,7 @@ protected:
 };
 
 
-class DXSource : public Source
+class DXSource final : public Source
 {
 public:
 	DXSource();
@@ -131,6 +131,20 @@ public:
 
 	void setSourceDetectorDistance(double mm);
 	double sourceDetectorDistance() const;
+
+	void setPrimaryAngle(double angle);
+	double primaryAngle() const;
+	void setPrimaryAngleDeg(double angle);
+	double primaryAngleDeg() const;
+	void setSecondaryAngle(double angle);
+	double secondaryAngle() const;
+	void setSecondaryAngleDeg(double angle);
+	double secondaryAngleDeg() const;
+
+	void setTubeRotation(double angle);
+	double tubeRotation() const;
+	void setTubeRotationDeg(double angle);
+	double tubeRotationDeg() const;
 
 	void setDap(double Gycm2) { if (Gycm2 > 0.0) m_dap = Gycm2; }
 	double dap(void) const { return m_dap; } // Gycm2
@@ -245,7 +259,7 @@ protected:
 	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
 };
 
-class CTSpiralSource : public CTSource
+class CTSpiralSource final : public CTSource
 {
 public:
 	CTSpiralSource();
@@ -259,7 +273,7 @@ private:
 	double m_pitch;
 };
 
-class CTAxialSource : public CTSource
+class CTAxialSource final : public CTSource
 {
 public:
 	CTAxialSource();
@@ -273,7 +287,7 @@ private:
 	double m_step;
 };
 
-class CTDualSource :public CTSource
+class CTDualSource final : public CTSource
 {
 public:
 
