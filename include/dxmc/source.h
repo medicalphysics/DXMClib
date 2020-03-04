@@ -132,14 +132,12 @@ public:
 	void setSourceDetectorDistance(double mm);
 	double sourceDetectorDistance() const;
 
-	void setPrimaryAngle(double angle);
-	double primaryAngle() const;
-	void setPrimaryAngleDeg(double angle);
-	double primaryAngleDeg() const;
-	void setSecondaryAngle(double angle);
-	double secondaryAngle() const;
-	void setSecondaryAngleDeg(double angle);
-	double secondaryAngleDeg() const;
+	void setSourceAngles(double primaryAngle, double secondaryAngle);
+	void setSourceAngles(const std::array<double, 2>& angles);
+	std::array<double, 2> sourceAngles() const;
+	void setSourceAnglesDeg(double primaryAngle, double secondaryAngle);
+	void setSourceAnglesDeg(const std::array<double, 2>& angles);
+	std::array<double, 2> sourceAnglesDeg() const;
 
 	void setTubeRotation(double angle);
 	double tubeRotation() const;
@@ -160,6 +158,7 @@ protected:
 	void updateFieldSize(const std::array<double, 2>& collimationAngles);
 	void updateCollimationAngles(const std::array<double, 2>& fieldSize);
 	void updateSpecterDistribution();
+	std::array<double, 6> zeroDirectionCosines() const;
 
 private:
 	double m_sdd = 1000.0;
@@ -168,6 +167,7 @@ private:
 	std::array<double, 2> m_collimationAngles;
 	std::uint64_t m_totalExposures = 1000;
 	Tube m_tube;
+	double m_tubeRotationAngle = 0.0;
 	bool m_specterValid = false;
 	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
 	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;

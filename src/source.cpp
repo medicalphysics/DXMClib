@@ -116,6 +116,7 @@ DXSource::DXSource()
 	m_fieldSize[1] = 100.0;
 	updateFieldSize(m_fieldSize);
 	m_tube.setAlFiltration(2.0);
+	setDirectionCosines(zeroDirectionCosines());
 }
 bool DXSource::getExposure(Exposure& exposure, std::uint64_t i) const
 {
@@ -187,6 +188,12 @@ void DXSource::updateSpecterDistribution()
 	}
 }
 
+std::array<double, 6> DXSource::zeroDirectionCosines() const
+{
+	std::array<double, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
+	return cos;
+}
+
 
 void DXSource::setSourceDetectorDistance(double mm)
 {
@@ -199,96 +206,79 @@ double DXSource::sourceDetectorDistance() const
 	return m_sdd;
 }
 
-void DXSource::setPrimaryAngle(double angle)
+void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 {
-	std::array<double, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
-	std::array<double, 3> rot_ax = { .0, .0, 1.0 };
-	vectormath::rotate(cos.data(), rot_ax.data(), angle);
-	vectormath::rotate(&cos[3], rot_ax.data(), angle);
+	std::array<double, 6> cos = zeroDirectionCosines();
+	std::array<double, 3> z = { .0, .0, 1.0 };
+	vectormath::rotate(cos.data(), z.data(), primaryAngle);
+	vectormath::rotate(&cos[3], z.data(), primaryAngle);
+
+	std::array<double, 3> x = { 1.0, .0, .0 };
+	vectormath::rotate(cos.data(), x.data(), secondaryAngle);
+	vectormath::rotate(&cos[3], x.data(), secondaryAngle);
+
+	std::array<double, 3> beam_direction;
+	vectormath::cross(cos.data(), beam_direction.data());
+
+	vectormath::rotate(cos.data(), beam_direction.data(), m_tubeRotationAngle);
+	vectormath::rotate(&cos[3], beam_direction.data(), m_tubeRotationAngle);
 	setDirectionCosines(cos);
 }
 
-double DXSource::primaryAngle() const
+void DXSource::setSourceAngles(const std::array<double, 2>& angles)
 {
-
-	/*std::array<double, 3> x0 = { .0, -1.0, .0 };
-	std::array<double, 3> beam_direction;
-	vectormath::cross(m_directionCosines.data(), beam_direction.data());
-	beam_direction[2] = 0.0;
-	return vectormath::angleBetween(x0.data(), beam_direction.data());
-	*/
-	std::array<double, 3> x0 = { .0, -1.0, .0 };
-	std::array<double, 3> beam_direction;
-	std::array<double, 3> cross, plane = { .0, .0, 1.0 };
-	vectormath::cross(x0.data(), beam_direction.data(), cross.data());
-	return std::atan2(vectormath::dot(cross.data(), plane.data()), vectormath::dot(x0.data(), beam_direction.data()));
+	setSourceAngles(angles[0], angles[1]);
 }
 
-void DXSource::setPrimaryAngleDeg(double angle)
+std::array<double, 2> DXSource::sourceAngles() const
 {
-	setPrimaryAngle(angle * DEG_TO_RAD);
+	std::array<double, 6> cos_zero = zeroDirectionCosines();
+	auto cos = directionCosines();
+	std::array<double, 3> beam_direction, beam_direction_zero;
+	vectormath::cross(cos.data(), beam_direction.data());
+	vectormath::cross(cos_zero.data(), beam_direction_zero.data());
+
+	std::array<double, 3> z = { .0, .0, 1.0 };
+	auto pang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), z.data());
+	std::array<double, 3> x = { 1.0, .0, .0 };
+	auto sang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), x.data());
+
+	std::array<double, 2> angles = {pang, sang};
+	return angles;
 }
 
-double DXSource::primaryAngleDeg() const
+void DXSource::setSourceAnglesDeg(double primaryAngle, double secondaryAngle)
 {
-	return primaryAngle() * RAD_TO_DEG;
+	setSourceAngles(primaryAngle * DEG_TO_RAD, secondaryAngle * DEG_TO_RAD);
 }
 
-void DXSource::setSecondaryAngle(double angle)
+void DXSource::setSourceAnglesDeg(const std::array<double, 2>& angles)
 {
-	std::array<double, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
-	std::array<double, 3> rot_ax = { 1.0, .0, 0.0 };
-	vectormath::rotate(cos.data(), rot_ax.data(), angle);
-	vectormath::rotate(&cos[3], rot_ax.data(), angle);
-	setDirectionCosines(cos);
+	setSourceAnglesDeg(angles[0], angles[1]);
 }
 
-double DXSource::secondaryAngle() const
+std::array<double, 2> DXSource::sourceAnglesDeg() const
 {
-	/*std::array<double, 3> x0 = { .0, -1.0, .0 };
-	std::array<double, 3> beam_direction;
-	vectormath::cross(m_directionCosines.data(), beam_direction.data());
-	beam_direction[2] = 0.0;
-	return vectormath::angleBetween(x0.data(), beam_direction.data());
-	*/
-	std::array<double, 3> x0 = { .0, -1.0, .0 };
-	std::array<double, 3> beam_direction;
-	std::array<double, 3> cross, plane = { 1.0, .0, .0 };
-	vectormath::cross(x0.data(), beam_direction.data(), cross.data());
-	return std::atan2(vectormath::dot(cross.data(), plane.data()), vectormath::dot(x0.data(), beam_direction.data()));
-}
-
-void DXSource::setSecondaryAngleDeg(double angle)
-{
-	setSecondaryAngle(angle * DEG_TO_RAD);
-}
-
-double DXSource::secondaryAngleDeg() const
-{
-	return secondaryAngle() * RAD_TO_DEG;
+	auto angles = sourceAngles();
+	angles[0] *= RAD_TO_DEG;
+	angles[1] *= RAD_TO_DEG;
+	return angles;
 }
 
 void DXSource::setTubeRotation(double angle)
 {
-	const double old_angle = tubeRotation();
-	const double diff_angle = angle - old_angle;
+	const double diff_angle = angle - m_tubeRotationAngle;
 	std::array<double, 3> beam_direction;
-	vectormath::cross(m_directionCosines.data(), beam_direction.data());
-	vectormath::rotate(m_directionCosines.data(), beam_direction.data(), diff_angle);
-	vectormath::rotate(&m_directionCosines[3], beam_direction.data(), diff_angle);
+	auto cos = directionCosines();
+	vectormath::cross(cos.data(), beam_direction.data());
+	vectormath::rotate(cos.data(), beam_direction.data(), diff_angle);
+	vectormath::rotate(&cos[3], beam_direction.data(), diff_angle);
+	setDirectionCosines(cos);
 }
 
 double DXSource::tubeRotation() const
 {
-	std::array<double, 3> cos_x = { -1,0,0 };
-	std::array<double, 3> z = { 0,0,1 };
-	std::array<double, 3> x = { 1,0,0 };
-	const double af = primaryAngle();
-	const double as = secondaryAngle();
-	vectormath::rotate(cos_x.data(), z.data(), af);
-	vectormath::rotate(cos_x.data(), x.data(), as);
-	auto dir_cosines = m_directionCosines;
-	return vectormath::angleBetween(dir_cosines.data(), cos_x.data());
+	return m_tubeRotationAngle;
 }
 
 void DXSource::setTubeRotationDeg(double angle)
