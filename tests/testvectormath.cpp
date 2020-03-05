@@ -40,9 +40,13 @@ bool testVectorAngles()
 	std::array<double, 2> angles = { 30*DEG2RAD,60*DEG2RAD };
 	std::cout << "rotation angles: " << angles[0]*RAD2DEG << ", " << angles[1]*RAD2DEG <<'\n';
 
+	
+	//double axis[3] = { std::sin(angles[0]), std::cos(angles[0])*std::sin(angles[1]), std::sin(-angles[1]) };
+	double axis[3] = { 0,1,0 };
+	vectormath::rotate(axis, z, angles[0]);
+	vectormath::rotate(axis, x, -angles[1]);
 
-	double axis[3] = { std::sin(angles[0]), std::cos(angles[0]), std::cos(-angles[1]) };
-	vectormath::normalize(axis);
+	//vectormath::normalize(axis);
 	double rotAxis[3];
 	vectormath::cross(v, axis, rotAxis);
 	vectormath::normalize(rotAxis);
@@ -80,7 +84,7 @@ int main(int argc, char* argv[])
 {
 	auto success = testVectorAngles();
 
-	std::array<double, 5> angles = { -60, -30, 0, 30, 60 };
+	std::array<double, 2> angles = { -30, 60 };
 	for (auto ap : angles)
 		for (auto as : angles)
 			testSource(ap, as);

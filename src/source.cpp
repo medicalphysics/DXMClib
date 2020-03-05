@@ -230,7 +230,10 @@ void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 	setDirectionCosines(cos);*/
 
 	std::array<double, 3> originVector = { 0,1,0 };
-	std::array<double, 3> axis = { std::sin(primaryAngle), std::cos(primaryAngle), std::cos(-secondaryAngle) };
+	std::array<double, 3> axis = { -std::sin(primaryAngle), std::cos(primaryAngle), std::sin(-secondaryAngle) };
+
+
+
 	vectormath::normalize(axis.data());
 	std::array<double, 3> rotAxis;
 	vectormath::cross(originVector.data(), axis.data(), rotAxis.data());
@@ -261,7 +264,7 @@ std::array<double, 2> DXSource::sourceAngles() const
 	std::array<double, 3> z = { 0,0,1 };
 	auto pang = vectormath::angleBetweenOnPlane(beam_direction.data(), y.data(), z.data());
 	
-	auto sang = vectormath::angleBetweenOnPlane(beam_direction.data(), z.data(), y.data());
+	auto sang = vectormath::angleBetweenOnPlane(beam_direction.data(), y.data(), x.data());
 
 	/*std::array<double, 6> cos_zero = zeroDirectionCosines();
 	auto cos = directionCosines();

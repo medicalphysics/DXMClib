@@ -113,7 +113,7 @@ inline T angleBetween(const T vec1[3], const T vec2[3])
     return static_cast<T>(2.0)* std::atan(std::sqrt(nom / den));
 }
 
-/*template<typename T>
+template<typename T>
 inline T angleBetweenOnPlaneTest(const T vec1[3], const T vec2[3], const T planeNormal[3])
 {
     T p1[3], p2[3];
@@ -135,7 +135,7 @@ inline T angleBetweenOnPlaneTest(const T vec1[3], const T vec2[3], const T plane
     if (dot(planeNormal, vn) < 0.0)
         return -angle;
     return angle;
-}*/
+}
 template<typename T>
 inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
 {
