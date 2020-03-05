@@ -88,34 +88,14 @@ inline void rotate(T vec[3], const T axis[3], const T angle)
     vec[1] = out[1];
     vec[2] = out[2];
 }
-/*template<typename T>
-inline void rotate(T vec[3], const T axis[3], const T angle)
+
+template<typename T>
+inline void projectToPlane(T vec[3], const T planeNormal[3])
 {
-    const T sang = std::sin(angle);
-    const T cang = std::cos(angle);
-
-    const double dot_vax = dot(vec, axis);
-    double cross_axv[3];
-    cross(axis, vec, cross_axv);
-    double cross_axv_ax[3];
-    cross(cross_axv, axis, cross_axv_ax);
-
+    const T d = dot(vec, planeNormal);
     for (std::size_t i = 0; i < 3; ++i)
-    {
-        vec[i] = axis[i] * dot_vax + cang * cross_axv_ax[i] + sang * cross_axv[i];
-    }
-}*/
-/*template<typename T>
-inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
-{
-    normalize(vec1);
-    normalize(vec2);
-    normalize(planeNormal);
-
-    T cr[3];
-    cross(vec1, vec2, cr);
-    return std::atan2(dot(cr, planeNormal), dot(vec1, vec2));
-}*/
+        vec[i] = vec[i] - d * planeNormal[i];
+}
 
 template<typename T>
 inline T angleBetween(const T vec1[3], const T vec2[3])
@@ -133,8 +113,8 @@ inline T angleBetween(const T vec1[3], const T vec2[3])
     return static_cast<T>(2.0)* std::atan(std::sqrt(nom / den));
 }
 
-template<typename T>
-inline T angleBetweenOnPlane(const T vec1[3], const T vec2[3], const T planeNormal[3])
+/*template<typename T>
+inline T angleBetweenOnPlaneTest(const T vec1[3], const T vec2[3], const T planeNormal[3])
 {
     T p1[3], p2[3];
 
@@ -155,6 +135,17 @@ inline T angleBetweenOnPlane(const T vec1[3], const T vec2[3], const T planeNorm
     if (dot(planeNormal, vn) < 0.0)
         return -angle;
     return angle;
+}*/
+template<typename T>
+inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
+{
+    normalize(vec1);
+    normalize(vec2);
+    normalize(planeNormal);
+
+    T cr[3];
+    cross(vec1, vec2, cr);
+    return std::atan2(dot(cr, planeNormal), dot(vec1, vec2));
 }
 
 template<typename U, typename T>

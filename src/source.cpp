@@ -208,7 +208,7 @@ double DXSource::sourceDetectorDistance() const
 
 void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 {
-	std::array<double, 6> cos = zeroDirectionCosines();
+	/*std::array<double, 6> cos = zeroDirectionCosines();
 	std::array<double, 3> z = { .0, .0, 1.0 };
 	vectormath::rotate(cos.data(), z.data(), primaryAngle);
 	vectormath::rotate(&cos[3], z.data(), primaryAngle);
@@ -227,6 +227,21 @@ void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 	vectormath::cross(cos.data(), beam_direction.data());
 	vectormath::rotate(cos.data(), beam_direction.data(), m_tubeRotationAngle);
 	vectormath::rotate(&cos[3], beam_direction.data(), m_tubeRotationAngle);
+	setDirectionCosines(cos);*/
+
+	std::array<double, 3> originVector = { 0,1,0 };
+	std::array<double, 3> axis = { std::sin(primaryAngle), std::cos(primaryAngle), std::cos(-secondaryAngle) };
+	vectormath::normalize(axis.data());
+	std::array<double, 3> rotAxis;
+	vectormath::cross(originVector.data(), axis.data(), rotAxis.data());
+	vectormath::normalize(rotAxis.data()); // not needed?
+
+	double rotAngle = std::acos(vectormath::dot(originVector.data(), axis.data()));
+
+	std::array<double, 6> cos = zeroDirectionCosines();
+	vectormath::rotate(cos.data(), rotAxis.data(), rotAngle);
+	vectormath::rotate(&cos[3], rotAxis.data(), rotAngle);
+
 	setDirectionCosines(cos);
 }
 
@@ -237,7 +252,18 @@ void DXSource::setSourceAngles(const std::array<double, 2>& angles)
 
 std::array<double, 2> DXSource::sourceAngles() const
 {
-	std::array<double, 6> cos_zero = zeroDirectionCosines();
+	std::array<double, 3> originVector = { 0,1,0 };
+	std::array<double, 3> beam_direction;
+	vectormath::cross(m_directionCosines.data(), beam_direction.data());
+	
+	std::array<double, 3> x = { 1,0,0 };
+	std::array<double, 3> y = { 0,1,0 };
+	std::array<double, 3> z = { 0,0,1 };
+	auto pang = vectormath::angleBetweenOnPlane(beam_direction.data(), y.data(), z.data());
+	
+	auto sang = vectormath::angleBetweenOnPlane(beam_direction.data(), z.data(), y.data());
+
+	/*std::array<double, 6> cos_zero = zeroDirectionCosines();
 	auto cos = directionCosines();
 	std::array<double, 3> beam_direction, beam_direction_zero;
 	vectormath::cross(cos.data(), beam_direction.data());
@@ -246,9 +272,9 @@ std::array<double, 2> DXSource::sourceAngles() const
 	std::array<double, 3> z = { .0, .0, 1.0 };
 	auto pang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), z.data());
 
-	std::array<double, 3> x = { -1.0, .0, .0 }; // -1.0 since patient x direction is reverse of our coordinate system
+	std::array<double, 3> x = { 1.0, .0, .0 }; // -1.0 since patient x direction is reverse of our coordinate system
 	auto sang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), x.data());
-
+	*/
 	std::array<double, 2> angles = {pang, sang};
 	return angles;
 }
