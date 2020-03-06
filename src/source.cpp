@@ -190,6 +190,7 @@ void DXSource::updateSpecterDistribution()
 
 std::array<double, 6> DXSource::zeroDirectionCosines() const
 {
+	// changing this will break setSourceAngles
 	std::array<double, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
 	return cos;
 }
@@ -208,43 +209,22 @@ double DXSource::sourceDetectorDistance() const
 
 void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 {
-	/*std::array<double, 6> cos = zeroDirectionCosines();
+	if (secondaryAngle > PI * 0.5)
+		secondaryAngle = PI * 0.5;
+	if (secondaryAngle < -PI * 0.5)
+		secondaryAngle = -PI * 0.5;
+	while (primaryAngle > PI)
+		primaryAngle -= PI;
+	while (primaryAngle < -PI)
+		primaryAngle += PI;
+
+	std::array<double, 6> cos = zeroDirectionCosines();
 	std::array<double, 3> z = { .0, .0, 1.0 };
 	vectormath::rotate(cos.data(), z.data(), primaryAngle);
 	vectormath::rotate(&cos[3], z.data(), primaryAngle);
-
-	std::array<double, 3> x = { -1.0, .0, .0 }; // -1.0 since patient x direction is reverse of our coordinate system
-
-	std::array<double, 3> beam_direction;
-	vectormath::cross(cos.data(), beam_direction.data());
-	if (std::abs(vectormath::dot(beam_direction.data(), x.data())) > 0.01)
-	{
-		// we only rotate secondary angle if vectors are not parallell
-		vectormath::rotate(cos.data(), x.data(), secondaryAngle);
-		vectormath::rotate(&cos[3], x.data(), secondaryAngle);
-	}
-
-	vectormath::cross(cos.data(), beam_direction.data());
-	vectormath::rotate(cos.data(), beam_direction.data(), m_tubeRotationAngle);
-	vectormath::rotate(&cos[3], beam_direction.data(), m_tubeRotationAngle);
-	setDirectionCosines(cos);*/
-
-	std::array<double, 3> originVector = { 0,1,0 };
-	std::array<double, 3> axis = { -std::sin(primaryAngle), std::cos(primaryAngle), std::sin(-secondaryAngle) };
-
-
-
-	vectormath::normalize(axis.data());
-	std::array<double, 3> rotAxis;
-	vectormath::cross(originVector.data(), axis.data(), rotAxis.data());
-	vectormath::normalize(rotAxis.data()); // not needed?
-
-	double rotAngle = std::acos(vectormath::dot(originVector.data(), axis.data()));
-
-	std::array<double, 6> cos = zeroDirectionCosines();
-	vectormath::rotate(cos.data(), rotAxis.data(), rotAngle);
-	vectormath::rotate(&cos[3], rotAxis.data(), rotAngle);
-
+	std::array<double, 3> x = { 1.0, .0, .0 };
+	vectormath::rotate(cos.data(), x.data(), -secondaryAngle);
+	vectormath::rotate(&cos[3], x.data(), -secondaryAngle);
 	setDirectionCosines(cos);
 }
 
@@ -255,30 +235,20 @@ void DXSource::setSourceAngles(const std::array<double, 2>& angles)
 
 std::array<double, 2> DXSource::sourceAngles() const
 {
-	std::array<double, 3> originVector = { 0,1,0 };
+
 	std::array<double, 3> beam_direction;
 	vectormath::cross(m_directionCosines.data(), beam_direction.data());
+	std::array<double, 2> angles = { 
+		std::asin(-beam_direction[0]), 
+		-std::atan(beam_direction[2] / beam_direction[1]) };
 	
-	std::array<double, 3> x = { 1,0,0 };
-	std::array<double, 3> y = { 0,1,0 };
-	std::array<double, 3> z = { 0,0,1 };
-	auto pang = vectormath::angleBetweenOnPlane(beam_direction.data(), y.data(), z.data());
+	double y[3] = { 0,1,0 };
+	if (vectormath::dot(y, beam_direction.data()) < 0.0)
+		if (angles[0] < 0)
+			angles[0] = -PI - angles[0];
+		else 
+			angles[0] = PI - angles[0];
 	
-	auto sang = vectormath::angleBetweenOnPlane(beam_direction.data(), y.data(), x.data());
-
-	/*std::array<double, 6> cos_zero = zeroDirectionCosines();
-	auto cos = directionCosines();
-	std::array<double, 3> beam_direction, beam_direction_zero;
-	vectormath::cross(cos.data(), beam_direction.data());
-	vectormath::cross(cos_zero.data(), beam_direction_zero.data());
-
-	std::array<double, 3> z = { .0, .0, 1.0 };
-	auto pang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), z.data());
-
-	std::array<double, 3> x = { 1.0, .0, .0 }; // -1.0 since patient x direction is reverse of our coordinate system
-	auto sang = vectormath::angleBetweenOnPlane(beam_direction_zero.data(), beam_direction.data(), x.data());
-	*/
-	std::array<double, 2> angles = {pang, sang};
 	return angles;
 }
 
