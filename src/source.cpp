@@ -28,6 +28,7 @@ constexpr double PI_2 = 2.0 * PI;
 constexpr double DEG_TO_RAD = PI / 180.0;
 constexpr double RAD_TO_DEG = 1.0 / DEG_TO_RAD;
 constexpr double KEV_TO_MJ = 1.6021773e-13; // milli Joules
+constexpr double ANGLE_ERRF = 1E-6;
 
 constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(500E6);
 
@@ -209,10 +210,10 @@ double DXSource::sourceDetectorDistance() const
 
 void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 {
-	if (secondaryAngle > PI * 0.5)
-		secondaryAngle = PI * 0.5;
-	if (secondaryAngle < -PI * 0.5)
-		secondaryAngle = -PI * 0.5;
+	if (secondaryAngle > PI * 0.5 - ANGLE_ERRF)
+		secondaryAngle = PI * 0.5 - ANGLE_ERRF;
+	if (secondaryAngle < -PI * 0.5 + ANGLE_ERRF)
+		secondaryAngle = -PI * 0.5 + ANGLE_ERRF;
 	while (primaryAngle > PI)
 		primaryAngle -= PI;
 	while (primaryAngle < -PI)
@@ -225,6 +226,12 @@ void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 	std::array<double, 3> x = { 1.0, .0, .0 };
 	vectormath::rotate(cos.data(), x.data(), -secondaryAngle);
 	vectormath::rotate(&cos[3], x.data(), -secondaryAngle);
+	//handling tube rotation
+	std::array<double, 3> beam_dir;
+	vectormath::cross(cos.data(), beam_dir.data());
+	vectormath::rotate(cos.data(), beam_dir.data(), m_tubeRotationAngle);
+	vectormath::rotate(&cos[3], beam_dir.data(), m_tubeRotationAngle);
+
 	setDirectionCosines(cos);
 }
 
@@ -235,9 +242,12 @@ void DXSource::setSourceAngles(const std::array<double, 2>& angles)
 
 std::array<double, 2> DXSource::sourceAngles() const
 {
-
+	auto cos = directionCosines();
 	std::array<double, 3> beam_direction;
-	vectormath::cross(m_directionCosines.data(), beam_direction.data());
+	vectormath::cross(cos.data(), beam_direction.data());
+	vectormath::rotate(cos.data(), beam_direction.data(), -m_tubeRotationAngle);
+	vectormath::rotate(&cos[3], beam_direction.data(), -m_tubeRotationAngle);
+	vectormath::cross(cos.data(), beam_direction.data());
 	std::array<double, 2> angles = { 
 		std::asin(-beam_direction[0]), 
 		-std::atan(beam_direction[2] / beam_direction[1]) };
