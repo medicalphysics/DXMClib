@@ -219,6 +219,8 @@ void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 	while (primaryAngle < -PI)
 		primaryAngle += PI;
 
+
+
 	std::array<double, 6> cos = zeroDirectionCosines();
 	std::array<double, 3> z = { .0, .0, 1.0 };
 	vectormath::rotate(cos.data(), z.data(), primaryAngle);
@@ -250,19 +252,24 @@ std::array<double, 2> DXSource::sourceAngles() const
 	vectormath::cross(cos.data(), beam_direction.data());
 
 	//handling floating point
-
-
-	double primAng;
+	double primAng, secAng;
 	if (beam_direction[0] < -1.0 + ANGLE_ERRF)
+	{
 		primAng = PI / 2.0;
+		secAng = 0.0;
+	}
 	else if (beam_direction[0] > 1.0 - ANGLE_ERRF)
+	{
 		primAng = -PI / 2.0;
+		secAng = 0.0;
+	}
 	else
+	{
 		primAng = std::asin(-beam_direction[0]);
+		secAng = -std::atan(beam_direction[2] / beam_direction[1]);
+	}
 	
-	std::array<double, 2> angles = { 
-		primAng, 
-		-std::atan(beam_direction[2] / beam_direction[1]) };
+	std::array<double, 2> angles = { primAng, secAng };
 	
 	double y[3] = { 0,1,0 };
 	const auto dot_dir = vectormath::dot(y, beam_direction.data());
