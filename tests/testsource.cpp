@@ -31,6 +31,10 @@ bool testSourceAnglesMany()
 {
 	bool success = true;
 
+	testSourceAngles(90, 0, 45);
+	testSourceAngles(90, 90, 45);
+	testSourceAngles(90, 90, 90);
+
 	std::array<double, 7> angles = { -89, -60,-30,0,30,60, 89 };
 	auto tube_rot = angles;
 	for (auto ap : angles)

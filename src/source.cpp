@@ -248,12 +248,25 @@ std::array<double, 2> DXSource::sourceAngles() const
 	vectormath::rotate(cos.data(), beam_direction.data(), -m_tubeRotationAngle);
 	vectormath::rotate(&cos[3], beam_direction.data(), -m_tubeRotationAngle);
 	vectormath::cross(cos.data(), beam_direction.data());
+
+	//handling floating point
+
+
+	double primAng;
+	if (beam_direction[0] < -1.0 + ANGLE_ERRF)
+		primAng = PI / 2.0;
+	else if (beam_direction[0] > 1.0 - ANGLE_ERRF)
+		primAng = -PI / 2.0;
+	else
+		primAng = std::asin(-beam_direction[0]);
+	
 	std::array<double, 2> angles = { 
-		std::asin(-beam_direction[0]), 
+		primAng, 
 		-std::atan(beam_direction[2] / beam_direction[1]) };
 	
 	double y[3] = { 0,1,0 };
-	if (vectormath::dot(y, beam_direction.data()) < 0.0)
+	const auto dot_dir = vectormath::dot(y, beam_direction.data());
+	if (dot_dir < 0.0)
 		if (angles[0] < 0)
 			angles[0] = -PI - angles[0];
 		else 
@@ -290,6 +303,7 @@ void DXSource::setTubeRotation(double angle)
 	vectormath::rotate(&cos[3], beam_direction.data(), diff_angle);
 	setDirectionCosines(cos);
 	m_tubeRotationAngle = angle;
+
 }
 
 double DXSource::tubeRotation() const
