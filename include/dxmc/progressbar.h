@@ -40,7 +40,8 @@ struct DoseProgressImageData
 class ProgressBar
 {
 public:
-	ProgressBar() {};
+	enum class Axis { X, Y, Z };
+	ProgressBar() {	};
 	ProgressBar(std::uint64_t totalExposures) { setTotalExposures(totalExposures); }
 	void setTotalExposures(std::uint64_t totalExposures, const std::string& message = "")
 	{
@@ -71,12 +72,13 @@ public:
 	}
 
 	
-	void setDoseData(double* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<double, 3> doseSpacing)
+	void setDoseData(double* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<double, 3> doseSpacing, Axis planeNormal=Axis::Y)
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		m_doseData = doseData;
 		m_doseDimensions = doseDimensions;
 		m_doseSpacing = doseSpacing;
+		m_doseAxis = planeNormal;
 	}
 	void clearDoseData()
 	{
@@ -89,11 +91,62 @@ public:
 	std::shared_ptr<DoseProgressImageData> computeDoseProgressImage()
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
-		
+		if (m_doseAxis == Axis::Y)
+			return computeDoseProgressImageY();
+		else if (m_doseAxis ==Axis::Z)
+			return computeDoseProgressImageZ();
+		return computeDoseProgressImageX();
+	}
+
+
+protected:
+	std::string makePrettyTime(double seconds) const {
+		std::stringstream ss;
+		ss << std::fixed << std::setprecision(0);
+		ss << m_message << " ETA: about ";
+		if (seconds > 120.0)
+			ss << seconds / 60.0 << " minutes";
+		else
+			ss << seconds << " seconds";
+		return ss.str();
+	}
+	
+	std::shared_ptr<DoseProgressImageData> computeDoseProgressImageX()
+	{
 		if (!m_doseData)
-		{
 			return nullptr;
+
+		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
+		std::vector<double> doseProgressData(m_doseDimensions[1] * m_doseDimensions[2], 0.0);
+		doseProgressImage->image.resize(m_doseDimensions[1] * m_doseDimensions[2], 0);
+		doseProgressImage->dimensions[0] = m_doseDimensions[1];
+		doseProgressImage->dimensions[1] = m_doseDimensions[2];
+		doseProgressImage->spacing[0] = m_doseSpacing[1];
+		doseProgressImage->spacing[1] = m_doseSpacing[2];
+
+		//doing mip over X axis
+		for (std::size_t i = 0; i < m_doseDimensions[1] * m_doseDimensions[2]; ++i)
+		{
+			const auto beg = m_doseData + i * m_doseDimensions[0];
+			const auto end = beg + m_doseDimensions[0];
+			doseProgressData[i] = *std::max_element(beg, end);
 		}
+
+		const auto max_element = std::max_element(std::execution::par_unseq, doseProgressData.begin(), doseProgressData.end());
+		const double scalefactor = 255.0 / *max_element;
+
+		std::transform(std::execution::par_unseq, doseProgressData.cbegin(), doseProgressData.cend(), doseProgressImage->image.begin(),
+			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
+		);
+
+		return doseProgressImage;
+	}
+	
+	std::shared_ptr<DoseProgressImageData> computeDoseProgressImageY()
+	{
+		if (!m_doseData)
+			return nullptr;
+
 		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
 		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
@@ -103,7 +156,6 @@ public:
 		doseProgressImage->spacing[1] = m_doseSpacing[2];
 
 		//doing mip over Y axis
-		
 		for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
 			for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
 				for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
@@ -119,20 +171,38 @@ public:
 			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
 		);
 
-		return doseProgressImage; 
+		return doseProgressImage;
 	}
 
+	std::shared_ptr<DoseProgressImageData> computeDoseProgressImageZ()
+	{
+		if (!m_doseData)
+			return nullptr;
 
-protected:
-	std::string makePrettyTime(double seconds) const {
-		std::stringstream ss;
-		ss << std::fixed << std::setprecision(0);
-		ss << m_message << " ETA: about ";
-		if (seconds > 120.0)
-			ss << seconds / 60.0 << " minutes";
-		else
-			ss << seconds << " seconds";
-		return ss.str();
+		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
+		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[1], 0.0);
+		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[1], 0);
+		doseProgressImage->dimensions[0] = m_doseDimensions[0];
+		doseProgressImage->dimensions[1] = m_doseDimensions[1];
+		doseProgressImage->spacing[0] = m_doseSpacing[0];
+		doseProgressImage->spacing[1] = m_doseSpacing[1];
+
+		//doing mip over Y axis
+		for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
+			for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
+				for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
+				{
+					const auto dp_idx = i + m_doseDimensions[0] * j;
+					const auto d_idx = i + m_doseDimensions[0] * j + m_doseDimensions[0] * m_doseDimensions[1] * k;
+					doseProgressData[dp_idx] = std::max(m_doseData[d_idx], doseProgressData[dp_idx]);
+				}
+		const auto max_element = std::max_element(std::execution::par_unseq, doseProgressData.begin(), doseProgressData.end());
+		const double scalefactor = 255.0 / *max_element;
+
+		std::transform(std::execution::par_unseq, doseProgressData.cbegin(), doseProgressData.cend(), doseProgressImage->image.begin(),
+			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
+		);
+		return doseProgressImage;
 	}
 
 private:
@@ -144,8 +214,9 @@ private:
 	std::atomic<bool> m_cancel = false;
 	std::mutex m_doseMutex;
 	double* m_doseData = nullptr;
-	std::array<std::size_t, 3> m_doseDimensions;
-	std::array<double, 3> m_doseSpacing;
+	std::array<std::size_t, 3> m_doseDimensions = { 0,0,0 };
+	std::array<double, 3> m_doseSpacing = { 1,1,1 };
+	Axis m_doseAxis = Axis::Y;
 
 
 };

@@ -628,9 +628,14 @@ namespace transport {
 		if (nJobs < 1)
 			nJobs = 1;
 		if (progressbar)
+		{
 			progressbar->setTotalExposures(totalExposures, "CTDI Calibration");
+			progressbar->setDoseData(dose.data(), world.dimensions(), world.spacing(), ProgressBar::Axis::Z);
+		}
 		parallell_run_ctdi(world, source, dose.data(), 0, totalExposures, nJobs, progressbar);
-
+		if(progressbar)
+			progressbar->clearDoseData();
+		
 		energyImpartedToDose(world, source, dose, 1.0);
 		return dose;
 	}
