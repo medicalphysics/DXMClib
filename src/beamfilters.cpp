@@ -447,7 +447,7 @@ void HeelFilter::update(const Tube& tube, const double heel_angle_span)
 double HeelFilter::sampleIntensityWeight(const double angle, const double energy) const
 {
 	std::size_t e_index = (energy - m_energyStart + 0.5 * m_energyStep) / m_energyStep;
-	if (e_index > m_energySize)
+	if (e_index >= m_energySize)
 		e_index = m_energySize - 1;
 	if (energy < m_energyStart)
 		e_index = 0;
