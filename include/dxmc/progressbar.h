@@ -59,7 +59,12 @@ public:
 	}
 	std::string getETA() const
 	{
-		auto secondsRemaining = m_secondsElapsed.load() / m_currentExposures.load() * (m_totalExposures.load() - m_currentExposures.load());
+		const auto cExp = m_currentExposures.load();
+		if (cExp == 0)
+			return " estimating...";
+		const auto secondsElapsed = m_secondsElapsed.load();
+		const auto totExp = m_totalExposures.load();
+		const auto secondsRemaining = secondsElapsed / cExp * (totExp - cExp);
 		return makePrettyTime(secondsRemaining);
 	}
 	void setCancel(bool cancel) // threadsafe
