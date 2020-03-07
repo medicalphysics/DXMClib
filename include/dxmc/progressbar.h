@@ -117,7 +117,8 @@ protected:
 			return nullptr;
 
 		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
-		std::vector<double> doseProgressData(m_doseDimensions[1] * m_doseDimensions[2], 0.0);
+		m_doseMipBuffer.resize(m_doseDimensions[1] * m_doseDimensions[2]);
+		std::fill(m_doseMipBuffer.begin(), m_doseMipBuffer.end(), 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[1] * m_doseDimensions[2], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[1];
 		doseProgressImage->dimensions[1] = m_doseDimensions[2];
@@ -125,17 +126,19 @@ protected:
 		doseProgressImage->spacing[1] = m_doseSpacing[2];
 
 		//doing mip over X axis
+		double global_max = 0.0;
 		for (std::size_t i = 0; i < m_doseDimensions[1] * m_doseDimensions[2]; ++i)
 		{
 			const auto beg = m_doseData + i * m_doseDimensions[0];
 			const auto end = beg + m_doseDimensions[0];
-			doseProgressData[i] = *std::max_element(beg, end);
+			const auto max_val = *std::max_element(beg, end);
+			m_doseMipBuffer[i] = max_val;
+			global_max = std::max(global_max, max_val);
 		}
 
-		const auto max_element = std::max_element(std::execution::par_unseq, doseProgressData.begin(), doseProgressData.end());
-		const double scalefactor = 255.0 / *max_element;
+		const double scalefactor = 255.0 / global_max;
 
-		std::transform(std::execution::par_unseq, doseProgressData.cbegin(), doseProgressData.cend(), doseProgressImage->image.begin(),
+		std::transform(std::execution::par_unseq, m_doseMipBuffer.cbegin(), m_doseMipBuffer.cend(), doseProgressImage->image.begin(),
 			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
 		);
 
@@ -148,7 +151,8 @@ protected:
 			return nullptr;
 
 		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
-		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[2], 0.0);
+		m_doseMipBuffer.resize(m_doseDimensions[0] * m_doseDimensions[2]);
+		std::fill(m_doseMipBuffer.begin(), m_doseMipBuffer.end(), 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[0];
 		doseProgressImage->dimensions[1] = m_doseDimensions[2];
@@ -156,18 +160,20 @@ protected:
 		doseProgressImage->spacing[1] = m_doseSpacing[2];
 
 		//doing mip over Y axis
+		double global_max = 0.0;
 		for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
 			for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
 				for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
 				{
 					const auto dp_idx = i + m_doseDimensions[0] * k;
 					const auto d_idx = i + m_doseDimensions[0] * j + m_doseDimensions[0] * m_doseDimensions[1] * k;
-					doseProgressData[dp_idx] = std::max(m_doseData[d_idx], doseProgressData[dp_idx]);
+					const auto max_val = std::max(m_doseData[d_idx], m_doseMipBuffer[dp_idx]);
+					m_doseMipBuffer[dp_idx] = max_val;
+					global_max = std::max(max_val, global_max);
 				}
-		const auto max_element = std::max_element(std::execution::par_unseq, doseProgressData.begin(), doseProgressData.end());
-		const double scalefactor = 255.0 / *max_element;
+		const double scalefactor = 255.0 / global_max;
 
-		std::transform(std::execution::par_unseq, doseProgressData.cbegin(), doseProgressData.cend(), doseProgressImage->image.begin(),
+		std::transform(std::execution::par_unseq, m_doseMipBuffer.cbegin(), m_doseMipBuffer.cend(), doseProgressImage->image.begin(),
 			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
 		);
 
@@ -180,26 +186,29 @@ protected:
 			return nullptr;
 
 		auto doseProgressImage = std::make_shared<DoseProgressImageData>();
-		std::vector<double> doseProgressData(m_doseDimensions[0] * m_doseDimensions[1], 0.0);
+		m_doseMipBuffer.resize(m_doseDimensions[0] * m_doseDimensions[1]);
+		std::fill(m_doseMipBuffer.begin(), m_doseMipBuffer.end(), 0.0);
 		doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[1], 0);
 		doseProgressImage->dimensions[0] = m_doseDimensions[0];
 		doseProgressImage->dimensions[1] = m_doseDimensions[1];
 		doseProgressImage->spacing[0] = m_doseSpacing[0];
 		doseProgressImage->spacing[1] = m_doseSpacing[1];
 
-		//doing mip over Y axis
+		//doing mip over Z axis
+		double global_max = 0.0;
 		for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
 			for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
 				for (std::size_t i = 0; i < m_doseDimensions[0]; ++i)
 				{
 					const auto dp_idx = i + m_doseDimensions[0] * j;
 					const auto d_idx = i + m_doseDimensions[0] * j + m_doseDimensions[0] * m_doseDimensions[1] * k;
-					doseProgressData[dp_idx] = std::max(m_doseData[d_idx], doseProgressData[dp_idx]);
+					const auto max_val = std::max(m_doseData[d_idx], m_doseMipBuffer[dp_idx]);
+					m_doseMipBuffer[dp_idx] = max_val;
+					global_max = std::max(global_max, max_val);
 				}
-		const auto max_element = std::max_element(std::execution::par_unseq, doseProgressData.begin(), doseProgressData.end());
-		const double scalefactor = 255.0 / *max_element;
+		const double scalefactor = 255.0 / global_max;
 
-		std::transform(std::execution::par_unseq, doseProgressData.cbegin(), doseProgressData.cend(), doseProgressImage->image.begin(),
+		std::transform(std::execution::par_unseq, m_doseMipBuffer.cbegin(), m_doseMipBuffer.cend(), doseProgressImage->image.begin(),
 			[=](const double el)->unsigned char {return static_cast<unsigned char>(el * scalefactor); }
 		);
 		return doseProgressImage;
@@ -213,7 +222,8 @@ private:
 	std::string m_message;
 	std::atomic<bool> m_cancel = false;
 	std::mutex m_doseMutex;
-	double* m_doseData = nullptr;
+	const double* m_doseData = nullptr;
+	std::vector<double> m_doseMipBuffer;
 	std::array<std::size_t, 3> m_doseDimensions = { 0,0,0 };
 	std::array<double, 3> m_doseSpacing = { 1,1,1 };
 	Axis m_doseAxis = Axis::Y;
