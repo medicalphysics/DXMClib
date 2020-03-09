@@ -24,16 +24,17 @@ int main(int argc, char* argv[])
     //Lets position the world center at origo, coordinates (0,0,0)
     //world.setOriginToCenter();
 
+
     // Now we fill the world box with som materials 
     // We specify three materials
     Material air("Air, Dry (near sea level)"); // Material air("N0.76O0.23Ar0.01") is eqvivalent
     Material water("Water, Liquid"); // Material water("H2O") is eqvivalent
-    Material lead(82); // lead
+    Material aluminium(13); // aluminium
 
     // Lets add the materials to the world material map
     world.addMaterialToMap(air);
     world.addMaterialToMap(water);
-    world.addMaterialToMap(lead);
+    world.addMaterialToMap(aluminium);
 
     //now we create the density array and material index array
     auto arraySize = dimensions[0] * dimensions[1] * dimensions[2];
@@ -55,7 +56,7 @@ int main(int argc, char* argv[])
                     materialIndexArray->data()[index] = 1;
                 }
                 else {
-                    densityArray->data()[index] = lead.standardDensity();
+                    densityArray->data()[index] = aluminium.standardDensity();
                     materialIndexArray->data()[index] = 2;
                 }
             }
@@ -86,8 +87,9 @@ int main(int argc, char* argv[])
     auto dose = transport::run(world, &pen);
 
 
-    //printing dose dose aling z direction of box
+    //printing dose dose along z direction of box
     auto materials = world.materialMap();
+    std::cout << "Depth [mm],  Dose, Material index, Material\n";
     for (std::size_t k = 0; k < dimensions[2]; ++k)
     {
         std::cout << spacing[2] * k << ", ";
