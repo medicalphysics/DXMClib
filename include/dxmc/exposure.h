@@ -25,20 +25,17 @@ Copyright 2019 Erlend Andersen
 #include <array>
 
 
-typedef struct Particle {
+struct Particle {
 	double pos[3];
 	double dir[3];
 	double energy;
 	double weight;
-} Particle;
+};
 
 
 class Exposure
 {
 public:
-
-	enum CollimationType { Circular, Rectangular };
-
 	Exposure(const BeamFilter* filter = nullptr, const SpecterDistribution* specter = nullptr, const HeelFilter* heelFilter = nullptr);
 
 	void setPosition(double x, double y, double z);
@@ -58,18 +55,15 @@ public:
 	
 	const std::array<double, 3>& beamDirection(void) const { return m_beamDirection; }
 	
-	CollimationType collimationType(void);
-	void setCollimationType(CollimationType type);
-
 	void setCollimationAngles(const double angles[2]);
 	void setCollimationAngles(const std::array<double, 2>& angles);
 	void setCollimationAngles(const double angleX, const double angleY);
 	const std::array<double, 2>& collimationAngles(void) const { return m_collimationAngles; }
-	double collimationAngleX();
-	double collimationAngleY();
+	double collimationAngleX() const;
+	double collimationAngleY() const;
 
 	void setBeamIntensityWeight(double weight) { m_beamIntensityWeight = weight; }
-	double beamIntensityWeight(void) { return m_beamIntensityWeight; }
+	double beamIntensityWeight(void) const { return m_beamIntensityWeight; }
 
 	void setBeamFilter(const BeamFilter* filter);
 	void setSpecterDistribution(const SpecterDistribution* specter);
@@ -92,11 +86,10 @@ private:
 	std::array<double, 6> m_directionCosines;
 	std::array<double, 3> m_beamDirection;
 	std::array<double, 2> m_collimationAngles;
-	double m_beamIntensityWeight;
-	const BeamFilter* m_beamFilter;
-	const SpecterDistribution* m_specterDistribution;
-	const HeelFilter* m_heelFilter;
+	double m_beamIntensityWeight =1.0;
+	const BeamFilter* m_beamFilter = nullptr;
+	const SpecterDistribution* m_specterDistribution = nullptr;
+	const HeelFilter* m_heelFilter = nullptr;
 	double m_monoenergeticPhotonEnergy = 0.0;
     std::size_t m_nHistories;
-	CollimationType m_collimation;
 };

@@ -29,7 +29,6 @@ Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter,
 	m_directionCosines[0] = 1.0;
 	m_directionCosines[5] = 1.0;
 	calculateBeamDirection();
-	m_collimation = Rectangular;
 	m_collimationAngles[0] = 0.35;  // about 20 deg
 	m_collimationAngles[1] = 0.35;
 	m_beamIntensityWeight = 1.0;
@@ -126,16 +125,6 @@ void Exposure::calculateBeamDirection()
 }
 
 
-Exposure::CollimationType Exposure::collimationType(void)
-{
-	return m_collimation;
-}
-
-void Exposure::setCollimationType(Exposure::CollimationType type)
-{
-	m_collimation = type;
-}
-
 void Exposure::setCollimationAngles(const double angles[2])
 {
 	m_collimationAngles[0] = angles[0];
@@ -151,11 +140,11 @@ void Exposure::setCollimationAngles(const double angleX, const double angleY)
 	m_collimationAngles[1] = angleY;
 }
 
-double Exposure::collimationAngleX()
+double Exposure::collimationAngleX() const
 {
 	return m_collimationAngles[0];
 }
-double Exposure::collimationAngleY()
+double Exposure::collimationAngleY() const
 {
 	return m_collimationAngles[1];
 }
