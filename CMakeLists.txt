@@ -101,6 +101,12 @@ if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
+# Validation
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
+    add_subdirectory(validation)
+endif()
+
+
 # Docs by doxygen
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     find_package(Doxygen)
