@@ -143,9 +143,9 @@ namespace transport {
 		const double theta = std::acos(costheta);
 		const double phi = randomUniform<double>(seed, 0.0, PI_VAL2);
 		vectormath::peturb<double>(particle.dir, theta, phi);
-	}*/
+	}
 
-	/*void rayleightScatter(Particle& particle, const AttenuationLutElement& lutElement, std::uint64_t seed[2], double& cosAngle)
+	void rayleightScatterEGS(Particle& particle, const AttenuationLutElement& lutElement, std::uint64_t seed[2], double& cosAngle)
 	{
 		// theta is scattering angle
 		// see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -383,7 +383,7 @@ namespace transport {
 				const double r2 = randomUniform<double>(seed);
 				if (r2 < (attenuationTotal / maxAttenuation)) // An event will happend
 				{
-					auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
+					const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
 					const double attPhoto = atts[0];
 					const double attCompt = atts[1];
 					const double attRayl = atts[2];
@@ -401,12 +401,6 @@ namespace transport {
 						const double e = comptonScatter(p, seed, cosangle);
 						safeValueAdd(energyImparted[bufferIdx], e * p.weight);
 						updateMaxAttenuation = true;
-						if (p.energy < ENERGY_CUTOFF)
-						{
-							safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight);
-							p.energy = 0.0;
-							continueSampling = false;
-						}
 					}
 					else // Rayleigh scatter event
 					{
