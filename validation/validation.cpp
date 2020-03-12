@@ -161,5 +161,7 @@ int main(int argc, char* argv[])
 
 	auto success = TG195Case2AbsorbedEnergy120();
 	success = success && TG195Case2AbsorbedEnergyMono();
-	return success;
+	if (success)
+		return EXIT_SUCCESS;
+	return EXIT_FAILURE;
 }

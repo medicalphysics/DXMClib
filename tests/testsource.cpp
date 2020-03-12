@@ -70,12 +70,6 @@ bool testIsotropicSourceSpecter()
 }
 
 
-
-
-
-
-
-
 bool testSourceAngles(double pang, double sang, double tubeRotation)
 {
 
