@@ -254,7 +254,10 @@ void DXSource::updateSpecterDistribution()
 		auto energies = m_tube.getEnergy();
 		auto n_obs = m_tube.getSpecter(energies);
 		m_specterDistribution = std::make_unique<SpecterDistribution>(n_obs, energies);
-		m_heelFilter = std::make_unique<HeelFilter>(m_tube, m_collimationAngles[1]);
+		if (m_modelHeelEffect)
+			m_heelFilter = std::make_unique<HeelFilter>(m_tube, m_collimationAngles[1]);
+		else
+			m_heelFilter = nullptr;
 		m_specterValid = true;
 	}
 }
@@ -288,8 +291,6 @@ void DXSource::setSourceAngles(double primaryAngle, double secondaryAngle)
 		primaryAngle -= PI;
 	while (primaryAngle < -PI)
 		primaryAngle += PI;
-
-
 
 	std::array<double, 6> cos = zeroDirectionCosines();
 	std::array<double, 3> z = { .0, .0, 1.0 };
@@ -604,7 +605,10 @@ void CTSource::updateSpecterDistribution()
 		auto n_obs = m_tube.getSpecter(energies);
 		m_specterDistribution = std::make_unique<SpecterDistribution>(n_obs, energies);
 		const double heel_span_angle = std::atan(m_collimation * 0.5 / m_sdd) * 2.0;
-		m_heelFilter = std::make_unique<HeelFilter>(m_tube, heel_span_angle);
+		if (m_modelHeelEffect)
+			m_heelFilter = std::make_unique<HeelFilter>(m_tube, heel_span_angle);
+		else
+			m_heelFilter = nullptr;
 		m_specterValid = true;
 	}
 }

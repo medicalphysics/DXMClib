@@ -187,6 +187,9 @@ public:
 	bool isValid(void) const override { return m_specterValid; }
 	bool validate(void) override { updateSpecterDistribution(); return m_specterValid; }
 
+	void setModelHeelEffect(bool on) { m_modelHeelEffect = on; };
+	bool modelHeelEffect() const { return m_modelHeelEffect; };
+
 protected:
 	void updateFieldSize(const std::array<double, 2>& collimationAngles);
 	void updateCollimationAngles(const std::array<double, 2>& fieldSize);
@@ -204,6 +207,7 @@ private:
 	bool m_specterValid = false;
 	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
 	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
+	bool m_modelHeelEffect = true;
 };
 
 
@@ -270,6 +274,9 @@ public:
 	
 	bool isValid(void) const override { return m_specterValid; };
 	virtual bool validate(void) override { updateSpecterDistribution(); return m_specterValid; };
+	
+	void setModelHeelEffect(bool on) { m_modelHeelEffect = on; };
+	bool modelHeelEffect() const { return m_modelHeelEffect; };
 
 protected:
 	virtual void updateSpecterDistribution();
@@ -290,6 +297,7 @@ protected:
 	Tube m_tube;
 	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
 	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
+	bool m_modelHeelEffect = true;
 };
 
 class CTSpiralSource final : public CTSource
