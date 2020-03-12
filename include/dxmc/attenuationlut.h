@@ -62,13 +62,6 @@ public:
 	 */
 	void generate(const std::vector<Material>& materials, double minEnergy=0.0, double maxEnergy = 150.0);
 	
-	/**
-	 * @brief Generate lookup tables for attenuation data
-	 * The order of materials matters, i.e the first material will get index 0, second has index 1 etc...
-	 * @param materials Vector of materials to generate attenuation table
-	 * @param energies Vector of energies to generate in lookup table (in keV)
-	 */
-	void generate(const std::vector<Material>& materials, const std::vector<double>& energies);
 	
 	/**
 	 * @brief Return the maximum mass attenuation value for all materials at spesific photon energy

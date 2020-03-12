@@ -66,11 +66,6 @@ void AttenuationLut::generate(const std::vector<Material>& materials, double min
 	}
 	generateMaxMassTotalAttenuation(matArray.begin(), matArray.end(), densArray.begin());
 }
-void AttenuationLut::generate(const std::vector<Material>& materials, const std::vector<double>& energies)
-{
-	auto [minIt, maxIt] = std::minmax_element(energies.begin(), energies.end());
-	generate(materials, *minIt, *maxIt);
-}
 
 
 
