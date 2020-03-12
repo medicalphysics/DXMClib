@@ -551,7 +551,7 @@ namespace transport {
 		return handle.get() + nHistories;	
 	}
 
-	void energyImpartedToDose(const World & world, const Source* source, std::vector<double>& energyImparted, const double calibrationValue)
+	void energyImpartedToDose(const World & world, std::vector<double>& energyImparted, const double calibrationValue)
 	{
 		auto spacing = world.spacing();
 		const double voxelVolume = spacing[0] * spacing[1] * spacing[2] / 1000.0; // cm3
@@ -564,7 +564,7 @@ namespace transport {
 		});
 	}
 	
-	std::vector<double> run(const World & world, Source* source, ProgressBar* progressbar)
+	std::vector<double> run(const World & world, Source* source, ProgressBar* progressbar, bool calculateDose)
 	{
 		std::vector<double> dose(world.size(), 0.0);
 		if (!source)
@@ -580,7 +580,7 @@ namespace transport {
 
 		const std::uint64_t totalExposures = source->totalExposures();
 		
-		std::uint64_t nThreads = std::thread::hardware_concurrency();
+		const std::uint64_t nThreads = std::thread::hardware_concurrency();
 		std::uint64_t nJobs = nThreads;
 		if (nJobs < 1)
 			nJobs = 1;
@@ -602,9 +602,12 @@ namespace transport {
 				return dose;
 			}
 		}
-		double calibrationValue = source->getCalibrationValue(nHistories, progressbar);
-		//energy imparted to dose
-		energyImpartedToDose(world, source, dose, calibrationValue);
+		if (calculateDose)
+		{
+			double calibrationValue = source->getCalibrationValue(nHistories, progressbar);
+			//energy imparted to dose
+			energyImpartedToDose(world, dose, calibrationValue);
+		}
 		return dose;
 	}
 
@@ -636,7 +639,7 @@ namespace transport {
 		if(progressbar)
 			progressbar->clearDoseData();
 		
-		energyImpartedToDose(world, source, dose, 1.0);
+		energyImpartedToDose(world, dose, 1.0);
 		return dose;
 	}
 }

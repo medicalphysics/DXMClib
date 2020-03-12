@@ -44,6 +44,9 @@ public:
 	const std::shared_ptr<PositionalFilter> positionalFilter() const { return m_positionalFilter; }
 	
 	void setPosition(const std::array<double, 3>& position) { m_position = position; }
+	void setPosition(double x, double y, double z) {
+		m_position[0] = x; m_position[1] = y; m_position[2] = z;
+	};
 	std::array<double, 3>& position(void) { return m_position; }
 	const std::array<double, 3>& position(void) const { return m_position; }
 	

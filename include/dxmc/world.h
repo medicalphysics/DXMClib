@@ -70,6 +70,9 @@ public:
 
 	void setAttenuationLutMaxEnergy(double max_keV);
 	double attenuationLutMaxEnergy(void) const { return m_attenuationLutMaxEnergy; }
+	void setAttenuationLutResolution(double keV) { m_attLut.setEnergyResolution(keV); };
+	double attenuationLutResolution(void) const { return m_attLut.energyResolution(); };
+
 
     const std::array<double, 6>& matrixExtent(void) const {return m_worldExtent;}
 

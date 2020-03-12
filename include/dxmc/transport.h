@@ -33,6 +33,6 @@ namespace transport {
 	double comptonScatterGeant(Particle& particle, std::uint64_t seed[2], double& cosAngle);
 	double comptonScatterEGS(Particle& particle, std::uint64_t seed[2], double& cosAngle);
 	void rayleightScatter(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle);
-	std::vector<double> run(const World& world, Source* source, ProgressBar* progressBar = nullptr);
+	std::vector<double> run(const World& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
 	std::vector<double> run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressBar = nullptr);
 }

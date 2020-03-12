@@ -418,8 +418,8 @@ double DXSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* prog
 	}
 	calcOutput *= KEV_TO_MJ * 1000.0; // Air KERMA [mJ / kg] = [mGy]
 
-	double output = m_dap / (m_fieldSize[0] * m_fieldSize[1] * 0.01); //mm->cm
-	double factor = output / calcOutput; // mGy/mGy
+	const double output = m_dap / (m_fieldSize[0] * m_fieldSize[1] * 0.01); //mm->cm
+	const double factor = output / calcOutput; // mGy/mGy
 	return factor; 
 }
 
@@ -628,6 +628,10 @@ double CTSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* prog
 
 	updateFromWorld(world);
 	validate();
+
+
+
+
 
 	std::array<CTDIPhantom::HolePosition, 5> position = { CTDIPhantom::Center, CTDIPhantom::West, CTDIPhantom::East, CTDIPhantom::South, CTDIPhantom::North };
 

@@ -168,14 +168,14 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 
 void Material::setByCompoundName(const std::string &name)
 {
-    struct compoundData* m = CompoundParser(name.c_str());
+    compoundData* m = CompoundParser(name.c_str());
     if (m)
     {
         m_name = name;
         m_valid = true;
         m_hasDensity = false;
         FreeCompoundData(m);
-		m = nullptr;
+		m = nullptr;	
     }
 }
 
