@@ -34,7 +34,7 @@ Copyright 2019 Erlend Andersen
 class Source
 {
 public:
-	enum Type { None, CTSpiral, CTAxial, DX, CTDual, Pencil };
+	enum Type { None, CTSpiral, CTAxial, DX, CTDual, Pencil, Isotropic };
     Source();
     virtual bool getExposure(Exposure& exposure, std::uint64_t i) const = 0;
 	virtual double maxPhotonEnergyProduced() const {return  Tube::maxVoltage(); }
@@ -56,9 +56,9 @@ public:
 
 	virtual std::uint64_t totalExposures(void) const = 0;
 
-	Source::Type type() { return m_type; }
+	Source::Type type() const { return m_type; }
 
-	virtual double getCalibrationValue(std::uint64_t nHistories, ProgressBar*) = 0;
+	virtual double getCalibrationValue(std::uint64_t nHistories, ProgressBar* progress=nullptr) = 0;
 	
 	virtual bool isValid(void) const = 0;
 	virtual bool validate(void) = 0;
@@ -75,7 +75,7 @@ private:
 };
 
 
-class PencilSource :public Source
+class PencilSource final : public Source
 {
 public:
 	PencilSource();
@@ -104,6 +104,36 @@ protected:
 	std::uint64_t m_totalExposures = 10;
 };
 
+
+class IsotropicSource final : public Source
+{
+public:
+	IsotropicSource();
+	virtual ~IsotropicSource() = default;
+	bool getExposure(Exposure& exposure, std::uint64_t exposureNumber) const override;
+	double maxPhotonEnergyProduced() const override { 
+		return m_maxPhotonEnergy; };
+	void setTotalExposures(std::uint64_t nExposures) { 
+		m_totalExposures = nExposures; };
+	std::uint64_t totalExposures() const override { 
+		return m_totalExposures; };
+	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* progress = nullptr) override {
+		return 1.0;
+	};
+	bool isValid() const override;
+	bool validate() override;
+
+	void setSpecter(const std::vector<double> weights, const std::vector<double> energies);
+	void setCollimationAngles(double xRad, double yRad);
+	std::pair<double, double> collimationAngles() const;
+protected:
+
+private:
+	std::uint64_t m_totalExposures = 1;
+	std::array<double, 2> m_collimationAngles = { 0,0 };
+	std::unique_ptr<SpecterDistribution> m_specterDistribution = nullptr;
+	double m_maxPhotonEnergy = 1.0;
+};
 
 class DXSource final : public Source
 {

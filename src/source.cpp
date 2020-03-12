@@ -75,10 +75,80 @@ std::uint64_t Source::historiesPerExposure(void) const
 	return m_historiesPerExposure;
 }
 
+
+IsotropicSource::IsotropicSource()
+	:Source()
+{
+	m_type = Type::Isotropic;
+	
+	// initializing a specterdistribution
+	const std::vector<double> energies = { 60.0 };
+	const std::vector<double> weights = { 1.0 };
+	m_maxPhotonEnergy = 60.0;
+	m_specterDistribution = std::make_unique<SpecterDistribution>(weights, energies);
+}
+
+bool IsotropicSource::getExposure(Exposure& exposure, std::uint64_t exposureNumber) const
+{
+	exposure.setNumberOfHistories(m_historiesPerExposure);
+	exposure.setPosition(m_position);
+	exposure.setDirectionCosines(m_directionCosines);
+	exposure.setCollimationAngles(m_collimationAngles[0], m_collimationAngles[1]);
+
+	exposure.setSpecterDistribution(m_specterDistribution.get());
+	return exposureNumber < m_totalExposures;
+
+}
+
+bool IsotropicSource::isValid() const
+{
+	return m_specterDistribution != nullptr;
+}
+
+bool IsotropicSource::validate()
+{
+	return m_specterDistribution != nullptr;
+}
+
+void IsotropicSource::setSpecter(const std::vector<double> weights, const std::vector<double> energies)
+{
+	const auto maxEnergyElement = std::max_element(energies.cbegin(), energies.cend());
+	m_maxPhotonEnergy = *maxEnergyElement;
+	m_specterDistribution = std::make_unique<SpecterDistribution>(weights, energies);
+
+
+}
+
+void IsotropicSource::setCollimationAngles(double xRad, double yRad)
+{
+	if (xRad < -PI)
+		m_collimationAngles[0] = -PI;
+	else if (xRad > PI)
+		m_collimationAngles[0] = PI;
+	else
+		m_collimationAngles[0] = xRad;
+
+	constexpr double PI_H = PI * 0.5;
+
+	if (yRad < -PI_H)
+		m_collimationAngles[1] = -PI_H;
+	else if (yRad > PI)
+		m_collimationAngles[1] = PI_H;
+	else
+		m_collimationAngles[1] = yRad;
+}
+
+std::pair<double, double> IsotropicSource::collimationAngles() const
+{
+	return std::pair<double, double>(m_collimationAngles[0], m_collimationAngles[1]);
+}
+
+
+
 PencilSource::PencilSource()
 	:Source()
 {
-	m_type = Pencil;
+	m_type = Type::Pencil;
 }
 
 
@@ -273,11 +343,14 @@ std::array<double, 2> DXSource::sourceAngles() const
 	
 	double y[3] = { 0,1,0 };
 	const auto dot_dir = vectormath::dot(y, beam_direction.data());
-	if (dot_dir < 0.0)
-		if (angles[0] < 0)
+	if (dot_dir < 0.0) {
+		if (angles[0] < 0) {
 			angles[0] = -PI - angles[0];
-		else 
+		}
+		else {
 			angles[0] = PI - angles[0];
+		}
+	}
 	
 	return angles;
 }
@@ -888,3 +961,4 @@ void CTDualSource::updateSpecterDistribution()
 		m_specterValid = true;
 	}
 }
+

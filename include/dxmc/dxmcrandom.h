@@ -71,13 +71,13 @@ public:
 	std::size_t sampleIndex();
 	std::size_t sampleIndex(std::uint64_t seed[2]) const;
 
+protected:
+	void generateTable(const std::vector<double>& weights);
 private:
-    std::vector<double> m_weights;
     std::vector<std::uint64_t> m_alias;
     std::vector<double> m_probs;
+	std::size_t m_size = 0;
 	std::uint64_t m_seed[2];
-
-	void generateTable();
 };
 
 class SpecterDistribution : public RandomDistribution

@@ -39,35 +39,33 @@ void randomSeed(std::uint64_t s[2])
 RandomDistribution::RandomDistribution(const std::vector<double>& weights) 
 {
 	randomSeed(m_seed); // initialize prng
-	m_weights = weights;
-	m_probs.resize(m_weights.size());
-	m_alias.resize(m_weights.size());
-	generateTable();
+	generateTable(weights);
 }
 
-void RandomDistribution::generateTable()
+void RandomDistribution::generateTable(const std::vector<double>& weights)
 {
-	const std::size_t nums = m_weights.size();
-	std::vector<double> norm_probs(nums);
-	std::vector<std::int64_t> large_block(nums);
-	std::vector<std::int64_t> small_block(nums);
+	// Squaring the histogram method
+	m_size = weights.size();
+	m_probs.resize(m_size);
+	m_alias.resize(m_size);
+	std::vector<double> norm_probs(m_size);
+	std::vector<std::int64_t> large_block(m_size);
+	std::vector<std::int64_t> small_block(m_size);
 
-	std::int64_t cur_small_block;
-	std::int64_t cur_large_block;
 	std::int64_t num_small_block = 0;
 	std::int64_t num_large_block = 0;
 	
-	double sum = std::accumulate(m_weights.begin(), m_weights.end(), 0.0);
-	const double scale_factor = nums / sum;
-
+	const double sum = std::accumulate(weights.begin(), weights.end(), 0.0);
+	const double scale_factor = m_size / sum;
+	std::transform(weights.cbegin(), weights.cend(), norm_probs.begin(), [=](const double w)->double {return w * scale_factor; });
 	// norm_prob
-	for (std::size_t i = 0; i < m_weights.size(); i++)
+	for (std::size_t i = 0; i < m_size; i++)
 	{
-		norm_probs[i] = m_weights[i] * scale_factor;
+		norm_probs[i] = weights[i] * scale_factor;
 	}
 
 
-	for (std::int64_t i = nums - 1; i >= 0; i--) 
+	for (std::int64_t i = m_size - 1; i >= 0; i--) 
 	{
 		if (norm_probs[i] < 1.0)
 		{
@@ -81,8 +79,8 @@ void RandomDistribution::generateTable()
 
 	while (num_small_block && num_large_block) 
 	{
-		cur_small_block = small_block[--num_small_block];
-		cur_large_block = large_block[--num_large_block];
+		const auto cur_small_block = small_block[--num_small_block];
+		const auto cur_large_block = large_block[--num_large_block];
 		m_probs[cur_small_block] = norm_probs[cur_small_block];
 		m_alias[cur_small_block] = cur_large_block;
 		norm_probs[cur_large_block] = norm_probs[cur_large_block] + norm_probs[cur_small_block] - 1;
@@ -117,7 +115,7 @@ std::size_t RandomDistribution::sampleIndex(std::uint64_t seed[2]) const
 {
 	const double r1 = randomUniform<double>(seed);
 	const double r2 = randomUniform<double>(seed);
-	std::size_t k = static_cast<std::size_t>(m_weights.size() * r1);
+	std::size_t k = static_cast<std::size_t>(m_size * r1);
 	return r2 < m_probs[k] ? k : m_alias[k];
 }
 
