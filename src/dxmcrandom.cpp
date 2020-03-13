@@ -59,7 +59,6 @@ void RandomDistribution::generateTable(const std::vector<double>& weights)
 	const double scale_factor = m_size / sum;
 	std::transform(weights.cbegin(), weights.cend(), norm_probs.begin(), [=](const double w)->double {return w * scale_factor; });
 	
-
 	for (std::int64_t i = m_size - 1; i >= 0; i--) 
 	{
 		if (norm_probs[i] < 1.0)
@@ -124,7 +123,6 @@ SpecterDistribution::SpecterDistribution(const std::vector<double>& weights, con
 
 double SpecterDistribution::sampleValue()
 {
-	return sampleValue()
 	return m_energies[sampleIndex()];
 }
 double SpecterDistribution::sampleValue(std::uint64_t seed[2]) const
