@@ -25,37 +25,37 @@ Copyright 2019 Erlend Andersen
 
 double Material::getPhotoelectricAttenuation(double energy) const
 {
-	return CS_Photo_CP(m_name.c_str(), energy);
+	return CS_Photo_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getRayleightAttenuation(double energy) const
 {
-	return CS_Rayl_CP(m_name.c_str(), energy);
+	return CS_Rayl_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getComptonAttenuation(double energy) const
 {
-	return CS_Compt_CP(m_name.c_str(), energy);
+	return CS_Compt_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getTotalAttenuation(double energy) const
 {
-	return CS_Total_CP(m_name.c_str(), energy);
+	return CS_Total_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getMassEnergyAbsorbtion(double energy) const
 {
-	return CS_Energy_CP(m_name.c_str(), energy);
+	return CS_Energy_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getAtomicWeight(int Z)
 {
-	return AtomicWeight(Z);
+	return AtomicWeight(Z, nullptr);
 }
 
 std::string Material::getAtomicNumberToSymbol(int Z)
 {
-	return std::string(AtomicNumberToSymbol(Z));
+	return std::string(AtomicNumberToSymbol(Z, nullptr));
 }
 
 Material::Material(int atomicNumber)
@@ -95,7 +95,7 @@ void Material::setStandardDensity(double density)
 std::vector<std::string> Material::getNISTCompoundNames(void)
 {
 	int n_strings;
-	auto charArray = GetCompoundDataNISTList(&n_strings);
+	auto charArray = GetCompoundDataNISTList(&n_strings, nullptr);
 	auto materialNames = std::vector<std::string>();
 	for (int i = 0; i < n_strings; ++i)
 	{
@@ -110,11 +110,11 @@ std::vector<std::string> Material::getNISTCompoundNames(void)
 
 int Material::getAtomicNumberFromSymbol(const std::string &symbol)
 {
-	return SymbolToAtomicNumber(symbol.c_str());
+	return SymbolToAtomicNumber(symbol.c_str(), nullptr);
 }
 std::string Material::getSymbolFromAtomicNumber(int Z)
 {
-	char *chars = AtomicNumberToSymbol(Z);
+	char *chars = AtomicNumberToSymbol(Z, nullptr);
 	std::string st(chars);
 	xrlFree(chars);
 	return st;
@@ -126,7 +126,7 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 	std::vector<double> fraction;
 	std::vector<int> elements;
 
-	struct compoundData* m = CompoundParser(m_name.c_str());
+	struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
 	if (m)
 	{
 		fraction.resize(m->nElements);
@@ -139,7 +139,7 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 		FreeCompoundData(m);
 		m = nullptr;
 	}
-	struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str());
+	struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
 	if (n)
 	{
 		fraction.resize(n->nElements);
@@ -158,7 +158,7 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 	{
 		for (std::size_t j = 0; j < fraction.size(); ++j)
 		{
-			formFactor[i]+= fraction[j] * FF_Rayl(elements[j], momentumTransfer[i]);
+			formFactor[i]+= fraction[j] * FF_Rayl(elements[j], momentumTransfer[i], nullptr);
 		}
 		formFactor[i] = formFactor[i] * formFactor[i];
 	}
@@ -168,7 +168,7 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 
 void Material::setByCompoundName(const std::string &name)
 {
-    compoundData* m = CompoundParser(name.c_str());
+    compoundData* m = CompoundParser(name.c_str(), nullptr);
     if (m)
     {
         m_name = name;
@@ -181,13 +181,13 @@ void Material::setByCompoundName(const std::string &name)
 
 void Material::setByAtomicNumber(int atomicNumber)
 {
-	char *raw_name =  AtomicNumberToSymbol(atomicNumber);
+	char *raw_name =  AtomicNumberToSymbol(atomicNumber, nullptr);
 	if (raw_name)
 	{
 		m_name = raw_name;
 		xrlFree(raw_name);
 		raw_name = nullptr;
-		m_density = ElementDensity(atomicNumber);
+		m_density = ElementDensity(atomicNumber, nullptr);
 		m_hasDensity = true;
 		m_valid = true;
 	}	
@@ -196,7 +196,7 @@ void Material::setByAtomicNumber(int atomicNumber)
 
 void Material::setByMaterialName(const std::string &name)
 {
-    struct compoundDataNIST* m = GetCompoundDataNISTByName(name.c_str());
+    struct compoundDataNIST* m = GetCompoundDataNISTByName(name.c_str(), nullptr);
     if (m)
     {
         m_name = m->name;

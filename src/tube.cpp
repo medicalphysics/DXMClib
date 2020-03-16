@@ -327,7 +327,7 @@ double betheHeitlerCrossSection(double hv, double Ti)
 
 double betheHeitlerSpectra(double T0, double hv, double takeoffAngle)
 {
-	const double tungstenTotAtt = CS_Total(TUNGSTEN_ATOMIC_NUMBER, hv);
+	const double tungstenTotAtt = CS_Total(TUNGSTEN_ATOMIC_NUMBER, hv, nullptr);
 	constexpr double xmax = 14.0;
 	constexpr double umax = 1.0;
 	constexpr double xstep = 0.1;
