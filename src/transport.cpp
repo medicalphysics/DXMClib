@@ -409,12 +409,11 @@ namespace transport {
 					}
 
 					// russian rulette
-					if ((p.energy < RUSSIAN_RULETTE_THRESHOLD) && ruletteCandidate)
+					if ((p.energy < RUSSIAN_RULETTE_THRESHOLD) && ruletteCandidate && continueSampling)
 					{
 						ruletteCandidate = false;
 						double r4 = randomUniform<double>(seed);
-						if (r4 < RUSSIAN_RULETTE_PROBABILITY)
-						{
+						if (r4 < RUSSIAN_RULETTE_PROBABILITY) {
 							continueSampling = false;
 						}
 						else {

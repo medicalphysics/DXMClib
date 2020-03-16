@@ -6,6 +6,7 @@
 #include "dxmc/transport.h"
 
 #include <numeric>
+#include <execution>
 #include <iostream>
 #include <cassert>
 
@@ -43,7 +44,12 @@ bool inline isEqual(double a, double b)
 	return std::abs(a - b) < ERRF;
 }
 
-
+bool betw(std::size_t v, std::size_t min, std::size_t max)
+{
+	if (v >= min && v < max)
+		return true;
+	return false;
+}
 World generateTG195Case2World()
 {
 
@@ -52,25 +58,68 @@ World generateTG195Case2World()
 	Material soft("H62.95C12.91N1.17O22.78Na0.03P0.04S0.06Cl0.03K0.03");
 	soft.setStandardDensity(1.03);
 
-	std::array<double, 3> spacing = { 1,1,200 }; // mm
-	std::array<std::size_t, 3> dim = { 390,390,9 };
+	std::array<double, 3> spacing = { 5,5,5 }; // mm
+	std::array<std::size_t, 3> dim = { 78,78,400};
 	const auto size = dim[0] * dim[1] * dim[2];
 	auto dens = std::make_shared<std::vector<double>>(size, air.standardDensity());
 	auto idx = std::make_shared<std::vector<unsigned char>>(size, 0);
 	// fill first slice with soft tissue
-	for (std::size_t i = 0; i < dim[0] * dim[1]; ++i)
-	{
-		dens->data()[i] = soft.standardDensity();
-		idx->data()[i] = static_cast<unsigned char>(1);
-	}
+	for (std::size_t z = 0; z < dim[2]; ++z)
+		for (std::size_t y = 0; y < dim[1]; ++y)
+			for (std::size_t x = 0; x < dim[0]; ++x) {
+				if (z < 40)
+				{
+					const auto i = x + y * dim[0] + z * dim[0] * dim[1];
+					dens->data()[i] = soft.standardDensity();
+					idx->data()[i] = static_cast<unsigned char>(1);
 
+					//center boxes
+					if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 5, 11))
+						idx->data()[i] = static_cast<unsigned char>(9+1);
+					if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 11, 17))
+						idx->data()[i] = static_cast<unsigned char>(8+1);
+					if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 17, 23))
+						idx->data()[i] = static_cast<unsigned char>(3+1);
+					if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 23, 29))
+						idx->data()[i] = static_cast<unsigned char>(7+1);
+					if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 29, 35))
+						idx->data()[i] = static_cast<unsigned char>(6+1);
+					
+					//periphery y
+					if (betw(x, 36, 42) && betw(y, 6, 12) && betw(z, 17, 23))
+						idx->data()[i] = static_cast<unsigned char>(1+1);
+					if (betw(x, 36, 42) && betw(y, 66, 72) && betw(z, 17, 23))
+						idx->data()[i] = static_cast<unsigned char>(5 + 1);
+					if (betw(x, 6, 12) && betw(y, 36, 42) && betw(z, 17, 23))
+						idx->data()[i] = static_cast<unsigned char>(2 + 1);
+					if (betw(x, 66, 72) && betw(y, 36, 42) && betw(z, 17, 23))
+						idx->data()[i] = static_cast<unsigned char>(4 + 1);
+				}
 
+			}
+	/*std::array<double, 3> cm = { 0,0,0 };
+	double m = 0;
+	for (std::size_t z = 0; z < dim[2]; ++z)
+		for (std::size_t y = 0; y < dim[1]; ++y)
+			for (std::size_t x = 0; x < dim[0]; ++x) {
+				const auto i = x + y * dim[0] + z * dim[0] * dim[1];
+				if (idx->data()[i] == 5 + 1)
+				{
+					m += 1.0;
+					cm[0] += spacing[0] * x;
+					cm[1] += spacing[1] * y;
+					cm[2] += spacing[2] * z;
+				}
+			}
+	std::cout << "mass center: " << cm[0] / m << ", " << cm[1] / m << ", "<<cm[2] / m << "\n";
+	*/
 	World w;
 	w.setDimensions(dim);
 	w.setSpacing(spacing);
 	w.setDensityArray(dens);
 	w.addMaterialToMap(air);
-	w.addMaterialToMap(soft);
+	for (std::size_t i = 0; i < 10; ++i)
+		w.addMaterialToMap(soft);
 	w.setMaterialIndexArray(idx);
 	return w;
 }
@@ -78,6 +127,8 @@ World generateTG195Case2World()
 
 bool TG195Case2AbsorbedEnergyMono()
 {
+	std::cout << "TG195 Case 2\n";
+	std::cout << "Monochromatic source of 56.4 keV:\n";
 	auto w = generateTG195Case2World();
 	IsotropicSource src;
 	std::vector<double> s({ 1.0 }), e({ 56.4 });
@@ -95,25 +146,34 @@ bool TG195Case2AbsorbedEnergyMono()
 	std::array<double, 6> cosines = { -1,0,0,0,1,0 };
 	src.setDirectionCosines(cosines);
 	src.setHistoriesPerExposure(1e6);
-	src.setTotalExposures(16);
+	src.setTotalExposures(40);
 	src.validate();
 	auto dose = transport::run(w, &src, nullptr, false);
 
-	const double total_kev = std::accumulate(dose.cbegin(), dose.cend(), 0.0);
 	const double total_hist = static_cast<double>(src.totalExposures() * src.historiesPerExposure());
+	double total_ev = 1000*std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [](double d, unsigned char i)->double {return i > 0 ? d : 0.0; });
+	total_ev /= total_hist;
+	std::array<double, 9> subvol_ev;
+	for (std::size_t i = 0; i < 9; ++i) {
+		subvol_ev[i] = 1000*std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
+		subvol_ev[i] /= total_hist;
+	}
 
-	const double ev_per_hist = total_kev * 1000.0 / total_hist;
-	const double sim_ev_per_hist = 33171.4;
-	std::cout << "TG195 Case 2\n";
-	std::cout << "Monochromatic source of 56.4 keV:\n";
-	std::cout << "eV per history: " << ev_per_hist << "   real eV per history: " << sim_ev_per_hist << "\n";
-	std::cout << "deviation: " << ev_per_hist- sim_ev_per_hist << " (%): " << (ev_per_hist - sim_ev_per_hist)/sim_ev_per_hist*100 << "\n";
+	const double sim_ev = 33171.4;
+	std::array<double, 9> sim_subvol = { 27.01,27.00,36.67,27.01,27.01,72.86,53.35,23.83,14.60 };
 
+	std::cout << "Total body dxmc: " << total_ev << ", TG195: " << sim_ev << ", difference [%]: " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
+	for (std::size_t i =0;i < subvol_ev.size();++i)
+		std::cout << "VOI "<< i+1 << " dxmc: " << subvol_ev[i] << ", TG195: " << sim_subvol[i] << ", difference [%]: " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
+	std::cout << "\n";
 	return true;
 }
 
 bool TG195Case2AbsorbedEnergy120()
 {
+	std::cout << "TG195 Case 2\n";
+	std::cout << "Specter source of 120 kV:\n";
+
 	auto w = generateTG195Case2World();
 	IsotropicSource src;
 
@@ -136,32 +196,78 @@ bool TG195Case2AbsorbedEnergy120()
 	std::array<double, 6> cosines = { -1,0,0,0,1,0 };
 	src.setDirectionCosines(cosines);
 	src.setHistoriesPerExposure(1e6);
-	src.setTotalExposures(16);
+	src.setTotalExposures(40);
 	src.validate();
 	auto dose = transport::run(w, &src, nullptr, false);
 
-	const double total_kev = std::accumulate(dose.cbegin(), dose.cend(), 0.0);
 	const double total_hist = static_cast<double>(src.totalExposures() * src.historiesPerExposure());
+	double total_ev = 1000 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [](double d, unsigned char i)->double {return i > 0 ? d : 0.0; });
+	total_ev /= total_hist;
+	std::array<double, 9> subvol_ev;
+	for (std::size_t i = 0; i < 9; ++i) {
+		subvol_ev[i] = 1000 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
+		subvol_ev[i] /= total_hist;
+	}
 
-	const double ev_per_hist = total_kev * 1000.0 / total_hist;
-	const double sim_ev_per_hist = 33125.98;
-	std::cout << "TG195 Case 2\n";
-	std::cout << "Specter source of 120 kV:\n";
-	std::cout << "eV per history: " << ev_per_hist << "   real eV per history: " << sim_ev_per_hist << "\n";
-	std::cout << "deviation: " << ev_per_hist - sim_ev_per_hist << " (%): " << (ev_per_hist - sim_ev_per_hist) / sim_ev_per_hist * 100 << "\n";
+	const double sim_ev = 33125.98;
+	std::array<double, 9> sim_subvol = { 24.97,24.95,33.52,24.96,24.97,72.70,49.99,21.73,13.48};
 
+	std::cout << "Total body dxmc: " << total_ev << ", TG195: " << sim_ev << ", difference [%]: " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
+	for (std::size_t i = 0; i < subvol_ev.size(); ++i)
+		std::cout << "VOI " << i + 1 << " dxmc: " << subvol_ev[i] << ", TG195: " << sim_subvol[i] << ", difference [%]: " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
+	std::cout << "\n";
 	return true;
 }
 
 
 
+void testAttenuation()
+{
+	Material m("Tissue, Soft (ICRP)");
+	m.setStandardDensity(1.3);
+	std::array<double, 3> spacing = { 1, 1, 1 };
+	std::array<std::size_t, 3> dim = { 1, 1, 200 };
+	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
+	auto dens = std::make_shared<std::vector<double>>(size, m.standardDensity());
+	auto mat = std::make_shared<std::vector<unsigned char>>(size, 0);
+	World w;
+	w.setDimensions(dim);
+	w.setSpacing(spacing);
+	w.setDensityArray(dens);
+	w.setMaterialIndexArray(mat);
+	w.addMaterialToMap(m);
+	w.setAttenuationLutMaxEnergy(60);
+	w.validate();
+
+	PencilSource pen;
+	pen.setHistoriesPerExposure(1e6);
+	pen.setPhotonEnergy(56.4);
+	pen.setTotalExposures(4);
+	std::array<double, 6> cos = { -1,0,0,0,1,0 };
+	pen.setDirectionCosines(cos);
+	pen.setPosition(0, 0, -400);
+
+	auto kev = transport::run(w, &pen, nullptr, false);
+	std::vector<double> att(kev.size());
+	for (int i = 0; i < dim[2]; ++i)
+		att[i] = std::exp(-(i + 1) * dim[2] * m.standardDensity() * m.getTotalAttenuation(56.4));
+
+	const auto kev_max = *std::max_element(kev.cbegin(), kev.cend());
+
+	for (int i = 0; i < dim[2]; ++i)
+		std::cout << i * dim[2] + dim[2] * .5 << ", " << kev[i]/kev_max << ", " << att[i];
+
+}
+
 
 int main(int argc, char* argv[])
 {
-
+	testAttenuation();
+	/*
 	auto success = TG195Case2AbsorbedEnergy120();
 	success = success && TG195Case2AbsorbedEnergyMono();
 	if (success)
 		return EXIT_SUCCESS;
+	*/
 	return EXIT_FAILURE;
 }

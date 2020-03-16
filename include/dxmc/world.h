@@ -70,7 +70,7 @@ public:
 
 	void setAttenuationLutMaxEnergy(double max_keV);
 	double attenuationLutMaxEnergy(void) const { return m_attenuationLutMaxEnergy; }
-	void setAttenuationLutResolution(double keV) { m_attLut.setEnergyResolution(keV); };
+	void setAttenuationLutResolution(double keV);
 	double attenuationLutResolution(void) const { return m_attLut.energyResolution(); };
 
 
@@ -93,7 +93,7 @@ private:
 
 	std::array<double, 6> m_worldExtent; // {x0, x1, y0, y1, z0, z1}
 
-	// m_density and m_materialIndex must outlive member variables of this class, i.e shared pointers
+	// m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
     std::shared_ptr<std::vector<double>> m_density = nullptr;
     std::shared_ptr<std::vector<unsigned char>> m_materialIndex = nullptr;
     

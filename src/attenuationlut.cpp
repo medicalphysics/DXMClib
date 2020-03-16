@@ -31,15 +31,15 @@ void AttenuationLut::generate(const std::vector<Material>& materials, double min
 	m_maxEnergy = maxEnergy > m_minEnergy ? maxEnergy : m_minEnergy + 1.0;
 
 	m_energyResolution = static_cast<std::size_t>(std::ceil((m_maxEnergy - m_minEnergy) / m_energyStep));
-	m_materials = materials.size();
+	m_nMaterials = materials.size();
 
-	m_attData.resize(m_energyResolution * m_materials * 4 + m_energyResolution);
+	m_attData.resize(m_energyResolution * m_nMaterials * 4 + m_energyResolution);
 
 	//generating energy table
 	for (std::size_t i = 0; i < m_energyResolution; ++i)
 		m_attData[i] = m_minEnergy + i * m_energyStep;
 
-	for (std::size_t m = 0; m < m_materials; ++m)
+	for (std::size_t m = 0; m < m_nMaterials; ++m)
 	{
 		auto offset = m_energyResolution + m * m_energyResolution * 4;
 		for (std::size_t i = 0; i < m_energyResolution; ++i)
@@ -78,7 +78,7 @@ inline double interp(const T x1, const T x2, const T y1, const T y2, T xres)
 template<typename T >
 inline double interp(const T x[2], const T y[2], T xres)
 {
-	T val = y[0] + (y[1] - y[0]) * (xres - x[0]) / (x[1] - x[0]);
+	const T val = y[0] + (y[1] - y[0]) * (xres - x[0]) / (x[1] - x[0]);
 	return xres < x[0] ? y[0] : xres > x[1] ? y[1] : val;
 }
 
@@ -227,7 +227,7 @@ void AttenuationLut::generateFFdata(const std::vector<Material>& materials)
 	m_momtStepSqr = m_momtMaxSqr / (m_energyResolution - 1);
 
 
-	m_coherData.resize(m_energyResolution + m_energyResolution * m_materials);
+	m_coherData.resize(m_energyResolution + m_energyResolution * m_nMaterials);
 	std::fill(m_coherData.begin(), m_coherData.end(), 0.0);
 	for (std::size_t i = 0; i < m_energyResolution; ++i)
 		m_coherData[i] = m_momtStepSqr * i;
@@ -248,7 +248,7 @@ void AttenuationLut::generateFFdata(const std::vector<Material>& materials)
 	}
 	const double integratorStepSQR = integratorXSQR[1] - integratorXSQR[0];
 
-	for (std::size_t m = 0; m < m_materials; ++m)
+	for (std::size_t m = 0; m < m_nMaterials; ++m)
 	{
 		const auto integratorY = materials[m].getFormFactorSquared(integratorX); // squared form factor
 

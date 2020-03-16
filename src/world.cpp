@@ -178,6 +178,12 @@ void World::setAttenuationLutMaxEnergy(double max_keV)
 	m_valid = false;
 }
 
+void World::setAttenuationLutResolution(double keV)
+{
+	m_attLut.setEnergyResolution(keV);
+	m_valid = false;
+}
+
 template<typename It, typename Value>
 bool testMaterialIndex(It beg, It end, const std::vector<Value>& materialMap)
 {// validating that all material indices are present in the materialMap
@@ -239,7 +245,7 @@ bool World::validate()
 		}
     }
 
-    double testOrtogonality = vectormath::dot(m_depthDirectionCosine.data(), m_directionCosines.data()) +
+    const double testOrtogonality = vectormath::dot(m_depthDirectionCosine.data(), m_directionCosines.data()) +
             vectormath::dot(&m_depthDirectionCosine[0], &m_directionCosines[3]) +
             vectormath::dot(&m_directionCosines[0], &m_directionCosines[3]);
 

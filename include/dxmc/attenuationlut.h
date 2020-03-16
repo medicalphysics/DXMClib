@@ -206,7 +206,7 @@ private:
 	double m_momtMaxSqr = 0;
 	double m_momtStepSqr = 0;
 	std::size_t m_energyResolution = 150;
-	std::size_t m_materials = 0;
+	std::size_t m_nMaterials = 0;
 	std::vector<double> m_attData; // energy, array-> total, photo, compton, rauleight
 	std::vector<double> m_coherData; //qsquared, array-> A(qsquared)
 	std::vector<double> m_maxMassAtt;
@@ -217,7 +217,7 @@ private:
 template<typename It1, typename It2>
 void AttenuationLut::generateMaxMassTotalAttenuation(It1 materialIndexBegin, It1 materialIndexEnd, It2 densityBegin)
 {
-	std::vector<double> maxDens(m_materials, 0.0);
+	std::vector<double> maxDens(m_nMaterials, 0.0);
 	
 	while (materialIndexBegin != materialIndexEnd)
 	{
@@ -228,7 +228,7 @@ void AttenuationLut::generateMaxMassTotalAttenuation(It1 materialIndexBegin, It1
 
 	m_maxMassAtt.resize(m_energyResolution);
 	std::fill(m_maxMassAtt.begin(), m_maxMassAtt.end(), 0.0);
-	for (std::size_t material = 0; material < m_materials; ++material)
+	for (std::size_t material = 0; material < m_nMaterials; ++material)
 	{
 		for (std::size_t i = 0; i < m_energyResolution; ++i)
 		{
