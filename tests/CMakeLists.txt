@@ -5,6 +5,7 @@ set(TEST_SOURCES
     "testmaterial.cpp"
     "testrandom.cpp"
     "testattenuationlut.cpp"
+    "testtransport.cpp"
 )
 
 foreach(sourcefile ${TEST_SOURCES})

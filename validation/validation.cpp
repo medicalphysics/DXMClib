@@ -9,6 +9,7 @@
 #include <execution>
 #include <iostream>
 #include <cassert>
+#include <fstream>
 
 constexpr double ERRF = 1e-4;
 
@@ -45,6 +46,12 @@ bool inline isEqual(double a, double b)
 }
 
 bool betw(std::size_t v, std::size_t min, std::size_t max)
+{
+	if (v >= min && v < max)
+		return true;
+	return false;
+}
+bool betw(double v, double min, double max)
 {
 	if (v >= min && v < max)
 		return true;
@@ -219,55 +226,289 @@ bool TG195Case2AbsorbedEnergy120()
 	return true;
 }
 
-
-
-void testAttenuation()
+std::vector<std::size_t> circleIndices(const double center_x, const double center_y, const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing, const double radii=1.0)
 {
+	std::vector<std::size_t> ind;
+	const double radii2 = radii * radii;
+	for (std::size_t yi = 0; yi < dim[1]; ++yi)
+		for (std::size_t xi = 0; xi < dim[0]; ++xi)
+		{
+			const double x = xi * spacing[0] - center_x;
+			const double y = yi * spacing[1] - center_y;
+			if ((x*x+y*y) <= radii2)
+			{
+				const auto i = xi  + yi * dim[0];
+				ind.push_back(i);
+			}
+		}
+	return ind;
+}
+
+World generateTG195Case4World1() {
+
+	const std::array<std::size_t, 3> dim = {320,320,600};
+	const std::array<double, 3> spacing = { 1,1,5 };
+	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
+
+	Material air("C0.02N78.44O21.08Ar0.47");
+	air.setStandardDensity(0.001205);
+	Material pmma("H53.28C33.37O13.35");
+	pmma.setStandardDensity(1.19);
+
+	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
+	auto dens = std::make_shared<std::vector<double>>(size, air.standardDensity());
+	//generate cylindar
+	auto circ_ind = circleIndices(160.0, 160.0, dim, spacing, 160.0);
+	for (std::size_t z =0;z < dim[2];++z)
+		for (const auto ind : circ_ind)
+		{
+			const auto i = z * dim[0] * dim[1] + ind;
+			(mat->data())[i] = static_cast<unsigned char>(1);
+			(dens->data())[i] = pmma.standardDensity();
+			if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -5, 5))
+				mat->data()[i] = static_cast<unsigned char>(2);
+			if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -15, -5))
+				mat->data()[i] = static_cast<unsigned char>(3);
+			if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -25, -15))
+				mat->data()[i] = static_cast<unsigned char>(4);
+			if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -35, -25))
+				mat->data()[i] = static_cast<unsigned char>(5);
+		}
+
+
+	World w;
+	w.setSpacing(spacing);
+	w.setDimensions(dim);
+	w.setDensityArray(dens);
+	w.setMaterialIndexArray(mat);
+	w.addMaterialToMap(air);
+	w.addMaterialToMap(pmma);
+	for (int i = 0; i < 4; ++i)
+		w.addMaterialToMap(pmma);
+	w.validate();
+	return w;
+}
+
+World generateTG195Case4World2() {
+
+	const std::array<std::size_t, 3> dim = { 320,320,600 };
+	const std::array<double, 3> spacing = { 1,1,5 };
+	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
+
+	Material air("C0.02N78.44O21.08Ar0.47");
+	air.setStandardDensity(0.001205);
+	Material pmma("H53.28C33.37O13.35");
+	pmma.setStandardDensity(1.19);
+
+	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
+	auto dens = std::make_shared<std::vector<double>>(size, air.standardDensity());
+	//generate cylindar
+	auto circ_ind = circleIndices(320. * .5, 320. * .5, dim, spacing, 320. * 0.5);
+	auto pmma2_ind = circleIndices(320. * .5 - 150, 320. * .5, dim, spacing, 10.0);
+	auto pmma1_ind = circleIndices(320. * .5, 320. * .5, dim, spacing, 10.0);
+	for (std::size_t z = 0; z < dim[2]; ++z)
+		for (const auto i : circ_ind)
+		{
+			const auto ind = z * dim[0] * dim[1] + i;
+			mat->data()[ind] = static_cast<unsigned char>(1);
+			dens->data()[ind] = pmma.standardDensity();
+		}
+	for (const auto i : pmma1_ind)
+	{
+		const auto ind1 = 299*  dim[0] * dim[1] + i;
+		const auto ind2 = 300 * dim[0] * dim[1] + i;
+		mat->data()[ind1] = static_cast<unsigned char>(2);
+		mat->data()[ind2] = static_cast<unsigned char>(2);
+	}
+
+	for (const auto i : pmma2_ind)
+	{
+		const auto ind1 = 299 * dim[0] * dim[1] + i;
+		const auto ind2 = 300 * dim[0] * dim[1] + i;
+		mat->data()[ind1] = static_cast<unsigned char>(3);
+		mat->data()[ind2] = static_cast<unsigned char>(3);
+	}
+
+	World w;
+	w.setSpacing(spacing);
+	w.setDimensions(dim);
+	w.setDensityArray(dens);
+	w.setMaterialIndexArray(mat);
+	w.addMaterialToMap(air);
+	w.addMaterialToMap(pmma);
+	for (int i = 0; i < 2; ++i)
+		w.addMaterialToMap(pmma);
+	w.validate();
+	return w;
+}
+
+
+bool TG195Case4AbsorbedEnergy() {
+	IsotropicSource src;
+	src.setPosition(-600.0, 0., 0.);
+	std::array<double, 6> cos = { 0,1,0 , 0,0,1 };
+	src.setDirectionCosines(cos);
+	
+	double direction[3];
+	vectormath::cross(cos.data(), direction);
+
+	std::cout << "TG195 Case 4.1:\nMonoenergetic specter of 56.4 kev\n";
+	std::cout << "Collimation: 10 mm:\n";
+	std::vector<double> s, e;
+	s.push_back(1.0);
+	e.push_back(56.4);
+	src.setSpecter(s, e);
+	src.setHistoriesPerExposure(1e6);
+	src.setTotalExposures(16);
+	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
+	auto w = generateTG195Case4World1();
+
+	auto dose = transport::run(w, &src, nullptr, false);
+
+	const double total_hist = static_cast<double>(src.totalExposures() * src.historiesPerExposure());
+	std::array<double, 4> voi_ev;
+	for (std::size_t i = 0; i < 4; ++i) {
+		voi_ev[i] = 1000.0 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
+	}
+	std::array<double, 4> sim_ev = { 11592.27,2576.72,1766.85,1330.53 };
+	for (std::size_t i = 0; i < voi_ev.size(); ++i)
+		std::cout << "VOI " << i + 1 << " dxmc: " << voi_ev[i] << ", TG195: " << sim_ev[i] << ", difference [%]: " << (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100 << "\n";
+	std::cout << std::endl;
+	
+	
+	/*auto myfile = std::fstream("dens.bin", std::ios::out | std::ios::binary | std::ios::trunc);
+	myfile.write((const char*)(w.densityBuffer()), sizeof(double) * dose.size());
+	myfile.close();
+	myfile = std::fstream("mat.bin", std::ios::out | std::ios::binary | std::ios::trunc);
+	myfile.write((const char*)(w.materialIndexBuffer()), sizeof(unsigned char) * dose.size());
+	myfile.close();
+	myfile = std::fstream("dose.bin", std::ios::out | std::ios::binary | std::ios::trunc);
+	myfile.write((const char*)(dose.data()), sizeof(double) * dose.size());
+	myfile.close();*/
+
+
+	std::cout << "Collimation: 80 mm:\n";
+	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
+	
+	dose = transport::run(w, &src, nullptr, false);
+
+	for (std::size_t i = 0; i < 4; ++i) {
+		voi_ev[i] = 1000 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
+	}
+
+	sim_ev = { 3380.39,3332.64,3176.44,2559.58 };
+
+	for (std::size_t i = 0; i < voi_ev.size(); ++i)
+		std::cout << "VOI " << i + 1 << " dxmc: " << voi_ev[i] << ", TG195: " << sim_ev[i] << ", difference [%]: " << (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100 << "\n";
+
+
+
+	std::cout << "TG195 Case 4.1:\nSpecter of 120 kV W/Al\n";
+	std::cout << "Collimation: 10 mm:\n";
+	   	  
+	for (std::size_t i = 0; i < TG195_120KV.size(); i = i + 2)
+	{
+		e.push_back(TG195_120KV[i]);
+		s.push_back(TG195_120KV[i + 1]);
+	}
+	src.setSpecter(s, e);
+	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
+	dose = transport::run(w, &src, nullptr, false);
+	for (std::size_t i = 0; i < 4; ++i) {
+		voi_ev[i] = 1000 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
+	}
+	sim_ev = { 13137.02,2585.47,1706.86,1250.61	};
+
+	for (std::size_t i = 0; i < voi_ev.size(); ++i)
+		std::cout << "VOI " << i + 1 << " dxmc: " << voi_ev[i] << ", TG195: " << sim_ev[i] << ", difference [%]: " << (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100 << "\n";
+	std::cout << "Collimation: 80 mm:\n";
+	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
+	dose = transport::run(w, &src, nullptr, false);
+
+	for (std::size_t i = 0; i < 4; ++i) {
+		voi_ev[i] = 1000 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
+	}
+	sim_ev = { 3586.59,3537.84,3378.99,2672.21	};
+
+	for (std::size_t i = 0; i < voi_ev.size(); ++i)
+		std::cout << "VOI " << i + 1 << " dxmc: " << voi_ev[i] << ", TG195: " << sim_ev[i] << ", difference [%]: " << (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100 << "\n";
+
+
+	std::cout << "\n";
+
+
+
+
+
+
+
+	return false;
+}
+
+bool testAttenuation()
+{
+	const double energy = 56.4;
 	Material m("Tissue, Soft (ICRP)");
 	m.setStandardDensity(1.3);
 	std::array<double, 3> spacing = { 1, 1, 1 };
 	std::array<std::size_t, 3> dim = { 1, 1, 200 };
 	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
 	auto dens = std::make_shared<std::vector<double>>(size, m.standardDensity());
-	auto mat = std::make_shared<std::vector<unsigned char>>(size, 0);
+	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
 	World w;
 	w.setDimensions(dim);
 	w.setSpacing(spacing);
 	w.setDensityArray(dens);
 	w.setMaterialIndexArray(mat);
 	w.addMaterialToMap(m);
-	w.setAttenuationLutMaxEnergy(60);
+	w.setAttenuationLutMaxEnergy(std::ceil(energy));
 	w.validate();
 
 	PencilSource pen;
-	pen.setHistoriesPerExposure(1e6);
-	pen.setPhotonEnergy(56.4);
-	pen.setTotalExposures(4);
-	std::array<double, 6> cos = { -1,0,0,0,1,0 };
+	pen.setHistoriesPerExposure(1e7);
+	pen.setPhotonEnergy(energy);
+	pen.setTotalExposures(16);
+	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);
+
+	const auto tot_hist = pen.historiesPerExposure() * pen.totalExposures();
 
 	auto kev = transport::run(w, &pen, nullptr, false);
 	std::vector<double> att(kev.size());
 	for (int i = 0; i < dim[2]; ++i)
-		att[i] = std::exp(-(i + 1) * dim[2] * m.standardDensity() * m.getTotalAttenuation(56.4));
-
+		att[i] = std::exp(-(i + 1) * spacing[2]*0.1 * m.standardDensity() * m.getTotalAttenuation(56.4));
+	
+	const auto att_max = *std::max_element(att.cbegin(), att.cend());
 	const auto kev_max = *std::max_element(kev.cbegin(), kev.cend());
 
-	for (int i = 0; i < dim[2]; ++i)
-		std::cout << i * dim[2] + dim[2] * .5 << ", " << kev[i]/kev_max << ", " << att[i];
+	std::transform(att.cbegin(), att.cend(), att.begin(), [=](double a) {return a / att_max; });
+	std::transform(kev.cbegin(), kev.cend(), kev.begin(), [=](double e) {return e / kev_max; });
 
+	const double rms = std::sqrt((1.0 / att.size()) * std::transform_reduce(kev.cbegin(), kev.cend(), att.cbegin(), 0.0, std::plus<>(), [](double e, double a)->double {return (e - a) * (e - a); }));
+
+	std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
+	std::cout << "Monochromatic beam of " << energy << " kev.\n";
+	std::cout << "RMS differense [%]: " << rms*100.0 << "\n";
+	std::cout << "Data: Position (midtpoint) [mm], dxmc rel. dose, analytical rel. attenuation, Difference [%]\n";
+	for (int i = 0; i < dim[2]; ++i)
+		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << kev[i] << ", " << att[i] << ", " << (kev[i] - att[i]) / att[i]*100.0 << "\n";
+	if (rms < 0.5) {
+		std::cout << "SUCCESS\n\n";
+		return true;
+	}
+	std::cout << "FAILURE\n\n";
+	return false;
 }
 
 
 int main(int argc, char* argv[])
 {
-	testAttenuation();
-	/*
-	auto success = TG195Case2AbsorbedEnergy120();
+	auto test = TG195Case4AbsorbedEnergy();
+	auto success = testAttenuation();
+	success = success && TG195Case2AbsorbedEnergy120();
 	success = success && TG195Case2AbsorbedEnergyMono();
 	if (success)
 		return EXIT_SUCCESS;
-	*/
 	return EXIT_FAILURE;
 }
