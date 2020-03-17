@@ -1,11 +1,27 @@
 
 
+
+
+add_executable(testtransport "testtransport.cpp")
+target_include_directories(testtransport PRIVATE ${XRAYLIB_INCLUDES})
+target_link_libraries(testtransport libdxmc ${XRAYLIB})
+add_test(testtransport testtransport)
+set_tests_properties(testtransport
+    PROPERTIES
+    PASS_REGULAR_EXPRESSION "Test passed")
+set_tests_properties(testtransport
+    PROPERTIES
+    FAIL_REGULAR_EXPRESSION "(Exception|Test failed)")
+set_tests_properties(testtransport
+    PROPERTIES
+    TIMEOUT 120)
+
+
 set(TEST_SOURCES 
     "testsource.cpp"
     "testmaterial.cpp"
     "testrandom.cpp"
     "testattenuationlut.cpp"
-    "testtransport.cpp"
 )
 
 foreach(sourcefile ${TEST_SOURCES})

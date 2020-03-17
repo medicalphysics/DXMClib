@@ -134,7 +134,7 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 		for (int i = 0; i < m->nElements; i++)
 		{
 			elements[i] = m->Elements[i];
-			fraction[i] = m->massFractions[i];
+			fraction[i] = m->nAtoms[i]/(m->nAtomsAll);
 		}
 		FreeCompoundData(m);
 		m = nullptr;
@@ -147,8 +147,10 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 		for (int i = 0; i < n->nElements; i++)
 		{
 			elements[i] = n->Elements[i];
-			fraction[i] = n->massFractions[i];
+			fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
 		}
+		const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
+		std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) {return w / weight; });
 		FreeCompoundDataNIST(n);
 		n = nullptr;
 	}

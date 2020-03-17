@@ -164,7 +164,7 @@ public:
 	 * @param cumFormFactorSquared cummulative atomic form factor
 	 * @return double 
 	 */
-	double momentumTransferSquared(std::size_t material, double cumFormFactorSquared) const;
+	double momentumTransfer(std::size_t material, double cumFormFactorSquared) const;
 
 	/**
 	 * @brief Calculate cummulative atomic form factor squared from the squared momentum transfer for a specified material
@@ -173,7 +173,7 @@ public:
 	 * @param momentumTransferSquared squared of momentum transfer 
 	 * @return double 
 	 */
-	double cumFormFactorSquared(std::size_t material, double momentumTransferSquared) const;
+	double cumFormFactorSquared(std::size_t material, double momentumTransfer) const;
 	
 	/**
 	 * @brief Momentum transfer for Rayleigh scattering
@@ -192,6 +192,7 @@ public:
 	 */
 	static double momentumTransferMax(double energy);
 
+	static double cosAngle(double energy, double momentumTransfer);
 protected:
 	/**
 	 * @brief Generate atomic form factors for materials specified.
@@ -203,12 +204,14 @@ private:
 	double m_minEnergy = 0;
 	double m_maxEnergy = 150.0;
 	double m_energyStep = 1.0;
-	double m_momtMaxSqr = 0;
-	double m_momtStepSqr = 0;
+	double m_momtMax = 0;
+	double m_momtMin = 0;
+	double m_momtStep = 0;
+	std::size_t m_momtSize = 0;
 	std::size_t m_energyResolution = 150;
 	std::size_t m_nMaterials = 0;
 	std::vector<double> m_attData; // energy, array-> total, photo, compton, rauleight
-	std::vector<double> m_coherData; //qsquared, array-> A(qsquared)
+	std::vector<double> m_rayleighFormFactorSqr; //qsquared, array-> A(qsquared)
 	std::vector<double> m_maxMassAtt;
 };
 

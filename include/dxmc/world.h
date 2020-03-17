@@ -89,7 +89,7 @@ private:
 	std::array<double, 3> m_origin = { 0.0, 0.0, 0.0 };
 	std::array<double, 6> m_directionCosines = { 1.0 , 0.0, 0.0, 0.0, 1.0, 0.0 };
 	std::array<double, 3> m_depthDirectionCosine = {0.0, 0.0, 1.0};
-	std::array<std::size_t, 3> m_dimensions = { 0, 0, 0 };
+	std::array<std::size_t, 3> m_dimensions = { 0L, 0L, 0L };
 
 	std::array<double, 6> m_worldExtent; // {x0, x1, y0, y1, z0, z1}
 

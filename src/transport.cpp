@@ -191,26 +191,24 @@ namespace transport {
 
 		//finding qmax
 		const double qmax = attLut.momentumTransferMax(particle.energy);
-		const double qmaxSqr = qmax * qmax;
-		const double AqmaxSquared = attLut.cumFormFactorSquared(materialIdx, qmaxSqr);
+		const double amax = attLut.cumFormFactorSquared(materialIdx, qmax);
 
-		double mu;
-		bool rejected;
+		double r2;
 		do {
 			const double r1 = randomUniform<double>(seed);
-			const double AqSquared = AqmaxSquared * r1;
 
-			const double qSquared = attLut.momentumTransferSquared(materialIdx, AqSquared);
+			const double aatq = amax * r1;
 
-			mu = 1.0 - qSquared / (2.0 * qmaxSqr);
+			const double q = attLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
 
-			const double r2 = randomUniform<double>(seed);
+			cosAngle = attLut.cosAngle(particle.energy, q);
 
-			rejected = r2 < (1.0 + mu * mu) / 2.0;
-		} while (rejected);
+			r2 = randomUniform<double>(seed);
 
-		cosAngle = mu;
-		const double theta = std::acos(mu);
+		} while ((0.5+cosAngle*0.5) >= r2);
+
+		
+		const double theta = std::acos(cosAngle);
 		const double phi = randomUniform<double>(seed, 0.0, PI_VAL2);
 		vectormath::peturb<double>(particle.dir, theta, phi);
 	}
