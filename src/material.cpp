@@ -121,7 +121,7 @@ std::string Material::getSymbolFromAtomicNumber(int Z)
 }
 
 
-std::vector<double> Material::getFormFactorSquared(const std::vector<double>& momentumTransfer) const
+std::vector<double> Material::getRayleightFormFactorSquared(const std::vector<double>& momentumTransfer) const
 {
 	std::vector<double> fraction;
 	std::vector<int> elements;
@@ -163,6 +163,51 @@ std::vector<double> Material::getFormFactorSquared(const std::vector<double>& mo
 			formFactor[i]+= fraction[j] * FF_Rayl(elements[j], momentumTransfer[i], nullptr);
 		}
 		formFactor[i] = formFactor[i] * formFactor[i];
+	}
+	return formFactor;
+}
+
+std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const
+{
+	std::vector<double> fraction;
+	std::vector<int> elements;
+
+	struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
+	if (m)
+	{
+		fraction.resize(m->nElements);
+		elements.resize(m->nElements);
+		for (int i = 0; i < m->nElements; i++)
+		{
+			elements[i] = m->Elements[i];
+			fraction[i] = m->nAtoms[i] / (m->nAtomsAll);
+		}
+		FreeCompoundData(m);
+		m = nullptr;
+	}
+	struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
+	if (n)
+	{
+		fraction.resize(n->nElements);
+		elements.resize(n->nElements);
+		for (int i = 0; i < n->nElements; i++)
+		{
+			elements[i] = n->Elements[i];
+			fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
+		}
+		const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
+		std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) {return w / weight; });
+		FreeCompoundDataNIST(n);
+		n = nullptr;
+	}
+
+	std::vector<double> formFactor(momentumTransfer.size(), 0.0);
+	for (std::size_t i = 0; i < formFactor.size(); ++i)
+	{
+		for (std::size_t j = 0; j < fraction.size(); ++j)
+		{
+			formFactor[i] += fraction[j] * SF_Compt(elements[j], momentumTransfer[i], nullptr) / elements[j];
+		}
 	}
 	return formFactor;
 }

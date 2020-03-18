@@ -8,23 +8,39 @@
 bool testCompton(double keV, const Material& mat)
 {
     constexpr std::size_t nHist = 100;
-    constexpr std::size_t samples = 1e6;
+    constexpr std::size_t samples = 1e5;
 
     std::uint64_t seed[2];
     randomSeed(seed);
     
-    std::vector<std::size_t> hist(nHist, 0);
+ 
+    AttenuationLut lut;
+    std::vector<Material> mats;
+    mats.push_back(mat);
+    lut.generate(mats, 0.,keV);
+    lut.generate(mats);
 
     Particle p;
     p.energy = keV;
     double cosang;
+    std::vector<std::size_t> histL(nHist, 0);
     for (std::size_t i = 0; i < samples; ++i)
     {
-        transport::comptonScatterEGS(p, seed, cosang);
+        transport::comptonScatterLivermore(p, 0, lut, seed, cosang);
+        auto ind = static_cast<std::size_t>((cosang + 1.0) * (nHist) * 0.5);
+        histL[ind] += 1;
+    }
+    const double histL_sum = std::accumulate(histL.cbegin(), histL.cend(), 0.0);
+
+    std::vector<std::size_t> hist(nHist, 0);
+    for (std::size_t i = 0; i < samples; ++i)
+    {
+        transport::comptonScatter(p, seed, cosang);
         auto ind = static_cast<std::size_t>((cosang + 1.0) * (nHist) * 0.5);
         hist[ind] += 1;
     }
     const double hist_sum = std::accumulate(hist.cbegin(), hist.cend(), 0.0);
+
 
     std::vector<double> histF(nHist, 0);
     for (std::size_t i = 0; i < nHist; ++i)
@@ -39,10 +55,10 @@ bool testCompton(double keV, const Material& mat)
 
 
 
-    std::cout << "cos angle, hist, analytical\n";
+    std::cout << "cos angle, hist Livermore, hist, analytical\n";
     for (int i = 0; i < nHist; ++i)
     {
-        std::cout << 2.0 * i / nHist - 1.0 << ", " << hist[i]/hist_sum << ", " << histF[i]/histF_sum << "\n";
+        std::cout << 2.0 * i / nHist - 1.0 << ", " <<histL[i]/histL_sum << ", "<< hist[i]/hist_sum << ", " << histF[i]/histF_sum << "\n";
     }
     std::cout << std::endl;
 
@@ -60,9 +76,6 @@ bool testRayleight(double keV, const Material& mat)
     std::uint64_t seed[2];
     randomSeed(seed);
 
-    std::vector<std::size_t> hist(nHist, 0);
-
-
     AttenuationLut lut;
     std::vector<Material> mats;
     mats.push_back(mat);
@@ -73,14 +86,17 @@ bool testRayleight(double keV, const Material& mat)
     Particle p;
     p.energy = keV;
     double cosang;
+
+    std::vector<std::size_t> histL(nHist, 0);
     for (std::size_t i = 0; i < samples; ++i)
     {
-        transport::rayleightScatter(p, 0, lut, seed, cosang);
+        transport::rayleightScatterLivermore(p, 0, lut, seed, cosang);
         auto ind = static_cast<std::size_t>((cosang + 1.0) * (nHist) * 0.5);
         ind = ind >= nHist ? nHist - 1 : ind;
-        hist[ind] += 1;
+        histL[ind] += 1;
     }
 
+    
     std::vector<double> ana(nHist, 0.0);
     for (std::size_t i = 0; i < nHist; ++i)
     {
@@ -92,14 +108,13 @@ bool testRayleight(double keV, const Material& mat)
         ana[ind] = att;
     }
 
-    auto hist_sum = std::reduce(hist.cbegin(), hist.cend(), 0.0);
-
+    auto histL_sum = std::reduce(histL.cbegin(), histL.cend(), 0.0);
     auto ana_sum = std::reduce(ana.cbegin(), ana.cend(), 0.0);
 
-    std::cout << "cos angle, Rayleight, Analytical\n";
+    std::cout << "cos angle,  RayleightLivermore, Analytical\n";
     for (int i = 0; i < nHist; ++i)
     {
-        std::cout << 2.0 * i / nHist - 1.0 << ", " << hist[i]/hist_sum<<", "<< ana[i]/ana_sum <<"\n";
+        std::cout << 2.0 * i / nHist - 1.0 <<  ", " << histL[i] / histL_sum << ", " << ana[i] / ana_sum << "\n";
     }
     std::cout << std::endl;
 
@@ -112,10 +127,11 @@ int main (int argc, char *argv[])
 {
 
     //testCompton(30.0);
-    Material mat("Water, Liquid");
+    //Material mat("Water, Liquid");
+    Material mat(6);
     //Material mat(8);
-    //testRayleight(10, mat);
-    testCompton(100, mat);
+    testRayleight(50, mat);
+    //testCompton(10, mat);
     return 0;
 }
 

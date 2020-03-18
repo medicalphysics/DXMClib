@@ -175,6 +175,8 @@ public:
 	 */
 	double cumFormFactorSquared(std::size_t material, double momentumTransfer) const;
 	
+	double comptonScatterFactor(std::size_t material, double momentumTransfer) const;
+
 	/**
 	 * @brief Momentum transfer for Rayleigh scattering
 	 * 
@@ -183,6 +185,7 @@ public:
 	 * @return double 
 	 */
 	static double momentumTransfer(double energy, double angle);
+	static double momentumTransferFromCos(double energy, double cosAngle);
 
 	/**
 	 * @brief Max of momentum transfer for a Rayleigh scattering 
@@ -200,14 +203,19 @@ protected:
 	 * @param materials Vector of Materials
 	 */
 	void generateFFdata(const std::vector<Material>& materials);
+	void generateSFdata(const std::vector<Material>& materials);
 private:
 	double m_minEnergy = 0;
 	double m_maxEnergy = 150.0;
 	double m_energyStep = 1.0;
 	std::size_t m_energyResolution = 150;
+	std::size_t m_momtranfResolution = 512;
+	double m_momtranfStep = 0;
+
 	std::size_t m_nMaterials = 0;
 	std::vector<double> m_attData; // energy, array-> total, photo, compton, rauleight
 	std::vector<double> m_rayleighFormFactorSqr; //qsquared, array-> A(qsquared)
+	std::vector<double> m_comptonScatterFactor;
 	std::vector<double> m_maxMassAtt;
 };
 

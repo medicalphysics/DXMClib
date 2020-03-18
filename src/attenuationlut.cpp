@@ -55,6 +55,7 @@ void AttenuationLut::generate(const std::vector<Material>& materials, double min
 			m_attData[i + offset] = materials[m].getRayleightAttenuation(m_attData[i]);
 	}
 	generateFFdata(materials);
+	generateSFdata(materials);
 
 	//maxenergies
 	std::vector<double> densArray;
@@ -202,24 +203,57 @@ double AttenuationLut::momentumTransfer(std::size_t material, double cumFormFact
 
 double AttenuationLut::cumFormFactorSquared(std::size_t material, double momentumTransfer) const
 {
-	const auto offset = m_energyResolution + material * m_energyResolution;
+	const auto offset = m_momtranfResolution + material * m_momtranfResolution;
 	auto begin = m_rayleighFormFactorSqr.cbegin();
-	auto end = begin + m_energyResolution;
+	auto end = begin + m_momtranfResolution;
 
 	const auto pos = std::lower_bound(begin, end, momentumTransfer);
 
 	if (pos == end)
-		return m_rayleighFormFactorSqr[offset + m_energyResolution - 1];
+		return m_rayleighFormFactorSqr[offset + m_momtranfResolution - 1];
 	
 	const auto distance = std::distance(begin, pos);
 	if (distance <= 0)
 		return m_rayleighFormFactorSqr[offset];
 	return interp(&m_rayleighFormFactorSqr[distance-1], &m_rayleighFormFactorSqr[offset + distance-1], momentumTransfer);
 }
+double AttenuationLut::comptonScatterFactor(std::size_t material, double momentumTransfer) const
+{
+
+	/*const auto offset = m_momtranfResolution + material * m_momtranfResolution;
+	auto begin = m_comptonScatterFactor.cbegin();
+	auto end = begin + m_momtranfResolution;
+
+	const auto pos = std::lower_bound(begin, end, momentumTransfer);
+
+	if (pos == end)
+		return m_comptonScatterFactor[offset + m_momtranfResolution - 1];
+
+	const auto distance = std::distance(begin, pos);
+	if (distance <= 0)
+		return m_comptonScatterFactor[offset];
+	return interp(&m_comptonScatterFactor[distance - 1], &m_comptonScatterFactor[offset + distance - 1], momentumTransfer);
+	*/
+	const std::size_t offset = m_momtranfResolution + m_momtranfResolution * material;
+	if (momentumTransfer <= 0.0)
+		return m_comptonScatterFactor[offset];
+	
+	const std::size_t idx = static_cast<std::size_t>(momentumTransfer / m_momtranfStep);
+	if (idx >= m_momtranfResolution)
+		return m_comptonScatterFactor[offset + m_momtranfResolution - 1];
+	return interp(&m_comptonScatterFactor[idx], &m_comptonScatterFactor[idx + offset], momentumTransfer);
+	
+
+}
 double AttenuationLut::momentumTransfer(double energy, double angle)
 {
 	constexpr double k = 1.0 / KEV_TO_A; //constant for momentum transfer
 	return energy * std::sin(angle / 2.0) * k;
+}
+double AttenuationLut::momentumTransferFromCos(double energy, double cosAngle)
+{
+	constexpr double k = 1.0 / KEV_TO_A; //constant for momentum transfer
+	return energy * k * std::sqrt(0.5 - cosAngle * 0.5);
 }
 double AttenuationLut::momentumTransferMax(double energy)
 {
@@ -252,19 +286,45 @@ void AttenuationLut::generateFFdata(const std::vector<Material>& materials)
 
 	const double globalMomMax = momentumTransferMax(m_maxEnergy);
 	
-	std::vector<double> qvalues(m_energyResolution);
-	for (std::size_t i = 0; i < m_energyResolution; ++i)
-		qvalues[i] = (i*globalMomMax/(m_energyResolution-1))*(i * globalMomMax / (m_energyResolution-1))/ globalMomMax;  // nonlinear integration steps
+	std::vector<double> qvalues(m_momtranfResolution);
+	for (std::size_t i = 0; i < m_momtranfResolution; ++i)
+		qvalues[i] = (i*globalMomMax/(m_momtranfResolution-1))*(i * globalMomMax / (m_momtranfResolution-1))/ globalMomMax;  // nonlinear integration steps
 
 
-	m_rayleighFormFactorSqr.resize(m_energyResolution + materials.size() * m_energyResolution);
+	m_rayleighFormFactorSqr.resize(m_momtranfResolution + materials.size() * m_momtranfResolution);
 	std::copy(qvalues.cbegin(), qvalues.cend(), m_rayleighFormFactorSqr.begin());
 
 	for (std::size_t i = 0; i < materials.size(); ++i)
 	{
-		auto ffmaxsqr = materials[i].getFormFactorSquared(qvalues);
+		auto ffmaxsqr = materials[i].getRayleightFormFactorSquared(qvalues);
 		auto ffmaxsqrint = trapz(ffmaxsqr, qvalues);
-		auto start = m_rayleighFormFactorSqr.begin() + m_energyResolution + i * m_energyResolution;
+		auto start = m_rayleighFormFactorSqr.begin() + m_momtranfResolution + i * m_momtranfResolution;
 		std::copy(ffmaxsqrint.cbegin(), ffmaxsqrint.cend(), start);
+	}
+}
+
+
+void AttenuationLut::generateSFdata(const std::vector<Material>& materials)
+{
+	// Compton scatter corrections
+
+	//se http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
+
+	const double globalMomMax = momentumTransferMax(m_maxEnergy);
+	std::vector<double> qvalues(m_momtranfResolution);
+	m_momtranfStep = globalMomMax / (m_momtranfResolution - 1);
+	for (std::size_t i = 0; i < m_momtranfResolution; ++i)
+		qvalues[i] = i * m_momtranfStep;
+		//qvalues[i] = ((i+1) * globalMomMax / (m_momtranfResolution - 1)) * ((i+1) * globalMomMax / (m_momtranfResolution - 1)) / globalMomMax;  // nonlinear integration steps
+
+	m_comptonScatterFactor.resize(m_momtranfResolution + materials.size() * m_momtranfResolution);
+	std::copy(qvalues.cbegin(), qvalues.cend(), m_comptonScatterFactor.begin());
+	for (std::size_t i = 0; i < materials.size(); ++i)
+	{
+		auto sfmax = materials[i].getComptonNormalizedScatterFactor(qvalues);
+		
+		auto start = m_comptonScatterFactor.begin() + m_momtranfResolution + i * m_momtranfResolution;
+		//std::copy(sfmax.cbegin(), sfmax.cend(), start);
+		std::copy(sfmax.cbegin(), sfmax.cend(), start);
 	}
 }

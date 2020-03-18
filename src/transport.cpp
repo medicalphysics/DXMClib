@@ -113,78 +113,7 @@ namespace transport {
 	}
 
 
-	/*void rayleightScatterPenelope(Particle& particle, const AttenuationLutElement& lutElement, std::uint64_t seed[2], double& cosAngle)
-	{
-		const double qmax = 2.0 * particle.energy / ELECTRON_REST_MASS;
-		const double qmaxsqr = qmax;// qmax *qmax;
-		//const double qmaxsqr = qmax *qmax;
-
-		const double AqmaxSquared = interpolate(lutElement.rayleighMomentumTransferSquared,
-			lutElement.rayleighCumFormFactorSquared,
-			qmaxsqr);
-
-		double costheta;
-
-		bool rejected;
-		do {
-			const double r1 = randomUniform<double>(seed);
-			const double A = r1 * AqmaxSquared;
-
-			const double qsqr = interpolate(lutElement.rayleighCumFormFactorSquared, lutElement.rayleighMomentumTransferSquared, A);
-
-			costheta = 1.0 - 2.0*qsqr / qmaxsqr;
-
-			const double g = 0.5 * (1.0 + costheta * costheta);
-			const double r2 = randomUniform<double>(seed);
-			rejected = r2 < g;
-		} while (rejected);
-
-		cosAngle = costheta;
-		const double theta = std::acos(costheta);
-		const double phi = randomUniform<double>(seed, 0.0, PI_VAL2);
-		vectormath::peturb<double>(particle.dir, theta, phi);
-	}
-
-	void rayleightScatterEGS(Particle& particle, const AttenuationLutElement& lutElement, std::uint64_t seed[2], double& cosAngle)
-	{
-		// theta is scattering angle
-		// see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
-
-
-		//finding qmax
-		const double k = particle.energy / ELECTRON_REST_MASS;
-		const double qmaxSquared = 2.0*k;//4.0 * k * k;
-		//const double qmaxSquared = 4.0 * k * k;
-
-
-		const double AqmaxSquared = interpolate(lutElement.rayleighMomentumTransferSquared,
-			lutElement.rayleighCumFormFactorSquared,
-			qmaxSquared);
-
-		double mu;
-		bool rejected;
-		do {
-			const double r1 = randomUniform<double>(seed);
-			const double AqSquared = AqmaxSquared * r1;
-
-			const double qSquared = interpolate(lutElement.rayleighCumFormFactorSquared,
-				lutElement.rayleighMomentumTransferSquared,
-				AqSquared);
-
-			mu = 1.0 - qSquared * 2.0 / qmaxSquared;
-
-			const double r2 = randomUniform<double>(seed);
-
-			rejected = r2 < (1.0 + mu * mu) / 2.0;
-		} while (rejected);
-
-		cosAngle = mu;
-		const double theta = std::acos(mu);
-		const double phi = randomUniform<double>(seed, 0.0, PI_VAL2);
-		vectormath::peturb<double>(particle.dir, theta, phi);
-	}*/
-
-	void rayleightScatter(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle)
+	void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle)
 	{
 		// theta is scattering angle
 		// see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -209,28 +138,33 @@ namespace transport {
 		const double phi = randomUniform<double>(seed, 0.0, PI_VAL2);
 		vectormath::peturb<double>(particle.dir, theta, phi);
 	}
+	
 
-
-	double comptonScatterEGS(Particle& particle, std::uint64_t seed[2], double& cosAngle)
+	double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& lut, std::uint64_t seed[2], double& cosAngle)
 		// see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
 		// and
 		// https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
 	{
 		const double k = particle.energy / ELECTRON_REST_MASS;
 		const double emin = 1.0 / (1.0 + 2.0 * k);
+		const double gmax = 1.0 / emin + emin;
 		double e;
-		for (;;)
-		{
+		bool rejected;
+		do {
 			const double r1 = randomUniform<double>(seed);
-			const double r2 = randomUniform<double>(seed);
-
 			e = r1 + (1.0 - r1) * emin;
-			cosAngle = 1.0 + 1.0 / k - 1.0 / (e*k);
-			const double sinangsqr = 1.0 - cosAngle * cosAngle;
-			const double g = (1.0 / e + e - sinangsqr) / (1.0 / emin + emin);
-			if (r2 <= g)
-				break;
-		}
+			cosAngle = 1.0 + 1.0 / k - 1.0 / (k * e);
+			const double sinthetasqr = 1.0 - cosAngle * cosAngle;
+
+			const double g = (1 / e + e - sinthetasqr) / gmax;
+			
+			const double q = lut.momentumTransferFromCos(particle.energy, cosAngle);
+			const double scatterFactor = lut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
+			const double r2 = randomUniform<double>(seed);
+			rejected = r2 > g* scatterFactor;
+			
+		} while (rejected);
+
 		
 		const double theta = std::acos(cosAngle);
 		const double phi = randomUniform<double>(seed, PI_VAL2);
@@ -275,50 +209,6 @@ namespace transport {
 		const double E0 = particle.energy;
 		particle.energy *= e;
 
-		return E0 * (1.0 - e);
-	}
-
-	double comptonScatterGeant(Particle& particle, std::uint64_t seed[2], double& cosAngle)
-		// see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
-		// and
-		// https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
-	{
-
-		const double e0 = ELECTRON_REST_MASS / (ELECTRON_REST_MASS + 2.0 * particle.energy);
-
-		const double a1 = std::log(1.0 / e0);
-		const double a2 = (1.0 - e0 * e0) / 2.0;
-
-		bool rejected;
-		const double af = a1 / (a1 + a2);
-		double t, e;
-
-		do {
-			const double r1 = randomUniform<double>(seed);
-			const double r2 = randomUniform<double>(seed);
-			const double r3 = randomUniform<double>(seed);
-			if (r1 < af)
-				e = std::exp(-r2 * a1);
-			else
-				e = std::sqrt(e0 * e0 + (1.0 - e0 * e0) * r2);
-
-			t = ELECTRON_REST_MASS * (1.0 - e) / (particle.energy * e);
-			const double sinthetasqr = t * (2.0 - t);
-
-			const double g = 1.0 - e * sinthetasqr / (1.0 + e * e);
-
-			rejected = g < r3;
-		} while (rejected);
-
-		const double costheta = 1.0 - t;
-
-		const double theta = std::acos(costheta);
-		const double phi = randomUniform<double>(seed, 0.0, PI_VAL2);
-		vectormath::peturb<double>(particle.dir, theta, phi);
-
-		const double E0 = particle.energy;
-		particle.energy *= e;
-		cosAngle = costheta;
 		return E0 * (1.0 - e);
 	}
 
@@ -393,14 +283,14 @@ namespace transport {
 					else if (r3 <= attPhoto + attCompt) // Compton event
 					{
 						double cosangle;
-						const double e = comptonScatter(p, seed, cosangle);
+						const double e = comptonScatterLivermore(p, matIdx, world.attenuationLut(), seed, cosangle);
 						safeValueAdd(energyImparted[bufferIdx], e * p.weight);
 						updateMaxAttenuation = true;
 					}
 					else // Rayleigh scatter event
 					{
 						double cosangle;
-						rayleightScatter(p, matIdx, world.attenuationLut(), seed, cosangle);
+						rayleightScatterLivermore(p, matIdx, world.attenuationLut(), seed, cosangle);
 					}
 
 					// russian rulette

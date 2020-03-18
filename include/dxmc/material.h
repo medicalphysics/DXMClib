@@ -34,7 +34,8 @@ public:
     double standardDensity(void) const {return m_density;}
 	void setStandardDensity(double density); // g/cm3
 
-	std::vector<double> getFormFactorSquared(const std::vector<double>& momentumTransfer) const;
+	std::vector<double> getRayleightFormFactorSquared(const std::vector<double>& momentumTransfer) const;
+	std::vector<double> getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const;
 	
 	double getPhotoelectricAttenuation(double energy) const;
 	double getRayleightAttenuation(double energy) const;
