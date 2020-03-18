@@ -131,7 +131,7 @@ namespace transport {
 
 			cosAngle = attLut.cosAngle(particle.energy, q);
 
-		} while ((0.5+cosAngle*cosAngle*0.5) < randomUniform<double>(seed));
+		} while ((0.5 + cosAngle * cosAngle * 0.5) < randomUniform<double>(seed));
 
 		
 		const double theta = std::acos(cosAngle);
@@ -283,7 +283,11 @@ namespace transport {
 					else if (r3 <= attPhoto + attCompt) // Compton event
 					{
 						double cosangle;
+#ifdef DXMC_USE_LOWENERGY_COMPTON
 						const double e = comptonScatterLivermore(p, matIdx, world.attenuationLut(), seed, cosangle);
+#else
+						const double e = comptonScatter(p, seed, cosangle);
+#endif
 						safeValueAdd(energyImparted[bufferIdx], e * p.weight);
 						updateMaxAttenuation = true;
 					}

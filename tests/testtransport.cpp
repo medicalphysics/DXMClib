@@ -130,8 +130,8 @@ int main (int argc, char *argv[])
     //Material mat("Water, Liquid");
     Material mat(6);
     //Material mat(8);
-    testRayleight(50, mat);
-    //testCompton(10, mat);
+    //testRayleight(10, mat);
+    testCompton(10, mat);
     return 0;
 }
 

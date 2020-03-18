@@ -69,6 +69,11 @@ add_library(libdxmc
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
 
+option(USE_LOWENERGY_COMPTON "Use low energy correction for compton interactions (increases computation time)" ON)
+if(${USE_LOWENERGY_COMPTON})
+    target_compile_definitions(libdxmc PUBLIC DXMC_USE_LOWENERGY_COMPTON)
+endif()
+
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 

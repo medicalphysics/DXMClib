@@ -209,7 +209,7 @@ private:
 	double m_maxEnergy = 150.0;
 	double m_energyStep = 1.0;
 	std::size_t m_energyResolution = 150;
-	std::size_t m_momtranfResolution = 512;
+	std::size_t m_momtranfResolution = 128;
 	double m_momtranfStep = 0;
 
 	std::size_t m_nMaterials = 0;
