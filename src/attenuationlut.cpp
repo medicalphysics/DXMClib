@@ -187,13 +187,13 @@ double AttenuationLut::maxMassTotalAttenuation(double energy) const
 }
 double AttenuationLut::momentumTransfer(std::size_t material, double cumFormFactorSquared) const
 {
-	const auto offset = m_energyResolution + material * m_energyResolution;
+	const auto offset = m_momtranfResolution + material * m_momtranfResolution;
 	const auto begin = m_rayleighFormFactorSqr.cbegin() + offset;
-	const auto end = begin + m_energyResolution;
+	const auto end = begin + m_momtranfResolution;
 
 	const auto pos = std::lower_bound(begin, end, cumFormFactorSquared);
 	if (pos == end)
-		return m_rayleighFormFactorSqr[m_energyResolution - 1];
+		return m_rayleighFormFactorSqr[m_momtranfResolution - 1];
 	const auto distance = std::distance(begin, pos);
 	if (distance <= 0)
 		return m_rayleighFormFactorSqr[0];
@@ -302,7 +302,6 @@ void AttenuationLut::generateFFdata(const std::vector<Material>& materials)
 		std::copy(ffmaxsqrint.cbegin(), ffmaxsqrint.cend(), start);
 	}
 }
-
 
 void AttenuationLut::generateSFdata(const std::vector<Material>& materials)
 {
