@@ -193,19 +193,16 @@ namespace transport {
 		const double qmax = attLut.momentumTransferMax(particle.energy);
 		const double amax = attLut.cumFormFactorSquared(materialIdx, qmax);
 
-		double r2;
 		do {
 			const double r1 = randomUniform<double>(seed);
 
 			const double aatq = amax * r1;
 
-			const double q = attLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
+			const double q = attLut.momentumTransfer(static_cast<size_t>(materialIdx),aatq);
 
 			cosAngle = attLut.cosAngle(particle.energy, q);
 
-			r2 = randomUniform<double>(seed);
-
-		} while ((0.5+cosAngle*0.5) >= r2);
+		} while ((0.5+cosAngle*cosAngle*0.5) < randomUniform<double>(seed));
 
 		
 		const double theta = std::acos(cosAngle);

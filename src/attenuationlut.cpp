@@ -197,7 +197,7 @@ double AttenuationLut::momentumTransfer(std::size_t material, double cumFormFact
 	const auto distance = std::distance(begin, pos);
 	if (distance <= 0)
 		return m_rayleighFormFactorSqr[0];
-	
+
 	return interp(&m_rayleighFormFactorSqr[offset + distance - 1], &m_rayleighFormFactorSqr[distance - 1], cumFormFactorSquared);
 }
 
@@ -226,14 +226,14 @@ double AttenuationLut::momentumTransferMax(double energy)
 double AttenuationLut::cosAngle(double energy, double momentumTransfer)
 {
 	const double invE = 1.0 / energy;
-	return 1.0 - momentumTransfer * momentumTransfer * KEV_TO_A * KEV_TO_A * invE * invE;
+	return 1.0 - 2.0*momentumTransfer * momentumTransfer * KEV_TO_A * KEV_TO_A * invE * invE;
 }
 
 
 std::vector<double> trapz(const std::vector<double>& f, double dx)
 {
 	std::vector<double> integ(f.size(), 0.0);
-	integ[0] = f[0] * 0.5 * dx;
+	integ[0] = 0.0;//f[0] * 0.5 * dx;
 	for (std::size_t i = 1; i < f.size(); ++i)
 	{
 		integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * dx * 0.5;
@@ -249,10 +249,10 @@ void AttenuationLut::generateFFdata(const std::vector<Material>& materials)
 
 	m_momtMax = momentumTransferMax(m_maxEnergy);
 	m_momtStep = 0.01;
-	m_momtMin = m_momtStep;
+	m_momtMin = 0.0;
 	m_momtSize = static_cast<std::size_t>((m_momtMax - m_momtMin) / m_momtStep);
 
-	std::vector<double> qvalues(m_momtSize, m_momtStep);
+	std::vector<double> qvalues(m_momtSize, m_momtMin);
 	for (std::size_t i = 1; i < m_momtSize; ++i)
 		qvalues[i] = qvalues[i - 1] + m_momtStep;
 

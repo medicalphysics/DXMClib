@@ -68,10 +68,10 @@ bool testCompton(double keV)
 
 }
 
-bool testRayleight(double keV)
+bool testRayleight(double keV, const Material& mat)
 {
     constexpr std::size_t nHist = 100;
-    constexpr std::size_t samples = 1e4;
+    constexpr std::size_t samples = 1e5;
 
     std::uint64_t seed[2];
     randomSeed(seed);
@@ -80,7 +80,6 @@ bool testRayleight(double keV)
 
 
     AttenuationLut lut;
-    Material mat("Water, Liquid");
     std::vector<Material> mats;
     mats.push_back(mat);
     lut.generate(mats);
@@ -93,7 +92,8 @@ bool testRayleight(double keV)
     for (std::size_t i = 0; i < samples; ++i)
     {
         transport::rayleightScatter(p, 0, lut, seed, cosang);
-        const auto ind = static_cast<std::size_t>((cosang + 1.0) * nHist * 0.5);
+        auto ind = static_cast<std::size_t>((cosang + 1.0) * (nHist) * 0.5);
+        ind = ind >= nHist ? nHist - 1 : ind;
         hist[ind] += 1;
     }
 
@@ -132,7 +132,9 @@ int main (int argc, char *argv[])
 {
 
     //testCompton(30.0);
-    testRayleight(30.0);
+    //Material mat("Water, Liquid");
+    Material mat(1);
+    testRayleight(10, mat);
     return 0;
 }
 
