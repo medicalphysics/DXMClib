@@ -204,10 +204,6 @@ private:
 	double m_minEnergy = 0;
 	double m_maxEnergy = 150.0;
 	double m_energyStep = 1.0;
-	double m_momtMax = 0;
-	double m_momtMin = 0;
-	double m_momtStep = 0;
-	std::size_t m_momtSize = 0;
 	std::size_t m_energyResolution = 150;
 	std::size_t m_nMaterials = 0;
 	std::vector<double> m_attData; // energy, array-> total, photo, compton, rauleight

@@ -184,16 +184,15 @@ double AttenuationLut::maxMassTotalAttenuation(double energy) const
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
 	return interp(&m_attData[idx], &m_maxMassAtt[idx], energy);
 }
-
 double AttenuationLut::momentumTransfer(std::size_t material, double cumFormFactorSquared) const
 {
-	const auto offset = m_momtSize + material * m_momtSize;
+	const auto offset = m_energyResolution + material * m_energyResolution;
 	const auto begin = m_rayleighFormFactorSqr.cbegin() + offset;
-	const auto end = begin + m_momtSize;
+	const auto end = begin + m_energyResolution;
 
 	const auto pos = std::lower_bound(begin, end, cumFormFactorSquared);
 	if (pos == end)
-		return m_rayleighFormFactorSqr[m_momtSize - 1];
+		return m_rayleighFormFactorSqr[m_energyResolution - 1];
 	const auto distance = std::distance(begin, pos);
 	if (distance <= 0)
 		return m_rayleighFormFactorSqr[0];
@@ -203,14 +202,19 @@ double AttenuationLut::momentumTransfer(std::size_t material, double cumFormFact
 
 double AttenuationLut::cumFormFactorSquared(std::size_t material, double momentumTransfer) const
 {
-	const auto offset = m_momtSize + material * m_momtSize;
-	if (momentumTransfer <= m_momtMin)
-		return m_rayleighFormFactorSqr[offset];
-	if (momentumTransfer >= m_momtMax)
-		return m_rayleighFormFactorSqr[offset + m_momtSize - 1];
+	const auto offset = m_energyResolution + material * m_energyResolution;
+	auto begin = m_rayleighFormFactorSqr.cbegin();
+	auto end = begin + m_energyResolution;
 
-	const std::size_t idx = static_cast<std::size_t>((momentumTransfer - m_momtMin) / m_momtStep);
-	return interp(&m_rayleighFormFactorSqr[idx], &m_rayleighFormFactorSqr[offset + idx], momentumTransfer);
+	const auto pos = std::lower_bound(begin, end, momentumTransfer);
+
+	if (pos == end)
+		return m_rayleighFormFactorSqr[offset + m_energyResolution - 1];
+	
+	const auto distance = std::distance(begin, pos);
+	if (distance <= 0)
+		return m_rayleighFormFactorSqr[offset];
+	return interp(&m_rayleighFormFactorSqr[distance-1], &m_rayleighFormFactorSqr[offset + distance-1], momentumTransfer);
 }
 double AttenuationLut::momentumTransfer(double energy, double angle)
 {
@@ -226,17 +230,17 @@ double AttenuationLut::momentumTransferMax(double energy)
 double AttenuationLut::cosAngle(double energy, double momentumTransfer)
 {
 	const double invE = 1.0 / energy;
-	return 1.0 - 2.0*momentumTransfer * momentumTransfer * KEV_TO_A * KEV_TO_A * invE * invE;
+	return 1.0 - 2.0 * momentumTransfer * momentumTransfer * KEV_TO_A * KEV_TO_A * invE * invE;
 }
 
 
-std::vector<double> trapz(const std::vector<double>& f, double dx)
+std::vector<double> trapz(const std::vector<double>& f, const std::vector<double>& x)
 {
 	std::vector<double> integ(f.size(), 0.0);
-	integ[0] = 0.0;//f[0] * 0.5 * dx;
+	integ[0] = 0.0;
 	for (std::size_t i = 1; i < f.size(); ++i)
 	{
-		integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * dx * 0.5;
+		integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * 0.5 * (x[i] - x[i - 1]);
 	}
 	return integ;
 }
@@ -244,27 +248,23 @@ std::vector<double> trapz(const std::vector<double>& f, double dx)
 
 void AttenuationLut::generateFFdata(const std::vector<Material>& materials)
 {
-
 	//se http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
 
-	m_momtMax = momentumTransferMax(m_maxEnergy);
-	m_momtStep = 0.01;
-	m_momtMin = 0.0;
-	m_momtSize = static_cast<std::size_t>((m_momtMax - m_momtMin) / m_momtStep);
+	const double globalMomMax = momentumTransferMax(m_maxEnergy);
+	
+	std::vector<double> qvalues(m_energyResolution);
+	for (std::size_t i = 0; i < m_energyResolution; ++i)
+		qvalues[i] = (i*globalMomMax/(m_energyResolution-1))*(i * globalMomMax / (m_energyResolution-1))/ globalMomMax;  // nonlinear integration steps
 
-	std::vector<double> qvalues(m_momtSize, m_momtMin);
-	for (std::size_t i = 1; i < m_momtSize; ++i)
-		qvalues[i] = qvalues[i - 1] + m_momtStep;
 
-	m_rayleighFormFactorSqr.resize(m_momtSize + materials.size() * m_momtSize);
+	m_rayleighFormFactorSqr.resize(m_energyResolution + materials.size() * m_energyResolution);
 	std::copy(qvalues.cbegin(), qvalues.cend(), m_rayleighFormFactorSqr.begin());
 
 	for (std::size_t i = 0; i < materials.size(); ++i)
 	{
 		auto ffmaxsqr = materials[i].getFormFactorSquared(qvalues);
-		auto ffmaxsqrint = trapz(ffmaxsqr, m_momtStep);
-		auto start = m_rayleighFormFactorSqr.begin() + m_momtSize + i * m_momtSize;
+		auto ffmaxsqrint = trapz(ffmaxsqr, qvalues);
+		auto start = m_rayleighFormFactorSqr.begin() + m_energyResolution + i * m_energyResolution;
 		std::copy(ffmaxsqrint.cbegin(), ffmaxsqrint.cend(), start);
 	}
-
 }

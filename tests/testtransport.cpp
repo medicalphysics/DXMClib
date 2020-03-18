@@ -5,7 +5,7 @@
 #include "xraylib.h"
 #include <iostream>
 
-bool testCompton(double keV)
+bool testCompton(double keV, const Material& mat)
 {
     constexpr std::size_t nHist = 100;
     constexpr std::size_t samples = 1e6;
@@ -20,27 +20,11 @@ bool testCompton(double keV)
     double cosang;
     for (std::size_t i = 0; i < samples; ++i)
     {
-        transport::comptonScatter(p, seed, cosang);
-        const auto ind = static_cast<std::size_t>((cosang + 1.0) * nHist*0.5);
+        transport::comptonScatterEGS(p, seed, cosang);
+        auto ind = static_cast<std::size_t>((cosang + 1.0) * (nHist) * 0.5);
         hist[ind] += 1;
     }
-
-    std::vector<std::size_t> histG(nHist, 0);
-    for (std::size_t i = 0; i < samples; ++i)
-    {
-        transport::comptonScatterGeant(p, seed, cosang);
-        const auto ind = static_cast<std::size_t>((cosang + 1.0) * nHist * 0.5);
-        histG[ind] += 1;
-    }
-    std::vector<std::size_t> histE(nHist, 0);
-    for (std::size_t i = 0; i < samples; ++i)
-    {
-        transport::comptonScatterEGS(p, seed, cosang);
-        const auto ind = static_cast<std::size_t>((cosang + 1.0) * nHist * 0.5);
-        histE[ind] += 1;
-    }
-    
-    Material mat("Water, Liquid");
+    const double hist_sum = std::accumulate(hist.cbegin(), hist.cend(), 0.0);
 
     std::vector<double> histF(nHist, 0);
     for (std::size_t i = 0; i < nHist; ++i)
@@ -51,14 +35,14 @@ bool testCompton(double keV)
         double att = DCS_Compt_CP((mat.name()).c_str(), keV, theta, nullptr);
         histF[ind] = att;
     }
+    const double histF_sum = std::accumulate(histF.cbegin(), histF.cend(), 0.0);
 
 
 
-
-    std::cout << "cos angle, hist, hist Geant, hist EGS, analytical\n";
+    std::cout << "cos angle, hist, analytical\n";
     for (int i = 0; i < nHist; ++i)
     {
-        std::cout << 2.0 * i / nHist - 1.0 << ", " << hist[i] << ", " << histG[i] << ", " << histE[i] << ", " << histF[i] << "\n";
+        std::cout << 2.0 * i / nHist - 1.0 << ", " << hist[i]/hist_sum << ", " << histF[i]/histF_sum << "\n";
     }
     std::cout << std::endl;
 
@@ -122,19 +106,16 @@ bool testRayleight(double keV, const Material& mat)
 
     return true;
 
-
-
-
-
 }
 
 int main (int argc, char *argv[])
 {
 
     //testCompton(30.0);
-    //Material mat("Water, Liquid");
-    Material mat(1);
-    testRayleight(10, mat);
+    Material mat("Water, Liquid");
+    //Material mat(8);
+    //testRayleight(10, mat);
+    testCompton(100, mat);
     return 0;
 }
 
