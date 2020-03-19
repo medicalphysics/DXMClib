@@ -298,12 +298,12 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	:World()
 {
 	setDirectionCosines(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-	setSpacing(1.0, 1.0, 25.0);
+	setSpacing(1.0, 1.0, 1.0);
 	setOrigin(0.0, 0.0, 0.0);
 	if (diameter % 2 == 0) // make sure odd dimensions in xy
-		setDimensions(diameter + 3, diameter + 3, 6);
+		setDimensions(diameter + 3, diameter + 3, 150);
 	else
-		setDimensions(diameter + 2, diameter + 2, 6);
+		setDimensions(diameter + 2, diameter + 2, 150);
 	
 
 	auto air = Material("Air, Dry (near sea level)");
@@ -329,8 +329,6 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	//filling with air
 	std::fill(dBufferPtr->begin(), dBufferPtr->end(), m_airDensity);
 	std::fill(mBufferPtr->begin(), mBufferPtr->end(), 0);
-	auto dBuffer = dBufferPtr->data();
-	auto mBuffer = mBufferPtr->data();
 	
 	//air holes indices
 	std::array<std::size_t, 2> fdim = { dim[0], dim[1] };
@@ -350,7 +348,7 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	//setting up measurement indices
 	for (std::size_t k = 0; k < dim[2]; ++k) 
 	{
-		const double slicePosCenter = k * sp[2] - dim[2] * sp[2] * 0.5 + sp[2] * 0.5;
+		const double slicePosCenter = sp[2] * (k - dim[2] * 0.5 + 0.5);
 		if (std::abs(slicePosCenter) <= 50.0) // from -50 to +50 mm into center of the phantom
 		{
 			const std::size_t offset = k * dim[0] * dim[1];
@@ -366,6 +364,9 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	}
 
 	//making phantom
+	auto dBuffer = dBufferPtr->data();
+	auto mBuffer = mBufferPtr->data();
+
 	for (std::size_t k = 0; k < dim[2]; ++k)
 	{
 		const std::size_t offset = k * dim[0] * dim[1];
