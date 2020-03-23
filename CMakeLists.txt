@@ -21,7 +21,7 @@ find_package(Threads REQUIRED) # for threading support
 IF(WIN32)
     set(XRAYLIB_INSTALL_PATH "C:/Program Files/xraylib 64-bit" CACHE PATH "Install path for xraylib (https://github.com/tschoonj/xraylib)")
     set(XRAYLIB_INCLUDES "${XRAYLIB_INSTALL_PATH}/Include")
-	set(XRAYLIB_LIBRARY_SHARED_NAME "libxrl-7.dll")
+	set(XRAYLIB_LIBRARY_SHARED_NAME "libxrl-11.dll")
 	set(XRAYLIB_LIBRARY_SHARED_PATH "C:/Windows/sysnative/${XRAYLIB_LIBRARY_SHARED_NAME}")
     set(XRAYLIB_LIBRARY_SHARED_PATH_64 "C:/Windows/System32/${XRAYLIB_LIBRARY_SHARED_NAME}")
     find_library(XRAYLIB NAMES libxrl.lib libxrl libxrl-11 xrl HINTS "${XRAYLIB_INSTALL_PATH}/LIB")

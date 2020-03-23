@@ -436,12 +436,6 @@ bool TG195Case4AbsorbedEnergy() {
 
 	std::cout << "\n";
 
-
-
-
-
-
-
 	return false;
 }
 
@@ -488,11 +482,12 @@ bool testAttenuation()
 	const double rms = std::sqrt((1.0 / att.size()) * std::transform_reduce(kev.cbegin(), kev.cend(), att.cbegin(), 0.0, std::plus<>(), [](double e, double a)->double {return (e - a) * (e - a); }));
 
 	std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
-	std::cout << "Monochromatic beam of " << energy << " kev.\n";
-	std::cout << "RMS differense [%]: " << rms*100.0 << "\n";
-	std::cout << "Data: Position (midtpoint) [mm], dxmc rel. dose, analytical rel. attenuation, Difference [%]\n";
+	std::cout << "Monochromatic beam of " << energy << " kev. \n";
+	std::cout << "RMS differense [%] from analytical attenuation: " << rms*100.0 << "\n";
+	/*std::cout << "Data: Position (midtpoint) [mm], dxmc rel. dose, analytical rel. attenuation, Difference [%]\n";
 	for (int i = 0; i < dim[2]; ++i)
 		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << kev[i] << ", " << att[i] << ", " << (kev[i] - att[i]) / att[i]*100.0 << "\n";
+	*/
 	if (rms < 0.5) {
 		std::cout << "SUCCESS\n\n";
 		return true;
@@ -504,8 +499,8 @@ bool testAttenuation()
 
 int main(int argc, char* argv[])
 {
-	auto test = TG195Case4AbsorbedEnergy();
 	auto success = testAttenuation();
+	success = success && TG195Case4AbsorbedEnergy();
 	success = success && TG195Case2AbsorbedEnergy120();
 	success = success && TG195Case2AbsorbedEnergyMono();
 	if (success)

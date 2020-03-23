@@ -120,21 +120,6 @@ void validateCTAngle()
 }
 
 
-void validateSpecter()
-{
-	Tube t;
-	t.setVoltage(100.0);
-	t.setAlFiltration(7.0);
-	t.setTubeAngleDeg(12.0);
-	t.setEnergyResolution(0.2);
-	auto specter = t.getSpecter();
-	for (auto[e, n] : specter)
-	{
-		std::cout << e << " ,  " << n <<  '\n';
-	}
-
-}
-
 void validateSpecterSampling()
 {
 	const std::uint64_t nParticles = 10000000;
@@ -199,7 +184,6 @@ void validateReyleight()
 		std::size_t angle = static_cast<std::size_t>(std::acos(cosAngle)*RAD_TO_DEG);
 		hist[angle] += 1;
 	}
-
 
 	for (std::size_t i = 0; i < hist.size(); ++i)
 	{
