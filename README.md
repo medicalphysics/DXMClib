@@ -8,7 +8,7 @@ It is possible to simulate dose from conventional x-ray and CT examinations in a
 DXMClib is dependent on the [xraylib library by Tom Schoonjans](https://github.com/tschoonj/xraylib) for interaction cross sections and atomic form factors. 
 
 ### Installation
-To compile DXMClib the xraylib library must be installed, both source and binaries for Windows and Linux are provided by the developer. [See the innstallation instructions for xraylib.](https://github.com/tschoonj/xraylib/wiki/Installation-instructions)
+To compile DXMClib the xraylib library must be installed, both source and binaries for Windows and Linux are provided by the developer. [See the installation instructions for xraylib.](https://github.com/tschoonj/xraylib/wiki/Installation-instructions)
 
 DXMClib uses CMake as build generator, to include DXMClib in a CMake project it is recommended to use CMakes 'FetchContent' module. Example to include DXMClib in your CMakeLists.txt:
 
