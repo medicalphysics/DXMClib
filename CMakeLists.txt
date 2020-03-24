@@ -32,14 +32,6 @@ IF(UNIX AND NOT APPLE)
     find_library(XRAYLIB NAMES libxrl libxrl-11 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
 ENDIF()
 
-
-# You should usually split this into folders, but this is a simple example
-
-# This is a "default" library, and will match the *** variable setting.
-# Other common choices are STATIC, SHARED, and MODULE
-# Including header files here helps IDEs but is not required.
-# Output libname matches target name, with the usual extensions on your system
-
 set(HEADER_LIST 
     "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationlut.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beamfilters.h"

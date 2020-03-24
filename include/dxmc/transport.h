@@ -29,9 +29,17 @@ Copyright 2019 Erlend Andersen
 #include <mutex>
 
 namespace transport {
+
+	struct Result
+	{
+		std::vector<double> dose;
+		std::vector<std::uint32_t> nEvents;
+	};
+
+
 	double comptonScatter(Particle& particle, std::uint64_t seed[2], double& cosAngle);
 	double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle);
 	void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle);
-	std::vector<double> run(const World& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
-	std::vector<double> run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressBar = nullptr);
+	Result run(const World& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
+	Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressBar = nullptr);
 }

@@ -33,16 +33,16 @@ namespace transport {
 	constexpr double ELECTRON_REST_MASS = 510.9989461; // keV
 	constexpr double PI_VAL = 3.14159265358979323846264338327950288;
 	constexpr double PI_VAL2 = PI_VAL + PI_VAL;
-	constexpr double ENERGY_CUTOFF = 1.0; // 10 ev
 	constexpr double RUSSIAN_RULETTE_PROBABILITY = 0.8;
 	constexpr double RUSSIAN_RULETTE_THRESHOLD = 10.0; // keV
 	constexpr double KEV_TO_MJ = 1.6021773e-13;
 
-	std::mutex TRANSPORT_MUTEX;
+	std::mutex DOSE_MUTEX;
+	std::mutex TALLY_MUTEX;
 
 	constexpr double N_ERROR = 1.0e-9;
 
-	template<typename T>
+	/*template<typename T>
 	void findNearestIndices(const T value, const std::vector<T>& vec, std::size_t& first, std::size_t& last)
 	{
 		auto beg = vec.begin();
@@ -95,7 +95,7 @@ namespace transport {
 		const double x0 = *upper;
 
 		return interp(x, x0, x1, y0, y1);
-	}
+	}*/
 
 	/*
 	//waiting for c++ 20 where we get atomic references. We then have lockless threadsafe update of values in dose array 
@@ -108,10 +108,16 @@ namespace transport {
 
 	inline void safeValueAdd(double& value, const double addValue)
 	{
-		std::lock_guard<std::mutex> lock(TRANSPORT_MUTEX);
+		std::lock_guard<std::mutex> lock(DOSE_MUTEX);
 		value += addValue;
 	}
 
+	template<typename T>
+	inline void safeTallyAdd(T& value)
+	{
+		std::lock_guard<std::mutex> lock(TALLY_MUTEX);
+		value += (T)1;
+	}
 
 	void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle)
 	{
@@ -236,13 +242,15 @@ namespace transport {
 	}
 
 
-	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], double* energyImparted)
+	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], Result& result)
 	{
-		const auto& lutTable = world.attenuationLut();
+		const AttenuationLut& lutTable = world.attenuationLut();
 		const double* densityBuffer = world.densityBuffer();
-		const auto materialBuffer = world.materialIndexBuffer();
-		
-		double maxAttenuation;
+		const unsigned char* materialBuffer = world.materialIndexBuffer();
+		double* energyImparted = result.dose.data();
+		auto tally = result.nEvents.data();
+
+		double maxAttenuationInv;
 		bool updateMaxAttenuation = true;
 		bool continueSampling = true;
 		bool ruletteCandidate = true;
@@ -250,11 +258,11 @@ namespace transport {
 		{
 			if (updateMaxAttenuation)
 			{
-				maxAttenuation = lutTable.maxMassTotalAttenuation(p.energy);
+				maxAttenuationInv = 1.0 / lutTable.maxMassTotalAttenuation(p.energy);
 				updateMaxAttenuation = false;
 			}
 			const double r1 = randomUniform<double>(seed);
-			const double stepLenght = -std::log(r1) / maxAttenuation * 10.0; // cm -> mm
+			const double stepLenght = -std::log(r1) * maxAttenuationInv * 10.0; // cm -> mm
 			for (std::size_t i = 0; i < 3; i++)
 				p.pos[i] += p.dir[i] * stepLenght;
 
@@ -266,7 +274,7 @@ namespace transport {
 				const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * densityBuffer[bufferIdx];
 
 				const double r2 = randomUniform<double>(seed);
-				if (r2 < (attenuationTotal / maxAttenuation)) // An event will happend
+				if (r2 < (attenuationTotal * maxAttenuationInv)) // An event will happend
 				{
 					const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
 					const double attPhoto = atts[0];
@@ -277,6 +285,7 @@ namespace transport {
 					if (r3 <= attPhoto) // Photoelectric event
 					{
 						safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight);
+						safeTallyAdd(tally[bufferIdx]);
 						p.energy = 0.0;
 						continueSampling = false;
 					}
@@ -289,6 +298,7 @@ namespace transport {
 						const double e = comptonScatter(p, seed, cosangle);
 #endif
 						safeValueAdd(energyImparted[bufferIdx], e * p.weight);
+						safeTallyAdd(tally[bufferIdx]);
 						updateMaxAttenuation = true;
 					}
 					else // Rayleigh scatter event
@@ -301,7 +311,7 @@ namespace transport {
 					if ((p.energy < RUSSIAN_RULETTE_THRESHOLD) && ruletteCandidate && continueSampling)
 					{
 						ruletteCandidate = false;
-						double r4 = randomUniform<double>(seed);
+						const double r4 = randomUniform<double>(seed);
 						if (r4 < RUSSIAN_RULETTE_PROBABILITY) {
 							continueSampling = false;
 						}
@@ -353,7 +363,7 @@ namespace transport {
 	}
 
 
-	void transport(const World& world, const Exposure& exposure, std::uint64_t seed[2], double* energyImparted)
+	void transport(const World& world, const Exposure& exposure, std::uint64_t seed[2], Result& result)
 	{
 		Particle particle;
 		const std::size_t nHistories = exposure.numberOfHistories();
@@ -363,21 +373,21 @@ namespace transport {
 			exposure.sampleParticle(particle, seed);
 
 			// Is particle intersecting with world
-			bool isInWorld = transportParticleToWorld(world, particle);
+			const bool isInWorld = transportParticleToWorld(world, particle);
 			if (isInWorld)
-				sampleParticleSteps(world, particle, seed, energyImparted);
+				sampleParticleSteps(world, particle, seed, result);
 		}
 	}
 	
-	std::uint64_t parallell_run(const World& w, const Source* source, double* energyImparted,
+	std::uint64_t parallellRun(const World& w, const Source* source, Result& result,
 		const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar* progressbar)
 	{
-		std::uint64_t len = expEnd - expBeg;
+		const std::uint64_t len = expEnd - expBeg;
 		if ((len <= 1) || (nJobs <= 1))
 		{
 			std::uint64_t seed[2];
 			randomSeed(seed);  // get random seed from OS
-			Exposure exposure = Exposure();
+			Exposure exposure;
 			const auto& worldBasis = w.directionCosines();
 			for (std::size_t i = expBeg; i < expEnd; i++)
 			{
@@ -386,29 +396,47 @@ namespace transport {
 						return 0;
 				source->getExposure(exposure, i);
 				exposure.alignToDirectionCosines(worldBasis);
-				transport(w, exposure, seed, energyImparted);
+				transport(w, exposure, seed, result);
 				if (progressbar)
 					progressbar->exposureCompleted();
 			}
-			return source->historiesPerExposure() * (expEnd - expBeg);
+			return source->historiesPerExposure() * len;
 		}
-		nJobs = nJobs < 2 ? 0 : nJobs - 2;
+		/*nJobs = nJobs < 2 ? 0 : nJobs - 2;
 		auto mid = expBeg + len / 2;
-		auto handle = std::async(std::launch::async, parallell_run, w, source, energyImparted, mid, expEnd, nJobs, progressbar);
-		std::uint64_t nHistories = parallell_run(w, source, energyImparted, expBeg, mid, nJobs, progressbar);
+		auto handle = std::async(std::launch::async, parallellRun, w, source, result, mid, expEnd, nJobs, progressbar);
+		std::uint64_t nHistories = parallellRun(w, source, result, expBeg, mid, nJobs, progressbar);
 		return handle.get() + nHistories;
+		*/
+		const auto threadLen = len / nJobs;
+		std::vector<std::future<std::uint64_t>> jobs;
+		jobs.reserve(nJobs);
+		std::uint64_t expBegThread = expBeg;
+		std::uint64_t expEndThread = expBegThread + threadLen;
+		for (std::size_t i = 0; i < nJobs; ++i)
+		{
+			if (i == nJobs - 1)
+				expEndThread = expEnd;
+			jobs.push_back(std::async(std::launch::async, parallellRun, w, source, result, expBegThread, expEndThread, 1, progressbar));
+			expBegThread = expEndThread;
+			expEndThread = expBegThread + threadLen;
+		}
+		std::uint64_t sum = 0;
+		for (std::size_t i = 0; i < nJobs; ++i)
+			sum += jobs[i].get();
+		return sum;
 	}
 
-	std::uint64_t parallell_run_ctdi(const CTDIPhantom& w, const CTSource* source, double* energyImparted,
+	std::uint64_t parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result& result, 
 		const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar* progressbar)
 	{
-		std::uint64_t len = expEnd - expBeg;
+		const std::uint64_t len = expEnd - expBeg;
 
 		if ((len == 1 ) || (nJobs <= 1))
 		{
 			std::uint64_t seed[2];
 			randomSeed(seed);  // get random seed from OS
-			Exposure exposure = Exposure();
+			Exposure exposure;
 			const auto& worldBasis = w.directionCosines();
 			for (std::size_t i = expBeg; i < expEnd; i++)
 			{
@@ -418,20 +446,40 @@ namespace transport {
 				source->getExposure(exposure, i);
 				auto pos = source->position();
 				exposure.subtractPosition(pos); // aligning to center of phantom
-				exposure.alignToDirectionCosines(worldBasis);				
+				exposure.setPositionZ(0.0);
+				exposure.alignToDirectionCosines(worldBasis);
 				exposure.setBeamIntensityWeight(1.0);
-				transport(w, exposure, seed, energyImparted);
+				transport(w, exposure, seed, result);
 				if (progressbar)
 					progressbar->exposureCompleted();
 			}
-			return source->historiesPerExposure() * (expEnd - expBeg);
+			return source->historiesPerExposure() * len;
 		}
-		nJobs = nJobs < 2 ? 0 : nJobs - 2;
+		/*nJobs = nJobs < 2 ? 0 : nJobs - 2;
 		auto mid = expBeg + len / 2;
-		auto handle = std::async(std::launch::async, parallell_run_ctdi, w, source, energyImparted, mid, expEnd, nJobs, progressbar);
-		std::uint64_t nHistories = parallell_run_ctdi(w, source, energyImparted, expBeg, mid, nJobs, progressbar);
+		auto handle = std::async(std::launch::async, parallellRunCtdi, w, source, result, mid, expEnd, nJobs, progressbar);
+		std::uint64_t nHistories = parallellRunCtdi(w, source, result, expBeg, mid, nJobs, progressbar);
 		return handle.get() + nHistories;	
+		*/
+		const auto threadLen = len / nJobs;
+		std::vector<std::future<std::uint64_t>> jobs;
+		jobs.reserve(nJobs);
+		std::uint64_t expBegThread = expBeg;
+		std::uint64_t expEndThread = expBegThread + threadLen;
+		for (std::size_t i = 0; i < nJobs; ++i)
+		{
+			if (i == nJobs - 1)
+				expEndThread = expEnd;
+			jobs.push_back(std::async(std::launch::async, parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar));
+			expBegThread = expEndThread;
+			expEndThread = expBegThread + threadLen;
+		}
+		std::uint64_t sum = 0;
+		for (std::size_t i = 0; i < nJobs; ++i)
+			sum += jobs[i].get();
+		return sum;
 	}
+
 
 	void energyImpartedToDose(const World & world, std::vector<double>& energyImparted, const double calibrationValue)
 	{
@@ -446,82 +494,91 @@ namespace transport {
 		});
 	}
 	
-	std::vector<double> run(const World & world, Source* source, ProgressBar* progressbar, bool calculateDose)
+	Result run(const World & world, Source* source, ProgressBar* progressbar, bool calculateDose)
 	{
-		std::vector<double> dose(world.size(), 0.0);
+		Result result;
+		result.dose.resize(world.size());
+		result.nEvents.resize(world.size());
+		std::fill(result.dose.begin(), result.dose.end(), 0.0);
+		std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
+
 		if (!source)
-			return dose;
+			return result;
 	
 		if (!world.isValid())
-			return dose;
+			return result;
 
 		source->updateFromWorld(world);
 		source->validate();
 		if(!source->isValid())
-			return dose;
+			return result;
 
 		const std::uint64_t totalExposures = source->totalExposures();
 		
 		const std::uint64_t nThreads = std::thread::hardware_concurrency();
-		std::uint64_t nJobs = nThreads;
-		if (nJobs < 1)
-			nJobs = 1;
-
+		const std::uint64_t nJobs = std::max(nThreads, static_cast<std::uint64_t>(1));
+		
 		if (progressbar)
 		{
 			progressbar->setTotalExposures(totalExposures);
-			progressbar->setDoseData(dose.data(), world.dimensions(), world.spacing());
+			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
 		}
 
-		auto nHistories = parallell_run(world, source, dose.data(), 0, totalExposures, nJobs, progressbar);
+		auto nHistories = parallellRun(world, source, result, 0, totalExposures, nJobs, progressbar);
 		
 		if (progressbar)
 		{
 			progressbar->clearDoseData();
 			if (progressbar->cancel())
 			{
-				std::fill(dose.begin(), dose.end(), 0.0);
-				return dose;
+				std::fill(result.dose.begin(), result.dose.end(), 0.0);
+				std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
+
+				return result;
 			}
 		}
 		if (calculateDose)
 		{
-			double calibrationValue = source->getCalibrationValue(nHistories, progressbar);
+			double calibrationValue = source->getCalibrationValue(progressbar);
 			//energy imparted to dose
-			energyImpartedToDose(world, dose, calibrationValue);
+			energyImpartedToDose(world, result.dose, calibrationValue);
 		}
-		return dose;
+		return result;
 	}
 
 
-	std::vector<double> run(const CTDIPhantom & world, CTSource* source, ProgressBar* progressbar)
+	Result run(const CTDIPhantom & world, CTSource* source, ProgressBar* progressbar)
 	{
-		std::vector<double> dose(world.size(), 0.0);
+		Result result;
+		result.dose.resize(world.size());
+		result.nEvents.resize(world.size());
+		std::fill(result.dose.begin(), result.dose.end(), 0.0);
+		std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
+
 		if (!source)
-			return dose;
+			return result;
 
 		if (!world.isValid())
-			return dose;
+			return result;
 		
 		if (!source->isValid())
-			return dose;
+			return result;
 
 		const std::uint64_t totalExposures = source->exposuresPerRotatition();
 		
-		std::uint64_t nThreads = std::thread::hardware_concurrency();
-		std::uint64_t nJobs = nThreads;
-		if (nJobs < 1)
-			nJobs = 1;
+		const std::uint64_t nThreads = std::thread::hardware_concurrency();
+		const std::uint64_t nJobs = std::max(nThreads, static_cast<std::uint64_t>(1));
+		
 		if (progressbar)
 		{
 			progressbar->setTotalExposures(totalExposures, "CTDI Calibration");
-			progressbar->setDoseData(dose.data(), world.dimensions(), world.spacing(), ProgressBar::Axis::Z);
+			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing(), ProgressBar::Axis::Z);
 		}
-		parallell_run_ctdi(world, source, dose.data(), 0, totalExposures, nJobs, progressbar);
+		parallellRunCtdi(world, source, result, 0, totalExposures, nJobs, progressbar);
 		if(progressbar)
 			progressbar->clearDoseData();
 		
-		energyImpartedToDose(world, dose, 1.0);
-		return dose;
+		energyImpartedToDose(world, result.dose, 1.0);
+		return result;
 	}
 }

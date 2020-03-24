@@ -41,7 +41,7 @@ T vectorLenght(const std::array<T, 3>& v)
 
 Source::Source()
 {
-	m_type = None;
+	m_type = Type::None;
 	for (std::size_t i = 0; i < 3; i++)
 	{
 		m_position[i] = 0.0;
@@ -171,9 +171,10 @@ void PencilSource::setPhotonEnergy(double energy)
 		m_photonEnergy = energy;
 }
 
-double PencilSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* progressBar)
+double PencilSource::getCalibrationValue(ProgressBar* progressBar) const
 {
 	Material airMaterial("Air, Dry (near sea level)");
+	const double nHistories = totalExposures() * historiesPerExposure();
 	const double calcOutput = nHistories * m_photonEnergy * airMaterial.getMassEnergyAbsorbtion(m_photonEnergy) * KEV_TO_MJ;
 	const double factor = m_airDose / calcOutput;
 	return factor;
@@ -181,7 +182,7 @@ double PencilSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* 
 DXSource::DXSource()
 	:Source()
 {
-	m_type = DX;
+	m_type = Type::DX;
 	m_sdd = 1000.0;
 	m_fieldSize[0] = 100.0;
 	m_fieldSize[1] = 100.0;
@@ -384,7 +385,6 @@ void DXSource::setTubeRotation(double angle)
 	vectormath::rotate(&cos[3], beam_direction.data(), diff_angle);
 	setDirectionCosines(cos);
 	m_tubeRotationAngle = angle;
-
 }
 
 double DXSource::tubeRotation() const
@@ -402,14 +402,14 @@ double DXSource::tubeRotationDeg() const
 	return tubeRotation() * RAD_TO_DEG;
 }
 
-double DXSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* progressBar)
+double DXSource::getCalibrationValue(ProgressBar* progressBar) const
 {
 	auto specter = tube().getSpecter();
 	std::vector<double> massAbsorb(specter.size(), 0.0);
 	Material airMaterial("Air, Dry (near sea level)");
 	std::transform(specter.begin(), specter.end(), massAbsorb.begin(), [&](const auto &el)->double {return airMaterial.getMassEnergyAbsorbtion(el.first); });
 	
-	double nHist = static_cast<double>(nHistories);
+	const double nHist = totalExposures() * historiesPerExposure();
 	
 	double calcOutput = 0.0; // Air KERMA [keV/g] 
 	for (std::size_t i = 0; i < specter.size(); ++i)
@@ -458,7 +458,7 @@ const std::array<double, 3> DXSource::tubePosition(void) const
 CTSource::CTSource()
 	:Source()
 {
-	m_type = None;
+	m_type = Type::None;
 	m_sdd = 1190.0;
 	m_collimation = 38.4;
 	m_fov = 500.0;
@@ -467,6 +467,9 @@ CTSource::CTSource()
     m_scanLenght = 100.0;
 	auto &t = tube();
 	t.setAlFiltration(7.0);
+	const std::array<double, 6> ct_cosines{ -1,0,0,0,0,1 };
+	setDirectionCosines(ct_cosines);
+
 }
 
 
@@ -613,61 +616,74 @@ void CTSource::updateSpecterDistribution()
 	}
 }
 
+//double CTSource::getCalibrationValue(ProgressBar* progressBar) const
 
-double CTSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* progressBar)
+template<typename T>
+static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
 {
-
-	double meanWeight = 0;
-	for (std::size_t i = 0; i < totalExposures(); ++i)
-	{
-		Exposure dummy;
-		getExposure(dummy, i);
-		meanWeight += dummy.beamIntensityWeight();
-	}
-	meanWeight /= static_cast<double>(totalExposures());
-
-	auto world = CTDIPhantom(m_ctdiPhantomDiameter);
-	world.setAttenuationLutMaxEnergy(m_tube.voltage());
+	CTDIPhantom world(sourceCopy.ctdiPhantomDiameter());
+	world.setAttenuationLutMaxEnergy(sourceCopy.tube().voltage());
 	world.validate();
 
-	updateFromWorld(world);
-	validate();
+	sourceCopy.updateFromWorld(world);
 
+	double meanWeight = 0;
+	for (std::size_t i = 0; i < sourceCopy.totalExposures(); ++i)
+	{
+		Exposure dummy;
+		sourceCopy.getExposure(dummy, i);
+		meanWeight += dummy.beamIntensityWeight();
+	}
+	meanWeight /= static_cast<double>(sourceCopy.totalExposures());
 
+	const std::array<double, 6> cosines({ -1,0,0,0,0,1 });
+	sourceCopy.setDirectionCosines(cosines);
 
-
-
-	std::array<CTDIPhantom::HolePosition, 5> position = { CTDIPhantom::Center, CTDIPhantom::West, CTDIPhantom::East, CTDIPhantom::South, CTDIPhantom::North };
-
-	const bool usingXCare = m_useXCareFilter;
-	m_useXCareFilter = false; // we need to disable organ aec for ctdi statistics, this should be ok 
-
-	std::size_t statCounter = CTDI_MIN_HISTORIES / (this->exposuresPerRotatition() * m_historiesPerExposure);
+	sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok 
+	std::size_t statCounter = CTDI_MIN_HISTORIES / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
 	if (statCounter < 1)
 		statCounter = 1;
-	const auto histories = m_historiesPerExposure;
-	m_historiesPerExposure = histories * statCounter; // ensuring enough histories for ctdi measurement
+	const auto histories = sourceCopy.historiesPerExposure();
+	sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
+	sourceCopy.validate();
+	
+	auto result = transport::run(world, &sourceCopy, progressBar);
+
+	typedef CTDIPhantom::HolePosition holePosition;
+	std::array<CTDIPhantom::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
 	std::array<double, 5> measureDose;
 	measureDose.fill(0.0);
-	auto dose = transport::run(world, this, progressBar);
 	for (std::size_t i = 0; i < 5; ++i)
 	{
 		auto holeIndices = world.holeIndices(position[i]);
 		for (auto idx : holeIndices)
-			measureDose[i] += dose[idx];
+			measureDose[i] += result.dose[idx];
 		measureDose[i] /= static_cast<double>(holeIndices.size());
 	}
 	
-	m_historiesPerExposure = histories; //reverting old value
+	
+	//test
+	std::array<double, 5> measureTally;
+	measureTally.fill(0.0);
+	const double totalHistories = sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure();
+	for (std::size_t i = 0; i < 5; ++i)
+	{
+		auto holeIndices = world.holeIndices(position[i]);
+		double tally = 0;
+		for (auto idx : holeIndices)
+			tally += result.nEvents[idx];
+		measureTally[i] = std::sqrt(tally / (totalHistories * totalHistories) - tally * tally / (totalHistories * totalHistories * totalHistories));
+	}
+	//test end
+	
+
 
 	const double ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / 4.0;
 	const double ctdiCent = measureDose[0];
-	const double ctdivol = (ctdiCent + 2.0 * ctdiPher) / 3.0 / static_cast<double>(statCounter);
-	const double factor = m_ctdivol / ctdivol / meanWeight;
-	m_useXCareFilter = usingXCare; // re-enable organ aec if it was used
+	const double ctdiw = (ctdiCent + 2.0 * ctdiPher) / 3.0 / static_cast<double>(statCounter);
+	const double factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;
 	return factor;
-
 }
 
 std::uint64_t CTSource::exposuresPerRotatition() const 
@@ -679,7 +695,7 @@ std::uint64_t CTSource::exposuresPerRotatition() const
 CTSpiralSource::CTSpiralSource()
 	:CTSource()
 {
-	m_type = CTSpiral;
+	m_type = Type::CTSpiral;
 	m_pitch = 1.0;
 }
 void CTSpiralSource::setPitch(double pitch)
@@ -739,16 +755,18 @@ std::uint64_t CTSpiralSource::totalExposures() const
 	return static_cast<std::uint64_t>(m_scanLenght * PI_2 / (m_collimation * m_pitch * m_exposureAngleStep));
 }
 
-double CTSpiralSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* progressBar)
+double CTSpiralSource::getCalibrationValue(ProgressBar* progressBar) const
 {
-	return CTSource::getCalibrationValue(nHistories, progressBar) * m_pitch;
+	auto copy = *this;
+	return ctCalibration(copy, progressBar) * m_pitch;
+	//return CTSource::getCalibrationValue(progressBar) / m_pitch;
 }
 
 
 CTAxialSource::CTAxialSource()
 	:CTSource()
 {
-	m_type = CTAxial;
+	m_type = Type::CTAxial;
 	m_step = m_collimation;
 	m_scanLenght = m_step;
 }
@@ -821,10 +839,16 @@ std::uint64_t CTAxialSource::totalExposures() const
 	return anglesPerRotation * (rotationNumbers + 1);
 }
 
+double CTAxialSource::getCalibrationValue(ProgressBar* progressBar) const
+{
+	auto copy = *this;
+	return ctCalibration(copy, progressBar);
+}
+
 CTDualSource::CTDualSource()
 	:CTSource()
 {
-	m_type = CTDual;
+	m_type = Type::CTDual;
 	
 	m_sddB = m_sdd;
 	m_fovB = m_fov;
@@ -913,9 +937,10 @@ std::uint64_t CTDualSource::exposuresPerRotatition() const
 	return 2 * static_cast<std::size_t>(PI_2 / m_exposureAngleStep);
 }
 
-double CTDualSource::getCalibrationValue(std::uint64_t nHistories, ProgressBar* progressBar)
+double CTDualSource::getCalibrationValue(ProgressBar* progressBar) const
 {
-	return CTSource::getCalibrationValue(nHistories, progressBar) * m_pitch;
+	auto copy = *this;
+	return ctCalibration(copy, progressBar) * m_pitch;
 }
 
 void CTDualSource::setStartAngleDegB(double angle)

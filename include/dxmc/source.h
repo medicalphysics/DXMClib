@@ -34,7 +34,7 @@ Copyright 2019 Erlend Andersen
 class Source
 {
 public:
-	enum Type { None, CTSpiral, CTAxial, DX, CTDual, Pencil, Isotropic };
+	enum class Type { None, CTSpiral, CTAxial, DX, CTDual, Pencil, Isotropic };
     Source();
     virtual bool getExposure(Exposure& exposure, std::uint64_t i) const = 0;
 	virtual double maxPhotonEnergyProduced() const {return  Tube::maxVoltage(); }
@@ -61,7 +61,7 @@ public:
 
 	Source::Type type() const { return m_type; }
 
-	virtual double getCalibrationValue(std::uint64_t nHistories, ProgressBar* progress=nullptr) = 0;
+	virtual double getCalibrationValue(ProgressBar* progress=nullptr) const = 0;
 	
 	virtual bool isValid(void) const = 0;
 	virtual bool validate(void) = 0;
@@ -72,7 +72,7 @@ protected:
 	std::array<double, 6> m_directionCosines = { 1,0,0,0,1,0 };
 	std::uint64_t m_historiesPerExposure = 1;
 	std::shared_ptr<PositionalFilter> m_positionalFilter;
-	Type m_type = None;
+	Type m_type = Type::None;
 private:
 	void normalizeDirectionCosines(void);
 };
@@ -96,7 +96,7 @@ public:
 	void setAirDose(double Gycm2) { if (Gycm2 > 0.0) m_airDose = Gycm2; }
 	double airDose(void) const { return m_airDose; } // Gycm2
 
-	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
+	double getCalibrationValue(ProgressBar* = nullptr) const override;
 
 	bool isValid(void) const override { return true; }
 	bool validate(void) override {return true; }
@@ -120,9 +120,11 @@ public:
 		m_totalExposures = nExposures; };
 	std::uint64_t totalExposures() const override { 
 		return m_totalExposures; };
-	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* progress = nullptr) override {
+	
+	double getCalibrationValue(ProgressBar* progress = nullptr) const override {
 		return 1.0;
 	};
+
 	bool isValid() const override;
 	bool validate() override;
 
@@ -134,7 +136,7 @@ protected:
 private:
 	std::uint64_t m_totalExposures = 1;
 	std::array<double, 2> m_collimationAngles = { 0,0 };
-	std::unique_ptr<SpecterDistribution> m_specterDistribution = nullptr;
+	std::shared_ptr<SpecterDistribution> m_specterDistribution = nullptr;
 	double m_maxPhotonEnergy = 1.0;
 };
 
@@ -180,7 +182,7 @@ public:
 	void setDap(double Gycm2) { if (Gycm2 > 0.0) m_dap = Gycm2; }
 	double dap(void) const { return m_dap; } // Gycm2
 
-	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
+	double getCalibrationValue(ProgressBar* = nullptr) const override;
 	
 	const std::array<double, 3> tubePosition(void) const;
 
@@ -205,8 +207,8 @@ private:
 	Tube m_tube;
 	double m_tubeRotationAngle = 0.0;
 	bool m_specterValid = false;
-	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
-	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
+	std::shared_ptr<SpecterDistribution> m_specterDistribution=nullptr;
+	std::shared_ptr<HeelFilter> m_heelFilter = nullptr;
 	bool m_modelHeelEffect = true;
 };
 
@@ -268,7 +270,7 @@ public:
 	void setCtdiPhantomDiameter(std::uint64_t mm) { if (mm > 160) m_ctdiPhantomDiameter = mm; else m_ctdiPhantomDiameter = 160; }
 	std::uint64_t ctdiPhantomDiameter(void) const { return m_ctdiPhantomDiameter; }
 
-	virtual double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
+	virtual double getCalibrationValue(ProgressBar* = nullptr) const = 0;
 	
 	virtual std::uint64_t exposuresPerRotatition() const;
 	
@@ -279,6 +281,8 @@ public:
 	bool modelHeelEffect() const { return m_modelHeelEffect; };
 
 protected:
+	template<typename T>
+	static double ctCalibration(T& ctSource, ProgressBar* progress = nullptr);
 	virtual void updateSpecterDistribution();
 
     double m_sdd;
@@ -295,8 +299,8 @@ protected:
 	bool m_useXCareFilter = false;
 	bool m_specterValid = false;
 	Tube m_tube;
-	std::unique_ptr<SpecterDistribution> m_specterDistribution=nullptr;
-	std::unique_ptr<HeelFilter> m_heelFilter = nullptr;
+	std::shared_ptr<SpecterDistribution> m_specterDistribution=nullptr;
+	std::shared_ptr<HeelFilter> m_heelFilter = nullptr;
 	bool m_modelHeelEffect = true;
 };
 
@@ -308,7 +312,7 @@ public:
 	void setPitch(double pitch);
 	double pitch(void) const;
 	std::uint64_t totalExposures(void) const override;
-	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
+	double getCalibrationValue(ProgressBar* = nullptr) const override;
 protected:
 private:
 	double m_pitch;
@@ -323,6 +327,7 @@ public:
 	double step(void) const;
 	void setScanLenght(double scanLenght) override;
 	std::uint64_t totalExposures(void) const override;
+	double getCalibrationValue(ProgressBar* progressBar) const override;
 protected:
 private:
 	double m_step;
@@ -348,7 +353,7 @@ public:
 
 	std::uint64_t totalExposures(void) const override;
 	std::uint64_t exposuresPerRotatition() const override;
-	double getCalibrationValue(std::uint64_t nHistories, ProgressBar* = nullptr) override;
+	double getCalibrationValue(ProgressBar* = nullptr) const override;
 
 	void setBowTieFilterB(std::shared_ptr<BeamFilter> filter) { m_bowTieFilterB = filter; }
 	std::shared_ptr<BeamFilter> bowTieFilterB(void) { return m_bowTieFilterB; }
@@ -373,7 +378,7 @@ protected:
 	void updateSpecterDistribution() override;
 private:
 	Tube m_tubeB;
-	std::unique_ptr<SpecterDistribution> m_specterDistributionB = nullptr;
+	std::shared_ptr<SpecterDistribution> m_specterDistributionB = nullptr;
 	double m_sddB;
 	double m_fovB;
 	double m_startAngleB;
@@ -383,5 +388,5 @@ private:
 	double m_tubeBweight = -1.0;
 	double m_tubeAweight = -1.0;
 	std::shared_ptr<BeamFilter> m_bowTieFilterB = nullptr;
-	std::unique_ptr<HeelFilter> m_heelFilterB = nullptr;
+	std::shared_ptr<HeelFilter> m_heelFilterB = nullptr;
 };

@@ -453,7 +453,7 @@ double HeelFilter::sampleIntensityWeight(const double angle, const double energy
 		e_index = 0;
 
 	std::size_t a_index = (angle - m_angleStart ) / m_angleStep; // we want lowest angle index since we are interpolating
-	if (a_index > m_angleSize)
+	if (a_index >= m_angleSize)
 		a_index = m_angleSize - 1;
 	if (angle < m_angleStart)
 		a_index = 0;

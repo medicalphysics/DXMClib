@@ -298,12 +298,12 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	:World()
 {
 	setDirectionCosines(1.0, 0.0, 0.0, 0.0, 1.0, 0.0);
-	setSpacing(1.0, 1.0, 1.0);
+	setSpacing(1.0, 1.0, 2.5);
 	setOrigin(0.0, 0.0, 0.0);
 	if (diameter % 2 == 0) // make sure odd dimensions in xy
-		setDimensions(diameter + 3, diameter + 3, 150);
+		setDimensions(diameter + 3, diameter + 3, 60);
 	else
-		setDimensions(diameter + 2, diameter + 2, 150);
+		setDimensions(diameter + 2, diameter + 2, 60);
 	
 
 	auto air = Material("Air, Dry (near sea level)");
@@ -357,7 +357,6 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 				auto idx = circleIndices2D(fdim, fspacing, hcenters[i], holeRadii);
 				std::transform(idx.begin(), idx.end(), idx.begin(), [=](std::size_t ind) {return ind + offset; }); //adding offset
 				auto& indices = m_holePositions[i];
-				indices.reserve(idx.size());
 				indices.insert(indices.end(), idx.begin(), idx.end());
 			}
 		}
@@ -393,13 +392,13 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 
 const std::vector<std::size_t>& CTDIPhantom::holeIndices(CTDIPhantom::HolePosition position)
 {
-	if (position == West)
+	if (position == HolePosition::West)
 		return m_holePositions[4];
-	else if (position == East)
+	else if (position == HolePosition::East)
 		return m_holePositions[3];
-	else if (position == North)
+	else if (position == HolePosition::North)
 		return m_holePositions[2];
-	else if (position == South)
+	else if (position == HolePosition::South)
 		return m_holePositions[1];
 	return m_holePositions[0];
 }
