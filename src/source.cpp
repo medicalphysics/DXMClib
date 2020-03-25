@@ -29,7 +29,7 @@ constexpr double DEG_TO_RAD = PI / 180.0;
 constexpr double RAD_TO_DEG = 1.0 / DEG_TO_RAD;
 constexpr double KEV_TO_MJ = 1.6021773e-13; // milli Joules
 constexpr double ANGLE_ERRF = 1E-6;
-constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(500E6);
+constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(100E6);
 
 
 template<typename T>

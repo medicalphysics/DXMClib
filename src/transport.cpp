@@ -35,7 +35,6 @@ namespace transport {
 	constexpr double PI_VAL2 = PI_VAL + PI_VAL;
 	constexpr double RUSSIAN_RULETTE_PROBABILITY = 0.8;
 	constexpr double RUSSIAN_RULETTE_ENERGY_THRESHOLD = 10.0; // keV
-	constexpr double RUSSIAN_RULETTE_WEIGHT_THRESHOLD = 0.1; 
 	constexpr double ENERGY_CUTOFF_THRESHOLD = 1.0; // keV
 	constexpr double KEV_TO_MJ = 1.6021773e-13;
 
@@ -44,61 +43,7 @@ namespace transport {
 
 	constexpr double N_ERROR = 1.0e-9;
 
-	/*template<typename T>
-	void findNearestIndices(const T value, const std::vector<T>& vec, std::size_t& first, std::size_t& last)
-	{
-		auto beg = vec.begin();
-		auto end = vec.end();
-		auto upper = std::lower_bound(beg, end, value);
-
-		if (upper == end)
-			last = vec.size() - 1;
-		else if (upper == beg)
-			last = 2;
-		else
-			last = static_cast<std::size_t>(std::distance(beg, upper));
-		first = last - 1;
-		return;
-	}
-
-	template <typename T>
-	inline T interp(T x, T x0, T x1, T y0, T y1)
-	{
-		return y0 + (x - x0) * (y1 - y0) / (x1 - x0);
-	}
-
-
-
-	template <typename T>
-	T interpolate(const std::vector<T>& xArr, const std::vector<T>& yArr, const T x)
-	{
-		auto first = xArr.begin();
-		auto last = xArr.end();
-		auto upper = std::lower_bound(first, last, x);
-
-		if (upper == xArr.cend())
-			return yArr.back();
-
-		if (upper == xArr.cbegin())
-			return yArr.front();
-
-		const double x1 = *upper;
-
-		auto yupper = yArr.begin();
-		auto dist = std::distance(xArr.begin(), upper);
-		std::advance(yupper, dist);
-
-		const double y1 = *yupper;
-
-		std::advance(yupper, -1);
-		const double y0 = *yupper;
-
-		std::advance(upper, -1);
-		const double x0 = *upper;
-
-		return interp(x, x0, x1, y0, y1);
-	}*/
-
+	
 	/*
 	//waiting for c++ 20 where we get atomic references. We then have lockless threadsafe update of values in dose array 
 	inline void safeValueAdd(double& value, const double addValue)
@@ -302,6 +247,11 @@ namespace transport {
 						safeValueAdd(energyImparted[bufferIdx], e * p.weight);
 						safeTallyAdd(tally[bufferIdx]);
 						updateMaxAttenuation = true;
+						if (p.energy < ENERGY_CUTOFF_THRESHOLD)
+						{
+							safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight);
+							continueSampling = false;
+						}
 					}
 					else // Rayleigh scatter event
 					{
@@ -311,14 +261,8 @@ namespace transport {
 
 					if (continueSampling)
 					{
-						if (p.energy < ENERGY_CUTOFF_THRESHOLD)
-						{
-							safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight);
-							continueSampling = false;
-						}
-
 						// russian rulette
-						if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD || p.weight < RUSSIAN_RULETTE_WEIGHT_THRESHOLD) && ruletteCandidate)
+						if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD) && ruletteCandidate)
 						{
 							ruletteCandidate = false;
 							const double r4 = randomUniform<double>(seed);
@@ -390,7 +334,7 @@ namespace transport {
 		}
 	}
 	
-	std::uint64_t parallellRun(const World& w, const Source* source, Result* result,
+	void parallellRun(const World& w, const Source* source, Result* result,
 		const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar* progressbar)
 	{
 		const std::uint64_t len = expEnd - expBeg;
@@ -404,36 +348,34 @@ namespace transport {
 			{
 				if (progressbar)
 					if (progressbar->cancel())
-						return 0;
+						return;
 				source->getExposure(exposure, i);
 				exposure.alignToDirectionCosines(worldBasis);
 				transport(w, exposure, seed, result);
 				if (progressbar)
 					progressbar->exposureCompleted();
 			}
-			return source->historiesPerExposure() * len;
+			return;
 		}
 		
 		const auto threadLen = len / nJobs;
-		std::vector<std::future<std::uint64_t>> jobs;
-		jobs.reserve(nJobs);
+		std::vector<std::thread> jobs;
+		jobs.reserve(nJobs-1);
 		std::uint64_t expBegThread = expBeg;
 		std::uint64_t expEndThread = expBegThread + threadLen;
-		for (std::size_t i = 0; i < nJobs; ++i)
+		for (std::size_t i = 0; i < nJobs-1; ++i)
 		{
-			if (i == nJobs - 1)
-				expEndThread = expEnd;
-			jobs.push_back(std::async(std::launch::async, parallellRun, w, source, result, expBegThread, expEndThread, 1, progressbar));
+			jobs.push_back(std::thread(parallellRun, w, source, result, expBegThread, expEndThread, 1, progressbar));
 			expBegThread = expEndThread;
 			expEndThread = expBegThread + threadLen;
 		}
-		std::uint64_t sum = 0;
-		for (std::size_t i = 0; i < nJobs; ++i)
-			sum += jobs[i].get();
-		return sum;
+		expEndThread = expEnd;
+		parallellRun(w, source, result, expBegThread, expEndThread, 1, progressbar);
+		for (std::size_t i = 0; i < nJobs-1; ++i)
+			jobs[i].join();
 	}
 
-	std::uint64_t parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result* result, 
+	void parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result* result, 
 		const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar* progressbar)
 	{
 		const std::uint64_t len = expEnd - expBeg;
@@ -448,7 +390,7 @@ namespace transport {
 			{
 				if (progressbar)
 					if (progressbar->cancel())
-						return 0;
+						return;
 				source->getExposure(exposure, i);
 				auto pos = source->position();
 				exposure.subtractPosition(pos); // aligning to center of phantom
@@ -459,26 +401,25 @@ namespace transport {
 				if (progressbar)
 					progressbar->exposureCompleted();
 			}
-			return source->historiesPerExposure() * len;
+			return;
 		}
 		
 		const auto threadLen = len / nJobs;
-		std::vector<std::future<std::uint64_t>> jobs;
-		jobs.reserve(nJobs);
+		std::vector<std::thread> jobs;
+		jobs.reserve(nJobs-1);
 		std::uint64_t expBegThread = expBeg;
 		std::uint64_t expEndThread = expBegThread + threadLen;
-		for (std::size_t i = 0; i < nJobs; ++i)
+		for (std::size_t i = 0; i < nJobs-1; ++i)
 		{
-			if (i == nJobs - 1)
-				expEndThread = expEnd;
-			jobs.push_back(std::async(std::launch::async, parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar));
+			//jobs.push_back(std::async(std::launch::async, parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar));
+			jobs.push_back(std::thread(parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar));
 			expBegThread = expEndThread;
 			expEndThread = expBegThread + threadLen;
 		}
-		std::uint64_t sum = 0;
-		for (std::size_t i = 0; i < nJobs; ++i)
-			sum += jobs[i].get();
-		return sum;
+		expEndThread = expEnd;
+		parallellRunCtdi(w, source, result, expBegThread, expEndThread, 1, progressbar);
+		for (std::size_t i = 0; i < nJobs-1; ++i)
+			jobs[i].join();
 	}
 
 
@@ -525,7 +466,7 @@ namespace transport {
 			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
 		}
 
-		auto nHistories = parallellRun(world, source, &result, 0, totalExposures, nJobs, progressbar);
+		parallellRun(world, source, &result, 0, totalExposures, nJobs, progressbar);
 		
 		if (progressbar)
 		{
