@@ -66,12 +66,6 @@ if(${USE_LOWENERGY_COMPTON})
     target_compile_definitions(libdxmc PUBLIC DXMC_USE_LOWENERGY_COMPTON)
 endif()
 
-option(DXMC_FORCE_PHOTOELECTRIC_INTERACTION "Force photoelectric events to reduce variance" ON)
-if(${FORCE_PHOTOELECTRIC_INTERACTION})
-    target_compile_definitions(libdxmc PUBLIC DXMC_FORCE_PHOTOELECTRIC_INTERACTION)
-endif()
-
-
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 

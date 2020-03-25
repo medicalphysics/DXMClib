@@ -77,7 +77,7 @@ public:
 	}
 
 	
-	void setDoseData(double* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<double, 3> doseSpacing, Axis planeNormal=Axis::Y)
+	void setDoseData(const double* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<double, 3> doseSpacing, Axis planeNormal=Axis::Y)
 	{
 		const std::lock_guard<std::mutex> lock(m_doseMutex);
 		m_doseData = doseData;

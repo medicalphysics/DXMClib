@@ -29,12 +29,8 @@ constexpr double DEG_TO_RAD = PI / 180.0;
 constexpr double RAD_TO_DEG = 1.0 / DEG_TO_RAD;
 constexpr double KEV_TO_MJ = 1.6021773e-13; // milli Joules
 constexpr double ANGLE_ERRF = 1E-6;
-
-#ifdef DXMC_FORCE_PHOTOELECTRIC_INTERACTION
-constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(250E5);
-#else
 constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(500E6);
-#endif
+
 
 template<typename T>
 T vectorLenght(const std::array<T, 3>& v)
@@ -119,8 +115,6 @@ void IsotropicSource::setSpecter(const std::vector<double> weights, const std::v
 	const auto maxEnergyElement = std::max_element(energies.cbegin(), energies.cend());
 	m_maxPhotonEnergy = *maxEnergyElement;
 	m_specterDistribution = std::make_unique<SpecterDistribution>(weights, energies);
-
-
 }
 
 void IsotropicSource::setCollimationAngles(double xRad, double yRad)
@@ -667,6 +661,15 @@ static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
 		measureDose[i] /= static_cast<double>(holeIndices.size());
 	}
 	
+	std::array<std::uint32_t, 5> measureTally;
+	measureTally.fill(0);
+	for (std::size_t i = 0; i < 5; ++i)
+	{
+		auto holeIndices = world.holeIndices(position[i]);
+		for (auto idx : holeIndices)
+			measureTally[i] += result.nEvents[idx];
+	}
+
 	const double ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / 4.0;
 	const double ctdiCent = measureDose[0];
 	const double ctdiw = (ctdiCent + 2.0 * ctdiPher) / 3.0 / static_cast<double>(statCounter);

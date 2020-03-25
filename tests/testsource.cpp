@@ -2,6 +2,9 @@
 #include "dxmc/vectormath.h"
 #include <iostream>
 #include <cassert>
+#include <future>
+#include <thread>
+#include <chrono>
 
 constexpr double RAD2DEG = 180.0 / 3.14159265359;
 constexpr double DEG2RAD = 1.0 / RAD2DEG;
@@ -115,12 +118,21 @@ bool testSourceAnglesMany()
 bool testCTCalibration()
 {
 	CTSpiralSource src;
-	src.setPitch(0.5);
+	//src.setPitch(0.5);
 	src.setExposureAngleStepDeg(5.0);
 	src.setHistoriesPerExposure(100000);
-	auto factor = src.getCalibrationValue();
+	auto prog = std::make_unique<ProgressBar>();
+	//auto factor = src.getCalibrationValue();
+	auto handle = std::async(std::launch::async, &CTSpiralSource::getCalibrationValue, src, prog.get());
 
-
+	using namespace std::chrono_literals;
+	for (;;)
+	{
+		if (handle.wait_for(5s) == std::future_status::ready)
+			break;
+		std::cout << prog->getETA() << std::endl;
+	}
+	auto factor = handle.get();
 	return false;
 }
 

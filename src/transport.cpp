@@ -34,7 +34,9 @@ namespace transport {
 	constexpr double PI_VAL = 3.14159265358979323846264338327950288;
 	constexpr double PI_VAL2 = PI_VAL + PI_VAL;
 	constexpr double RUSSIAN_RULETTE_PROBABILITY = 0.8;
-	constexpr double RUSSIAN_RULETTE_THRESHOLD = 10.0; // keV
+	constexpr double RUSSIAN_RULETTE_ENERGY_THRESHOLD = 10.0; // keV
+	constexpr double RUSSIAN_RULETTE_WEIGHT_THRESHOLD = 0.1; 
+	constexpr double ENERGY_CUTOFF_THRESHOLD = 1.0; // keV
 	constexpr double KEV_TO_MJ = 1.6021773e-13;
 
 	std::mutex DOSE_MUTEX;
@@ -241,11 +243,7 @@ namespace transport {
 		return idx;
 	}
 
-	void sampleInteraction(const World& world, Particle& p, std::uint64_t seed[2], Result* result)
-	{
-
-	}
-
+	
 	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], Result* result)
 	{
 		const AttenuationLut& lutTable = world.attenuationLut();
@@ -284,17 +282,7 @@ namespace transport {
 					const double attPhoto = atts[0];
 					const double attCompt = atts[1];
 					const double attRayl = atts[2];
-#ifdef DXMC_FORCE_PHOTOELECTRIC_INTERACTION
-					// we force an photoelectric event at every interaction
-					const double photoelectricProbability = attPhoto / (attPhoto + attCompt + attRayl);
-					safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight * photoelectricProbability);
-					safeTallyAdd(tally[bufferIdx]);
-					p.weight *= (1.0 - photoelectricProbability); //preserve non biased 
 
-					//select coherent or incoherent interaction
-					const double r3 = randomUniform(seed, attCompt + attRayl);
-					if (r3 <= attCompt) // Compton event
-#else
 					const double r3 = randomUniform(seed, attPhoto + attCompt + attRayl);
 					if (r3 <= attPhoto) // Photoelectric event
 					{
@@ -304,7 +292,6 @@ namespace transport {
 						continueSampling = false;
 					}
 					else if (r3 <= attPhoto + attCompt) // Compton event
-#endif
 					{
 						double cosangle;
 #ifdef DXMC_USE_LOWENERGY_COMPTON
@@ -322,17 +309,26 @@ namespace transport {
 						rayleightScatterLivermore(p, matIdx, world.attenuationLut(), seed, cosangle);
 					}
 
-					// russian rulette
-					if ((p.energy < RUSSIAN_RULETTE_THRESHOLD) && ruletteCandidate && continueSampling)
+					if (continueSampling)
 					{
-						ruletteCandidate = false;
-						const double r4 = randomUniform<double>(seed);
-						if (r4 < RUSSIAN_RULETTE_PROBABILITY) {
+						if (p.energy < ENERGY_CUTOFF_THRESHOLD)
+						{
+							safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight);
 							continueSampling = false;
 						}
-						else {
-							constexpr double factor = 1.0 / (1.0 - RUSSIAN_RULETTE_PROBABILITY);
-							p.weight *= factor;
+
+						// russian rulette
+						if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD || p.weight < RUSSIAN_RULETTE_WEIGHT_THRESHOLD) && ruletteCandidate)
+						{
+							ruletteCandidate = false;
+							const double r4 = randomUniform<double>(seed);
+							if (r4 < RUSSIAN_RULETTE_PROBABILITY) {
+								continueSampling = false;
+							}
+							else {
+								constexpr double factor = 1.0 / (1.0 - RUSSIAN_RULETTE_PROBABILITY);
+								p.weight *= factor;
+							}
 						}
 					}
 				}
@@ -579,7 +575,7 @@ namespace transport {
 			progressbar->setTotalExposures(totalExposures, "CTDI Calibration");
 			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing(), ProgressBar::Axis::Z);
 		}
-		parallellRunCtdi(world, source, &result, 0, totalExposures, nJobs, progressbar);
+		parallellRunCtdi(world, source, &result, 0, totalExposures + 1, nJobs, progressbar);
 		if(progressbar)
 			progressbar->clearDoseData();
 		
