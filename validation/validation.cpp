@@ -155,7 +155,8 @@ bool TG195Case2AbsorbedEnergyMono()
 	src.setHistoriesPerExposure(1e6);
 	src.setTotalExposures(40);
 	src.validate();
-	auto dose = transport::run(w, &src, nullptr, false);
+	auto res = transport::run(w, &src, nullptr, false);
+	auto& dose = res.dose;
 
 	const double total_hist = static_cast<double>(src.totalExposures() * src.historiesPerExposure());
 	double total_ev = 1000*std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [](double d, unsigned char i)->double {return i > 0 ? d : 0.0; });
@@ -205,7 +206,8 @@ bool TG195Case2AbsorbedEnergy120()
 	src.setHistoriesPerExposure(1e6);
 	src.setTotalExposures(40);
 	src.validate();
-	auto dose = transport::run(w, &src, nullptr, false);
+	auto res = transport::run(w, &src, nullptr, false);
+	auto& dose = res.dose;
 
 	const double total_hist = static_cast<double>(src.totalExposures() * src.historiesPerExposure());
 	double total_ev = 1000 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [](double d, unsigned char i)->double {return i > 0 ? d : 0.0; });
@@ -363,8 +365,8 @@ bool TG195Case4AbsorbedEnergy() {
 	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
 	auto w = generateTG195Case4World1();
 
-	auto dose = transport::run(w, &src, nullptr, false);
-
+	auto res = transport::run(w, &src, nullptr, false);
+	auto& dose = res.dose;
 	const double total_hist = static_cast<double>(src.totalExposures() * src.historiesPerExposure());
 	std::array<double, 4> voi_ev;
 	for (std::size_t i = 0; i < 4; ++i) {
@@ -390,7 +392,8 @@ bool TG195Case4AbsorbedEnergy() {
 	std::cout << "Collimation: 80 mm:\n";
 	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
 	
-	dose = transport::run(w, &src, nullptr, false);
+	res = transport::run(w, &src, nullptr, false);
+	dose = res.dose;
 
 	for (std::size_t i = 0; i < 4; ++i) {
 		voi_ev[i] = 1000 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
@@ -413,7 +416,8 @@ bool TG195Case4AbsorbedEnergy() {
 	}
 	src.setSpecter(s, e);
 	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
-	dose = transport::run(w, &src, nullptr, false);
+	res= transport::run(w, &src, nullptr, false);
+	dose = res.dose;
 	for (std::size_t i = 0; i < 4; ++i) {
 		voi_ev[i] = 1000 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
 	}
@@ -423,8 +427,8 @@ bool TG195Case4AbsorbedEnergy() {
 		std::cout << "VOI " << i + 1 << " dxmc: " << voi_ev[i] << ", TG195: " << sim_ev[i] << ", difference [%]: " << (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100 << "\n";
 	std::cout << "Collimation: 80 mm:\n";
 	src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
-	dose = transport::run(w, &src, nullptr, false);
-
+	res = transport::run(w, &src, nullptr, false);
+	dose = res.dose;
 	for (std::size_t i = 0; i < 4; ++i) {
 		voi_ev[i] = 1000 / total_hist * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](double d, unsigned char m)->double {return m == i + 2 ? d : 0.0; });
 	}
@@ -459,27 +463,27 @@ bool testAttenuation()
 	w.validate();
 
 	PencilSource pen;
-	pen.setHistoriesPerExposure(1e7);
+	pen.setHistoriesPerExposure(1e5);
 	pen.setPhotonEnergy(energy);
-	pen.setTotalExposures(16);
+	pen.setTotalExposures(4);
 	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);
 
 	const auto tot_hist = pen.historiesPerExposure() * pen.totalExposures();
 
-	auto kev = transport::run(w, &pen, nullptr, false);
-	std::vector<double> att(kev.size());
+	auto res = transport::run(w, &pen, nullptr, false);
+	std::vector<double> att(res.dose.size());
 	for (int i = 0; i < dim[2]; ++i)
 		att[i] = std::exp(-(i + 1) * spacing[2]*0.1 * m.standardDensity() * m.getTotalAttenuation(56.4));
 	
 	const auto att_max = *std::max_element(att.cbegin(), att.cend());
-	const auto kev_max = *std::max_element(kev.cbegin(), kev.cend());
+	const auto kev_max = *std::max_element(res.dose.cbegin(), res.dose.cend());
 
 	std::transform(att.cbegin(), att.cend(), att.begin(), [=](double a) {return a / att_max; });
-	std::transform(kev.cbegin(), kev.cend(), kev.begin(), [=](double e) {return e / kev_max; });
+	std::transform(res.dose.cbegin(), res.dose.cend(), res.dose.begin(), [=](double e) {return e / kev_max; });
 
-	const double rms = std::sqrt((1.0 / att.size()) * std::transform_reduce(kev.cbegin(), kev.cend(), att.cbegin(), 0.0, std::plus<>(), [](double e, double a)->double {return (e - a) * (e - a); }));
+	const double rms = std::sqrt((1.0 / att.size()) * std::transform_reduce(res.dose.cbegin(), res.dose.cend(), att.cbegin(), 0.0, std::plus<>(), [](double e, double a)->double {return (e - a) * (e - a); }));
 
 	std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
 	std::cout << "Monochromatic beam of " << energy << " kev. \n";

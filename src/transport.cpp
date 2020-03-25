@@ -242,13 +242,13 @@ namespace transport {
 	}
 
 
-	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], Result& result)
+	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], Result* result)
 	{
 		const AttenuationLut& lutTable = world.attenuationLut();
 		const double* densityBuffer = world.densityBuffer();
 		const unsigned char* materialBuffer = world.materialIndexBuffer();
-		double* energyImparted = result.dose.data();
-		auto tally = result.nEvents.data();
+		double* energyImparted = result->dose.data();
+		auto tally = result->nEvents.data();
 
 		double maxAttenuationInv;
 		bool updateMaxAttenuation = true;
@@ -363,7 +363,7 @@ namespace transport {
 	}
 
 
-	void transport(const World& world, const Exposure& exposure, std::uint64_t seed[2], Result& result)
+	void transport(const World& world, const Exposure& exposure, std::uint64_t seed[2], Result* result)
 	{
 		Particle particle;
 		const std::size_t nHistories = exposure.numberOfHistories();
@@ -379,7 +379,7 @@ namespace transport {
 		}
 	}
 	
-	std::uint64_t parallellRun(const World& w, const Source* source, Result& result,
+	std::uint64_t parallellRun(const World& w, const Source* source, Result* result,
 		const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar* progressbar)
 	{
 		const std::uint64_t len = expEnd - expBeg;
@@ -427,7 +427,7 @@ namespace transport {
 		return sum;
 	}
 
-	std::uint64_t parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result& result, 
+	std::uint64_t parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result* result, 
 		const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar* progressbar)
 	{
 		const std::uint64_t len = expEnd - expBeg;
@@ -524,7 +524,7 @@ namespace transport {
 			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
 		}
 
-		auto nHistories = parallellRun(world, source, result, 0, totalExposures, nJobs, progressbar);
+		auto nHistories = parallellRun(world, source, &result, 0, totalExposures, nJobs, progressbar);
 		
 		if (progressbar)
 		{
@@ -574,7 +574,7 @@ namespace transport {
 			progressbar->setTotalExposures(totalExposures, "CTDI Calibration");
 			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing(), ProgressBar::Axis::Z);
 		}
-		parallellRunCtdi(world, source, result, 0, totalExposures, nJobs, progressbar);
+		parallellRunCtdi(world, source, &result, 0, totalExposures, nJobs, progressbar);
 		if(progressbar)
 			progressbar->clearDoseData();
 		

@@ -30,7 +30,7 @@ void AttenuationLut::generate(const std::vector<Material>& materials, double min
 	m_minEnergy = minEnergy > 0.0 ? minEnergy : 0.0;
 	m_maxEnergy = maxEnergy > m_minEnergy ? maxEnergy : m_minEnergy + 1.0;
 
-	m_energyResolution = static_cast<std::size_t>(std::ceil((m_maxEnergy - m_minEnergy) / m_energyStep));
+	m_energyResolution = static_cast<std::size_t>(std::ceil((m_maxEnergy - m_minEnergy) / m_energyStep)) + 1;
 	m_nMaterials = materials.size();
 
 	m_attData.resize(m_energyResolution * m_nMaterials * 4 + m_energyResolution);
@@ -108,10 +108,12 @@ double AttenuationLut::totalAttenuation(std::size_t material, double energy) con
 	const std::size_t offset = m_energyResolution + m_energyResolution * material * 4;
 	if (energy <= m_minEnergy)
 		return m_attData[offset];
-	else if (energy >= m_maxEnergy)
-		return m_attData[offset + m_energyResolution - 1];
+	
 
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
+	if (idx >= m_energyResolution - 1)
+		return m_attData[m_energyResolution - 1 + offset];
+
 	return interp(&m_attData[idx], &m_attData[idx + offset], energy);
 }
  double AttenuationLut::rayleightAttenuation(std::size_t material, double energy) const
@@ -119,10 +121,11 @@ double AttenuationLut::totalAttenuation(std::size_t material, double energy) con
 	 const std::size_t offset = m_energyResolution + m_energyResolution * material * 4 + m_energyResolution * 3;
 	if (energy <= m_minEnergy)
 		return m_attData[offset];
-	else if (energy >= m_maxEnergy)
-		return m_attData[offset + m_energyResolution - 1];
-
+	
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
+	if (idx >= m_energyResolution - 1)
+		return m_attData[m_energyResolution - 1 + offset];
+
 	return interp(&m_attData[idx], &m_attData[idx + offset], energy);
 }
 double AttenuationLut::photoelectricAttenuation(std::size_t material, double energy) const 
@@ -130,26 +133,29 @@ double AttenuationLut::photoelectricAttenuation(std::size_t material, double ene
 	const std::size_t offset = m_energyResolution + m_energyResolution * material * 4 + m_energyResolution;
 	if (energy <= m_minEnergy)
 		return m_attData[offset];
-	else if (energy >= m_maxEnergy)
-		return m_attData[offset + m_energyResolution - 1];
 
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
+	if (idx >= m_energyResolution - 1)
+		return m_attData[m_energyResolution - 1 + offset];
+
 	return interp(&m_attData[idx], &m_attData[idx + offset], energy);
 }
 double AttenuationLut::comptonAttenuation(std::size_t material, double energy) const {
 	const std::size_t offset = m_energyResolution + m_energyResolution * material * 4 + m_energyResolution * 2;
 	if (energy <= m_minEnergy)
 		return m_attData[offset];
-	else if (energy >= m_maxEnergy)
-		return m_attData[offset + m_energyResolution - 1];
-
+	
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
+	if (idx >= m_energyResolution - 1)
+		return m_attData[m_energyResolution - 1 + offset];
+
 	return interp(&m_attData[idx], &m_attData[idx + offset], energy);
 }
 
 std::array<double, 3> AttenuationLut::photoComptRayAttenuation(std::size_t material, double energy) const
 {
 	const std::size_t offset = m_energyResolution + m_energyResolution * material * 4 + m_energyResolution;
+	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
 	std::array<double, 3> att;
 	if (energy <= m_minEnergy)
 	{
@@ -158,7 +164,7 @@ std::array<double, 3> AttenuationLut::photoComptRayAttenuation(std::size_t mater
 			att[i] = m_attData[offset + m_energyResolution * i];
 		}
 	}
-	else if(energy >= m_maxEnergy)
+	else if(idx >= m_energyResolution-1)
 	{
 		for (std::size_t i = 0; i < 3; ++i)
 		{
@@ -166,7 +172,6 @@ std::array<double, 3> AttenuationLut::photoComptRayAttenuation(std::size_t mater
 		}
 	}
 	else {
-		const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
 		for (std::size_t i = 0; i < 3; ++i)
 		{
 			att[i] = interp(&m_attData[idx], &m_attData[offset + m_energyResolution * i + idx], energy);
@@ -180,10 +185,11 @@ double AttenuationLut::maxMassTotalAttenuation(double energy) const
 {
 	if (energy <= m_minEnergy)
 		return m_maxMassAtt[0];
-	else if (energy >= m_maxEnergy)
-		return m_maxMassAtt[m_energyResolution - 1];
+	
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
-	return interp(&m_attData[idx], &m_maxMassAtt[idx], energy);
+	if (idx >= m_energyResolution - 1)
+		return m_maxMassAtt[m_energyResolution - 1];
+	return interp(&m_maxMassAtt[idx], &m_maxMassAtt[idx], energy);
 }
 double AttenuationLut::momentumTransfer(std::size_t material, double cumFormFactorSquared) const
 {
