@@ -643,8 +643,7 @@ static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
 	std::size_t statCounter = CTDI_MIN_HISTORIES / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
 	if (statCounter < 1)
 		statCounter = 1;
-	//test /////////
-	statCounter = 1;
+
 	const auto histories = sourceCopy.historiesPerExposure();
 	sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
 	sourceCopy.validate();
@@ -663,19 +662,6 @@ static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
 			measureDose[i] += result.dose[idx];
 		measureDose[i] /= static_cast<double>(holeIndices.size());
 	}
-	
-	
-	//test
-	std::array<std::uint64_t, 5> measureTally;
-	measureTally.fill(0);
-	const double totalHistories = sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure();
-	for (std::size_t i = 0; i < 5; ++i)
-	{
-		auto holeIndices = world.holeIndices(position[i]);
-		for (auto idx : holeIndices)
-			measureTally[i] += result.nEvents[idx];
-	}
-	//test end
 	
 	const double ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / 4.0;
 	const double ctdiCent = measureDose[0];

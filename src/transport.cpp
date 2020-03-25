@@ -241,6 +241,10 @@ namespace transport {
 		return idx;
 	}
 
+	void sampleInteraction(const World& world, Particle& p, std::uint64_t seed[2], Result* result)
+	{
+
+	}
 
 	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], Result* result)
 	{
@@ -280,7 +284,17 @@ namespace transport {
 					const double attPhoto = atts[0];
 					const double attCompt = atts[1];
 					const double attRayl = atts[2];
+#ifdef DXMC_FORCE_PHOTOELECTRIC_INTERACTION
+					// we force an photoelectric event at every interaction
+					const double photoelectricProbability = attPhoto / (attPhoto + attCompt + attRayl);
+					safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight * photoelectricProbability);
+					safeTallyAdd(tally[bufferIdx]);
+					p.weight *= (1.0 - photoelectricProbability); //preserve non biased 
 
+					//select coherent or incoherent interaction
+					const double r3 = randomUniform(seed, attCompt + attRayl);
+					if (r3 <= attCompt) // Compton event
+#else
 					const double r3 = randomUniform(seed, attPhoto + attCompt + attRayl);
 					if (r3 <= attPhoto) // Photoelectric event
 					{
@@ -290,6 +304,7 @@ namespace transport {
 						continueSampling = false;
 					}
 					else if (r3 <= attPhoto + attCompt) // Compton event
+#endif
 					{
 						double cosangle;
 #ifdef DXMC_USE_LOWENERGY_COMPTON

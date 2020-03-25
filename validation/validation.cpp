@@ -463,9 +463,9 @@ bool testAttenuation()
 	w.validate();
 
 	PencilSource pen;
-	pen.setHistoriesPerExposure(1e5);
+	pen.setHistoriesPerExposure(1e6);
 	pen.setPhotonEnergy(energy);
-	pen.setTotalExposures(4);
+	pen.setTotalExposures(16);
 	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);
@@ -488,10 +488,10 @@ bool testAttenuation()
 	std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
 	std::cout << "Monochromatic beam of " << energy << " kev. \n";
 	std::cout << "RMS differense [%] from analytical attenuation: " << rms*100.0 << "\n";
-	/*std::cout << "Data: Position (midtpoint) [mm], dxmc rel. dose, analytical rel. attenuation, Difference [%]\n";
+	std::cout << "Data: Position (midtpoint) [mm], dxmc rel. dose, analytical rel. attenuation, Difference [%], # Events\n";
 	for (int i = 0; i < dim[2]; ++i)
-		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << kev[i] << ", " << att[i] << ", " << (kev[i] - att[i]) / att[i]*100.0 << "\n";
-	*/
+		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << res.dose[i] << ", " << att[i] << ", " << (res.dose[i] - att[i]) / att[i]*100.0 <<", "<<res.nEvents[i]<<"\n";
+	
 	if (rms < 0.5) {
 		std::cout << "SUCCESS\n\n";
 		return true;
