@@ -30,7 +30,11 @@ constexpr double RAD_TO_DEG = 1.0 / DEG_TO_RAD;
 constexpr double KEV_TO_MJ = 1.6021773e-13; // milli Joules
 constexpr double ANGLE_ERRF = 1E-6;
 
+#ifdef DXMC_FORCE_PHOTOELECTRIC_INTERACTION
+constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(250E5);
+#else
 constexpr std::uint64_t CTDI_MIN_HISTORIES = static_cast<std::uint64_t>(500E6);
+#endif
 
 template<typename T>
 T vectorLenght(const std::array<T, 3>& v)
