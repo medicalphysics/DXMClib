@@ -117,6 +117,7 @@ bool testCTCalibration()
 	CTSpiralSource src;
 	src.setPitch(0.5);
 	src.setExposureAngleStepDeg(5.0);
+	src.setHistoriesPerExposure(100000);
 	auto factor = src.getCalibrationValue();
 
 

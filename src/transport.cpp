@@ -402,12 +402,7 @@ namespace transport {
 			}
 			return source->historiesPerExposure() * len;
 		}
-		/*nJobs = nJobs < 2 ? 0 : nJobs - 2;
-		auto mid = expBeg + len / 2;
-		auto handle = std::async(std::launch::async, parallellRun, w, source, result, mid, expEnd, nJobs, progressbar);
-		std::uint64_t nHistories = parallellRun(w, source, result, expBeg, mid, nJobs, progressbar);
-		return handle.get() + nHistories;
-		*/
+		
 		const auto threadLen = len / nJobs;
 		std::vector<std::future<std::uint64_t>> jobs;
 		jobs.reserve(nJobs);
@@ -455,12 +450,7 @@ namespace transport {
 			}
 			return source->historiesPerExposure() * len;
 		}
-		/*nJobs = nJobs < 2 ? 0 : nJobs - 2;
-		auto mid = expBeg + len / 2;
-		auto handle = std::async(std::launch::async, parallellRunCtdi, w, source, result, mid, expEnd, nJobs, progressbar);
-		std::uint64_t nHistories = parallellRunCtdi(w, source, result, expBeg, mid, nJobs, progressbar);
-		return handle.get() + nHistories;	
-		*/
+		
 		const auto threadLen = len / nJobs;
 		std::vector<std::future<std::uint64_t>> jobs;
 		jobs.reserve(nJobs);

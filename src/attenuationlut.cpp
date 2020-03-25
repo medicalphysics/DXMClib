@@ -23,7 +23,7 @@ Copyright 2019 Erlend Andersen
 #include <string>
 
 
-constexpr double KEV_TO_A = 12.398520;
+constexpr double KEV_TO_ANGSTROM = 12.398520;
 
 void AttenuationLut::generate(const std::vector<Material>& materials, double minEnergy, double maxEnergy)
 {
@@ -69,7 +69,6 @@ void AttenuationLut::generate(const std::vector<Material>& materials, double min
 }
 
 
-
 template<typename T >
 inline double interp(const T x1, const T x2, const T y1, const T y2, T xres)
 {
@@ -79,14 +78,12 @@ inline double interp(const T x1, const T x2, const T y1, const T y2, T xres)
 template<typename T >
 inline double interp(const T x[2], const T y[2], T xres)
 {
-	const T val = y[0] + (y[1] - y[0]) * (xres - x[0]) / (x[1] - x[0]);
-	return xres < x[0] ? y[0] : xres > x[1] ? y[1] : val;
+	return y[0] + (y[1] - y[0]) * (xres - x[0]) / (x[1] - x[0]);
 }
 
 template<typename It, typename T >
 T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
 {
-
 	auto upper = std::upper_bound(xbegin, xend, xvalue);
 	if (upper == xbegin)
 		return *ybegin;
@@ -109,7 +106,6 @@ double AttenuationLut::totalAttenuation(std::size_t material, double energy) con
 	if (energy <= m_minEnergy)
 		return m_attData[offset];
 	
-
 	const std::size_t idx = static_cast<std::size_t>((energy - m_minEnergy) / m_energyStep);
 	if (idx >= m_energyResolution - 1)
 		return m_attData[m_energyResolution - 1 + offset];
@@ -237,24 +233,24 @@ double AttenuationLut::comptonScatterFactor(std::size_t material, double momentu
 }
 double AttenuationLut::momentumTransfer(double energy, double angle)
 {
-	constexpr double k = 1.0 / KEV_TO_A; //constant for momentum transfer
+	constexpr double k = 1.0 / KEV_TO_ANGSTROM; //constant for momentum transfer
 	return energy * std::sin(angle / 2.0) * k;
 }
 double AttenuationLut::momentumTransferFromCos(double energy, double cosAngle)
 {
-	constexpr double k = 1.0 / KEV_TO_A; //constant for momentum transfer
+	constexpr double k = 1.0 / KEV_TO_ANGSTROM; //constant for momentum transfer
 	return energy * k * std::sqrt(0.5 - cosAngle * 0.5);
 }
 double AttenuationLut::momentumTransferMax(double energy)
 {
-	constexpr double k = 1.0 / KEV_TO_A; //constant for momentum transfer
+	constexpr double k = 1.0 / KEV_TO_ANGSTROM; //constant for momentum transfer
 	return energy * k;
 }
 
 double AttenuationLut::cosAngle(double energy, double momentumTransfer)
 {
 	const double invE = 1.0 / energy;
-	return 1.0 - 2.0 * momentumTransfer * momentumTransfer * KEV_TO_A * KEV_TO_A * invE * invE;
+	return 1.0 - 2.0 * momentumTransfer * momentumTransfer * KEV_TO_ANGSTROM * KEV_TO_ANGSTROM * invE * invE;
 }
 
 
