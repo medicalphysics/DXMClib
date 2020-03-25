@@ -84,7 +84,8 @@ int main(int argc, char* argv[])
     pen.setAirDose(1.0);
     //run simulation
     auto test = world.validate();
-    auto dose = transport::run(world, &pen);
+    auto res = transport::run(world, &pen);
+    auto dose = res.dose;
 
 
     //printing dose dose along z direction of box

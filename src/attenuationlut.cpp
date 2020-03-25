@@ -231,7 +231,7 @@ double AttenuationLut::comptonScatterFactor(std::size_t material, double momentu
 		return m_comptonScatterFactor[offset];
 	
 	const std::size_t idx = static_cast<std::size_t>(momentumTransfer / m_momtranfStep);
-	if (idx >= m_momtranfResolution)
+	if (idx >= m_momtranfResolution-1)
 		return m_comptonScatterFactor[offset + m_momtranfResolution - 1];
 	return interp(&m_comptonScatterFactor[idx], &m_comptonScatterFactor[idx + offset], momentumTransfer);
 }
