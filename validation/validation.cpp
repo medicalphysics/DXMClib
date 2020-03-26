@@ -453,11 +453,13 @@ bool testAttenuation()
 	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
 	auto dens = std::make_shared<std::vector<double>>(size, m.standardDensity());
 	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
+	auto meas = std::make_shared<std::vector<unsigned char>>(size, 1);
 	World w;
 	w.setDimensions(dim);
 	w.setSpacing(spacing);
 	w.setDensityArray(dens);
 	w.setMaterialIndexArray(mat);
+	w.setMeasurementMapArray(meas);
 	w.addMaterialToMap(m);
 	w.setAttenuationLutMaxEnergy(std::ceil(energy));
 	w.validate();
@@ -465,7 +467,7 @@ bool testAttenuation()
 	PencilSource pen;
 	pen.setHistoriesPerExposure(1e6);
 	pen.setPhotonEnergy(energy);
-	pen.setTotalExposures(16);
+	pen.setTotalExposures(4);
 	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);
@@ -473,6 +475,7 @@ bool testAttenuation()
 	const auto tot_hist = pen.historiesPerExposure() * pen.totalExposures();
 
 	auto res = transport::run(w, &pen, nullptr, false);
+
 	std::vector<double> att(res.dose.size());
 	for (int i = 0; i < dim[2]; ++i)
 		att[i] = std::exp(-(i + 1) * spacing[2]*0.1 * m.standardDensity() * m.getTotalAttenuation(56.4));

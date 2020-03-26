@@ -188,6 +188,90 @@ namespace transport {
 		return idx;
 	}
 
+	bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, std::uint64_t seed[2], bool& updateMaxAttenuation)
+	{
+		const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
+		const double attPhoto = atts[0];
+		const double attCompt = atts[1];
+		const double attRayl = atts[2];
+		const double attenuationTotal = attPhoto + attCompt + attRayl;
+
+		const double weightCorrection = eventProbability * attPhoto / attenuationTotal;
+		safeValueAdd(doseAdress, p.energy * p.weight * weightCorrection);
+		safeTallyAdd(tallyAdress);
+		p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias		
+
+		const double r2 = randomUniform<double>(seed);
+		if (r2 < eventProbability)
+		{
+
+			const double r3 = randomUniform(seed, attCompt + attRayl);
+
+			if (r3 <= attCompt) // Compton event
+			{
+				double cosangle;
+#ifdef DXMC_USE_LOWENERGY_COMPTON
+				const double e = comptonScatterLivermore(p, matIdx, lutTable, seed, cosangle);
+#else
+				const double e = comptonScatter(p, seed, cosangle);
+#endif
+				safeValueAdd(doseAdress, e * p.weight);
+				safeTallyAdd(tallyAdress);
+				updateMaxAttenuation = true;
+				if (p.energy < ENERGY_CUTOFF_THRESHOLD)
+				{
+					safeValueAdd(doseAdress, p.energy * p.weight);
+					return false;
+				}
+			}
+			else // Rayleigh scatter event
+			{
+				double cosangle;
+				rayleightScatterLivermore(p, matIdx, lutTable, seed, cosangle);
+			}
+
+		}
+		return true;
+	}
+	bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, std::uint64_t seed[2], bool& updateMaxAttenuation)
+	{
+		const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
+		const double attPhoto = atts[0];
+		const double attCompt = atts[1];
+		const double attRayl = atts[2];
+
+		const double r3 = randomUniform(seed, attPhoto + attCompt + attRayl);
+		if (r3 <= attPhoto) // Photoelectric event
+		{
+			safeValueAdd(doseAdress, p.energy * p.weight);
+			safeTallyAdd(tallyAdress);
+			p.energy = 0.0;
+			return false;
+		}
+		else if (r3 <= attPhoto + attCompt) // Compton event
+		{
+			double cosangle;
+#ifdef DXMC_USE_LOWENERGY_COMPTON
+			const double e = comptonScatterLivermore(p, matIdx, lutTable, seed, cosangle);
+#else
+			const double e = comptonScatter(p, seed, cosangle);
+#endif
+			safeValueAdd(doseAdress, e * p.weight);
+			safeTallyAdd(tallyAdress);
+			updateMaxAttenuation = true;
+			if (p.energy < ENERGY_CUTOFF_THRESHOLD)
+			{
+				safeValueAdd(doseAdress, p.energy * p.weight);
+				return false;
+			}
+		}
+		else // Rayleigh scatter event
+		{
+			double cosangle;
+			rayleightScatterLivermore(p, matIdx, lutTable, seed, cosangle);
+		}
+		return true;
+	}
 	
 	void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2], Result* result)
 	{
@@ -222,6 +306,46 @@ namespace transport {
 				const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * density;
 				const double eventProbability = attenuationTotal * maxAttenuationInv;
 
+				if (measurementBuffer[bufferIdx] == 0) // naive sampling
+				{
+					const double r2 = randomUniform<double>(seed);
+					if (r2 < eventProbability) // an event will happend
+					{
+						continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], seed, updateMaxAttenuation);
+					}
+				}
+				else // forced photoelectric effect 
+				{
+					continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], seed, updateMaxAttenuation);
+				}
+
+				if (continueSampling)
+				{
+					// russian rulette
+					if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD) && ruletteCandidate)
+					{
+						ruletteCandidate = false;
+						const double r4 = randomUniform<double>(seed);
+						if (r4 < RUSSIAN_RULETTE_PROBABILITY) {
+							continueSampling = false;
+						}
+						else {
+							constexpr double factor = 1.0 / (1.0 - RUSSIAN_RULETTE_PROBABILITY);
+							p.weight *= factor;
+						}
+					}
+				}
+
+
+				/*if (measurementBuffer[bufferIdx] != 0)
+				{
+					const double attPhoto = lutTable.photoelectricAttenuation(matIdx, p.energy);
+					const double weightCorrection = eventProbability * attPhoto / attenuationTotal;
+					safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight * weightCorrection);
+					safeTallyAdd(tally[bufferIdx]);
+					p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
+				}
+
 
 				if(measurementBuffer[bufferIdx] != 0)
 				{
@@ -252,7 +376,7 @@ namespace transport {
 					{
 						double cosangle;
 #ifdef DXMC_USE_LOWENERGY_COMPTON
-						const double e = comptonScatterLivermore(p, matIdx, world.attenuationLut(), seed, cosangle);
+						const double e = comptonScatterLivermore(p, matIdx, lutTable, seed, cosangle);
 #else
 						const double e = comptonScatter(p, seed, cosangle);
 #endif
@@ -287,7 +411,7 @@ namespace transport {
 							}
 						}
 					}
-				}
+				}*/
 			}
 			else // particle not inside world
 			{
