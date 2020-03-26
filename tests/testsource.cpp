@@ -119,8 +119,8 @@ bool testCTCalibration()
 {
 	CTSpiralSource src;
 	//src.setPitch(0.5);
-	src.setExposureAngleStepDeg(5.0);
-	src.setHistoriesPerExposure(100000);
+	src.setExposureAngleStepDeg(1);
+	src.setHistoriesPerExposure(3000);
 	auto prog = std::make_unique<ProgressBar>();
 	//auto factor = src.getCalibrationValue();
 	auto handle = std::async(std::launch::async, &CTSpiralSource::getCalibrationValue, src, prog.get());
