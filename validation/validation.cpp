@@ -463,9 +463,9 @@ bool testAttenuation()
 	w.validate();
 
 	PencilSource pen;
-	pen.setHistoriesPerExposure(1e6);
+	pen.setHistoriesPerExposure(1e7);
 	pen.setPhotonEnergy(energy);
-	pen.setTotalExposures(16);
+	pen.setTotalExposures(64);
 	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);

@@ -204,6 +204,8 @@ protected:
 	 */
 	void generateFFdata(const std::vector<Material>& materials);
 	void generateSFdata(const std::vector<Material>& materials);
+	template<std::size_t N>
+	double attenuationDataFromTypeNumber(std::size_t materialIdx, double energy) const;
 private:
 	double m_minEnergy = 0;
 	double m_maxEnergy = 150.0;
