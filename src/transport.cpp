@@ -22,7 +22,6 @@ Copyright 2019 Erlend Andersen
 #include <mutex>
 #include <atomic>
 #include <execution>
-#include <future>
 #include <thread>
 #include <memory>
 
