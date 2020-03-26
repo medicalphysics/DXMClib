@@ -219,7 +219,6 @@ namespace transport {
 				const std::size_t bufferIdx = indexFromPosition(p.pos, world);
 				const auto matIdx = materialBuffer[bufferIdx];
 				const double density = densityBuffer[bufferIdx];
-				const 
 				const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * density;
 				const double eventProbability = attenuationTotal * maxAttenuationInv;
 
