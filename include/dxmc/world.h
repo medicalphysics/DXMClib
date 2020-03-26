@@ -61,6 +61,12 @@ public:
 	std::shared_ptr<std::vector<unsigned char>> materialIndexArray(void){return m_materialIndex;}
     const std::shared_ptr<std::vector<unsigned char>> materialIndexArray(void) const {return m_materialIndex;}
 
+	void setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap);
+	const std::uint8_t* measurementMapBuffer() const { return m_measurementMap->data(); }
+	std::shared_ptr<std::vector<std::uint8_t>> measurementMapArray(void) { return m_measurementMap; }
+	const std::shared_ptr<std::vector<std::uint8_t>> measurementMapArray(void) const { return m_measurementMap; }
+
+
     const std::vector<Material>& materialMap(void) const {return m_materialMap;}
     bool addMaterialToMap(const Material& material);
 	bool addMaterialToMap(Material&& material);
@@ -96,7 +102,8 @@ private:
 	// m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
     std::shared_ptr<std::vector<double>> m_density = nullptr;
     std::shared_ptr<std::vector<unsigned char>> m_materialIndex = nullptr;
-    
+	std::shared_ptr<std::vector<std::uint8_t>> m_measurementMap = nullptr;
+
 	std::vector<Material> m_materialMap;
 	AttenuationLut m_attLut;
    

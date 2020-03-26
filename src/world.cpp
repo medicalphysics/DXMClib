@@ -163,6 +163,12 @@ void World::setMaterialIndexArray(std::shared_ptr<std::vector<unsigned char>> ma
 	m_valid = false;
 }
 
+void World::setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap)
+{
+	m_measurementMap = measurementMap;
+	m_valid = false;
+}
+
 
 void World::setAttenuationLutMaxEnergy(double max_keV)
 {
@@ -214,6 +220,11 @@ bool World::validate()
 		m_valid = false;
 		return m_valid;
 	}
+	if (!m_measurementMap)
+	{
+		m_measurementMap = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
+	}
+
 
 	auto elements = size();
 	if (elements == 0)
@@ -229,6 +240,12 @@ bool World::validate()
 	}
 
     if (m_materialIndex->size() != elements)
+	{
+		m_valid = false;
+		return m_valid;
+	}
+
+	if (m_measurementMap->size() != elements)
 	{
 		m_valid = false;
 		return m_valid;
@@ -306,8 +323,8 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 		setDimensions(diameter + 2, diameter + 2, 60);
 	
 
-	auto air = Material("Air, Dry (near sea level)");
-	auto pmma = Material("Polymethyl Methacralate (Lucite, Perspex)");
+	Material air("Air, Dry (near sea level)");
+	Material pmma("Polymethyl Methacralate (Lucite, Perspex)");
 	addMaterialToMap(air);
 	addMaterialToMap(air); // we want two to differentiate between air around phantom and air inside rods
 	addMaterialToMap(pmma);
@@ -320,16 +337,15 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	const double radii = static_cast<double>(diameter) / 2.0;
 	const auto dim = dimensions();
 	const auto sp = spacing();
+	
 	//making phantom
-	auto dBufferPtr = std::make_shared<std::vector<double>>(size());
-	auto mBufferPtr = std::make_shared<std::vector<unsigned char>>(size());
+	auto dBufferPtr = std::make_shared<std::vector<double>>(size(), m_airDensity);
+	auto mBufferPtr = std::make_shared<std::vector<unsigned char>>(size(), 0);
+	auto measurementPtr = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
 	setDensityArray(dBufferPtr);
 	setMaterialIndexArray(mBufferPtr);
-	
-	//filling with air
-	std::fill(dBufferPtr->begin(), dBufferPtr->end(), m_airDensity);
-	std::fill(mBufferPtr->begin(), mBufferPtr->end(), 0);
-	
+	setMeasurementMapArray(measurementPtr);
+
 	//air holes indices
 	std::array<std::size_t, 2> fdim = { dim[0], dim[1] };
 	std::array<double, 2> fspacing = { sp[0], sp[1] };
@@ -365,6 +381,7 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	//making phantom
 	auto dBuffer = dBufferPtr->data();
 	auto mBuffer = mBufferPtr->data();
+	auto measBuffer = measurementPtr->data();
 
 	for (std::size_t k = 0; k < dim[2]; ++k)
 	{
@@ -384,6 +401,7 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 			{
 				dBuffer[idx + offset] = air.standardDensity();
 				mBuffer[idx + offset] = 1;
+				measBuffer[idx + offset] = 1;
 			}
 		}
 	}

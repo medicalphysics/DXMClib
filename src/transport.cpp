@@ -36,6 +36,7 @@ namespace transport {
 	constexpr double RUSSIAN_RULETTE_ENERGY_THRESHOLD = 10.0; // keV
 	constexpr double ENERGY_CUTOFF_THRESHOLD = 1.0; // keV
 	constexpr double KEV_TO_MJ = 1.6021773e-13;
+	constexpr double FORCED_INTERACTION_DENSITY_THRESHOLD = 0.1; // g/cm3
 
 	std::mutex DOSE_MUTEX;
 	std::mutex TALLY_MUTEX;
@@ -193,8 +194,9 @@ namespace transport {
 		const AttenuationLut& lutTable = world.attenuationLut();
 		const double* densityBuffer = world.densityBuffer();
 		const unsigned char* materialBuffer = world.materialIndexBuffer();
+		const std::uint8_t* measurementBuffer = world.measurementMapBuffer();
 		double* energyImparted = result->dose.data();
-		auto tally = result->nEvents.data();
+		auto* tally = result->nEvents.data();
 
 		double maxAttenuationInv;
 		bool updateMaxAttenuation = true;
@@ -216,11 +218,23 @@ namespace transport {
 			{
 				const std::size_t bufferIdx = indexFromPosition(p.pos, world);
 				const auto matIdx = materialBuffer[bufferIdx];
-								
-				const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * densityBuffer[bufferIdx];
+				const double density = densityBuffer[bufferIdx];
+				const 
+				const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * density;
+				const double eventProbability = attenuationTotal * maxAttenuationInv;
+
+
+				if(measurementBuffer[bufferIdx] != 0)
+				{
+					const double attPhoto = lutTable.photoelectricAttenuation(matIdx, p.energy);
+					const double weightCorrection = eventProbability * attPhoto / attenuationTotal;
+					safeValueAdd(energyImparted[bufferIdx], p.energy * p.weight * weightCorrection);
+					safeTallyAdd(tally[bufferIdx]);
+					p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
+				}
 
 				const double r2 = randomUniform<double>(seed);
-				if (r2 < (attenuationTotal * maxAttenuationInv)) // An event will happend
+				if (r2 < eventProbability) // An event will happend
 				{
 					const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
 					const double attPhoto = atts[0];

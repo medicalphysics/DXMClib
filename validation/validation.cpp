@@ -448,7 +448,7 @@ bool testAttenuation()
 	const double energy = 56.4;
 	Material m("Tissue, Soft (ICRP)");
 	m.setStandardDensity(1.3);
-	std::array<double, 3> spacing = { 1, 1, 1 };
+	std::array<double, 3> spacing = { .1, .1, 1 };
 	std::array<std::size_t, 3> dim = { 1, 1, 200 };
 	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
 	auto dens = std::make_shared<std::vector<double>>(size, m.standardDensity());
@@ -463,9 +463,9 @@ bool testAttenuation()
 	w.validate();
 
 	PencilSource pen;
-	pen.setHistoriesPerExposure(1e7);
+	pen.setHistoriesPerExposure(1e6);
 	pen.setPhotonEnergy(energy);
-	pen.setTotalExposures(64);
+	pen.setTotalExposures(16);
 	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);

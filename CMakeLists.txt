@@ -62,7 +62,7 @@ target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
 
 option(DXMC_USE_LOWENERGY_COMPTON "Use low energy correction for compton interactions (increases computation time)" ON)
-if(${USE_LOWENERGY_COMPTON})
+if(${DXMC_USE_LOWENERGY_COMPTON})
     target_compile_definitions(libdxmc PUBLIC DXMC_USE_LOWENERGY_COMPTON)
 endif()
 
