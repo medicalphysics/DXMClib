@@ -453,7 +453,7 @@ bool testAttenuation()
 	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
 	auto dens = std::make_shared<std::vector<double>>(size, m.standardDensity());
 	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
-	auto meas = std::make_shared<std::vector<unsigned char>>(size, 1);
+	auto meas = std::make_shared<std::vector<unsigned char>>(size, 0);
 	World w;
 	w.setDimensions(dim);
 	w.setSpacing(spacing);
@@ -467,35 +467,42 @@ bool testAttenuation()
 	PencilSource pen;
 	pen.setHistoriesPerExposure(1e6);
 	pen.setPhotonEnergy(energy);
-	pen.setTotalExposures(4);
+	pen.setTotalExposures(32);
 	std::array<double, 6> cos = { 1,0,0,0,1,0 };
 	pen.setDirectionCosines(cos);
 	pen.setPosition(0, 0, -400);
 
 	const auto tot_hist = pen.historiesPerExposure() * pen.totalExposures();
 
-	auto res = transport::run(w, &pen, nullptr, false);
+	auto res_naive = transport::run(w, &pen, nullptr, false);
+	std::fill(meas->begin(), meas->end(), 1);
+	w.validate();
+	auto res_force = transport::run(w, &pen, nullptr, false);
 
-	std::vector<double> att(res.dose.size());
+
+	std::vector<double> att(res_naive.dose.size());
 	for (int i = 0; i < dim[2]; ++i)
 		att[i] = std::exp(-(i + 1) * spacing[2]*0.1 * m.standardDensity() * m.getTotalAttenuation(56.4));
 	
 	const auto att_max = *std::max_element(att.cbegin(), att.cend());
-	const auto kev_max = *std::max_element(res.dose.cbegin(), res.dose.cend());
+	const auto naive_max = *std::max_element(res_naive.dose.cbegin(), res_naive.dose.cend());
+	const auto force_max = *std::max_element(res_force.dose.cbegin(), res_force.dose.cend());
 
-	std::transform(att.cbegin(), att.cend(), att.begin(), [=](double a) {return a / att_max; });
-	std::transform(res.dose.cbegin(), res.dose.cend(), res.dose.begin(), [=](double e) {return e / kev_max; });
-
-	const double rms = std::sqrt((1.0 / att.size()) * std::transform_reduce(res.dose.cbegin(), res.dose.cend(), att.cbegin(), 0.0, std::plus<>(), [](double e, double a)->double {return (e - a) * (e - a); }));
+	const double rms_naive = std::sqrt((1.0 / att.size()) * std::transform_reduce(res_naive.dose.cbegin(), res_naive.dose.cend(), att.cbegin(), 0.0, std::plus<>(), [=](double e, double a)->double {return (e / naive_max - a / att_max) * (e / naive_max - a / att_max); }));
+	const double rms_force = std::sqrt((1.0 / att.size()) * std::transform_reduce(res_force.dose.cbegin(), res_force.dose.cend(), att.cbegin(), 0.0, std::plus<>(), [=](double e, double a)->double {return (e / force_max - a / att_max) * (e / force_max - a / att_max); }));
 
 	std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
 	std::cout << "Monochromatic beam of " << energy << " kev. \n";
-	std::cout << "RMS differense [%] from analytical attenuation: " << rms*100.0 << "\n";
-	std::cout << "Data: Position (midtpoint) [mm], dxmc rel. dose, analytical rel. attenuation, Difference [%], # Events\n";
+	std::cout << "RMS differense [%] from analytical attenuation; naive: " << rms_naive*100.0 << ", forced: "<<rms_force*100.0<<"\n";
+	std::cout << "Data: Position (midtpoint) [mm], naive dose, force dose, naive rel. dose, force rel.dose, analytical rel. attenuation, # Events naive, # Events force\n";
 	for (int i = 0; i < dim[2]; ++i)
-		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << res.dose[i] << ", " << att[i] << ", " << (res.dose[i] - att[i]) / att[i]*100.0 <<", "<<res.nEvents[i]<<"\n";
+	{
+		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << res_naive.dose[i] << ", " << res_force.dose[i] << ", ";
+		std::cout << res_naive.dose[i]/naive_max << ", " << res_force.dose[i]/force_max << ", ";
+		std::cout << att[i] / att_max << ", " << res_naive.nEvents[i] << ", " << res_force.nEvents[i] << "\n";
+	}
 	
-	if (rms < 0.5) {
+	if (rms_naive*100 < 0.2 && rms_force*100 < 0.2) {
 		std::cout << "SUCCESS\n\n";
 		return true;
 	}
