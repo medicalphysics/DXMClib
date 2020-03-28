@@ -127,5 +127,7 @@ double SpecterDistribution::sampleValue()
 }
 double SpecterDistribution::sampleValue(std::uint64_t seed[2]) const
 {
-	return m_energies[sampleIndex(seed)];
+	const std::size_t ind = sampleIndex(seed);
+	return ind < m_energies.size() - 1 ? randomUniform(seed, m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
+	
 }
