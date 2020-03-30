@@ -110,7 +110,7 @@ bool IsotropicSource::validate()
 	return m_specterDistribution != nullptr;
 }
 
-void IsotropicSource::setSpecter(const std::vector<double> weights, const std::vector<double> energies)
+void IsotropicSource::setSpecter(const std::vector<double>& weights, const std::vector<double>& energies)
 {
 	const auto maxEnergyElement = std::max_element(energies.cbegin(), energies.cend());
 	m_maxPhotonEnergy = *maxEnergyElement;

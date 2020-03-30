@@ -128,7 +128,7 @@ public:
 	bool isValid() const override;
 	bool validate() override;
 
-	void setSpecter(const std::vector<double> weights, const std::vector<double> energies);
+	void setSpecter(const std::vector<double>& weights, const std::vector<double>& energies);
 	void setCollimationAngles(double xRad, double yRad);
 	std::pair<double, double> collimationAngles() const;
 protected:
