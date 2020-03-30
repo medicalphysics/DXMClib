@@ -123,7 +123,7 @@ SpecterDistribution::SpecterDistribution(const std::vector<double>& weights, con
 
 double SpecterDistribution::sampleValue()
 {
-	return m_energies[sampleIndex()];
+	return sampleValue(m_seed);
 }
 double SpecterDistribution::sampleValue(std::uint64_t seed[2]) const
 {
