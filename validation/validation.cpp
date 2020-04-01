@@ -714,9 +714,9 @@ int main(int argc, char* argv[])
 {
 	//test120Specter();
 	auto success = true;//testAttenuation();
-	/*success = success && TG195Case2AbsorbedEnergyMono();
+	success = success && TG195Case2AbsorbedEnergyMono();
 	success = success && TG195Case2AbsorbedEnergy120();
-	success = success && TG195Case41AbsorbedEnergy();*/
+	success = success && TG195Case41AbsorbedEnergy();
 	success = success && TG195Case42AbsorbedEnergy();
 	if (success)
 		return EXIT_SUCCESS;
