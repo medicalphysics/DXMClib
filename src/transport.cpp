@@ -39,31 +39,41 @@ namespace transport {
 
 	std::mutex DOSE_MUTEX;
 	std::mutex TALLY_MUTEX;
+	std::mutex VARIANCE_MUTEX;
 
 	constexpr double N_ERROR = 1.0e-9;
 
 	
 	/*
 	//waiting for c++ 20 where we get atomic references. We then have lockless threadsafe update of values in dose array 
-	inline void safeValueAdd(double& value, const double addValue)
+	inline void safeEnergyAdd(double& value, const double addValue)
 	{
 		std::atomic_ref<double> atomicValue(value);
 		atomicValue.fetch_add(addValue);
 	}
 	*/
 
-	inline void safeValueAdd(double& value, const double addValue)
+	inline void safeEnergyAdd(double& value, const double addValue)
 	{
-		std::lock_guard<std::mutex> lock(DOSE_MUTEX);
+		std::scoped_lock guard(DOSE_MUTEX);
+		//std::lock_guard<std::mutex> lock(DOSE_MUTEX);
 		value += addValue;
 	}
 
 	template<typename T>
 	inline void safeTallyAdd(T& value)
 	{
-		std::lock_guard<std::mutex> lock(TALLY_MUTEX);
-		value += (T)1;
+		std::scoped_lock guard(TALLY_MUTEX);
+		//std::lock_guard<std::mutex> lock(TALLY_MUTEX);
+		value += static_cast<T>(1);
 	}
+	inline void safeVarianceAdd(double& value, const double addValue)
+	{
+		std::scoped_lock guard(VARIANCE_MUTEX);
+		//std::lock_guard<std::mutex> lock(VARIANCE_MUTEX);
+		value += value;
+	}
+
 
 	void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, std::uint64_t seed[2], double& cosAngle)
 	{
@@ -187,7 +197,7 @@ namespace transport {
 		return idx;
 	}
 
-	bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, std::uint64_t seed[2], bool& updateMaxAttenuation)
+	bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, double& varianceAdress, std::uint64_t seed[2], bool& updateMaxAttenuation)
 	{
 		const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
 		const double attPhoto = atts[0];
@@ -196,8 +206,10 @@ namespace transport {
 		const double attenuationTotal = attPhoto + attCompt + attRayl;
 
 		const double weightCorrection = eventProbability * attPhoto / attenuationTotal;
-		safeValueAdd(doseAdress, p.energy * p.weight * weightCorrection);
+		const double energyImparted = p.energy * p.weight * weightCorrection;
+		safeEnergyAdd(doseAdress, energyImparted);
 		safeTallyAdd(tallyAdress);
+		safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
 		p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias		
 
 		const double r2 = randomUniform<double>(seed);
@@ -214,12 +226,14 @@ namespace transport {
 #else
 				const double e = comptonScatter(p, seed, cosangle);
 #endif
-				safeValueAdd(doseAdress, e * p.weight);
+				const double energyImparted = e * p.weight;
+				safeEnergyAdd(doseAdress, energyImparted);
 				safeTallyAdd(tallyAdress);
+				safeVarianceAdd(varianceAdress, energyImparted*energyImparted);
 				updateMaxAttenuation = true;
 				if (p.energy < ENERGY_CUTOFF_THRESHOLD)
 				{
-					safeValueAdd(doseAdress, p.energy * p.weight);
+					safeEnergyAdd(doseAdress, p.energy * p.weight);
 					return false;
 				}
 			}
@@ -232,7 +246,7 @@ namespace transport {
 		}
 		return true;
 	}
-	bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, std::uint64_t seed[2], bool& updateMaxAttenuation)
+	bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, double& varianceAdress, std::uint64_t seed[2], bool& updateMaxAttenuation)
 	{
 		const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
 		const double attPhoto = atts[0];
@@ -242,8 +256,10 @@ namespace transport {
 		const double r3 = randomUniform(seed, attPhoto + attCompt + attRayl);
 		if (r3 <= attPhoto) // Photoelectric event
 		{
-			safeValueAdd(doseAdress, p.energy * p.weight);
+			const double energyImparted = p.energy * p.weight;
+			safeEnergyAdd(doseAdress, energyImparted);
 			safeTallyAdd(tallyAdress);
+			safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
 			p.energy = 0.0;
 			return false;
 		}
@@ -255,12 +271,14 @@ namespace transport {
 #else
 			const double e = comptonScatter(p, seed, cosangle);
 #endif
-			safeValueAdd(doseAdress, e * p.weight);
+			const double energyImparted = e * p.weight;
+			safeEnergyAdd(doseAdress, energyImparted);
 			safeTallyAdd(tallyAdress);
+			safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
 			updateMaxAttenuation = true;
 			if (p.energy < ENERGY_CUTOFF_THRESHOLD)
 			{
-				safeValueAdd(doseAdress, p.energy * p.weight);
+				safeEnergyAdd(doseAdress, p.energy * p.weight);
 				return false;
 			}
 		}
@@ -280,6 +298,7 @@ namespace transport {
 		const std::uint8_t* measurementBuffer = world.measurementMapBuffer();
 		double* energyImparted = result->dose.data();
 		auto* tally = result->nEvents.data();
+		double* variance = result->variance.data();
 
 		double maxAttenuationInv;
 		bool updateMaxAttenuation = true;
@@ -310,12 +329,12 @@ namespace transport {
 					const double r2 = randomUniform<double>(seed);
 					if (r2 < eventProbability) // an event will happend
 					{
-						continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], seed, updateMaxAttenuation);
+						continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], seed, updateMaxAttenuation);
 					}
 				}
 				else // forced photoelectric effect 
 				{
-					continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], seed, updateMaxAttenuation);
+					continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], seed, updateMaxAttenuation);
 				}
 
 				if (continueSampling)
@@ -480,18 +499,41 @@ namespace transport {
 			jobs[i].join();
 	}
 
+	void computeResultVariance(Result& res)
+	{
+		//Computing variance by: Var[X] = E[X**2] - E[X]**2
+		//and Var[A]+ Var[A] = 2Var[A]
+		auto eBeg = res.dose.cbegin();
+		auto eEnd = res.dose.cend();
+		auto tBeg = res.nEvents.cbegin();
+		auto vBeg = res.variance.begin();
+		while (eBeg != eEnd)
+		{
+			const double nEv = static_cast<double>(*tBeg);
+			*vBeg = (*vBeg / nEv - (*eBeg * *eBeg) / (nEv * nEv)) * nEv;
+			++eBeg;
+			++tBeg;
+			++vBeg;
+		}
 
-	void energyImpartedToDose(const World & world, std::vector<double>& energyImparted, const double calibrationValue)
+	}
+
+	void energyImpartedToDose(const World & world, Result& res, const double calibrationValue)
 	{
 		auto spacing = world.spacing();
 		const double voxelVolume = spacing[0] * spacing[1] * spacing[2] / 1000.0; // cm3
 		auto density = world.densityArray();
-		
-		std::transform(std::execution::par_unseq, energyImparted.begin(), energyImparted.end(), density->begin(), energyImparted.begin(), 
+
+		std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), res.dose.begin(),
 			[=](double ei, double de)->double {
 				const double voxelMass = de * voxelVolume * 0.001; //kg
 				return de > 0.0 ? calibrationValue * KEV_TO_MJ * ei / voxelMass : 0.0;
 		});
+		std::transform(std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
+			[=](double var, double de)->double {
+				const double voxelMass = de * voxelVolume * 0.001; //kg
+				return de > 0.0 ? calibrationValue * KEV_TO_MJ * var / voxelMass : 0.0;
+			});
 	}
 	
 	Result run(const World & world, Source* source, ProgressBar* progressbar, bool calculateDose)
@@ -499,8 +541,10 @@ namespace transport {
 		Result result;
 		result.dose.resize(world.size());
 		result.nEvents.resize(world.size());
+		result.variance.resize(world.size());
 		std::fill(result.dose.begin(), result.dose.end(), 0.0);
 		std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
+		std::fill(result.variance.begin(), result.variance.end(), 0.0);
 
 		if (!source)
 			return result;
@@ -524,8 +568,10 @@ namespace transport {
 			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
 		}
 
+		const auto start = std::chrono::system_clock::now();
 		parallellRun(world, source, &result, 0, totalExposures, nJobs, progressbar);
-		
+		result.simulationTime = std::chrono::system_clock::now() - start;
+
 		if (progressbar)
 		{
 			progressbar->clearDoseData();
@@ -533,15 +579,19 @@ namespace transport {
 			{
 				std::fill(result.dose.begin(), result.dose.end(), 0.0);
 				std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
-
+				std::fill(result.variance.begin(), result.variance.end(), 0.0);
 				return result;
 			}
 		}
+
+		//compute variance
+		computeResultVariance(result);
+
 		if (calculateDose)
 		{
 			double calibrationValue = source->getCalibrationValue(progressbar);
 			//energy imparted to dose
-			energyImpartedToDose(world, result.dose, calibrationValue);
+			energyImpartedToDose(world, result, calibrationValue);
 		}
 		return result;
 	}
@@ -552,8 +602,10 @@ namespace transport {
 		Result result;
 		result.dose.resize(world.size());
 		result.nEvents.resize(world.size());
+		result.variance.resize(world.size());
 		std::fill(result.dose.begin(), result.dose.end(), 0.0);
 		std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
+		std::fill(result.variance.begin(), result.variance.end(), 0.0);
 
 		if (!source)
 			return result;
@@ -574,11 +626,18 @@ namespace transport {
 			progressbar->setTotalExposures(totalExposures, "CTDI Calibration");
 			progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing(), ProgressBar::Axis::Z);
 		}
-		parallellRunCtdi(world, source, &result, 0, totalExposures + 1, nJobs, progressbar);
+
+		const auto start = std::chrono::system_clock::now();
+		parallellRunCtdi(world, source, &result, 0, totalExposures, nJobs, progressbar);
+		result.simulationTime = std::chrono::system_clock::now() - start;
+
+		//compute variance
+		computeResultVariance(result);
+
 		if(progressbar)
 			progressbar->clearDoseData();
 		
-		energyImpartedToDose(world, result.dose, 1.0);
+		energyImpartedToDose(world, result, 1.0);
 		return result;
 	}
 }

@@ -27,13 +27,15 @@ Copyright 2019 Erlend Andersen
 #include <memory>
 #include <algorithm>
 #include <mutex>
-
+#include <chrono>
 namespace transport {
 
 	struct Result
 	{
 		std::vector<double> dose;
 		std::vector<std::uint32_t> nEvents;
+		std::vector<double> variance;
+		std::chrono::duration<float> simulationTime;
 	};
 
 
