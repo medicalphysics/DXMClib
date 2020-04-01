@@ -509,8 +509,8 @@ namespace transport {
 			if (*tBeg > 0)
 			{
 				const double nEv = static_cast<double>(*tBeg);
-				//*vBeg = *vBeg / nEv - (*eBeg) * (*eBeg) / nEv / nEv;
-				*vBeg = *vBeg - (*eBeg) * (*eBeg) / nEv;
+				*vBeg = *vBeg / nEv - (*eBeg) * (*eBeg) / nEv / nEv;
+				//*vBeg = *vBeg - (*eBeg) * (*eBeg) / nEv;
 			}
 				++eBeg;
 				++tBeg;
