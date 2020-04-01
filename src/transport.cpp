@@ -36,7 +36,6 @@ namespace transport {
 	constexpr double RUSSIAN_RULETTE_ENERGY_THRESHOLD = 10.0; // keV
 	constexpr double ENERGY_CUTOFF_THRESHOLD = 1.0; // keV
 	constexpr double KEV_TO_MJ = 1.6021773e-13;
-	constexpr double FORCED_INTERACTION_DENSITY_THRESHOLD = 0.1; // g/cm3
 
 	std::mutex DOSE_MUTEX;
 	std::mutex TALLY_MUTEX;
