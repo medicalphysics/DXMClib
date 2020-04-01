@@ -604,17 +604,16 @@ void CTSource::updateSpecterDistribution()
 	{
 		auto energies = m_tube.getEnergy();
 		auto n_obs = m_tube.getSpecter(energies);
-		m_specterDistribution = std::make_unique<SpecterDistribution>(n_obs, energies);
+		m_specterDistribution = std::make_shared<SpecterDistribution>(n_obs, energies);
 		const double heel_span_angle = std::atan(m_collimation * 0.5 / m_sdd) * 2.0;
 		if (m_modelHeelEffect)
-			m_heelFilter = std::make_unique<HeelFilter>(m_tube, heel_span_angle);
+			m_heelFilter = std::make_shared<HeelFilter>(m_tube, heel_span_angle);
 		else
 			m_heelFilter = nullptr;
 		m_specterValid = true;
 	}
 }
 
-//double CTSource::getCalibrationValue(ProgressBar* progressBar) const
 
 template<typename T>
 static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
@@ -750,7 +749,6 @@ double CTSpiralSource::getCalibrationValue(ProgressBar* progressBar) const
 {
 	auto copy = *this;
 	return ctCalibration(copy, progressBar) * m_pitch;
-	//return CTSource::getCalibrationValue(progressBar) / m_pitch;
 }
 
 
@@ -827,7 +825,7 @@ std::uint64_t CTAxialSource::totalExposures() const
 {
 	const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_2 / m_exposureAngleStep);
 	const std::uint64_t rotationNumbers = static_cast<std::uint64_t>(std::round(m_scanLenght / m_step));
-	return anglesPerRotation * (rotationNumbers + 1);
+	return anglesPerRotation * rotationNumbers;
 }
 
 double CTAxialSource::getCalibrationValue(ProgressBar* progressBar) const
@@ -859,6 +857,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	BeamFilter* bowTie=nullptr;
 	SpecterDistribution* specterDistribution=nullptr;
 	HeelFilter* heelFilter = nullptr;
+	double weight = 1;
 	if (exposureIndexTotal % 2 == 0)
 	{
 		sdd = m_sdd;
@@ -867,6 +866,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 		bowTie = m_bowTieFilter.get();
 		specterDistribution = m_specterDistribution.get();
 		heelFilter = m_heelFilter.get();
+		weight = m_tubeAweight;
 	}
 	else
 	{
@@ -876,6 +876,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 		bowTie = m_bowTieFilterB.get();
 		specterDistribution = m_specterDistributionB.get();
 		heelFilter = m_heelFilterB.get();
+		weight = m_tubeBweight;
 	}
 	std::array<double, 3> pos = { 0,-m_sdd / 2.0,0 };
 
@@ -907,7 +908,6 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	exposure.setSpecterDistribution(specterDistribution);
 	exposure.setHeelFilter(heelFilter);
 	exposure.setNumberOfHistories(m_historiesPerExposure);
-	double weight = 1.0;
 	if (m_positionalFilter)
 		weight *= m_positionalFilter->sampleIntensityWeight(pos);
 	if (m_useXCareFilter)
@@ -959,28 +959,28 @@ void CTDualSource::updateSpecterDistribution()
 {
 	if (!m_specterValid)
 	{
-		auto energyA = m_tube.getEnergy();
-		auto energyB = m_tubeB.getEnergy();
+		const auto energyA = m_tube.getEnergy();
+		const auto energyB = m_tubeB.getEnergy();
 		auto specterA = m_tube.getSpecter(energyA, false);
 		auto specterB = m_tubeB.getSpecter(energyB, false);
 
-		double sumA = std::accumulate(specterA.begin(), specterA.end(), 0.0);
-		double sumB = std::accumulate(specterB.begin(), specterB.end(), 0.0);
-		double weightA = m_tubeAmas * sumA;
-		double weightB = m_tubeBmas * sumB;
+		const double sumA = std::accumulate(specterA.cbegin(), specterA.cend(), 0.0);
+		const double sumB = std::accumulate(specterB.cbegin(), specterB.cend(), 0.0);
+		const double weightA = m_tubeAmas * sumA;
+		const double weightB = m_tubeBmas * sumB;
 
-		std::for_each(specterA.begin(), specterA.end(), [=](double& val) {val /= sumA; });
-		std::for_each(specterB.begin(), specterB.end(), [=](double& val) {val /= sumB; });
+		std::transform(std::execution::par_unseq, specterA.cbegin(), specterA.cend(), specterA.begin(), [=](auto i) {return i / sumA; });
+		std::transform(std::execution::par_unseq, specterB.cbegin(), specterB.cend(), specterB.begin(), [=](auto i) {return i / sumB; });
+		
+		m_tubeAweight = weightA * 2.0 / (weightA + weightB);
+		m_tubeBweight = weightB * 2.0 / (weightA + weightB);
 
-		m_tubeAweight = 1.0;
-		m_tubeBweight = weightB / weightA;
-
-		m_specterDistribution = std::make_unique<SpecterDistribution>(specterA, energyA);
-		m_specterDistributionB = std::make_unique<SpecterDistribution>(specterB, energyB);
+		m_specterDistribution = std::make_shared<SpecterDistribution>(specterA, energyA);
+		m_specterDistributionB = std::make_shared<SpecterDistribution>(specterB, energyB);
 
 		const double heel_span_angle = std::atan(m_collimation * 0.5 / m_sdd) * 2.0;
-		m_heelFilter = std::make_unique<HeelFilter>(m_tube, heel_span_angle);
-		m_heelFilterB = std::make_unique<HeelFilter>(m_tubeB, heel_span_angle);
+		m_heelFilter = std::make_shared<HeelFilter>(m_tube, heel_span_angle);
+		m_heelFilterB = std::make_shared<HeelFilter>(m_tubeB, heel_span_angle);
 
 		m_specterValid = true;
 	}
