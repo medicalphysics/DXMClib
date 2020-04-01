@@ -13,7 +13,9 @@
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1000000;
-constexpr std::size_t nExposures = 16;
+constexpr std::size_t nExposures = 120;
+
+constexpr double PI = 3.14159265359;
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -111,10 +113,6 @@ bool test120Specter()
 }
 
 
-
-
-
-
 bool inline isEqual(double a, double b)
 {
 	return std::abs(a - b) < ERRF;
@@ -179,22 +177,7 @@ World generateTG195Case2World()
 				}
 
 			}
-	/*std::array<double, 3> cm = { 0,0,0 };
-	double m = 0;
-	for (std::size_t z = 0; z < dim[2]; ++z)
-		for (std::size_t y = 0; y < dim[1]; ++y)
-			for (std::size_t x = 0; x < dim[0]; ++x) {
-				const auto i = x + y * dim[0] + z * dim[0] * dim[1];
-				if (idx->data()[i] == 5 + 1)
-				{
-					m += 1.0;
-					cm[0] += spacing[0] * x;
-					cm[1] += spacing[1] * y;
-					cm[2] += spacing[2] * z;
-				}
-			}
-	std::cout << "mass center: " << cm[0] / m << ", " << cm[1] / m << ", "<<cm[2] / m << "\n";
-	*/
+	
 	World w;
 	w.setDimensions(dim);
 	w.setSpacing(spacing);
@@ -301,13 +284,15 @@ bool TG195Case2AbsorbedEnergy120()
 
 std::vector<std::size_t> circleIndices(const double center_x, const double center_y, const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing, const double radii=1.0)
 {
+	const double xo = dim[0] * spacing[0] * 0.5;
+	const double yo = dim[1] * spacing[1] * 0.5;
 	std::vector<std::size_t> ind;
 	const double radii2 = radii * radii;
 	for (std::size_t yi = 0; yi < dim[1]; ++yi)
 		for (std::size_t xi = 0; xi < dim[0]; ++xi)
 		{
-			const double x = xi * spacing[0] - center_x;
-			const double y = yi * spacing[1] - center_y;
+			const double x = xi * spacing[0] - center_x - xo;
+			const double y = yi * spacing[1] - center_y - yo;
 			if ((x*x+y*y) <= radii2)
 			{
 				const auto i = xi  + yi * dim[0];
@@ -319,7 +304,7 @@ std::vector<std::size_t> circleIndices(const double center_x, const double cente
 
 World generateTG195Case4World1() {
 
-	const std::array<std::size_t, 3> dim = {320,320,600};
+	const std::array<std::size_t, 3> dim = {323,323,600};
 	const std::array<double, 3> spacing = { 1,1,5 };
 	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
 
@@ -331,7 +316,7 @@ World generateTG195Case4World1() {
 	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
 	auto dens = std::make_shared<std::vector<double>>(size, air.standardDensity());
 	//generate cylindar
-	auto circ_ind = circleIndices(160.0, 160.0, dim, spacing, 160.0);
+	auto circ_ind = circleIndices(.0, .0, dim, spacing, 160.0);
 	for (std::size_t z =0;z < dim[2];++z)
 		for (const auto ind : circ_ind)
 		{
@@ -364,8 +349,8 @@ World generateTG195Case4World1() {
 
 World generateTG195Case4World2() {
 
-	const std::array<std::size_t, 3> dim = { 320,320,600 };
-	const std::array<double, 3> spacing = { 1,1,5 };
+	const std::array<std::size_t, 3> dim = { 323,323,60 };
+	const std::array<double, 3> spacing = { 1,1,50 };
 	const auto size = std::accumulate(dim.cbegin(), dim.cend(), 1.0, std::multiplies<>());
 
 	Material air("Air, Dry (near sea level)");
@@ -375,38 +360,42 @@ World generateTG195Case4World2() {
 
 	auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
 	auto dens = std::make_shared<std::vector<double>>(size, air.standardDensity());
+	auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
 	//generate cylindar
-	auto circ_ind = circleIndices(320. * .5, 320. * .5, dim, spacing, 320. * 0.5);
-	auto pmma2_ind = circleIndices(320. * .5 - 150, 320. * .5, dim, spacing, 10.0);
-	auto pmma1_ind = circleIndices(320. * .5, 320. * .5, dim, spacing, 10.0);
+	auto circ_ind = circleIndices(.0,.0, dim, spacing, 320. * 0.5);
+	auto pmma2_ind = circleIndices(-150.0, .0, dim, spacing, 5.0);
+	auto pmma1_ind = circleIndices(.0, .0, dim, spacing, 5.0);
 	for (std::size_t z = 0; z < dim[2]; ++z)
+	{
 		for (const auto i : circ_ind)
 		{
 			const auto ind = z * dim[0] * dim[1] + i;
 			mat->data()[ind] = static_cast<unsigned char>(1);
 			dens->data()[ind] = pmma.standardDensity();
 		}
-	for (const auto i : pmma1_ind)
-	{
-		const auto ind1 = 299*  dim[0] * dim[1] + i;
-		const auto ind2 = 300 * dim[0] * dim[1] + i;
-		mat->data()[ind1] = static_cast<unsigned char>(2);
-		mat->data()[ind2] = static_cast<unsigned char>(2);
+		if (std::abs((z + 0.5) * spacing[2] - spacing[2]*dim[2]*0.5) < 50)
+		{
+			const auto offset = z * dim[0] * dim[1];
+			for (const auto i : pmma1_ind)
+			{
+				mat->data()[offset + i] = static_cast<unsigned char>(2);
+				meas->data()[offset + i] = static_cast<std::uint8_t>(1);
+			}
+			for (const auto i : pmma2_ind)
+			{
+				mat->data()[offset + i] = static_cast<unsigned char>(3);
+				meas->data()[offset + i] = static_cast<std::uint8_t>(1);
+			}
+		}
 	}
 
-	for (const auto i : pmma2_ind)
-	{
-		const auto ind1 = 299 * dim[0] * dim[1] + i;
-		const auto ind2 = 300 * dim[0] * dim[1] + i;
-		mat->data()[ind1] = static_cast<unsigned char>(3);
-		mat->data()[ind2] = static_cast<unsigned char>(3);
-	}
-
+	
 	World w;
 	w.setSpacing(spacing);
 	w.setDimensions(dim);
 	w.setDensityArray(dens);
 	w.setMaterialIndexArray(mat);
+	w.setMeasurementMapArray(meas);
 	w.addMaterialToMap(air);
 	w.addMaterialToMap(pmma);
 	for (int i = 0; i < 2; ++i)
@@ -416,7 +405,7 @@ World generateTG195Case4World2() {
 }
 
 
-bool TG195Case4AbsorbedEnergy() {
+bool TG195Case41AbsorbedEnergy() {
 	IsotropicSource src;
 	src.setPosition(-600.0, 0., 0.);
 	std::array<double, 6> cos = { 0,1,0 , 0,0,1 };
@@ -447,18 +436,6 @@ bool TG195Case4AbsorbedEnergy() {
 	std::array<double, 4> sim_ev = { 11592.27,2576.72,1766.85,1330.53 };
 	for (std::size_t i = 0; i < voi_ev.size(); ++i)
 		std::cout << "VOI " << i + 1 << " dxmc: " << voi_ev[i] << ", TG195: " << sim_ev[i] <<", difference absolute: "<<voi_ev[i]-sim_ev[i]<< ", difference [%]: " << (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100 << "\n";
-
-	
-	
-	/*auto myfile = std::fstream("dens.bin", std::ios::out | std::ios::binary | std::ios::trunc);
-	myfile.write((const char*)(w.densityBuffer()), sizeof(double) * dose.size());
-	myfile.close();
-	myfile = std::fstream("mat.bin", std::ios::out | std::ios::binary | std::ios::trunc);
-	myfile.write((const char*)(w.materialIndexBuffer()), sizeof(unsigned char) * dose.size());
-	myfile.close();
-	myfile = std::fstream("dose.bin", std::ios::out | std::ios::binary | std::ios::trunc);
-	myfile.write((const char*)(dose.data()), sizeof(double) * dose.size());
-	myfile.close();*/
 
 
 	std::cout << "Collimation: 80 mm:\n";
@@ -517,6 +494,153 @@ bool TG195Case4AbsorbedEnergy() {
 
 	return true;
 }
+
+struct TG19542Res
+{
+	double doseC = 0.0;
+	double doseP = 0.0;
+	std::size_t tallyC = 0;
+	std::size_t tallyP = 0;
+	std::size_t nHist = 0;
+	std::size_t angle = 0;
+	double doseC_TG195 = 0.0;
+	double doseP_TG195 = 0.0;
+
+	template<typename D, typename M, typename T>
+	TG19542Res(D dBeg, D dEnd, M mBeg, T tBeg, T tEnd, std::size_t nHistories, std::size_t ang)
+	{
+		nHist = nHistories;
+		angle = ang;
+		doseC = std::transform_reduce(std::execution::par_unseq, dBeg, dEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->double {return ind == 2 ? d : 0; }) * 1000 / nHistories;
+		doseP = std::transform_reduce(std::execution::par_unseq, dBeg, dEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->double {return ind == 3 ? d : 0; }) * 1000 / nHistories;
+		tallyC = std::transform_reduce(std::execution::par_unseq, tBeg, tEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->std::size_t {return ind == 2 ? d : 0; });
+		tallyP = std::transform_reduce(std::execution::par_unseq, tBeg, tEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->std::size_t {return ind == 3 ? d : 0; });
+	}
+};
+
+bool TG195Case42AbsorbedEnergy() {
+
+
+	//TG195 results
+	const std::vector<double> res42_tg_mcn({ 12.17,12.11,12.16,12.14,12.09,12.10,12.14,12.12,12.15,12.15,12.15,12.16,12.13,12.15,12.15,12.14,12.13,12.15,12.16,12.15,12.16,12.16,12.16,12.16,12.14,12.16,12.16,12.14,12.15,12.10,12.15,12.12,12.12,12.14,12.13,12.14 });
+	const std::vector<double> res42_tg_mpn({ 101.29,99.80,96.11,89.97,81.37,70.54,56.28,38.13,22.35,12.17,6.52,3.64,2.18,1.41,0.98,0.75,0.62,0.55,0.52,0.55,0.62,0.75,0.99,1.41,2.17,3.63,6.51,12.20,22.29,38.15,56.29,70.64,81.42,89.82,96.17,99.92 });
+	const std::vector<double> res42_tg_mcw({ 11.63,11.63,11.62,11.62,11.63,11.60,11.62,11.62,11.59,11.63,11.61,11.61,11.61,11.62,11.61,11.62,11.62,11.63,11.61,11.63,11.63,11.62,11.62,11.62,11.62,11.62,11.64,11.62,11.63,11.65,11.63,11.63,11.62,11.62,11.60,11.61 });
+	const std::vector<double> res42_tg_mpw({ 99.67,98.30,94.51,88.49,80.11,69.26,55.12,37.24,21.75,11.77,6.27,3.46,2.07,1.34,0.95,0.72,0.59,0.52,0.50,0.52,0.59,0.72,0.94,1.35,2.07,3.47,6.24,11.80,21.73,37.28,55.19,69.26,80.04,88.40,94.64,98.33});
+	const std::vector<double> res42_tg_pcn({ 11.35,11.40,11.39,11.40,11.40,11.37,11.40,11.38,11.39,11.41,11.40,11.38,11.37,11.36,11.39,11.38,11.37,11.37,11.38,11.36,11.38,11.38,11.38,11.37,11.38,11.38,11.39,11.38,11.37,11.38,11.37,11.40,11.38,11.37,11.40,11.40 });
+	const std::vector<double> res42_tg_ppn({ 116.79,115.31,110.53,103.15,92.99,79.72,62.57,40.92,22.97,12.17,6.42,3.57,2.16,1.42,1.01,0.78,0.65,0.58,0.56,0.58,0.65,0.78,1.01,1.41,2.16,3.58,6.43,12.17,23.04,40.93,62.45,79.76,93.07,103.27,110.60,115.27 });
+	const std::vector<double> res42_tg_pcw({ 10.88,10.92,10.88,10.90,10.87,10.90,10.90,10.88,10.88,10.89,10.90,10.88,10.90,10.89,10.89,10.89,10.88,10.89,10.89,10.89,10.89,10.90,10.89,10.89,10.89,10.90,10.89,10.91,10.89,10.88,10.88,10.88,10.89,10.89,10.89,10.90 });
+	const std::vector<double> res42_tg_ppw({ 115.34,113.76,109.17,101.71,91.56,78.39,61.39,40.09,22.47,11.78,6.15,3.42,2.06,1.35,0.96,0.74,0.62,0.55,0.53,0.55,0.62,0.74,0.96,1.35,2.06,3.42,6.16,11.79,22.46,40.14,61.43,78.33,91.48,101.61,109.10,113.84 });
+
+
+	std::cout << "TG195 Case 4.2:\n";
+	std::vector<double> specter_mono_weights(1, 1.0);
+	std::vector<double> specter_mono_energies(1, 56.4);
+	auto specter = TG195_120KV();
+	std::vector<double> specter_poly_weights = specter.second;
+	std::vector<double> specter_poly_energies = specter.first;
+
+	IsotropicSource src;
+	src.setHistoriesPerExposure(histPerExposure);
+	src.setTotalExposures(nExposures);
+
+	auto w = generateTG195Case4World2();
+	w.setAttenuationLutMaxEnergy(120.0);
+	w.validate();
+
+	double rot_axis[3] = { 0,0,1 };
+
+	std::vector<TG19542Res> results_mono_10;
+	std::vector<TG19542Res> results_mono_80;
+	std::vector<TG19542Res> results_poly_10;
+	std::vector<TG19542Res> results_poly_80;
+	//simulate 36 projections
+	std::cout << "Prosessing angle (0-360): ";
+	for (std::size_t i = 0; i < 360; i += 10)
+	{
+		std::cout << " " << i;
+		const auto nHistories = src.historiesPerExposure() * src.totalExposures();
+		const double angle = i * PI / 180.0;
+		std::array<double, 3> pos{ -600,0,0 };
+		std::array<double, 6> cos = { 0,1,0 , 0,0,1 };
+		vectormath::rotate(pos.data(), rot_axis, angle);
+		src.setPosition(pos);
+		vectormath::rotate(cos.data(), rot_axis, angle);
+		vectormath::rotate(&cos[3], rot_axis, angle);
+		src.setDirectionCosines(cos);
+
+		//test_direction
+		double dir[3];
+		vectormath::cross(cos.data(), dir);
+
+		src.setSpecter(specter_mono_weights, specter_mono_energies);
+		//10mm collimation mono
+		{
+			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
+			auto res = transport::run(w, &src, nullptr, false);
+			results_mono_10.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+			
+		}
+		//80mm collimation mono
+		{
+			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
+			auto res = transport::run(w, &src, nullptr, false);
+			results_mono_80.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+		}
+		
+		src.setSpecter(specter_poly_weights, specter_poly_energies);
+		//10mm collimation poly
+		{
+			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
+			auto res = transport::run(w, &src, nullptr, false);
+			results_poly_10.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+		}
+		//80mm collimation poly
+		{
+			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
+			auto res = transport::run(w, &src, nullptr, false);
+			results_poly_80.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+		}
+
+	}
+
+	for (std::size_t i = 0; i < 36; ++i)
+	{
+		results_mono_10[i].doseC_TG195 = res42_tg_mcn[i];
+		results_mono_10[i].doseP_TG195 = res42_tg_mpn[i];
+		results_mono_80[i].doseC_TG195 = res42_tg_mcw[i];
+		results_mono_80[i].doseP_TG195 = res42_tg_mpw[i];
+		results_poly_10[i].doseC_TG195 = res42_tg_pcn[i];
+		results_poly_10[i].doseP_TG195 = res42_tg_ppn[i];
+		results_poly_80[i].doseC_TG195 = res42_tg_pcw[i];
+		results_poly_80[i].doseP_TG195 = res42_tg_ppw[i];
+	}
+
+	std::cout << "\n";
+	std::cout << "Position, Angle [deg], Collimation, Specter, Dose [eV/hist], N histories, TG195 result [ev/hist], Difference, Difference [%]\n";
+
+	for (auto r : results_mono_10)
+	{
+		std::cout << "Center,     " << r.angle << ", 10, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 10, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+	}
+	for (auto r : results_mono_80)
+	{
+		std::cout << "Center,     " << r.angle << ", 80, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 80, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+	}
+	for (auto r : results_poly_10)
+	{
+		std::cout << "Center,     " << r.angle << ", 10, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 10, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+	}
+	for (auto r : results_poly_80)
+	{
+		std::cout << "Center,     " << r.angle << ", 80, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 80, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+	}
+	return true;
+}
+
 
 bool testAttenuation()
 {
@@ -588,12 +712,12 @@ bool testAttenuation()
 
 int main(int argc, char* argv[])
 {
-	test120Specter();
+	//test120Specter();
 	auto success = true;//testAttenuation();
-	success = success && TG195Case2AbsorbedEnergyMono();
+	/*success = success && TG195Case2AbsorbedEnergyMono();
 	success = success && TG195Case2AbsorbedEnergy120();
-	success = success && TG195Case4AbsorbedEnergy();
-	
+	success = success && TG195Case41AbsorbedEnergy();*/
+	success = success && TG195Case42AbsorbedEnergy();
 	if (success)
 		return EXIT_SUCCESS;
 	return EXIT_FAILURE;
