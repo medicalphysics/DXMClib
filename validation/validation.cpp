@@ -10,10 +10,11 @@
 #include <iostream>
 #include <cassert>
 #include <fstream>
+#include <chrono>
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 1000000;
-constexpr std::size_t nExposures = 120;
+constexpr std::size_t histPerExposure = 100000;
+constexpr std::size_t nExposures = 16;
 
 constexpr double PI = 3.14159265359;
 
@@ -505,12 +506,14 @@ struct TG19542Res
 	std::size_t angle = 0;
 	double doseC_TG195 = 0.0;
 	double doseP_TG195 = 0.0;
+	double time_seconds = 0.0;
 
 	template<typename D, typename M, typename T>
-	TG19542Res(D dBeg, D dEnd, M mBeg, T tBeg, T tEnd, std::size_t nHistories, std::size_t ang)
+	TG19542Res(D dBeg, D dEnd, M mBeg, T tBeg, T tEnd, std::size_t nHistories, std::size_t ang, std::chrono::duration<double> time)
 	{
 		nHist = nHistories;
 		angle = ang;
+		time_seconds = time.count();
 		doseC = std::transform_reduce(std::execution::par_unseq, dBeg, dEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->double {return ind == 2 ? d : 0; }) * 1000 / nHistories;
 		doseP = std::transform_reduce(std::execution::par_unseq, dBeg, dEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->double {return ind == 3 ? d : 0; }) * 1000 / nHistories;
 		tallyC = std::transform_reduce(std::execution::par_unseq, tBeg, tEnd, mBeg, 0.0, std::plus<>(), [](auto d, auto ind)->std::size_t {return ind == 2 ? d : 0; });
@@ -576,29 +579,37 @@ bool TG195Case42AbsorbedEnergy() {
 		//10mm collimation mono
 		{
 			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
+			auto start = std::chrono::high_resolution_clock::now();
 			auto res = transport::run(w, &src, nullptr, false);
-			results_mono_10.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+			auto end = std::chrono::high_resolution_clock::now();
+			results_mono_10.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end-start));
 			
 		}
 		//80mm collimation mono
 		{
 			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
+			auto start = std::chrono::high_resolution_clock::now();
 			auto res = transport::run(w, &src, nullptr, false);
-			results_mono_80.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+			auto end = std::chrono::high_resolution_clock::now();
+			results_mono_80.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
 		}
 		
 		src.setSpecter(specter_poly_weights, specter_poly_energies);
 		//10mm collimation poly
 		{
 			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
+			auto start = std::chrono::high_resolution_clock::now();
 			auto res = transport::run(w, &src, nullptr, false);
-			results_poly_10.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+			auto end = std::chrono::high_resolution_clock::now();
+			results_poly_10.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
 		}
 		//80mm collimation poly
 		{
 			src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
+			auto start = std::chrono::high_resolution_clock::now();
 			auto res = transport::run(w, &src, nullptr, false);
-			results_poly_80.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i));
+			auto end = std::chrono::high_resolution_clock::now();
+			results_poly_80.push_back(TG19542Res(res.dose.cbegin(), res.dose.cend(), w.materialIndexBuffer(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
 		}
 
 	}
@@ -616,29 +627,37 @@ bool TG195Case42AbsorbedEnergy() {
 	}
 
 	std::cout << "\n";
-	std::cout << "Position, Angle [deg], Collimation, Specter, Dose [eV/hist], N histories, TG195 result [ev/hist], Difference, Difference [%]\n";
+	std::cout << "Position, Angle [deg], Collimation, Specter, Dose [eV/hist], N events, TG195 result [ev/hist], Difference, Difference [%], Total time[s], Total histories \n";
 
 	for (auto r : results_mono_10)
 	{
-		std::cout << "Center,     " << r.angle << ", 10, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
-		std::cout << "Pheriphery, " << r.angle << ", 10, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+		std::cout << "Center,     " << r.angle << ", 10, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 10, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n"; "\n";
 	}
 	for (auto r : results_mono_80)
 	{
-		std::cout << "Center,     " << r.angle << ", 80, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
-		std::cout << "Pheriphery, " << r.angle << ", 80, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+		std::cout << "Center,     " << r.angle << ", 80, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 80, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
 	}
 	for (auto r : results_poly_10)
 	{
-		std::cout << "Center,     " << r.angle << ", 10, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
-		std::cout << "Pheriphery, " << r.angle << ", 10, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+		std::cout << "Center,     " << r.angle << ", 10, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 10, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
 	}
 	for (auto r : results_poly_80)
 	{
-		std::cout << "Center,     " << r.angle << ", 80, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << "\n";
-		std::cout << "Pheriphery, " << r.angle << ", 80, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << "\n";
+		std::cout << "Center,     " << r.angle << ", 80, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
+		std::cout << "Pheriphery, " << r.angle << ", 80, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
 	}
+	std::cout << "############ CSV DATA #################" << '\n';
+
+
+
+
+
 	return true;
+
+
 }
 
 

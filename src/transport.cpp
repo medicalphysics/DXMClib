@@ -56,7 +56,6 @@ namespace transport {
 	inline void safeEnergyAdd(double& value, const double addValue)
 	{
 		std::scoped_lock guard(DOSE_MUTEX);
-		//std::lock_guard<std::mutex> lock(DOSE_MUTEX);
 		value += addValue;
 	}
 
@@ -64,14 +63,12 @@ namespace transport {
 	inline void safeTallyAdd(T& value)
 	{
 		std::scoped_lock guard(TALLY_MUTEX);
-		//std::lock_guard<std::mutex> lock(TALLY_MUTEX);
 		value += static_cast<T>(1);
 	}
 	inline void safeVarianceAdd(double& value, const double addValue)
 	{
 		std::scoped_lock guard(VARIANCE_MUTEX);
-		//std::lock_guard<std::mutex> lock(VARIANCE_MUTEX);
-		value += value;
+		value += addValue;
 	}
 
 
@@ -509,11 +506,14 @@ namespace transport {
 		auto vBeg = res.variance.begin();
 		while (eBeg != eEnd)
 		{
-			const double nEv = static_cast<double>(*tBeg);
-			*vBeg = (*vBeg / nEv - (*eBeg * *eBeg) / (nEv * nEv)) * nEv;
-			++eBeg;
-			++tBeg;
-			++vBeg;
+			if (*tBeg > 0)
+			{
+				const double nEv = static_cast<double>(*tBeg);
+				*vBeg = *vBeg / nEv - (*eBeg) * (*eBeg) / nEv / nEv;
+			}
+				++eBeg;
+				++tBeg;
+				++vBeg;
 		}
 
 	}
