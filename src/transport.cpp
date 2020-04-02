@@ -510,13 +510,11 @@ namespace transport {
 			{
 				const double nEv = static_cast<double>(*tBeg);
 				*vBeg = *vBeg / nEv - (*eBeg) * (*eBeg) / nEv / nEv;
-				//*vBeg = *vBeg - (*eBeg) * (*eBeg) / nEv;
 			}
 				++eBeg;
 				++tBeg;
 				++vBeg;
 		}
-
 	}
 
 	void energyImpartedToDose(const World & world, Result& res, const double calibrationValue)
