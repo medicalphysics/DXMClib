@@ -252,6 +252,7 @@ AECFilter::AECFilter(const std::vector<double>& mass, const std::vector<double>&
 	m_positionIntensity[0] = 1.0;
 	m_positionStep = 1.0;
 	m_positionMax = 1.0;
+	m_valid = false;
 }
 
 double AECFilter::sampleIntensityWeight(const std::array<double, 3>& position) const
