@@ -271,7 +271,7 @@ public:
 	bool isValid(void) const override { return m_specterValid; };
 	virtual bool validate(void) override { updateSpecterDistribution(); return m_specterValid; };
 	
-	void setAECFilter(std::shared_ptr<AECFilter> filter) { m_aecFilter = filter; }
+	void setAecFilter(std::shared_ptr<AECFilter> filter) { m_aecFilter = filter; }
 	std::shared_ptr<AECFilter> aecFilter(void) { return m_aecFilter; }
 
 	virtual void updateFromWorld(const World& world) override { if (m_aecFilter) m_aecFilter->updateFromWorld(world); }
