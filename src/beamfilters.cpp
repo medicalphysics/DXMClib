@@ -309,6 +309,8 @@ void AECFilter::generateMassWeightMap(std::vector<double>::const_iterator densBe
 		const double sliceMass = std::reduce(std::execution::par_unseq, start, start + sliceStep, 0.0) * voxelArea;
 		m_mass[i] = sliceMass;
 	}
+	std::array<double, 3> origin({ 0,0,0 });
+	generatePositionWeightMap(densBeg, densEnd, spacing, dimensions, origin);
 	return;
 }
 
