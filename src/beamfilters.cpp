@@ -237,13 +237,11 @@ double XCareFilter::sampleIntensityWeight(const double angle) const
 AECFilter::AECFilter(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposure)
 {
 	generateMassWeightMap(densityImage.cbegin(), densityImage.cend(), spacing, dimensions, exposure);
-	m_valid = false;
 }
 
 AECFilter::AECFilter(std::shared_ptr<std::vector<double>>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposure)
 {
 	generateMassWeightMap(densityImage->cbegin(), densityImage->cend(), spacing, dimensions, exposure);
-	m_valid = false;
 }
 
 AECFilter::AECFilter(const std::vector<double>& mass, const std::vector<double>& intensity)
@@ -275,7 +273,6 @@ void AECFilter::updateFromWorld(const World& world)
 	auto dim = world.dimensions();
 	auto origin = world.origin();
 	generatePositionWeightMap(dens->cbegin(), dens->cend(), spacing, dim, origin);
-
 }
 
 void AECFilter::generateMassWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping)
