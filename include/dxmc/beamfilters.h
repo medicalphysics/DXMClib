@@ -118,32 +118,29 @@ private:
 };
 
 
-class PositionalFilter
-{
-public:
-	PositionalFilter() {};
-	virtual double sampleIntensityWeight(const std::array<double, 3>& position) const = 0;
-	virtual void updateFromWorld(const World& world) = 0;
-};
-
-
-class AECFilter :public PositionalFilter
+class AECFilter
 {
 public:
 	AECFilter(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
 	AECFilter(std::shared_ptr<std::vector<double>>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
-	virtual ~AECFilter() = default;
-	double sampleIntensityWeight(const std::array<double, 3>& position) const override;
-	void updateFromWorld(const World& world) override;
+	AECFilter(const std::vector<double>& mass, const std::vector<double>& intensity);
+	double sampleIntensityWeight(const std::array<double, 3>& position) const;
+	void updateFromWorld(const World& world);
 	bool isValid() const { return m_valid; }
+	const std::vector<double>& mass() const { return m_mass; }
+	const std::vector<double>& massIntensity() const { return m_massIntensity; }
+
 protected:
-	void setCurrentDensityImage(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3> &origin);
-	void setCurrentDensityImage(std::shared_ptr<std::vector<double>> densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3> &origin);
-	void generateDensityWeightMap(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
-	void generateDensityWeightMap(std::shared_ptr<std::vector<double>> densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
-	double interpolateMassWeight(double mass) const;
+	void generateMassWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
+	void generatePositionWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3>& origin);
+	double interpolateMassIntensity(double mass) const;
 private:
 	bool m_valid = false;
-	std::vector<std::pair<double, double>> m_massWeightMap;
-	std::vector<std::pair<double, double>> m_positionWeightMap;
+	std::vector<double> m_mass;
+	std::vector<double> m_massIntensity;
+	double m_positionStep = 0.0;
+	double m_positionMin = 0.0;
+	double m_positionMax = 0.0;
+	std::vector<double> m_positionIntensity;
+
 };

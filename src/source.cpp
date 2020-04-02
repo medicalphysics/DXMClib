@@ -731,8 +731,8 @@ bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex
 	exposure.setHeelFilter(m_heelFilter.get());
 	exposure.setNumberOfHistories(m_historiesPerExposure);
 	double weight = 1.0;
-	if (m_positionalFilter)
-		weight *= m_positionalFilter->sampleIntensityWeight(pos);
+	if (m_aecFilter)
+		weight *= m_aecFilter->sampleIntensityWeight(pos);
 	if (m_useXCareFilter)
 		weight *= m_xcareFilter.sampleIntensityWeight(angle);
 	exposure.setBeamIntensityWeight(weight);
@@ -812,8 +812,8 @@ bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex)
 	exposure.setSpecterDistribution(m_specterDistribution.get());
 	exposure.setNumberOfHistories(m_historiesPerExposure);
 	double weight = 1.0;
-	if (m_positionalFilter)
-		weight *= m_positionalFilter->sampleIntensityWeight(pos);
+	if (m_aecFilter)
+		weight *= m_aecFilter->sampleIntensityWeight(pos);
 	if (m_useXCareFilter)
 		weight *= m_xcareFilter.sampleIntensityWeight(angle);
 	exposure.setBeamIntensityWeight(weight);
@@ -908,8 +908,8 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	exposure.setSpecterDistribution(specterDistribution);
 	exposure.setHeelFilter(heelFilter);
 	exposure.setNumberOfHistories(m_historiesPerExposure);
-	if (m_positionalFilter)
-		weight *= m_positionalFilter->sampleIntensityWeight(pos);
+	if (m_aecFilter)
+		weight *= m_aecFilter->sampleIntensityWeight(pos);
 	if (m_useXCareFilter)
 		weight *= m_xcareFilter.sampleIntensityWeight(angle);
 	exposure.setBeamIntensityWeight(weight);

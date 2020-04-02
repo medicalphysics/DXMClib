@@ -39,10 +39,6 @@ public:
     virtual bool getExposure(Exposure& exposure, std::uint64_t i) const = 0;
 	virtual double maxPhotonEnergyProduced() const {return  Tube::maxVoltage(); }
 
-	void setPositionalFilter(std::shared_ptr<PositionalFilter> filter) { m_positionalFilter = filter; }
-	std::shared_ptr<PositionalFilter> positionalFilter(void) { return m_positionalFilter; }
-	const std::shared_ptr<PositionalFilter> positionalFilter() const { return m_positionalFilter; }
-	
 	void setPosition(const std::array<double, 3>& position) { m_position = position; }
 	void setPosition(double x, double y, double z) {
 		m_position[0] = x; m_position[1] = y; m_position[2] = z;
@@ -65,13 +61,12 @@ public:
 	
 	virtual bool isValid(void) const = 0;
 	virtual bool validate(void) = 0;
-	void updateFromWorld(const World& world) { if (m_positionalFilter) m_positionalFilter->updateFromWorld(world); }
+	virtual void updateFromWorld(const World& world) { }
 
 protected:
 	std::array<double, 3> m_position = { 0,0,0 };
 	std::array<double, 6> m_directionCosines = { 1,0,0,0,1,0 };
 	std::uint64_t m_historiesPerExposure = 1;
-	std::shared_ptr<PositionalFilter> m_positionalFilter;
 	Type m_type = Type::None;
 private:
 	void normalizeDirectionCosines(void);
@@ -243,7 +238,6 @@ public:
 	void setGantryTiltAngleDeg(double angle);
 	double gantryTiltAngleDeg() const;
 
-
     void setStartAngle(double angle);
     double startAngle(void) const;
 	void setStartAngleDeg(double angle);
@@ -277,6 +271,11 @@ public:
 	bool isValid(void) const override { return m_specterValid; };
 	virtual bool validate(void) override { updateSpecterDistribution(); return m_specterValid; };
 	
+	void setAECFilter(std::shared_ptr<AECFilter> filter) { m_aecFilter = filter; }
+	std::shared_ptr<AECFilter> aecFilter(void) { return m_aecFilter; }
+
+	virtual void updateFromWorld(const World& world) override { if (m_aecFilter) m_aecFilter->updateFromWorld(world); }
+
 	void setModelHeelEffect(bool on) { m_modelHeelEffect = on; };
 	bool modelHeelEffect() const { return m_modelHeelEffect; };
 
@@ -293,8 +292,9 @@ protected:
     double m_scanLenght;
 	double m_ctdivol = 1.0;
 	double m_gantryTiltAngle = 0.0;
+	std::shared_ptr<AECFilter> m_aecFilter = nullptr;
 	std::uint64_t m_ctdiPhantomDiameter = 320;
-	std::shared_ptr<BeamFilter> m_bowTieFilter;
+	std::shared_ptr<BeamFilter> m_bowTieFilter=nullptr;
 	XCareFilter m_xcareFilter;
 	bool m_useXCareFilter = false;
 	bool m_specterValid = false;

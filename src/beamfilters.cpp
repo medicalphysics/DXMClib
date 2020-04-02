@@ -21,6 +21,7 @@ Copyright 2019 Erlend Andersen
 #include <algorithm>
 #include <numeric>
 #include <cmath>
+#include <execution>
 
 constexpr double PI = 3.14159265359;
 constexpr double PI_2 = PI + PI;
@@ -196,10 +197,16 @@ double XCareFilter::highWeight() const
 }
 
 template<typename T>
-T interp(T x0, T x1, T y0, T y1, T x)
+inline T interp(T x0, T x1, T y0, T y1, T x)
 {
 	return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
 }
+template<typename T>
+inline T interp(T x[2], T y[2], T xi)
+{
+	return y[0] + (y[1] - y[0]) * (xi - x[0]) / (x[1] - x[0]);
+}
+
 
 double XCareFilter::sampleIntensityWeight(const double angle) const
 {
@@ -228,20 +235,40 @@ double XCareFilter::sampleIntensityWeight(const double angle) const
 	return high;
 }
 
+
+
 AECFilter::AECFilter(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposure)
-	:PositionalFilter()
 {
-	generateDensityWeightMap(densityImage, spacing, dimensions, exposure);
-	std::array<double, 3> origin{ 0,0,0 };
-	setCurrentDensityImage(densityImage, spacing, dimensions, origin);
+	generateMassWeightMap(densityImage.cbegin(), densityImage.cend(), spacing, dimensions, exposure);
+	m_valid = false;
 }
 
 AECFilter::AECFilter(std::shared_ptr<std::vector<double>>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposure)
-	:PositionalFilter()
 {
-	generateDensityWeightMap(densityImage, spacing, dimensions, exposure);
-	std::array<double, 3> origin{ 0,0,0 };
-	setCurrentDensityImage(densityImage, spacing, dimensions, origin);
+	generateMassWeightMap(densityImage->cbegin(), densityImage->cend(), spacing, dimensions, exposure);
+	m_valid = false;
+}
+
+AECFilter::AECFilter(const std::vector<double>& mass, const std::vector<double>& intensity)
+{
+	m_mass = mass;
+	m_massIntensity = intensity;
+	m_valid = false;
+}
+
+double AECFilter::sampleIntensityWeight(const std::array<double, 3>& position) const
+{
+	const double p = position[2];
+	if (p < m_positionMin + m_positionStep)
+		return m_positionIntensity[0];
+	if (p >= m_positionMax-m_positionStep)
+		return m_positionIntensity.back();
+	const std::size_t ind = static_cast<std::size_t>((p - m_positionMin) / m_positionStep);
+	const double x0 = ind * m_positionStep + m_positionMin;
+	const double x1 = x0 + m_positionStep;
+	const double y0 = m_positionIntensity[ind];
+	const double y1 = m_positionIntensity[ind+1];
+	return interp(x0, x1, y0, y1, p);
 }
 
 void AECFilter::updateFromWorld(const World& world)
@@ -250,150 +277,79 @@ void AECFilter::updateFromWorld(const World& world)
 	auto spacing = world.spacing();
 	auto dim = world.dimensions();
 	auto origin = world.origin();
-	setCurrentDensityImage(dens, spacing, dim, origin);
+	generatePositionWeightMap(dens->cbegin(), dens->cend(), spacing, dim, origin);
 
 }
 
-void AECFilter::setCurrentDensityImage(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3> &origin)
+void AECFilter::generateMassWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping)
 {
-	std::size_t size = dimensions[0] * dimensions[1] * dimensions[2];
-	if (densityImage.size() != size)
-		return;
-	m_positionWeightMap.clear();
-	m_positionWeightMap.reserve(dimensions[2]);
-	const double voxelVolume = spacing[0] * spacing[1] * spacing[2];
-	const std::size_t step = dimensions[0] * dimensions[1];
-	for (std::size_t k = 0; k < dimensions[2]; ++k)
+	m_valid = false;
+	if (std::distance(densBeg, densEnd) != dimensions[0] * dimensions[1] * dimensions[2])
 	{
-		const std::size_t offset = step * k;
-		auto beg = densityImage.begin();
-		auto end = densityImage.begin();
-		std::advance(beg, offset);
-		std::advance(end, offset + step);
-		const double mass = std::accumulate(beg, end, 0.0) * voxelVolume;
-		const double position = origin[2] - spacing[2] * dimensions[2] * 0.5 + spacing[2] * k;
-		const double weight = interpolateMassWeight(mass);
-		m_positionWeightMap.push_back(std::make_pair(position, weight));
+		m_mass.resize(1);
+		m_massIntensity.resize(1);
+		m_massIntensity[0] = 1;
+		return;
+	}
+	if (exposuremapping.size() != dimensions[2])
+	{
+		m_mass.resize(1);
+		m_massIntensity.resize(1);
+		m_massIntensity[0] = 1;
+		return;
+	}
+	
+	m_mass.resize(dimensions[2]);
+	m_massIntensity.resize(dimensions[2]);
+	const double meanExposure = std::reduce(std::execution::par_unseq, exposuremapping.cbegin(), exposuremapping.cend(), 0.0) / dimensions[2];
+	std::transform(std::execution::par_unseq, exposuremapping.cbegin(), exposuremapping.cend(), m_massIntensity.begin(), [=](auto i) {return i / meanExposure; });
+
+	const auto sliceStep = dimensions[0] * dimensions[1];
+	const double voxelArea = spacing[0] * spacing[1];
+	for(std::size_t i=0; i < dimensions[2]; ++i)
+	{
+		auto start = densBeg + sliceStep * i;
+		const double sliceMass = std::reduce(std::execution::par_unseq, start, start + sliceStep, 0.0) * voxelArea;
+		m_mass[i] = sliceMass;
+	}
+	return;
+}
+
+void AECFilter::generatePositionWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3>& origin)
+{
+	m_positionMin = origin[2] - spacing[2] * dimensions[2] * 0.5;
+	m_positionMax = m_positionMin + spacing[2] * dimensions[2];
+	m_positionStep = (m_positionMax - m_positionMin) / dimensions[2]; // this should be equal to spacing[2]
+	m_positionIntensity.resize(dimensions[2]);
+
+	const auto sliceStep = dimensions[0] * dimensions[1];
+	const double voxelArea = spacing[0] * spacing[1];
+	for (std::size_t i = 0; i < dimensions[2]; ++i)
+	{
+		auto start = densBeg + sliceStep * i;
+		const double sliceMass = std::reduce(std::execution::par_unseq, start, start + sliceStep, 0.0) * voxelArea;
+		m_positionIntensity[i] = interpolateMassIntensity(sliceMass);
 	}
 	m_valid = true;
 }
-void AECFilter::setCurrentDensityImage(std::shared_ptr<std::vector<double>> densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3> &origin)
+
+double AECFilter::interpolateMassIntensity(double mass) const
 {
-	std::size_t size = dimensions[0] * dimensions[1] * dimensions[2];
-	if (densityImage->size() != size)
-		return;
-	m_positionWeightMap.clear();
-	m_positionWeightMap.reserve(dimensions[2]);
-	const double voxelVolume = spacing[0] * spacing[1] * spacing[2];
-	const std::size_t step = dimensions[0] * dimensions[1];
-	for (std::size_t k = 0; k < dimensions[2]; ++k)
-	{
-		const std::size_t offset = step * k;
-		auto beg = densityImage->begin();
-		auto end = densityImage->begin();
-		std::advance(beg, offset);
-		std::advance(end, offset + step);
-		const double mass = std::accumulate(beg, end, 0.0) * voxelVolume;
-		const double position = origin[2] - spacing[2] * dimensions[2] * 0.5 + spacing[2] * k;
-		const double weight = interpolateMassWeight(mass);
-		m_positionWeightMap.push_back(std::make_pair(position, weight));
-	}
-	m_valid = true;
-}
+	auto beg = m_mass.cbegin();
+	auto end = m_mass.cend();
+	auto pos = std::upper_bound(m_mass.cbegin(), m_mass.cend(), mass);
+	if (pos == beg)
+		return m_massIntensity[0];
+	if (mass > m_massIntensity.back())
+		return m_massIntensity.back();
 
-
-
-double AECFilter::sampleIntensityWeight(const std::array<double, 3>& position) const
-{
-	auto it = std::upper_bound(m_positionWeightMap.begin(), m_positionWeightMap.end(), std::make_pair(position[2],0.0), [=](const auto& left, const auto& right) {return left.first < right.first; });
-	if (it == m_positionWeightMap.end())
-		return m_positionWeightMap.back().second;
-	if (it == m_positionWeightMap.begin())
-		return m_positionWeightMap.front().second;
-	auto it0 = it;
-	std::advance(it0, -1);
-	auto p1 = *it;
-	auto p0 = *it0;
-	return p0.second + (p1.second - p0.second) * (position[2] - p0.first) / (p1.first - p0.first);
-}
-
-
-inline double arraySubIndex(const std::vector<double> arr, std::size_t otherIndex, std::size_t otherDim)
-{
-	auto t = static_cast<double> (otherIndex) / otherDim;
-	auto index = static_cast<std::size_t> (t*arr.size());
-	if (index < arr.size())
-		return arr[index];
-	return arr.back();
-}
-
-void AECFilter::generateDensityWeightMap(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposure)
-{
-	std::size_t size = dimensions[0] * dimensions[1] * dimensions[2];
-	if (densityImage.size() != size)
-		return;
-	if (exposure.size() == 0)
-		return;
-	m_massWeightMap.clear();
-	m_massWeightMap.reserve(dimensions[2]);
-	
-	const double voxelVolume = spacing[0] * spacing[1] * spacing[2];
-	const std::size_t step = dimensions[0] * dimensions[1];
-	double exposureMean = std::accumulate(exposure.begin(), exposure.end(), 0.0) / exposure.size();
-	for (std::size_t k = 0; k < dimensions[2]; ++k)
-	{
-		const std::size_t offset = step * k;
-		auto beg = densityImage.begin();
-		auto end = densityImage.begin();
-		std::advance(beg, offset);
-		std::advance(end, offset + step);
-		double sumDens = std::accumulate(beg, end, 0.0);
-		m_massWeightMap.push_back(std::make_pair(sumDens*voxelVolume, arraySubIndex(exposure, k, dimensions[2]) / exposureMean));
-	}
-	std::sort(m_massWeightMap.begin(), m_massWeightMap.end());
-}
-
-void AECFilter::generateDensityWeightMap(std::shared_ptr<std::vector<double>> densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposure)
-{
-	std::size_t size = dimensions[0] * dimensions[1] * dimensions[2];
-	if (densityImage->size() != size)
-		return;
-	
-	if (exposure.size() ==0)
-		return;
-
-	m_massWeightMap.clear();
-	m_massWeightMap.reserve(dimensions[2]);
-
-	const double voxelVolume = spacing[0] * spacing[1] * spacing[2];
-	const std::size_t step = dimensions[0] * dimensions[1];
-	double exposureMean = std::accumulate(exposure.begin(), exposure.end(), 0.0) / exposure.size();
-	for (std::size_t k = 0; k < dimensions[2]; ++k)
-	{
-		const std::size_t offset = step * k;
-		auto beg = densityImage->begin();
-		auto end = densityImage->begin();
-		std::advance(beg, offset);
-		std::advance(end, offset + step);
-		double sumDens = std::accumulate(beg, end, 0.0);
-		m_massWeightMap.push_back(std::make_pair(sumDens*voxelVolume, arraySubIndex(exposure, k, dimensions[2]) / exposureMean));
-	}
-	std::sort(m_massWeightMap.begin(), m_massWeightMap.end());
-}
-
-double AECFilter::interpolateMassWeight(double mass) const
-{
-	auto it = std::upper_bound(m_massWeightMap.begin(), m_massWeightMap.end(), std::make_pair(mass, 0.0), [](const std::pair<double, double>& left, const std::pair<double, double>& right) {return left.first < right.first; });
-	
-	if (it == m_massWeightMap.end())
-		return m_massWeightMap.back().second;
-	if (it == m_massWeightMap.begin())
-		return m_massWeightMap.front().second;
-	auto it0 = it;
-	std::advance(it0, -1);
-	auto p1 = *it;
-	auto p0 = *it0;
-	return p0.second + (p1.second-p0.second) * (mass-p0.first) / (p1.first-p0.first);
+	if (pos == end)
+		return m_massIntensity.back();
+	const double x0 = *(pos - 1);
+	const double x1 = *pos;
+	const double y0 = *(m_massIntensity.cbegin() + std::distance(beg, pos) - 1);
+	const double y1 = *(m_massIntensity.cbegin() + std::distance(beg, pos));
+	return interp(x0, x1, y0, y1, mass);
 }
 
 HeelFilter::HeelFilter(const Tube& tube, const double heel_angle_span)
