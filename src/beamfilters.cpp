@@ -112,7 +112,7 @@ double BowTieFilter::sampleIntensityWeight(const double anglePlusAndMinus) const
 
 void BowTieFilter::normalizeData()
 {
-	const auto mean = std::reduce(m_data.begin(), m_data.end(), 0.0, [](auto a, auto el) {return a + el.second; });
+	const auto mean = std::reduce(m_data.begin(), m_data.end(), 0.0, [](auto a, auto el) {return a + el.second; }) / m_data.size();
 	std::transform(m_data.begin(), m_data.end(), m_data.begin(), [=](const auto &el) {return std::make_pair(el.first, el.second / mean); });	
 }
 
