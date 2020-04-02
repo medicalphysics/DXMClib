@@ -43,6 +43,7 @@ public:
 	 * @return double Photon weigh
 	 */
 	virtual double sampleIntensityWeight(const double angle) const = 0;
+
 };
 
 

@@ -220,9 +220,9 @@ public:
 
 	virtual double maxPhotonEnergyProduced() const override {return m_tube.voltage(); }
 
-	void setBowTieFilter(std::shared_ptr<BeamFilter> filter) { m_bowTieFilter = filter; }
-	std::shared_ptr<BeamFilter> bowTieFilter(void) { return m_bowTieFilter; }
-	const std::shared_ptr<BeamFilter> bowTieFilter() const { return m_bowTieFilter; }
+	void setBowTieFilter(std::shared_ptr<BowTieFilter> filter) { m_bowTieFilter = filter; }
+	std::shared_ptr<BowTieFilter> bowTieFilter(void) { return m_bowTieFilter; }
+	const std::shared_ptr<BowTieFilter> bowTieFilter() const { return m_bowTieFilter; }
 
 	void setSourceDetectorDistance(double sdd);
     double sourceDetectorDistance(void) const;
@@ -294,7 +294,7 @@ protected:
 	double m_gantryTiltAngle = 0.0;
 	std::shared_ptr<AECFilter> m_aecFilter = nullptr;
 	std::uint64_t m_ctdiPhantomDiameter = 320;
-	std::shared_ptr<BeamFilter> m_bowTieFilter=nullptr;
+	std::shared_ptr<BowTieFilter> m_bowTieFilter=nullptr;
 	XCareFilter m_xcareFilter;
 	bool m_useXCareFilter = false;
 	bool m_specterValid = false;
@@ -355,9 +355,9 @@ public:
 	std::uint64_t exposuresPerRotatition() const override;
 	double getCalibrationValue(ProgressBar* = nullptr) const override;
 
-	void setBowTieFilterB(std::shared_ptr<BeamFilter> filter) { m_bowTieFilterB = filter; }
-	std::shared_ptr<BeamFilter> bowTieFilterB(void) { return m_bowTieFilterB; }
-	const std::shared_ptr<BeamFilter> bowTieFilterB() const { return m_bowTieFilterB; }
+	void setBowTieFilterB(std::shared_ptr<BowTieFilter> filter) { m_bowTieFilterB = filter; }
+	std::shared_ptr<BowTieFilter> bowTieFilterB(void) { return m_bowTieFilterB; }
+	const std::shared_ptr<BowTieFilter> bowTieFilterB() const { return m_bowTieFilterB; }
 
 	void setSourceDetectorDistanceB(double sdd) { m_specterValid = false; m_sddB = std::abs(sdd); }
 	double sourceDetectorDistanceB(void) const { return m_sddB; }	
@@ -387,6 +387,6 @@ private:
 	double m_tubeBmas = 100.0;
 	double m_tubeBweight = -1.0;
 	double m_tubeAweight = -1.0;
-	std::shared_ptr<BeamFilter> m_bowTieFilterB = nullptr;
+	std::shared_ptr<BowTieFilter> m_bowTieFilterB = nullptr;
 	std::shared_ptr<HeelFilter> m_heelFilterB = nullptr;
 };
