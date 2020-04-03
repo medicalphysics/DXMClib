@@ -135,6 +135,7 @@ protected:
 	void generateMassWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
 	void generatePositionWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::array<double, 3>& origin);
 	double interpolateMassIntensity(double mass) const;
+
 private:
 	bool m_valid = false;
 	std::vector<double> m_mass;
@@ -143,5 +144,4 @@ private:
 	double m_positionMin = 0.0;
 	double m_positionMax = 0.0;
 	std::vector<double> m_positionIntensity;
-
 };

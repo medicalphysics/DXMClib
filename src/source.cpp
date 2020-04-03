@@ -417,7 +417,8 @@ double DXSource::getCalibrationValue(ProgressBar* progressBar) const
 	}
 	calcOutput *= KEV_TO_MJ * 1000.0; // Air KERMA [mJ / kg] = [mGy]
 
-	const double output = m_dap / (m_fieldSize[0] * m_fieldSize[1] * 0.01); //mm->cm
+	// (m_dap * 1000.0): converting from Gycm2 to mGycm2
+	const double output = (m_dap * 1000.0) / (m_fieldSize[0] * m_fieldSize[1] * 0.01); //mm->cm   
 	const double factor = output / calcOutput; // mGy/mGy
 	return factor; 
 }
