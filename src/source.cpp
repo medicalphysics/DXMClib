@@ -701,7 +701,7 @@ double CTSpiralSource::pitch(void) const
 
 void CTSpiralSource::setScanLenght(double scanLenght)
 {
-	std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
+	m_scanLenght = std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
 }
 
 bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
@@ -963,7 +963,7 @@ double CTDualSource::pitch(void) const
 
 void CTDualSource::setScanLenght(double scanLenght)
 {
-	std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
+	m_scanLenght = std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
 }
 
 void CTDualSource::updateSpecterDistribution()
