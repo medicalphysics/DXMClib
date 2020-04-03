@@ -311,6 +311,7 @@ public:
 	bool getExposure(Exposure& exposure, std::uint64_t i) const override;
 	void setPitch(double pitch);
 	double pitch(void) const;
+	void setScanLenght(double scanLenght) override;
 	std::uint64_t totalExposures(void) const override;
 	double getCalibrationValue(ProgressBar* = nullptr) const override;
 protected:
@@ -367,6 +368,7 @@ public:
 
 	void setPitch(double pitch);
 	double pitch(void) const;
+	void setScanLenght(double scanLenght) override;
 
 	void setStartAngleB(double angle) { m_startAngleB = angle; }
 	double startAngleB(void) const { return m_startAngleB; }

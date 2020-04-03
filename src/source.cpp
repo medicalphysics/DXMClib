@@ -698,6 +698,12 @@ double CTSpiralSource::pitch(void) const
 {
 	return m_pitch;
 }
+
+void CTSpiralSource::setScanLenght(double scanLenght)
+{
+	std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
+}
+
 bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
 {
 	std::array<double, 3> pos = { 0, -m_sdd / 2.0,0 };
@@ -775,7 +781,7 @@ double CTAxialSource::step(void) const
 
 void CTAxialSource::setScanLenght(double scanLenght)
 {
-	m_scanLenght = m_step * std::floor(scanLenght / m_step);
+	m_scanLenght = std::max(m_step * std::ceil(std::abs(scanLenght) / m_step), m_step);
 }
 
 bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
@@ -955,6 +961,10 @@ double CTDualSource::pitch(void) const
 	return m_pitch;
 }
 
+void CTDualSource::setScanLenght(double scanLenght)
+{
+	std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
+}
 
 void CTDualSource::updateSpecterDistribution()
 {
