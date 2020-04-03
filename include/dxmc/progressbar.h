@@ -79,7 +79,7 @@ public:
 	
 	void setDoseData(const double* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<double, 3> doseSpacing, Axis planeNormal=Axis::Y)
 	{
-		const std::lock_guard<std::mutex> lock(m_doseMutex);
+		std::scoped_lock guard(m_doseMutex);
 		m_doseData = doseData;
 		m_doseDimensions = doseDimensions;
 		m_doseSpacing = doseSpacing;
@@ -87,6 +87,7 @@ public:
 	}
 	void clearDoseData()
 	{
+		std::scoped_lock guard(m_doseMutex);
 		m_doseData = nullptr;
 		std::fill(m_doseSpacing.begin(), m_doseSpacing.end(), 0.0);
 		std::fill(m_doseDimensions.begin(), m_doseDimensions.end(), 0);
@@ -95,14 +96,13 @@ public:
 	
 	std::shared_ptr<DoseProgressImageData> computeDoseProgressImage()
 	{
-		const std::lock_guard<std::mutex> lock(m_doseMutex);
+		std::scoped_lock guard(m_doseMutex);
 		if (m_doseAxis == Axis::Y)
 			return computeDoseProgressImageY();
 		else if (m_doseAxis ==Axis::Z)
 			return computeDoseProgressImageZ();
 		return computeDoseProgressImageX();
 	}
-
 
 protected:
 	std::string makePrettyTime(double seconds) const {
