@@ -13,8 +13,8 @@
 #include <chrono>
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 100000;
-constexpr std::size_t nExposures = 16;
+constexpr std::size_t histPerExposure = 1e6;
+constexpr std::size_t nExposures = 64;
 
 constexpr double PI = 3.14159265359;
 
@@ -348,7 +348,7 @@ World generateTG195Case4World1() {
 	return w;
 }
 
-World generateTG195Case4World2() {
+World generateTG195Case4World2(bool force_interactions=false) {
 
 	const std::array<std::size_t, 3> dim = { 323,323,60 };
 	const std::array<double, 3> spacing = { 1,1,50 };
@@ -380,12 +380,14 @@ World generateTG195Case4World2() {
 			for (const auto i : pmma1_ind)
 			{
 				mat->data()[offset + i] = static_cast<unsigned char>(2);
-				meas->data()[offset + i] = static_cast<std::uint8_t>(1);
+				if(force_interactions)
+					meas->data()[offset + i] = static_cast<std::uint8_t>(1);
 			}
 			for (const auto i : pmma2_ind)
 			{
 				mat->data()[offset + i] = static_cast<unsigned char>(3);
-				meas->data()[offset + i] = static_cast<std::uint8_t>(1);
+				if(force_interactions)
+					meas->data()[offset + i] = static_cast<std::uint8_t>(1);
 			}
 		}
 	}
@@ -557,10 +559,9 @@ bool TG195Case42AbsorbedEnergy() {
 	std::vector<TG19542Res> results_poly_10;
 	std::vector<TG19542Res> results_poly_80;
 	//simulate 36 projections
-	std::cout << "Prosessing angle (0-360): ";
 	for (std::size_t i = 0; i < 360; i += 10)
 	{
-		std::cout << " " << i;
+		std::cout << '\r' << "Prosessing angle (0-360) [" << static_cast<int>(i / 360.0 * 100.0) << " %] " << " current angle: " << i;
 		const auto nHistories = src.historiesPerExposure() * src.totalExposures();
 		const double angle = i * PI / 180.0;
 		std::array<double, 3> pos{ -600,0,0 };
@@ -613,7 +614,7 @@ bool TG195Case42AbsorbedEnergy() {
 		}
 
 	}
-
+	std::cout << '\r';
 	for (std::size_t i = 0; i < 36; ++i)
 	{
 		results_mono_10[i].doseC_TG195 = res42_tg_mcn[i];
@@ -625,8 +626,6 @@ bool TG195Case42AbsorbedEnergy() {
 		results_poly_80[i].doseC_TG195 = res42_tg_pcw[i];
 		results_poly_80[i].doseP_TG195 = res42_tg_ppw[i];
 	}
-
-	std::cout << "\n";
 	std::cout << "Position, Angle [deg], Collimation, Specter, Dose [eV/hist], N events, TG195 result [ev/hist], Difference, Difference [%], Total time[s], Total histories \n";
 
 	for (auto r : results_mono_10)
@@ -649,15 +648,8 @@ bool TG195Case42AbsorbedEnergy() {
 		std::cout << "Center,     " << r.angle << ", 80, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
 		std::cout << "Pheriphery, " << r.angle << ", 80, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
 	}
-	std::cout << "############ CSV DATA #################" << '\n';
-
-
-
-
-
+	
 	return true;
-
-
 }
 
 
@@ -737,6 +729,9 @@ int main(int argc, char* argv[])
 	success = success && TG195Case2AbsorbedEnergy120();
 	success = success && TG195Case41AbsorbedEnergy();
 	success = success && TG195Case42AbsorbedEnergy();
+	std::cout << "Press any key to exit";
+	std::string dummy;
+	std::cin >> dummy;
 	if (success)
 		return EXIT_SUCCESS;
 	return EXIT_FAILURE;

@@ -223,15 +223,21 @@ namespace transport {
 #else
 				const double e = comptonScatter(p, seed, cosangle);
 #endif
-				const double energyImparted = e * p.weight;
-				safeEnergyAdd(doseAdress, energyImparted);
-				safeTallyAdd(tallyAdress);
-				safeVarianceAdd(varianceAdress, energyImparted*energyImparted);
-				updateMaxAttenuation = true;
 				if (p.energy < ENERGY_CUTOFF_THRESHOLD)
 				{
-					safeEnergyAdd(doseAdress, p.energy * p.weight);
+					const double energyImparted = (e + p.energy) * p.weight;
+					safeEnergyAdd(doseAdress, energyImparted);
+					safeTallyAdd(tallyAdress);
+					safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
 					return false;
+				}
+				else
+				{
+					const double energyImparted = e * p.weight;
+					safeEnergyAdd(doseAdress, energyImparted);
+					safeTallyAdd(tallyAdress);
+					safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+					updateMaxAttenuation = true;
 				}
 			}
 			else // Rayleigh scatter event
@@ -268,15 +274,21 @@ namespace transport {
 #else
 			const double e = comptonScatter(p, seed, cosangle);
 #endif
-			const double energyImparted = e * p.weight;
-			safeEnergyAdd(doseAdress, energyImparted);
-			safeTallyAdd(tallyAdress);
-			safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
-			updateMaxAttenuation = true;
 			if (p.energy < ENERGY_CUTOFF_THRESHOLD)
 			{
-				safeEnergyAdd(doseAdress, p.energy * p.weight);
+				const double energyImparted = (e + p.energy) * p.weight;
+				safeEnergyAdd(doseAdress, energyImparted);
+				safeTallyAdd(tallyAdress);
+				safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
 				return false;
+			}
+			else
+			{
+				const double energyImparted = e * p.weight;
+				safeEnergyAdd(doseAdress, energyImparted);
+				safeTallyAdd(tallyAdress);
+				safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+				updateMaxAttenuation = true;
 			}
 		}
 		else // Rayleigh scatter event
@@ -336,7 +348,6 @@ namespace transport {
 
 				if (continueSampling)
 				{
-					// russian rulette
 					if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD) && ruletteCandidate)
 					{
 						ruletteCandidate = false;
