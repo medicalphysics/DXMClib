@@ -28,6 +28,8 @@ Copyright 2019 Erlend Andersen
  * @brief Attenuation look up tables. 
  * 
  * Class for generation and fast access of total and partial attenuation coefficients for materials specified.
+ * Valid energies are from 1 keV up to about 1000 keV (before pair production in electron fields may occur). 
+ * This class is typical used internally in the World class.  
  */
 class AttenuationLut
 {
@@ -170,31 +172,53 @@ public:
 	 * @brief Calculate cummulative atomic form factor squared from the squared momentum transfer for a specified material
 	 * 
 	 * @param material Material index
-	 * @param momentumTransferSquared squared of momentum transfer 
+	 * @param momentumTransferSquared momentum transfer 
 	 * @return double 
 	 */
 	double cumFormFactorSquared(std::size_t material, double momentumTransfer) const;
 	
+	/**
+	 * @brief Calculate compton scatter function (low energy approximation) for current material and photon energy (momentum transfer)
+	 * 
+	 * @param material Material index
+	 * @param momentumTransfer momentum transfer
+	 * @return double 
+	 */
 	double comptonScatterFactor(std::size_t material, double momentumTransfer) const;
 
 	/**
-	 * @brief Momentum transfer for Rayleigh scattering
+	 * @brief Momentum transfer for photon
 	 * 
 	 * @param energy Photon energy in keV
 	 * @param angle Scattering angle in radians
 	 * @return double 
 	 */
 	static double momentumTransfer(double energy, double angle);
+	
+	/**
+	 * @brief Momentum transfer for photon
+	 * 
+	 * @param energy Photon energy in keV
+	 * @param angle Cosine of scattering angle in radians
+	 * @return double 
+	 */
 	static double momentumTransferFromCos(double energy, double cosAngle);
 
 	/**
-	 * @brief Max of momentum transfer for a Rayleigh scattering 
+	 * @brief Max possible momentum transfer for photon 
 	 * 
 	 * @param energy Photon energy in keV
 	 * @return double 
 	 */
 	static double momentumTransferMax(double energy);
 
+	/**
+	 * @brief Cosine of scatter angle for a photon 
+	 * 
+	 * @param energy  Photon energy in keV
+	 * @param momentumTransfer momentumtransfer in $Å^{-1}$
+	 * @return double 
+	 */
 	static double cosAngle(double energy, double momentumTransfer);
 protected:
 	/**
@@ -203,7 +227,22 @@ protected:
 	 * @param materials Vector of Materials
 	 */
 	void generateFFdata(const std::vector<Material>& materials);
+	
+	/**
+	 * @brief Generate atomic scatter factors for materials specified.
+	 * 
+	 * @param materials Vector of Materials
+	 */
 	void generateSFdata(const std::vector<Material>& materials);
+	
+	/**
+	 * @brief Template function for attenuation data look-up.
+	 * 
+	 * @tparam N Type of interaction N= 0:total attenuation, 1:photoelectric effect, 2:compton interaction, 3:rayleight scatter
+	 * @param materialIdx Material index
+	 * @param energy Photon energy in keV
+	 * @return double Mass-attenuation coefficient in cm2/g 
+	 */
 	template<std::size_t N>
 	double attenuationDataFromTypeNumber(std::size_t materialIdx, double energy) const;
 private:
@@ -241,8 +280,7 @@ void AttenuationLut::generateMaxMassTotalAttenuation(It1 materialIndexBegin, It1
 	{
 		for (std::size_t i = 0; i < m_energyResolution; ++i)
 		{
-			//m_maxMassAtt[i] = std::max(m_maxMassAtt[i], totalAttenuation(material, m_coherData[i])*maxDens[material]);
-			m_maxMassAtt[i] = std::max(m_maxMassAtt[i], totalAttenuation(material, m_attData[i])*maxDens[material]);
+			m_maxMassAtt[i] = std::max(m_maxMassAtt[i], totalAttenuation(material, m_attData[i]) * maxDens[material]);
 		}
 	}
 }

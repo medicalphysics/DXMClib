@@ -40,21 +40,58 @@ public:
 	 * @brief Sample intensity weigh
 	 * Sample the photon weight from this filter. The mean of photon weights sampled is 1.0 for N samples when N->infinity.  
 	 * @param angle Angle in radians.
-	 * @return double Photon weigh
+	 * @return double Photon weight
 	 */
 	virtual double sampleIntensityWeight(const double angle) const = 0;
 
 };
 
-
+/**
+ * @brief Class for simple CT bowtie filter modelling. 
+ * 
+ * Filter to adjust photon weight based on a measured bowtie filter profile. Note that beamhardening of a specter is not modelled
+ * and the bowtie filter simply adjust photon fluence according to a profile. 
+ */
 class BowTieFilter : public BeamFilter
 {
 public:
+	/**
+	 * @brief Construct a new Bow Tie Filter object
+	 * 
+	 * 
+	 * @param angles A vector of angles in radians for the fluence profile. The filter is assumed to be symmetrical and only absolute values of angles are used.
+	 * @param weights Photon fluence for the corresponding angles. The fluence measurements are normalized such that the average photon weight is 1.0 when number of samples -> infinity. 
+	 */
 	BowTieFilter(const std::vector<double>& angles, const std::vector<double>& weights);
+
+	/**
+	 * @brief Construct a new Bow Tie Filter object
+	 * 
+	 * @param angleWeightsPairs A vector of angle in radians and photon fluence pairs.
+	 */
     BowTieFilter(const std::vector<std::pair<double, double>>& angleWeightsPairs);
+
+	/**
+	 * @brief Construct a new Bow Tie Filter object from another BowTieFilter
+	 * 
+	 * @param other BowTiefilter
+	 */
 	BowTieFilter(const BowTieFilter& other);
 	virtual ~BowTieFilter() = default;
+
+	/**
+	 * @brief Sample photon weight modifier for a photon with direction angle in radians along the first Source cosine direction 
+	 * 
+	 * @param angle Photon angle in radians 
+	 * @return double Photon fluence weight modifier 
+	 */
 	double sampleIntensityWeight(const double angle) const override;
+
+	/**
+	 * @brief Filter data
+	 * 
+	 * @return const std::vector<std::pair<double, double>>& A vector reference to angle in radians and normalized fluence weight pairs  
+	 */
 	const std::vector<std::pair<double, double>>& data() const { return m_data; }
 protected:
 	void normalizeData();
@@ -62,31 +99,150 @@ private:
     std::vector<std::pair<double, double>> m_data;
 };
 
-
+/**
+ * @brief Filter for modelling of organ exposure control for Siemens CT scanners (XCare).
+ * 
+ * This filter modifies a particle's weight along the rotation angle in the same manner as Simens have iplementet on some CT scanner models.
+ * The result is decreased fluence (photon weight) along the filters span angle and increased fluence outside the filter angle. The mean photon weight over all angles in a rotation is unity. 
+ */
 class XCareFilter :public BeamFilter
 {
 public:
+	/**
+	 * @brief Construct a new XCareFilter object
+	 * Constructs new XCareFilter with default values
+	 */
 	XCareFilter();
 	virtual ~XCareFilter() = default;
+
+	/**
+	 * @brief Center filter angle
+	 * 
+	 * Center angle for the filter where photon weight is reduced
+	 * @return double Angle in radians
+	 */
 	double filterAngle() const { return m_filterAngle; }
+	
+	/**
+	 * @brief Center filter angle
+	 * 
+	 * Center angle for the filter where photon weight is reduced
+	 * @return double Angle in degrees
+	 */
 	double filterAngleDeg() const;
+
+	/**
+	 * @brief Set the Filter Angle
+	 * 
+	 * Center angle for the filter where photon weight is reduced
+	 * @param angle New filter angle in radians 
+	 */
 	void setFilterAngle(double angle);
+	
+	/**
+	 * @brief Set the Filter Angle
+	 * 
+	 * Center angle for the filter where photon weight is reduced
+	 * @param angle New filter angle in degrees
+	 */
 	void setFilterAngleDeg(double angle);
 
+	/**
+	 * @brief Span angle of the filter
+	 * 
+	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
+	 * @return double Span angle in radians
+	 */
 	double spanAngle() const { return m_spanAngle; }
+	
+	/**
+	 * @brief Span angle of the filter
+	 * 
+	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
+	 * @return double Span angle in degrees
+	 */
 	double spanAngleDeg() const;
+	
+	/**
+	 * @brief Set span angle of the filter
+	 * 
+	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
+	 * @return double Span angle in radians
+	 */
 	void setSpanAngle(double angle);
+
+	/**
+	 * @brief Set span angle of the filter
+	 * 
+	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
+	 * @return double Span angle in degrees
+	 */
 	void setSpanAngleDeg(double angle);
 
+	/**
+	 * @brief Ramp angle 
+	 * 
+	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
+	 * @return double Ramp angle in radians
+	 */
 	double rampAngle() const { return m_rampAngle; }
+
+	/**
+	 * @brief Ramp angle 
+	 * 
+	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
+	 * @return double Ramp angle in degrees
+	 */
 	double rampAngleDeg() const;
+
+	/**
+	 * @brief Set ramp angle
+	 * 
+	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
+	 * @param angle ramp angle in radians 
+	 */
 	void setRampAngle(double angle);
+
+	/**
+	 * @brief Set ramp angle
+	 * 
+	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
+	 * @param angle ramp angle in degrees 
+	 */
 	void setRampAngleDeg(double angle);
 
+	/**
+	 * @brief Photon weight in the filters span angle excluding angle ramps 
+	 * 
+	 * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
+	 * @return double 
+	 */
 	double lowWeight() const { return m_lowWeight; }
+
+	/**
+	 * @brief Set photon weight in the filters span angle excluding angle ramps 
+	 * 
+	 * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
+	 * @param weight 
+	 */
 	void setLowWeight(double weight);
+
+	/**
+	 * @brief Photon weight for angles outside span angle
+	 * 
+	 * Highets photon weight outside span angle. This value is calculated such that mean weight from all angles is 1.0
+	 * @return double Photon hight weight
+	 */
 	double highWeight() const;
 
+	/**
+	 * @brief Sample photon weight
+	 * 
+	 * Sample photon weight from rotation angle. Mean weight from all angles is 1.0
+	 * 
+	 * @param angle Rotation angle in radians
+	 * @return double Photon weight modifier
+	 */
 	double sampleIntensityWeight(const double angle) const override;
 
 private:
@@ -96,6 +252,12 @@ private:
 	double m_lowWeight;
 };
 
+/**
+ * @brief Filter to modell Heel effect of a tube.
+ * 
+ * Filter for modelling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects. 
+ * 
+ */
 class HeelFilter
 {
 public:
