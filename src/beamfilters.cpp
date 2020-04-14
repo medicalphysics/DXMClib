@@ -346,7 +346,7 @@ double AECFilter::interpolateMassIntensity(double mass) const
 	auto pos = std::upper_bound(m_mass.cbegin(), m_mass.cend(), mass);
 	if (pos == beg)
 		return m_massIntensity[0];
-	if (mass > m_massIntensity.back())
+	if (mass > m_mass.back())
 		return m_massIntensity.back();
 
 	if (pos == end)
