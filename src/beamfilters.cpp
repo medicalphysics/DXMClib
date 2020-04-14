@@ -361,10 +361,6 @@ double AECFilter::interpolateMassIntensity(double mass) const
 HeelFilter::HeelFilter(const Tube& tube, const double heel_angle_span)
 {
 	update(tube, heel_angle_span);
-	// making specters and normalize them to
-	//std::vector<double> energies {1...tube kv}
-	//auto tube.getSpecter(energies, normalize = false);
-	//normalize according to heel_angle_span==0
 }
 
 void HeelFilter::update(const Tube& tube, const double heel_angle_span)
