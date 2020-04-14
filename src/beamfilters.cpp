@@ -297,19 +297,25 @@ void AECFilter::generateMassWeightMap(std::vector<double>::const_iterator densBe
 		return;
 	}
 	
-	m_mass.resize(dimensions[2]);
-	m_massIntensity.resize(dimensions[2]);
-	const double meanExposure = std::reduce(std::execution::par_unseq, exposuremapping.cbegin(), exposuremapping.cend(), 0.0) / dimensions[2];
-	std::transform(std::execution::par_unseq, exposuremapping.cbegin(), exposuremapping.cend(), m_massIntensity.begin(), [=](auto i) {return i / meanExposure; });
-
+	std::vector<std::pair<double, double>> posExp(dimensions[2]);
 	const auto sliceStep = dimensions[0] * dimensions[1];
 	const double voxelArea = spacing[0] * spacing[1];
 	for(std::size_t i=0; i < dimensions[2]; ++i)
 	{
-		auto start = densBeg + sliceStep * i;
+		const auto start = densBeg + sliceStep * i;
 		const double sliceMass = std::reduce(std::execution::par_unseq, start, start + sliceStep, 0.0) * voxelArea;
-		m_mass[i] = sliceMass;
+		posExp[i] = std::make_pair(sliceMass, exposuremapping[i]);
 	}
+	std::sort(posExp.begin(), posExp.end());
+
+	m_mass.resize(dimensions[2]); // this should now be sorted
+	std::transform(std::execution::par_unseq, posExp.cbegin(), posExp.cend(), m_mass.begin(), [](auto pair)->double {return pair.first; });
+
+
+	const double meanExposure = std::reduce(std::execution::par_unseq, exposuremapping.cbegin(), exposuremapping.cend(), 0.0) / dimensions[2];
+	m_massIntensity.resize(dimensions[2]);
+	std::transform(std::execution::par_unseq, posExp.cbegin(), posExp.cend(), m_massIntensity.begin(), [=](auto pair)->double {return pair.second / meanExposure; });
+	
 	std::array<double, 3> origin({ 0,0,0 });
 	generatePositionWeightMap(densBeg, densEnd, spacing, dimensions, origin);
 	return;
