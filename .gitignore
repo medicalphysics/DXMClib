@@ -39,3 +39,4 @@
 /.vs*
 /.vscode
 
+/thirdparty/out*
