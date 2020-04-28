@@ -381,8 +381,7 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 	//making phantom
 	auto dBuffer = dBufferPtr->data();
 	auto mBuffer = mBufferPtr->data();
-	auto measBuffer = measurementPtr->data();
-
+	
 	for (std::size_t k = 0; k < dim[2]; ++k)
 	{
 		const std::size_t offset = k * dim[0] * dim[1];
@@ -392,7 +391,6 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 			dBuffer[idx + offset] = pmma.standardDensity();
 			mBuffer[idx + offset] = 2;
 		}
-
 		//air holes
 		for (std::size_t i = 0; i < 5; ++i)
 		{
@@ -401,10 +399,15 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
 			{
 				dBuffer[idx + offset] = air.standardDensity();
 				mBuffer[idx + offset] = 1;
-				measBuffer[idx + offset] = 1;
 			}
 		}
 	}
+
+	//filling measurementArray
+	auto measBuffer = measurementPtr->data();
+	for (const auto vIdx : m_holePositions)
+		for (const auto idx : vIdx)
+			measBuffer[idx] = 1;
 	validate();
 }
 
