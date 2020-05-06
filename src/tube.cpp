@@ -177,11 +177,11 @@ double numberFractionM(const double x, double tubeVoltage)
 }
 inline double bilinearInterpolate(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y)
 {
-	double xf1 = ((x2 - x) / (x2 - x1));
-	double xf2 = ((x - x1) / (x2 - x1));
+	const double xf1 = ((x2 - x) / (x2 - x1));
+	const double xf2 = ((x - x1) / (x2 - x1));
 
-	double r1 = xf1 * q11 + xf2 * q21;
-	double r2 = xf1 * q12 + xf2 * q22;
+	const double r1 = xf1 * q11 + xf2 * q21;
+	const double r2 = xf1 * q12 + xf2 * q22;
 	return ((y2 - y) / (y2 - y1)) * r1 + ((y - y1) / (y2 - y1)) * r2;
 }
 
@@ -524,6 +524,28 @@ std::vector<double> Tube::getSpecter(const std::vector<double>& energies, double
 		normalizeSpecter(specter);
 	}
 	return specter;
+}
+
+double Tube::calculateAlmmHalfValueLayer() const
+{
+	auto energy = getEnergy();
+	auto specter = getSpecter(energy);
+
+	Material al(13);
+	std::vector<double> att(energy.size());
+	std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.begin(), [&](double e) {return al.standardDensity() * al.getTotalAttenuation(e); });
+	
+	double x = 0.5;
+	double step = 1.0;
+	double g;
+	do {
+		g = std::transform_reduce(specter.cbegin(), specter.cend(), att.cbegin(), 0.0, std::plus<double>(), [=](double s, double a) {return s * std::exp(-a * x); });
+		step = g - 0.5;
+		x = x + step;
+		
+	} while ( std::abs(step) > 0.01);
+
+	return x * 10.0; // cm -> mm
 }
 
 std::vector<double> Tube::getEnergy() const

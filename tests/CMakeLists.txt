@@ -18,6 +18,7 @@ set_tests_properties(testtransport
 
 
 set(TEST_SOURCES 
+    "testtube.cpp"
     "testsource.cpp"
     "testmaterial.cpp"
     "testrandom.cpp"
