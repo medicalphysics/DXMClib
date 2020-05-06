@@ -253,7 +253,7 @@ private:
 };
 
 /**
- * @brief Filter to modell Heel effect of a tube.
+ * @brief Filter to model Heel effect of a tube.
  * 
  * Filter for modelling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects. 
  * 
