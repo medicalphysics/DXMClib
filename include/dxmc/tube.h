@@ -61,6 +61,9 @@ public:
 	std::vector<std::pair<double, double>> getSpecter(bool normalize = true) const;
 	std::vector<double> getSpecter(const std::vector<double> &energies, bool normalize = true) const;
 	std::vector<double> getSpecter(const std::vector<double>& energies, double anodeAngle, bool normalize = true) const;
+
+	double calculateAlmmHalfValueLayer() const;
+
 protected:
 	void addCharacteristicEnergy(const std::vector<double>& energy, std::vector<double>& specter) const;
 	void filterSpecter(const std::vector<double>& energies, std::vector<double>& specter) const;
