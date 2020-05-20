@@ -154,15 +154,7 @@ inline U argmin3(const T vec[3])
     const T x = std::abs(vec[0]);
     const T y = std::abs(vec[1]);
     const T z = std::abs(vec[2]);
-    if((x <= y) && (x <= z))
-    {
-        return 0;
-    }
-    else if((y <= x) && y <= z)
-    {
-        return 1;
-    }
-    return 2;
+    return x < y ? x < z ? 0 : 2 : y < z ? 1 : 2;
 }
 
 template<typename U, typename T>
@@ -171,15 +163,7 @@ inline U argmax3(const T vec[3])
 	const T x = std::abs(vec[0]);
 	const T y = std::abs(vec[1]);
 	const T z = std::abs(vec[2]);
-	if ((x > y) && (x > z))
-	{
-		return 0;
-	}
-	else if ((y > x) && y > z)
-	{
-		return 1;
-	}
-	return 2;
+    return x > y ? x > z ? 0 : 2 : y > z ? 1 : 2;
 }
 
 
