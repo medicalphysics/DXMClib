@@ -706,7 +706,7 @@ void CTSpiralSource::setScanLenght(double scanLenght)
 
 bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
 {
-	std::array<double, 3> pos = { 0, m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0, -m_sdd / 2.0,0 };
 
 	const double angle = m_startAngle + m_exposureAngleStep * exposureIndex;
 
@@ -787,7 +787,7 @@ void CTAxialSource::setScanLenght(double scanLenght)
 bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
 {
 	//calculating position
-	std::array<double, 3> pos = { 0, m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0, -m_sdd / 2.0,0 };
 	
 	const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_2 / m_exposureAngleStep);
 	const std::uint64_t rotationNumber = exposureIndex / anglesPerRotation;
@@ -867,7 +867,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	double weight = 1;
 	if (exposureIndexTotal % 2 == 0)
 	{
-		sdd = m_sdd;
+		sdd = -m_sdd;
 		startAngle = m_startAngle;
 		fov = m_fov;
 		bowTie = m_bowTieFilter.get();
@@ -877,7 +877,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	}
 	else
 	{
-		sdd = m_sddB;
+		sdd = -m_sddB;
 		startAngle = m_startAngleB;
 		fov = m_fovB;
 		bowTie = m_bowTieFilterB.get();
