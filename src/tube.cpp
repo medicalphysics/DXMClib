@@ -373,6 +373,7 @@ Tube::Tube(double tubeVoltage, double tubeAngleDeg, double energyResolution)
 	:m_voltage(tubeVoltage), m_energyResolution(energyResolution)
 {
 	setAnodeAngleDeg(tubeAngleDeg);
+	m_hasCachedHVL = false;
 }
 
 Tube::Tube(const Tube& other)
@@ -381,6 +382,7 @@ Tube::Tube(const Tube& other)
 	m_voltage = other.voltage();
 	m_energyResolution = other.energyResolution();
 	m_filtrationMaterials = other.filtrationMaterials();
+	m_hasCachedHVL = false;
 }
 
 void Tube::setAnodeAngle(double angle)
@@ -389,11 +391,17 @@ void Tube::setAnodeAngle(double angle)
 	if (a > PIVAL / 2.0)
 		a = PIVAL / 2.0;
 	m_anodeAngle =  a;
+	m_hasCachedHVL = false;
 }
 
 void Tube::setAnodeAngleDeg(double angle)
 {
 	setAnodeAngle(angle*DEG_TO_RAD);
+}
+inline void Tube::addFiltrationMaterial(const Material& filtrationMaterial, double mm) 
+{ 
+	m_filtrationMaterials.push_back(std::make_pair(filtrationMaterial, std::abs(mm))); 
+	m_hasCachedHVL = false;
 }
 double Tube::anodeAngleDeg() const
 {
@@ -407,6 +415,7 @@ void Tube::setVoltage(double voltage)
 		m_voltage = TUBEMINVOLTAGE;
 	else
 		m_voltage = voltage;
+	m_hasCachedHVL = false;
 }
 
 double Tube::AlFiltration() const
@@ -526,8 +535,28 @@ std::vector<double> Tube::getSpecter(const std::vector<double>& energies, double
 	return specter;
 }
 
-double Tube::calculateAlmmHalfValueLayer() const
+double Tube::mmAlHalfValueLayer()
 {
+	if (!m_hasCachedHVL)
+	{
+		m_cachedHVL = calculatemmAlHalfValueLayer();
+		m_hasCachedHVL = true;
+	}
+	return m_cachedHVL;
+}
+
+double Tube::mmAlHalfValueLayer() const
+{
+	if (!m_hasCachedHVL)
+	{
+		return calculatemmAlHalfValueLayer();
+	}
+	return m_cachedHVL;
+}
+
+double Tube::calculatemmAlHalfValueLayer() const
+{
+	
 	auto energy = getEnergy();
 	auto specter = getSpecter(energy);
 
