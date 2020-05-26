@@ -21,11 +21,11 @@ void testArgMax()
 
 void testChangeBasis()
 {
-	std::array<double, 6> cos{ 1,0,0,0,1,0 };
+	std::array<double, 6> cos{ 1,0,0,0,0,1 };
 	std::array<double, 3> dir;
 	vectormath::cross(cos.data(), dir.data());
 
-	std::array<double, 3> pos{ 1,0,0 };
+	std::array<double, 3> pos{ 0,1,0 };
 	auto posFin = pos;
 
 	const double* b1 = &cos[0];

@@ -568,7 +568,7 @@ double Tube::calculatemmAlHalfValueLayer() const
 	double step = 1.0;
 	double g;
 	do {
-		g = std::transform_reduce(specter.cbegin(), specter.cend(), att.cbegin(), 0.0, std::plus<double>(), [=](double s, double a) {return s * std::exp(-a * x); });
+		g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), 0.0, std::plus<double>(), [=](double s, double a) {return s * std::exp(-a * x); });
 		step = g - 0.5;
 		x = x + step;
 		
