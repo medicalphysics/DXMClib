@@ -18,28 +18,27 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include <cstdint>
 #include <cmath>
+#include <cstdint>
 //Header library for simple 3D vector math
 
 namespace vectormath {
 
-
-template<typename T>
+template <typename T>
 inline T lenght_sqr(T vec[3])
 {
     const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
     return lsqr;
 }
 
-template<typename T>
+template <typename T>
 inline T lenght(T vec[3])
 {
     const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
     return std::sqrt(lsqr);
 }
 
-template<typename T>
+template <typename T>
 inline void normalize(T vec[3])
 {
     const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
@@ -49,20 +48,20 @@ inline void normalize(T vec[3])
     vec[2] *= norm;
 }
 
-template<typename T>
+template <typename T>
 inline T dot(const T v1[3], const T v2[3])
 {
     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
 
-template<typename T>
+template <typename T>
 inline void cross(const T v1[3], const T v2[3], T res[3])
 {
     res[0] = v1[1] * v2[2] - v1[2] * v2[1];
     res[1] = v1[2] * v2[0] - v1[0] * v2[2];
     res[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
-template<typename T>
+template <typename T>
 inline void cross(const T v1[6], T res[3])
 {
     res[0] = v1[1] * v1[5] - v1[2] * v1[4];
@@ -70,8 +69,7 @@ inline void cross(const T v1[6], T res[3])
     res[2] = v1[0] * v1[4] - v1[1] * v1[3];
 }
 
-
-template<typename T>
+template <typename T>
 inline void rotate(T vec[3], const T axis[3], const T angle)
 {
     const T sang = std::sin(angle);
@@ -80,16 +78,16 @@ inline void rotate(T vec[3], const T axis[3], const T angle)
     const T midt = (temp - cang) * dot(vec, axis);
 
     T out[3];
-    out[0] = cang * vec[0] + midt * axis[0] + sang * ( axis[1] * vec[2] - axis[2] * vec[1]);
+    out[0] = cang * vec[0] + midt * axis[0] + sang * (axis[1] * vec[2] - axis[2] * vec[1]);
     out[1] = cang * vec[1] + midt * axis[1] + sang * (-axis[0] * vec[2] + axis[2] * vec[0]);
-    out[2] = cang * vec[2] + midt * axis[2] + sang * ( axis[0] * vec[1] - axis[1] * vec[0]);
+    out[2] = cang * vec[2] + midt * axis[2] + sang * (axis[0] * vec[1] - axis[1] * vec[0]);
 
     vec[0] = out[0];
     vec[1] = out[1];
     vec[2] = out[2];
 }
 
-template<typename T>
+template <typename T>
 inline void projectToPlane(T vec[3], const T planeNormal[3])
 {
     const T d = dot(vec, planeNormal);
@@ -97,10 +95,11 @@ inline void projectToPlane(T vec[3], const T planeNormal[3])
         vec[i] = vec[i] - d * planeNormal[i];
 }
 
-template<typename T>
+template <typename T>
 inline T angleBetween(const T vec1[3], const T vec2[3])
 {
     // Herons formula for numeric stable angle computation
+    // Do not edit parenthesis and such
     const T vec3[3] = { vec1[0] - vec2[0], vec1[1] - vec2[1], vec1[2] - vec2[2] };
     const T a = lenght(vec1);
     const T b = lenght(vec2);
@@ -110,33 +109,10 @@ inline T angleBetween(const T vec1[3], const T vec2[3])
 
     const T nom = ((a - b) + c) * u;
     const T den = (a + (b + c)) * ((a - c) + b);
-    return static_cast<T>(2.0)* std::atan(std::sqrt(nom / den));
+    return static_cast<T>(2.0) * std::atan(std::sqrt(nom / den));
 }
 
-template<typename T>
-inline T angleBetweenOnPlaneTest(const T vec1[3], const T vec2[3], const T planeNormal[3])
-{
-    T p1[3], p2[3];
-
-    const T v1n = dot(vec1, planeNormal);
-    const T v2n = dot(vec2, planeNormal);
-    const T pn_lenght_inv = 1.0 / lenght_sqr(planeNormal);
-
-    for (std::size_t i = 0; i < 3; ++i)
-    {
-        p1[i] = vec1[i] - v1n * planeNormal[i] * pn_lenght_inv;
-        p2[i] = vec2[i] - v2n * planeNormal[i] * pn_lenght_inv;
-    }
-    
-    const T angle = angleBetween(p1, p2);
-
-    T vn[3];
-    cross(p1, p2, vn);
-    if (dot(planeNormal, vn) < 0.0)
-        return -angle;
-    return angle;
-}
-template<typename T>
+template <typename T>
 inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
 {
     normalize(vec1);
@@ -148,7 +124,7 @@ inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
     return std::atan2(dot(cr, planeNormal), dot(vec1, vec2));
 }
 
-template<typename U, typename T>
+template <typename U, typename T>
 inline U argmin3(const T vec[3])
 {
     const T x = std::abs(vec[0]);
@@ -157,36 +133,35 @@ inline U argmin3(const T vec[3])
     return x < y ? x < z ? 0 : 2 : y < z ? 1 : 2;
 }
 
-template<typename U, typename T>
+template <typename U, typename T>
 inline U argmax3(const T vec[3])
 {
-	const T x = std::abs(vec[0]);
-	const T y = std::abs(vec[1]);
-	const T z = std::abs(vec[2]);
+    const T x = std::abs(vec[0]);
+    const T y = std::abs(vec[1]);
+    const T z = std::abs(vec[2]);
     return x > y ? x > z ? 0 : 2 : y > z ? 1 : 2;
 }
 
-
-template<typename T>
+template <typename T>
 inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3])
 {
-	newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
-	newVector[1] = b1[1] * vector[0] + b2[1] * vector[1] + b3[1] * vector[2];
-	newVector[2] = b1[2] * vector[0] + b2[2] * vector[1] + b3[2] * vector[2];
+    newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
+    newVector[1] = b1[1] * vector[0] + b2[1] * vector[1] + b3[1] * vector[2];
+    newVector[2] = b1[2] * vector[0] + b2[2] * vector[1] + b3[2] * vector[2];
 }
-template<typename T>
+template <typename T>
 inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], T vector[3])
 {
-	T newVector[3];
-	newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
-	newVector[1] = b1[1] * vector[0] + b2[1] * vector[1] + b3[1] * vector[2];
-	newVector[2] = b1[2] * vector[0] + b2[2] * vector[1] + b3[2] * vector[2];
-	vector[0] = newVector[0];
-	vector[1] = newVector[1];
-	vector[2] = newVector[2];
+    T newVector[3];
+    newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
+    newVector[1] = b1[1] * vector[0] + b2[1] * vector[1] + b3[1] * vector[2];
+    newVector[2] = b1[2] * vector[0] + b2[2] * vector[1] + b3[2] * vector[2];
+    vector[0] = newVector[0];
+    vector[1] = newVector[1];
+    vector[2] = newVector[2];
 }
 
-template<typename T>
+template <typename T>
 inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3])
 {
     newVector[0] = b1[0] * vector[0] + b1[1] * vector[1] + b1[2] * vector[2];
@@ -194,7 +169,7 @@ inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], cons
     newVector[2] = b3[0] * vector[0] + b3[1] * vector[1] + b3[2] * vector[2];
 }
 
-template<typename T>
+template <typename T>
 inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], T vector[3])
 {
     T newVector[3];
@@ -206,22 +181,21 @@ inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], T ve
     vector[2] = newVector[2];
 }
 
-
-template<typename T>
+template <typename T>
 inline void peturb(T vec[3], const T theta, const T phi)
 {
     // rotates a unit vector theta degrees from its current direction
     // phi degrees about a arbitrary axis orthogonal to the direction vector
 
     // First we find a vector orthogonal to the vector direction
-    T vec_xy[3], k[3] = {0, 0, 0};
+    T vec_xy[3], k[3] = { 0, 0, 0 };
 
     auto minInd = argmin3<std::uint_fast32_t, T>(vec);
 
     k[minInd] = 1.0;
 
-    vectormath::cross(vec, k , vec_xy);
-    
+    vectormath::cross(vec, k, vec_xy);
+
     // rotating the arbitrary orthogonal axis about vector direction
     rotate(vec_xy, vec, phi);
 

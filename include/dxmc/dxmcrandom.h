@@ -16,12 +16,12 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#pragma once  // include guard
+#pragma once // include guard
 
 #include <cstdint>
-#include <vector>
-#include <utility>
 #include <limits>
+#include <utility>
+#include <vector>
 
 /*
  * We roll our own random number generator */
@@ -37,55 +37,52 @@ inline std::uint64_t xoroshiro128plus(std::uint64_t s[2]) noexcept
     return result;
 }
 
-template<typename T>
+template <typename T>
 inline T randomUniform(std::uint64_t s[2]) noexcept
 {
-	static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
+    static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
     const T r = static_cast<T>(xoroshiro128plus(s));
-	return r / (std::numeric_limits<std::uint64_t>::max() - 1);
+    return r / (std::numeric_limits<std::uint64_t>::max() - 1);
 }
 
-template<typename T>
+template <typename T>
 inline T randomUniform(std::uint64_t s[2], const T max) noexcept
 {
-	const T r = randomUniform<T>(s);
-	return r * max;
+    const T r = randomUniform<T>(s);
+    return r * max;
 }
 
-
-template<typename T>
+template <typename T>
 inline T randomUniform(std::uint64_t s[2], const T min, const T max) noexcept
 {
-	const T r = randomUniform<T>(s);
+    const T r = randomUniform<T>(s);
     const T range = max - min;
-	return min + r * range;
+    return min + r * range;
 }
 
 void randomSeed(std::uint64_t s[2]);
 
-
-class RandomDistribution
-{
+class RandomDistribution {
 public:
-	RandomDistribution(const std::vector<double>& weights);
-	std::size_t sampleIndex();
-	std::size_t sampleIndex(std::uint64_t seed[2]) const;
+    RandomDistribution(const std::vector<double>& weights);
+    std::size_t sampleIndex();
+    std::size_t sampleIndex(std::uint64_t seed[2]) const;
 
 protected:
-	std::uint64_t m_seed[2];
-	void generateTable(const std::vector<double>& weights);
+    std::uint64_t m_seed[2];
+    void generateTable(const std::vector<double>& weights);
+
 private:
     std::vector<std::uint64_t> m_alias;
     std::vector<double> m_probs;
-	std::size_t m_size = 0;
+    std::size_t m_size = 0;
 };
 
-class SpecterDistribution : public RandomDistribution
-{
+class SpecterDistribution : public RandomDistribution {
 public:
-	SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
-	double sampleValue();
-	double sampleValue(std::uint64_t seed[2]) const ; // thread safe
+    SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
+    double sampleValue();
+    double sampleValue(std::uint64_t seed[2]) const; // thread safe
 private:
-	std::vector<double> m_energies;
+    std::vector<double> m_energies;
 };

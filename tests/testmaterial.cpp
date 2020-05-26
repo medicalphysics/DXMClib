@@ -1,13 +1,13 @@
- 
+
 
 #include "dxmc/material.h"
 #include "dxmc/transport.h"
+#include <cassert>
 #include <iostream>
 #include <numeric>
-#include <cassert>
 
-
-bool testMaterialParser() {
+bool testMaterialParser()
+{
     auto materialNISTList = Material::getNISTCompoundNames();
 
     std::vector<Material> materials;
@@ -33,7 +33,7 @@ bool testMaterialParser() {
     return success;
 }
 
-int main (int argc, char *argv[])
+int main(int argc, char* argv[])
 {
     auto success = testMaterialParser();
     if (success)
