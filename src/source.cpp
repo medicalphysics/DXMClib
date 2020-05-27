@@ -867,7 +867,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	double weight = 1;
 	if (exposureIndexTotal % 2 == 0)
 	{
-		sdd = m_sdd;
+		sdd = -m_sdd;
 		startAngle = m_startAngle;
 		fov = m_fov;
 		bowTie = m_bowTieFilter.get();
@@ -877,7 +877,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 	}
 	else
 	{
-		sdd = m_sddB;
+		sdd = -m_sddB;
 		startAngle = m_startAngleB;
 		fov = m_fovB;
 		bowTie = m_bowTieFilterB.get();
