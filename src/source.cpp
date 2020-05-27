@@ -787,7 +787,7 @@ void CTAxialSource::setScanLenght(double scanLenght)
 bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
 {
 	//calculating position
-	std::array<double, 3> pos = { 0,-m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0, -m_sdd / 2.0,0 };
 	
 	const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_2 / m_exposureAngleStep);
 	const std::uint64_t rotationNumber = exposureIndex / anglesPerRotation;
@@ -885,7 +885,7 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 		heelFilter = m_heelFilterB.get();
 		weight = m_tubeBweight;
 	}
-	std::array<double, 3> pos = { 0,-m_sdd / 2.0,0 };
+	std::array<double, 3> pos = { 0, m_sdd / 2.0,0 };
 
 	const double angle = startAngle + m_exposureAngleStep * exposureIndex;
 
@@ -925,7 +925,6 @@ bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTo
 
 std::uint64_t CTDualSource::totalExposures(void) const
 {
-
 	auto singleSourceExposure =  static_cast<std::uint64_t>(m_scanLenght * PI_2 / (m_collimation * m_pitch * m_exposureAngleStep));
 	return singleSourceExposure * 2;
 }

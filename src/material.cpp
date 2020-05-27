@@ -19,238 +19,215 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/material.h"
 #include "xraylib.h"
 
-#include <numeric>
 #include <algorithm>
 #include <execution>
+#include <numeric>
 
 double Material::getPhotoelectricAttenuation(double energy) const
 {
-	return CS_Photo_CP(m_name.c_str(), energy, nullptr);
+    return CS_Photo_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getRayleightAttenuation(double energy) const
 {
-	return CS_Rayl_CP(m_name.c_str(), energy, nullptr);
+    return CS_Rayl_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getComptonAttenuation(double energy) const
 {
-	return CS_Compt_CP(m_name.c_str(), energy, nullptr);
+    return CS_Compt_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getTotalAttenuation(double energy) const
 {
-	return CS_Total_CP(m_name.c_str(), energy, nullptr);
+    return CS_Total_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getMassEnergyAbsorbtion(double energy) const
 {
-	return CS_Energy_CP(m_name.c_str(), energy, nullptr);
+    return CS_Energy_CP(m_name.c_str(), energy, nullptr);
 }
 
 double Material::getAtomicWeight(int Z)
 {
-	return AtomicWeight(Z, nullptr);
+    return AtomicWeight(Z, nullptr);
 }
 
 std::string Material::getAtomicNumberToSymbol(int Z)
 {
-	return std::string(AtomicNumberToSymbol(Z, nullptr));
+    return std::string(AtomicNumberToSymbol(Z, nullptr));
 }
 
 Material::Material(int atomicNumber)
 {
-	setByAtomicNumber(atomicNumber);
+    setByAtomicNumber(atomicNumber);
 }
 
 const std::string& Material::prettyName(void) const
 {
-	if (m_prettyName.empty())
-		return m_name;
-	return m_prettyName;
+    if (m_prettyName.empty())
+        return m_name;
+    return m_prettyName;
 }
-
-
 
 Material::Material(const std::string& xraylibMaterialNameOrCompound, const std::string& prettyName)
 {
     setByMaterialName(xraylibMaterialNameOrCompound);
     if (!m_valid)
         setByCompoundName(xraylibMaterialNameOrCompound);
-	if (prettyName.size() > 0)
-		m_prettyName = prettyName;
-	else
-		m_prettyName = m_name;
+    if (prettyName.size() > 0)
+        m_prettyName = prettyName;
+    else
+        m_prettyName = m_name;
 }
 
 void Material::setStandardDensity(double density)
 {
-	if (density > 0.0)
-	{
-		m_density = density;
-		m_hasDensity = true;
-	}
+    if (density > 0.0) {
+        m_density = density;
+        m_hasDensity = true;
+    }
 }
 
 std::vector<std::string> Material::getNISTCompoundNames(void)
 {
-	int n_strings;
-	auto charArray = GetCompoundDataNISTList(&n_strings, nullptr);
-	auto materialNames = std::vector<std::string>();
-	for (int i = 0; i < n_strings; ++i)
-	{
-		if (charArray[i])
-		{
-			std::string s(charArray[i]);
-			materialNames.push_back(s);
-		}
-	}
-	return materialNames;
+    int n_strings;
+    auto charArray = GetCompoundDataNISTList(&n_strings, nullptr);
+    auto materialNames = std::vector<std::string>();
+    for (int i = 0; i < n_strings; ++i) {
+        if (charArray[i]) {
+            std::string s(charArray[i]);
+            materialNames.push_back(s);
+        }
+    }
+    return materialNames;
 }
 
-int Material::getAtomicNumberFromSymbol(const std::string &symbol)
+int Material::getAtomicNumberFromSymbol(const std::string& symbol)
 {
-	return SymbolToAtomicNumber(symbol.c_str(), nullptr);
+    return SymbolToAtomicNumber(symbol.c_str(), nullptr);
 }
 std::string Material::getSymbolFromAtomicNumber(int Z)
 {
-	char *chars = AtomicNumberToSymbol(Z, nullptr);
-	std::string st(chars);
-	xrlFree(chars);
-	return st;
+    char* chars = AtomicNumberToSymbol(Z, nullptr);
+    std::string st(chars);
+    xrlFree(chars);
+    return st;
 }
-
 
 std::vector<double> Material::getRayleightFormFactorSquared(const std::vector<double>& momentumTransfer) const
 {
-	std::vector<double> fraction;
-	std::vector<int> elements;
+    std::vector<double> fraction;
+    std::vector<int> elements;
 
-	struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
-	if (m)
-	{
-		fraction.resize(m->nElements);
-		elements.resize(m->nElements);
-		for (int i = 0; i < m->nElements; i++)
-		{
-			elements[i] = m->Elements[i];
-			fraction[i] = m->nAtoms[i]/(m->nAtomsAll);
-		}
-		FreeCompoundData(m);
-		m = nullptr;
-	}
-	struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
-	if (n)
-	{
-		fraction.resize(n->nElements);
-		elements.resize(n->nElements);
-		for (int i = 0; i < n->nElements; i++)
-		{
-			elements[i] = n->Elements[i];
-			fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
-		}
-		const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
-		std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) {return w / weight; });
-		FreeCompoundDataNIST(n);
-		n = nullptr;
-	}
+    struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
+    if (m) {
+        fraction.resize(m->nElements);
+        elements.resize(m->nElements);
+        for (int i = 0; i < m->nElements; i++) {
+            elements[i] = m->Elements[i];
+            fraction[i] = m->nAtoms[i] / (m->nAtomsAll);
+        }
+        FreeCompoundData(m);
+        m = nullptr;
+    }
+    struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
+    if (n) {
+        fraction.resize(n->nElements);
+        elements.resize(n->nElements);
+        for (int i = 0; i < n->nElements; i++) {
+            elements[i] = n->Elements[i];
+            fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
+        }
+        const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
+        std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) { return w / weight; });
+        FreeCompoundDataNIST(n);
+        n = nullptr;
+    }
 
-	std::vector<double> formFactor(momentumTransfer.size(), 0.0);
-	for (std::size_t i = 0; i < formFactor.size(); ++i)
-	{
-		for (std::size_t j = 0; j < fraction.size(); ++j)
-		{
-			formFactor[i]+= fraction[j] * FF_Rayl(elements[j], momentumTransfer[i], nullptr);
-		}
-		formFactor[i] = formFactor[i] * formFactor[i];
-	}
-	return formFactor;
+    std::vector<double> formFactor(momentumTransfer.size(), 0.0);
+    for (std::size_t i = 0; i < formFactor.size(); ++i) {
+        for (std::size_t j = 0; j < fraction.size(); ++j) {
+            formFactor[i] += fraction[j] * FF_Rayl(elements[j], momentumTransfer[i], nullptr);
+        }
+        formFactor[i] = formFactor[i] * formFactor[i];
+    }
+    return formFactor;
 }
 
 std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const
 {
-	std::vector<double> fraction;
-	std::vector<int> elements;
+    std::vector<double> fraction;
+    std::vector<int> elements;
 
-	struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
-	if (m)
-	{
-		fraction.resize(m->nElements);
-		elements.resize(m->nElements);
-		for (int i = 0; i < m->nElements; i++)
-		{
-			elements[i] = m->Elements[i];
-			fraction[i] = m->nAtoms[i] / (m->nAtomsAll);
-		}
-		FreeCompoundData(m);
-		m = nullptr;
-	}
-	struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
-	if (n)
-	{
-		fraction.resize(n->nElements);
-		elements.resize(n->nElements);
-		for (int i = 0; i < n->nElements; i++)
-		{
-			elements[i] = n->Elements[i];
-			fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
-		}
-		const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
-		std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) {return w / weight; });
-		FreeCompoundDataNIST(n);
-		n = nullptr;
-	}
+    struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
+    if (m) {
+        fraction.resize(m->nElements);
+        elements.resize(m->nElements);
+        for (int i = 0; i < m->nElements; i++) {
+            elements[i] = m->Elements[i];
+            fraction[i] = m->nAtoms[i] / (m->nAtomsAll);
+        }
+        FreeCompoundData(m);
+        m = nullptr;
+    }
+    struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
+    if (n) {
+        fraction.resize(n->nElements);
+        elements.resize(n->nElements);
+        for (int i = 0; i < n->nElements; i++) {
+            elements[i] = n->Elements[i];
+            fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
+        }
+        const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
+        std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) { return w / weight; });
+        FreeCompoundDataNIST(n);
+        n = nullptr;
+    }
 
-	std::vector<double> formFactor(momentumTransfer.size(), 0.0);
-	for (std::size_t i = 0; i < formFactor.size(); ++i)
-	{
-		for (std::size_t j = 0; j < fraction.size(); ++j)
-		{
-			formFactor[i] += fraction[j] * SF_Compt(elements[j], momentumTransfer[i], nullptr) / elements[j];
-		}
-	}
-	return formFactor;
+    std::vector<double> formFactor(momentumTransfer.size(), 0.0);
+    for (std::size_t i = 0; i < formFactor.size(); ++i) {
+        for (std::size_t j = 0; j < fraction.size(); ++j) {
+            formFactor[i] += fraction[j] * SF_Compt(elements[j], momentumTransfer[i], nullptr) / elements[j];
+        }
+    }
+    return formFactor;
 }
 
-
-void Material::setByCompoundName(const std::string &name)
+void Material::setByCompoundName(const std::string& name)
 {
     compoundData* m = CompoundParser(name.c_str(), nullptr);
-    if (m)
-    {
+    if (m) {
         m_name = name;
         m_valid = true;
         m_hasDensity = false;
         FreeCompoundData(m);
-		m = nullptr;	
+        m = nullptr;
     }
 }
 
 void Material::setByAtomicNumber(int atomicNumber)
 {
-	char *raw_name =  AtomicNumberToSymbol(atomicNumber, nullptr);
-	if (raw_name)
-	{
-		m_name = raw_name;
-		xrlFree(raw_name);
-		raw_name = nullptr;
-		m_density = ElementDensity(atomicNumber, nullptr);
-		m_hasDensity = true;
-		m_valid = true;
-	}	
+    char* raw_name = AtomicNumberToSymbol(atomicNumber, nullptr);
+    if (raw_name) {
+        m_name = raw_name;
+        xrlFree(raw_name);
+        raw_name = nullptr;
+        m_density = ElementDensity(atomicNumber, nullptr);
+        m_hasDensity = true;
+        m_valid = true;
+    }
 }
 
-
-void Material::setByMaterialName(const std::string &name)
+void Material::setByMaterialName(const std::string& name)
 {
     struct compoundDataNIST* m = GetCompoundDataNISTByName(name.c_str(), nullptr);
-    if (m)
-    {
+    if (m) {
         m_name = m->name;
         m_valid = true;
         m_hasDensity = true;
         m_density = m->density;
         FreeCompoundDataNIST(m);
-		m = nullptr;
+        m = nullptr;
     }
 }
