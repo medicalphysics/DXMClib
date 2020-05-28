@@ -31,9 +31,12 @@
 *.out
 *.app
 *.sqlite
+
+# Buildfiles
 /out*
 /CMakeSettings.json
 /build*
+/docs/sphinx/build*
 
 # Editors
 /.vs*
