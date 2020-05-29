@@ -15,4 +15,19 @@ if(BUILD_DOCUMENTATION)
         VERBATIM)
 
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION doc)
+
+    IF(WIN32)
+        add_custom_target(readme ALL
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/make.bat html
+            COMMENT "Generating help documentation"
+            VERBATIM)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/build DESTINATION readme)
+    ENDIF(WIN32)
+    IF(UNIX AND NOT APPLE)
+        add_custom_target(readme ALL
+            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/make html
+            COMMENT "Generating help documentation"
+            VERBATIM)
+        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/build/html DESTINATION readme)
+    ENDIF()
 endif()
