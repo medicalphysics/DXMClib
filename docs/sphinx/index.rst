@@ -15,7 +15,10 @@ Another header for me
    
    license
    
-
+Docs
+====
+.. doxygenclass:: CTDualSource
+   :members:
 
 Indices and tables
 ==================

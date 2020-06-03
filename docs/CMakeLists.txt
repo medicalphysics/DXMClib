@@ -1,5 +1,5 @@
 
-option(BUILD_DOCUMENTATION "Create and install the HTML based API documentation (requires Doxygen)" ${DOXYGEN_FOUND})
+option(BUILD_DOCUMENTATION "Create and install the HTML based API documentation (requires Doxygen and Sphinx)" ${DOXYGEN_FOUND})
 
 if(BUILD_DOCUMENTATION)
     
@@ -8,26 +8,27 @@ if(BUILD_DOCUMENTATION)
 
     configure_file(${doxyfile_in} ${doxyfile} @ONLY)
 
-    add_custom_target(doc ALL
+    add_custom_target(doxygen ALL
+        DEPENDS libdxmc
         COMMAND ${DOXYGEN_EXECUTABLE} ${doxyfile}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM)
 
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION doc)
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION doxygen)
 
-    IF(WIN32)
-        add_custom_target(readme ALL
-            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/make.bat html
-            COMMENT "Generating help documentation"
-            VERBATIM)
-        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/build DESTINATION readme)
-    ENDIF(WIN32)
-    IF(UNIX AND NOT APPLE)
-        add_custom_target(readme ALL
-            COMMAND ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/make html
-            COMMENT "Generating help documentation"
-            VERBATIM)
-        install(DIRECTORY ${CMAKE_CURRENT_SOURCE_DIR}/sphinx/build/html DESTINATION readme)
-    ENDIF()
+
+    find_package(Sphinx REQUIRED)
+
+    set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sphinx)
+    set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx)
+    add_custom_target(Sphinx ALL
+        DEPENDS doxygen
+        COMMAND ${SPHINX_EXECUTABLE} -b html
+        # Tell Breathe where to find the Doxygen output
+        -Dbreathe_projects.DXMClib=${CMAKE_CURRENT_BINARY_DIR}/xml
+        ${SPHINX_SOURCE} ${SPHINX_BUILD}
+        WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
+        COMMENT "Generating documentation with Sphinx")
+
 endif()

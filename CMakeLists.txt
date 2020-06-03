@@ -13,6 +13,8 @@ project(dxmclib VERSION 1.1 LANGUAGES CXX)
 set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 
+set(CMAKE_MODULE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/cmake/modules")
+
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support
 
@@ -107,10 +109,11 @@ endif()
 # Docs by doxygen
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     find_package(Doxygen)
-    if(Doxygen_FOUND)
+    find_package(Sphinx)
+    if(Doxygen_FOUND AND Sphinx_FOUND)
 	    add_subdirectory(docs)
     else()
-	    message(STATUS "Doxygen not found, not building docs")
+	    message(STATUS "Doxygen or Sphinx not found, not building docs")
     endif()
 endif()
 
