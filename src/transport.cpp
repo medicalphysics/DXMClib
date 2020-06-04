@@ -308,14 +308,14 @@ void sampleParticleSteps(const World& world, Particle& p, std::uint64_t seed[2],
             const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * density;
             const double eventProbability = attenuationTotal * maxAttenuationInv;
 
-            if (measurementBuffer[bufferIdx] == 0) // naive sampling
+            if (measurementBuffer[bufferIdx] == 0) [[likely]]  // naive sampling
             {
                 const double r2 = randomUniform<double>(seed);
                 if (r2 < eventProbability) // an event will happend
                 {
                     continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], seed, updateMaxAttenuation);
                 }
-            } else // forced photoelectric effect
+            } else [[unlikely]]// forced photoelectric effect
             {
                 continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], seed, updateMaxAttenuation);
             }
