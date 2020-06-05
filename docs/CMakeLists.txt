@@ -17,12 +17,9 @@ if(BUILD_DOCUMENTATION)
 
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION doxygen)
 
-
-    find_package(Sphinx REQUIRED)
-
     set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sphinx)
     set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx)
-    add_custom_target(Sphinx ALL
+    add_custom_target(sphinx ALL
         DEPENDS doxygen
         COMMAND ${SPHINX_EXECUTABLE} -b html
         # Tell Breathe where to find the Doxygen output

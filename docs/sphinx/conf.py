@@ -56,11 +56,17 @@ html_theme = 'alabaster'
 html_static_path = ['_static']
 
 def configureDoxyfile(input_dir, output_dir):
-    with open('Doxyfile.in', 'r') as file :
+    with open('../Doxyfile.in', 'r') as file :
         filedata = file.read()
 
-    filedata = filedata.replace('@DOXYGEN_INPUT_DIR@', input_dir)
-    filedata = filedata.replace('@DOXYGEN_OUTPUT_DIR@', output_dir)
+    filedata = filedata.replace('@PROJECT_SOURCE_DIR@', input_dir)
+    filedata = filedata.replace('@PROJECT_BINARY_DIR@', output_dir)
+    filedata = filedata.replace('@CMAKE_CURRENT_BINARY_DIR@', output_dir)
+    
+    filedata = filedata.replace('@CMAKE_PROJECT_NAME@', project)
+    filedata = filedata.replace('@PROJECT_VERSION_MAJOR@', "current")
+    filedata = filedata.replace('@PROJECT_VERSION_MINOR@', "")
+    filedata = filedata.replace('@PROJECT_VERSION_PATCH@', "")
 
     with open('Doxyfile', 'w') as file:
         file.write(filedata)
@@ -70,9 +76,12 @@ read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 breathe_projects = {}
 
-if read_the_docs_build:
-    input_dir = '../DXMClib'
-    output_dir = 'build'
+if read_the_docs_build or True:
+    import os
+    print("running conf file nefking")
+    input_dir = os.path.abspath('../../')
+    os.makedirs('build',  exist_ok=True)
+    output_dir = os.path.abspath('./build')
     configureDoxyfile(input_dir, output_dir)
     subprocess.call('doxygen', shell=True)
     breathe_projects['DXMClib'] = output_dir + '/xml'
