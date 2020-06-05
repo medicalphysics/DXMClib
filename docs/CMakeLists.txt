@@ -15,7 +15,7 @@ if(BUILD_DOCUMENTATION)
         COMMENT "Generating API documentation with Doxygen"
         VERBATIM)
 
-    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION doxygen)
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/html DESTINATION documentation)
 
     set(SPHINX_SOURCE ${CMAKE_CURRENT_SOURCE_DIR}/sphinx)
     set(SPHINX_BUILD ${CMAKE_CURRENT_BINARY_DIR}/sphinx)
@@ -27,5 +27,5 @@ if(BUILD_DOCUMENTATION)
         ${SPHINX_SOURCE} ${SPHINX_BUILD}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating documentation with Sphinx")
-
+    install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/sphinx DESTINATION help)
 endif()

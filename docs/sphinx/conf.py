@@ -64,9 +64,8 @@ def configureDoxyfile(input_dir, output_dir):
     filedata = filedata.replace('@CMAKE_CURRENT_BINARY_DIR@', output_dir)
     
     filedata = filedata.replace('@CMAKE_PROJECT_NAME@', project)
-    filedata = filedata.replace('@PROJECT_VERSION_MAJOR@', "current")
-    filedata = filedata.replace('@PROJECT_VERSION_MINOR@', "")
-    filedata = filedata.replace('@PROJECT_VERSION_PATCH@', "")
+    filedata = filedata.replace('@PROJECT_VERSION@', "current")
+    
 
     with open('Doxyfile', 'w') as file:
         file.write(filedata)
@@ -76,7 +75,7 @@ read_the_docs_build = os.environ.get('READTHEDOCS', None) == 'True'
 
 breathe_projects = {}
 
-if read_the_docs_build or True:
+if read_the_docs_build:
     import os
     print("running conf file nefking")
     input_dir = os.path.abspath('../../')

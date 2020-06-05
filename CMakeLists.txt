@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.10...3.20)
 
 # This is your project statement. You should always list languages;
 # Listing the version is nice here since it sets lots of useful variables
-project(dxmclib VERSION 1.1 LANGUAGES CXX)
+project(dxmclib VERSION 0.4.0 LANGUAGES CXX)
 
 # If you set any CMAKE_ variables, that can go here.
 # (But usually don't do this, except maybe for C++ standard)
