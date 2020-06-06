@@ -77,13 +77,9 @@ breathe_projects = {}
 
 if read_the_docs_build:
     import os
-    print("running conf file nefking")
     input_dir = os.path.abspath('../../')
     os.makedirs('build',  exist_ok=True)
     output_dir = os.path.abspath('./build')
     configureDoxyfile(input_dir, output_dir)
     subprocess.call('doxygen', shell=True)
     breathe_projects['DXMClib'] = output_dir + '/xml'
-
-
-
