@@ -7,17 +7,34 @@ If you are looking for an application with graphical user interface to perform s
 
 .. _OpenDXMC: https://github.com/medicalphysics/OpenDXMC/releases
 
-Another header for me
-=====================
+Example of usage
+-----------------
+A brief example on how to use DXMClib to simulate a pencilbeam of 60 keV onto a box of aluminum surrounded by water and air is shown below. 
 
+.. literalinclude:: ../../examples/pencilbeam/pencilbeam.cpp
+   :language: c++
+   :linenos:
+
+The examble can be built by CMake with the following CMakeLists.txt file.
+
+.. literalinclude:: ../../examples/pencilbeam/CMakeLists.txt
+   :language: cmake
+   :linenos:
+
+
+Check also out
+--------------
 .. toctree::
    :maxdepth: 2
+   
    about
+   physicsmodel
    license
    
 Docs
 ====
 .. doxygenclass:: CTDualSource
+   :project: DXMClib
    :members:
 
 Indices and tables

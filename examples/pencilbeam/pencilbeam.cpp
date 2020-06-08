@@ -20,9 +20,6 @@ int main(int argc, char* argv[])
     std::array<double, 3> spacing = { 1.0, 1.0, 1.0 };
     world.setSpacing(spacing);
 
-    //Lets position the world center at origo, coordinates (0,0,0)
-    //world.setOriginToCenter();
-
     // Now we fill the world box with som materials
     // We specify three materials
     Material air("Air, Dry (near sea level)"); // Material air("N0.76O0.23Ar0.01") is eqvivalent
