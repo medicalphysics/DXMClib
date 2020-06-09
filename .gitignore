@@ -37,6 +37,9 @@
 /CMakeSettings.json
 /build*
 /docs/sphinx/build*
+/docs/sphinx/api*
+/docs/sphinx/Doxyfile
+
 
 # Editors
 /.vs*
