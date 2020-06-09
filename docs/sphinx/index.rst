@@ -29,7 +29,7 @@ Check also out
    
    about
    physicsmodel
-   api/library_root
+   api/api_root
    license
    
 Docs

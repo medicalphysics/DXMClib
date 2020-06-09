@@ -27,5 +27,10 @@ if(BUILD_DOCUMENTATION)
         ${SPHINX_SOURCE} ${SPHINX_BUILD}
         WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
         COMMENT "Generating documentation with Sphinx")
+    # adding figure folder to build directory
+    #add_custom_command(TARGET sphinx PRE_BUILD
+     #   COMMAND ${CMAKE_COMMAND} -E copy_directory
+      #  ${SPHINX_SOURCE}/figures ${SPHINX_BUILD}/figures)
+
     install(DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}/sphinx DESTINATION help)
 endif()

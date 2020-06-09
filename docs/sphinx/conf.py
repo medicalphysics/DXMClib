@@ -39,8 +39,8 @@ breathe_default_project = "DXMClib"
 exhale_args = {
     # These arguments are required
     "containmentFolder":     "./api",
-    "rootFileName":          "library_root.rst",
-    "rootFileTitle":         "DXMClib API",
+    "rootFileName":          "api_root.rst",
+    "rootFileTitle":         "C++ API",
     "doxygenStripFromPath":  "..",
     # Suggested optional arguments
     "createTreeView":        True,
