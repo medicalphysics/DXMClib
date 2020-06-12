@@ -23,8 +23,31 @@ Copyright 2019 Erlend Andersen
 #include <utility>
 #include <vector>
 
+// The function below is borrowed from:
+// *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
+// Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
+
+inline std::uint32_t pcg32_random_r(std::uint64_t s[2])
+{
+    std::uint64_t oldstate = s[0];
+    // Advance internal state
+    s[0] = oldstate * 6364136223846793005ULL + (s[1] | 1);
+    // Calculate output function (XSH RR), uses old state for max ILP
+    std::uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
+    std::uint32_t rot = oldstate >> 59u;
+    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
+}
+
+template <typename T>
+inline T randomUniform(std::uint64_t s[2]) noexcept
+{
+    static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
+    const T r = static_cast<T>(pcg32_random_r(s));
+    return r / (std::numeric_limits<std::uint32_t>::max()-1);
+}
+
 /*
- * We roll our own random number generator */
+see this: http://prng.di.unimi.it/
 
 inline std::uint64_t xoroshiro128plus(std::uint64_t s[2]) noexcept
 {
@@ -44,7 +67,7 @@ inline T randomUniform(std::uint64_t s[2]) noexcept
     const T r = static_cast<T>(xoroshiro128plus(s));
     return r / (std::numeric_limits<std::uint64_t>::max() - 1);
 }
-
+*/
 template <typename T>
 inline T randomUniform(std::uint64_t s[2], const T max) noexcept
 {
