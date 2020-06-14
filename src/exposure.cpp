@@ -173,7 +173,7 @@ void Exposure::alignToDirectionCosines(const std::array<double, 6>& directionCos
     vectormath::changeBasisInverse(b1, b2, b3, m_beamDirection.data());
 }
 
-void Exposure::sampleParticle(Particle& p, std::uint64_t seed[2]) const
+void Exposure::sampleParticle(Particle& p, RandomState &state) const
 {
 
     p.pos[0] = m_position[0];
@@ -181,8 +181,8 @@ void Exposure::sampleParticle(Particle& p, std::uint64_t seed[2]) const
     p.pos[2] = m_position[2];
 
     // particle direction
-    const double theta = randomUniform(seed, -m_collimationAngles[0] / 2.0, m_collimationAngles[0] / 2.0);
-    const double phi = randomUniform(seed, -m_collimationAngles[1] / 2.0, m_collimationAngles[1] / 2.0);
+    const double theta = randomUniform(state, -m_collimationAngles[0] / 2.0, m_collimationAngles[0] / 2.0);
+    const double phi = randomUniform(state, -m_collimationAngles[1] / 2.0, m_collimationAngles[1] / 2.0);
     const double sintheta = std::sin(theta);
     const double sinphi = std::sin(phi);
     const double sin2theta = sintheta * sintheta;
@@ -193,7 +193,7 @@ void Exposure::sampleParticle(Particle& p, std::uint64_t seed[2]) const
     }
 
     if (m_specterDistribution) {
-        p.energy = m_specterDistribution->sampleValue(seed);
+        p.energy = m_specterDistribution->sampleValue(state);
     } else {
         p.energy = m_monoenergeticPhotonEnergy;
     }

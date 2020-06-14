@@ -18,25 +18,24 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/dxmcrandom.h"
 #include <numeric>
-#include <random>
 
-void randomSeed(std::uint64_t s[2])
+void randomSeed(RandomState &state)
 {
     std::random_device d;
-    s[0] = static_cast<std::uint64_t>(d()) + static_cast<std::uint64_t>(d());
-    s[1] = static_cast<std::uint64_t>(d()) + static_cast<std::uint64_t>(d());
+    state.m_state[0] = static_cast<std::uint64_t>(d()) + static_cast<std::uint64_t>(d());
+    state.m_state[1] = static_cast<std::uint64_t>(d()) + static_cast<std::uint64_t>(d());
 
-    while (s[0] == 0) {
-        s[0] = d();
+    while (state.m_state[0] == 0) {
+        state.m_state[0] = d();
     }
-    while (s[1] == 0) {
-        s[1] = d();
+    while (state.m_state[1] == 0) {
+        state.m_state[1] = d();
     }
 }
 
 RandomDistribution::RandomDistribution(const std::vector<double>& weights)
 {
-    randomSeed(m_seed); // initialize prng
+    randomSeed(m_state); // initialize prng
     generateTable(weights);
 }
 
@@ -89,13 +88,13 @@ void RandomDistribution::generateTable(const std::vector<double>& weights)
 
 std::size_t RandomDistribution::sampleIndex()
 {
-    return sampleIndex(m_seed);
+    return sampleIndex(m_state);
 }
 
-std::size_t RandomDistribution::sampleIndex(std::uint64_t seed[2]) const
+std::size_t RandomDistribution::sampleIndex(RandomState &state) const
 {
-    const double r1 = randomUniform<double>(seed);
-    const double r2 = randomUniform<double>(seed);
+    const double r1 = randomUniform<double>(state);
+    const double r2 = randomUniform<double>(state);
     std::size_t k = static_cast<std::size_t>(m_size * r1);
     return r2 < m_probs[k] ? k : m_alias[k];
 }
@@ -108,10 +107,10 @@ SpecterDistribution::SpecterDistribution(const std::vector<double>& weights, con
 
 double SpecterDistribution::sampleValue()
 {
-    return sampleValue(m_seed);
+    return sampleValue(m_state);
 }
-double SpecterDistribution::sampleValue(std::uint64_t seed[2]) const
+double SpecterDistribution::sampleValue(RandomState &state) const
 {
-    const std::size_t ind = sampleIndex(seed);
-    return ind < m_energies.size() - 1 ? randomUniform(seed, m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
+    const std::size_t ind = sampleIndex(state);
+    return ind < m_energies.size() - 1 ? randomUniform(state, m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
 }

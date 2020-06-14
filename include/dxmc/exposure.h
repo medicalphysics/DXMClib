@@ -79,7 +79,7 @@ public:
 
     void alignToDirectionCosines(const std::array<double, 6>& directionCosines);
 
-    void sampleParticle(Particle& p, std::uint64_t seed[2]) const; // thread safe
+    void sampleParticle(Particle& p, RandomState &state) const; // thread safe
 
 protected:
     void normalizeDirectionCosines(void);

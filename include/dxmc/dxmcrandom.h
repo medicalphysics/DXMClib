@@ -22,16 +22,37 @@ Copyright 2019 Erlend Andersen
 #include <limits>
 #include <utility>
 #include <vector>
+#include <random>
 
 // The function below is borrowed from:
 // *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
 // Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
 
-inline std::uint32_t pcg32_random_r(std::uint64_t s[2])
+class RandomState {
+public:
+    RandomState()
+    {
+        std::random_device d;
+        m_state[0] = static_cast<std::uint64_t>(d());
+        m_state[1] = static_cast<std::uint64_t>(d());
+    }
+    RandomState(std::uint64_t* state)
+    {
+        m_state[0] = state[0];
+        m_state[1] = state[1];
+    }
+    RandomState(const RandomState&) = delete; // non construction-copyable
+    RandomState& operator=(const RandomState&) = delete; // non copyable
+   
+    std::uint64_t m_state[2];
+};
+
+
+inline std::uint32_t pcg32_random_r(RandomState &state)
 {
-    std::uint64_t oldstate = s[0];
+    std::uint64_t oldstate = state.m_state[0];
     // Advance internal state
-    s[0] = oldstate * 6364136223846793005ULL + (s[1] | 1);
+    state.m_state[0] = oldstate * 6364136223846793005ULL + (state.m_state[1] | 1);
     // Calculate output function (XSH RR), uses old state for max ILP
     std::uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
     std::uint32_t rot = oldstate >> 59u;
@@ -39,60 +60,60 @@ inline std::uint32_t pcg32_random_r(std::uint64_t s[2])
 }
 
 template <typename T>
-inline T randomUniform(std::uint64_t s[2]) noexcept
+inline T randomUniform(RandomState &state) noexcept
 {
     static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
-    const T r = static_cast<T>(pcg32_random_r(s));
-    return r / (std::numeric_limits<std::uint32_t>::max()-1);
+    const T r = static_cast<T>(pcg32_random_r(state));
+    return r / (std::numeric_limits<std::uint32_t>::max() - 1);
 }
 
 /*
 see this: http://prng.di.unimi.it/
 
-inline std::uint64_t xoroshiro128plus(std::uint64_t s[2]) noexcept
+inline std::uint64_t xoroshiro128plus(RandomState &state) noexcept
 {
-    std::uint64_t s0 = s[0];
-    std::uint64_t s1 = s[1];
+    std::uint64_t s0 = state.m_state[0];
+    std::uint64_t s1 = state.m_state[1];
     std::uint64_t result = s0 + s1;
     s1 ^= s0;
-    s[0] = ((s0 << 55) | (s0 >> 9)) ^ s1 ^ (s1 << 14);
-    s[1] = (s1 << 36) | (s1 >> 28);
+    state.m_state[0] = ((s0 << 55) | (s0 >> 9)) ^ s1 ^ (s1 << 14);
+    state.m_state[1] = (s1 << 36) | (s1 >> 28);
     return result;
 }
 
 template <typename T>
-inline T randomUniform(std::uint64_t s[2]) noexcept
+inline T randomUniform(RandomState &state) noexcept
 {
     static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
-    const T r = static_cast<T>(xoroshiro128plus(s));
+    const T r = static_cast<T>(xoroshiro128plus(state));
     return r / (std::numeric_limits<std::uint64_t>::max() - 1);
 }
 */
 template <typename T>
-inline T randomUniform(std::uint64_t s[2], const T max) noexcept
+inline T randomUniform(RandomState &state, const T max) noexcept
 {
-    const T r = randomUniform<T>(s);
+    const T r = randomUniform<T>(state);
     return r * max;
 }
 
 template <typename T>
-inline T randomUniform(std::uint64_t s[2], const T min, const T max) noexcept
+inline T randomUniform(RandomState &state, const T min, const T max) noexcept
 {
-    const T r = randomUniform<T>(s);
+    const T r = randomUniform<T>(state);
     const T range = max - min;
     return min + r * range;
 }
 
-void randomSeed(std::uint64_t s[2]);
+void randomSeed(RandomState &state);
 
 class RandomDistribution {
 public:
     RandomDistribution(const std::vector<double>& weights);
     std::size_t sampleIndex();
-    std::size_t sampleIndex(std::uint64_t seed[2]) const;
+    std::size_t sampleIndex(RandomState &state) const;
 
 protected:
-    std::uint64_t m_seed[2];
+    RandomState m_state;
     void generateTable(const std::vector<double>& weights);
 
 private:
@@ -105,7 +126,7 @@ class SpecterDistribution : public RandomDistribution {
 public:
     SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
     double sampleValue();
-    double sampleValue(std::uint64_t seed[2]) const; // thread safe
+    double sampleValue(RandomState &state) const; // thread safe
 private:
     std::vector<double> m_energies;
 };

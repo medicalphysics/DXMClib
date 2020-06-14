@@ -9,7 +9,7 @@ bool testCompton(double keV, const Material& mat)
     constexpr std::size_t nHist = 100;
     constexpr std::size_t samples = 1e5;
 
-    std::uint64_t seed[2];
+    RandomState seed;
     randomSeed(seed);
 
     AttenuationLut lut;
@@ -61,7 +61,7 @@ bool testRayleight(double keV, const Material& mat)
     constexpr std::size_t nHist = 100;
     constexpr std::size_t samples = 1e5;
 
-    std::uint64_t seed[2];
+    RandomState seed;
     randomSeed(seed);
 
     AttenuationLut lut;
