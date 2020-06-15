@@ -78,7 +78,7 @@ void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, co
     const double amax = attLut.cumFormFactorSquared(materialIdx, qmax);
 
     do {
-        const double r1 = randomUniform<double>(state);
+        const double r1 = state.randomUniform<double>();
 
         const double aatq = amax * r1;
 
@@ -86,10 +86,10 @@ void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, co
 
         cosAngle = attLut.cosAngle(particle.energy, q);
 
-    } while ((0.5 + cosAngle * cosAngle * 0.5) < randomUniform<double>(state));
+    } while ((0.5 + cosAngle * cosAngle * 0.5) < state.randomUniform<double>());
 
     const double theta = std::acos(cosAngle);
-    const double phi = randomUniform<double>(state, PI_VAL2);
+    const double phi = state.randomUniform<double>( PI_VAL2);
     vectormath::peturb<double>(particle.dir, theta, phi);
 }
 
@@ -104,7 +104,7 @@ double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, co
     double e;
     bool rejected;
     do {
-        const double r1 = randomUniform<double>(state);
+        const double r1 = state.randomUniform<double>();
         e = r1 + (1.0 - r1) * emin;
         cosAngle = 1.0 + 1.0 / k - 1.0 / (k * e);
         const double sinthetasqr = 1.0 - cosAngle * cosAngle;
@@ -113,13 +113,13 @@ double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, co
 
         const double q = lut.momentumTransferFromCos(particle.energy, cosAngle);
         const double scatterFactor = lut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
-        const double r2 = randomUniform<double>(state);
+        const double r2 = state.randomUniform<double>();
         rejected = r2 > g * scatterFactor;
 
     } while (rejected);
 
     const double theta = std::acos(cosAngle);
-    const double phi = randomUniform<double>(state, PI_VAL2);
+    const double phi = state.randomUniform<double>(PI_VAL2);
     vectormath::peturb<double>(particle.dir, theta, phi);
 
     const double E0 = particle.energy;
@@ -140,7 +140,7 @@ double comptonScatter(Particle& particle, RandomState& state, double& cosAngle)
     bool rejected;
     double sinthetasqr, e, t;
     do {
-        const double r1 = randomUniform<double>(state);
+        const double r1 = state.randomUniform<double>();
         e = r1 + (1.0 - r1) * emin;
 
         t = (1.0 - e) / (k * e);
@@ -148,13 +148,13 @@ double comptonScatter(Particle& particle, RandomState& state, double& cosAngle)
 
         const double g = (1.0 / e + e - sinthetasqr) / gmax;
 
-        const double r2 = randomUniform<double>(state);
+        const double r2 = state.randomUniform<double>();
         rejected = r2 > g;
     } while (rejected);
 
     cosAngle = 1.0 - t;
     const double theta = std::acos(cosAngle);
-    const double phi = randomUniform<double>(state, PI_VAL2);
+    const double phi = state.randomUniform<double>( PI_VAL2);
     vectormath::peturb<double>(particle.dir, theta, phi);
 
     const double E0 = particle.energy;
@@ -198,10 +198,10 @@ bool computeInteractionsForced(const double eventProbability, const AttenuationL
     safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
     p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
 
-    const double r2 = randomUniform<double>(state);
+    const double r2 = state.randomUniform<double>();
     if (r2 < eventProbability) {
 
-        const double r3 = randomUniform(state, attCompt + attRayl);
+        const double r3 = state.randomUniform<double>( attCompt + attRayl);
 
         if (r3 <= attCompt) // Compton event
         {
@@ -239,7 +239,7 @@ bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsi
     const double attCompt = atts[1];
     const double attRayl = atts[2];
 
-    const double r3 = randomUniform(state, attPhoto + attCompt + attRayl);
+    const double r3 = state.randomUniform<double>(attPhoto + attCompt + attRayl);
     if (r3 <= attPhoto) // Photoelectric event
     {
         const double energyImparted = p.energy * p.weight;
@@ -296,7 +296,7 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
             maxAttenuationInv = 1.0 / lutTable.maxMassTotalAttenuation(p.energy);
             updateMaxAttenuation = false;
         }
-        const double r1 = randomUniform<double>(state);
+        const double r1 = state.randomUniform<double>();
         const double stepLenght = -std::log(r1) * maxAttenuationInv * 10.0; // cm -> mm
         for (std::size_t i = 0; i < 3; i++)
             p.pos[i] += p.dir[i] * stepLenght;
@@ -308,9 +308,10 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
             const double attenuationTotal = lutTable.totalAttenuation(matIdx, p.energy) * density;
             const double eventProbability = attenuationTotal * maxAttenuationInv;
 
-            if (measurementBuffer[bufferIdx] == 0) [[likely]]  // naive sampling
-            {
-                const double r2 = randomUniform<double>(state);
+            if (measurementBuffer[bufferIdx] == 0)
+                [[likely]] // naive sampling
+                {
+                    const double r2 = state.randomUniform<double>();
                 if (r2 < eventProbability) // an event will happend
                 {
                     continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
@@ -323,7 +324,7 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
             if (continueSampling) {
                 if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD) && ruletteCandidate) {
                     ruletteCandidate = false;
-                    const double r4 = randomUniform<double>(state);
+                    const double r4 = state.randomUniform<double>();
                     if (r4 < RUSSIAN_RULETTE_PROBABILITY) {
                         continueSampling = false;
                     } else {
@@ -389,7 +390,6 @@ void parallellRun(const World& w, const Source* source, Result* result,
     const std::uint64_t len = expEnd - expBeg;
     if ((len <= 1) || (nJobs <= 1)) {
         RandomState state;
-        randomSeed(state); // get random seed from OS
         Exposure exposure;
         const auto& worldBasis = w.directionCosines();
         for (std::size_t i = expBeg; i < expEnd; i++) {
@@ -428,7 +428,6 @@ void parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result* resu
 
     if ((len == 1) || (nJobs <= 1)) {
         RandomState state;
-        randomSeed(state); // get random seed from OS
         Exposure exposure;
         const auto& worldBasis = w.directionCosines();
         for (std::size_t i = expBeg; i < expEnd; i++) {

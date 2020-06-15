@@ -13,8 +13,8 @@
 #include <numeric>
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 64;
+constexpr std::size_t histPerExposure = 1e7;
+constexpr std::size_t nExposures = 16;
 
 constexpr double PI = 3.14159265359;
 

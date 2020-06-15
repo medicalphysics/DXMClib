@@ -38,7 +38,7 @@ bool testIsotropicSourceSpecter()
     const double estep = energies[1] - energies[0];
     Particle particle;
     RandomState seed;
-    randomSeed(seed);
+    
     for (std::size_t i = 0; i < 1e7; ++i) {
         exp.sampleParticle(particle, seed);
         assert(isEqual(vectormath::lenght_sqr(particle.dir), 1.0));

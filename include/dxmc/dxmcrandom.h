@@ -50,7 +50,7 @@ public:
     }
 
     /**
-     * @brief Random uniform number in iunterval from 0 to max, exclusive
+     * @brief Random uniform number in interval from 0 to max, exclusive
      * @tparam T Type of number, either integral or floating point
      * @param max Max of range
      * @return Random number in range [0, max).
@@ -74,7 +74,12 @@ public:
     template <typename T>
     inline T randomUniform(const T min, const T max) noexcept
     {
-        if constexpr (std::is_floating_point<T>::value) {
+
+        const T range = max - min;
+        const T r = randomUniform<T>(range);
+        return min + r * range;
+
+        /*if constexpr (std::is_floating_point<T>::value) {
             const T r = randomUniform<T>();
             const T range = max - min;
             return min + r * range;
@@ -84,6 +89,7 @@ public:
             return min + r;
         } else
             static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
+            */
     }
 
     // The function below is borrowed from:
@@ -101,6 +107,7 @@ public:
     std::uint64_t m_state[2];
 };
 
+/*
 // The function below is borrowed from:
 // *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
 // Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
@@ -170,6 +177,8 @@ inline T randomUniform(RandomState &state, const T min, const T max) noexcept
 }
 
 void randomSeed(RandomState &state);
+
+*/
 
 class RandomDistribution {
 public:
