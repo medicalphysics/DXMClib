@@ -57,13 +57,13 @@ void testUniformRange() {
 
     RandomState state;
 
-    constexpr double r1 = 0.0;
-    constexpr double r2 = 1.0;
+    constexpr double r1 = 5.0;
+    constexpr double r2 = 10.0;
 
     const auto start = std::chrono::high_resolution_clock::now();
     for (std::size_t i = 0; i < S; ++i) {
         const auto t = state.randomUniform(r1, r2);
-        const auto idx = static_cast<std::size_t>(N*t);
+        const auto idx = static_cast<std::size_t>(N * ((t - r1) / (r2 - r1)));
         pcg[idx]++;
     }
     const auto end = std::chrono::high_resolution_clock::now();

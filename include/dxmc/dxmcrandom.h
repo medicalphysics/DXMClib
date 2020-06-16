@@ -20,18 +20,18 @@ Copyright 2019 Erlend Andersen
 
 #include <cstdint>
 #include <limits>
+#include <random>
 #include <utility>
 #include <vector>
-#include <random>
-
 
 class RandomState {
 public:
     RandomState()
     {
         std::random_device d;
-        m_state[0] = static_cast<std::uint64_t>(d());
-        m_state[1] = static_cast<std::uint64_t>(d());
+        std::uniform_int_distribution<std::uint64_t> dist(0);
+        m_state[0] = static_cast<std::uint64_t>(dist(d));
+        m_state[1] = static_cast<std::uint64_t>(dist(d));
     }
     RandomState(std::uint64_t state[2])
     {
@@ -40,8 +40,8 @@ public:
     }
     RandomState(const RandomState&) = delete; // non construction-copyable
     RandomState& operator=(const RandomState&) = delete; // non copyable
-  
-    template<typename T>
+
+    template <typename T>
     inline T randomUniform() noexcept
     {
         static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
@@ -68,18 +68,13 @@ public:
                     return static_cast<T>(r % static_cast<std::uint32_t>(max));
             }
         } else
-            static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");        
+            static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
     }
 
     template <typename T>
     inline T randomUniform(const T min, const T max) noexcept
     {
-
-        const T range = max - min;
-        const T r = randomUniform<T>(range);
-        return min + r * range;
-
-        /*if constexpr (std::is_floating_point<T>::value) {
+        if constexpr (std::is_floating_point<T>::value) {
             const T r = randomUniform<T>();
             const T range = max - min;
             return min + r * range;
@@ -89,13 +84,13 @@ public:
             return min + r;
         } else
             static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
-            */
     }
 
     // The function below is borrowed from:
     // *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
     // Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
-    inline std::uint32_t pcg32() noexcept{
+    inline std::uint32_t pcg32() noexcept
+    {
         const std::uint64_t oldstate = m_state[0];
         // Advance internal state
         m_state[0] = oldstate * 6364136223846793005ULL + (m_state[1] | 1);
@@ -107,84 +102,11 @@ public:
     std::uint64_t m_state[2];
 };
 
-/*
-// The function below is borrowed from:
-// *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
-// Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
-inline std::uint32_t pcg32_random_r(RandomState &state)
-{
-    std::uint64_t oldstate = state.m_state[0];
-    // Advance internal state
-    state.m_state[0] = oldstate * 6364136223846793005ULL + (state.m_state[1] | 1);
-    // Calculate output function (XSH RR), uses old state for max ILP
-    std::uint32_t xorshifted = ((oldstate >> 18u) ^ oldstate) >> 27u;
-    std::uint32_t rot = oldstate >> 59u;
-    return (xorshifted >> rot) | (xorshifted << ((-rot) & 31));
-}
-
-
-
-
-//see this: http://prng.di.unimi.it/
-inline std::uint64_t xoroshiro128plus(RandomState &state) noexcept
-{
-    std::uint64_t s0 = state.m_state[0];
-    std::uint64_t s1 = state.m_state[1];
-    std::uint64_t result = s0 + s1;
-    s1 ^= s0;
-    state.m_state[0] = ((s0 << 55) | (s0 >> 9)) ^ s1 ^ (s1 << 14);
-    state.m_state[1] = (s1 << 36) | (s1 >> 28);
-    return result;
-}
-
-template <typename T>
-inline T randomUniform(RandomState& state) noexcept
-{
-    static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
-    const T r = static_cast<T>(pcg32_random_r(state));
-    return r / (std::numeric_limits<std::uint32_t>::max() - 1);
-}
-
-template <typename T>
-inline T randomUniformXo(RandomState &state) noexcept
-{
-    static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
-    const T r = static_cast<T>(xoroshiro128plus(state));
-    return r / (std::numeric_limits<std::uint64_t>::max() - 1);
-}
-
-
-template <typename T>
-inline T randomUniform(RandomState &state, const T max) noexcept
-{
-    const T r = randomUniform<T>(state);
-    return r * max;
-}
-
-template <typename T>
-inline T randomUniformXo(RandomState& state, const T max) noexcept
-{
-    const T r = randomUniformXo<T>(state);
-    return r * max;
-}
-
-template <typename T>
-inline T randomUniform(RandomState &state, const T min, const T max) noexcept
-{
-    const T r = randomUniform<T>(state);
-    const T range = max - min;
-    return min + r * range;
-}
-
-void randomSeed(RandomState &state);
-
-*/
-
 class RandomDistribution {
 public:
     RandomDistribution(const std::vector<double>& weights);
     std::size_t sampleIndex();
-    std::size_t sampleIndex(RandomState &state) const;
+    std::size_t sampleIndex(RandomState& state) const;
 
 protected:
     RandomState m_state;
@@ -200,7 +122,7 @@ class SpecterDistribution : public RandomDistribution {
 public:
     SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
     double sampleValue();
-    double sampleValue(RandomState &state) const; // thread safe
+    double sampleValue(RandomState& state) const; // thread safe
 private:
     std::vector<double> m_energies;
 };
