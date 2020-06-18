@@ -19,23 +19,8 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/dxmcrandom.h"
 #include <numeric>
 
-void randomSeed(RandomState &state)
-{
-    std::random_device d;
-    state.m_state[0] = static_cast<std::uint64_t>(d()) + static_cast<std::uint64_t>(d());
-    state.m_state[1] = static_cast<std::uint64_t>(d()) + static_cast<std::uint64_t>(d());
-
-    while (state.m_state[0] == 0) {
-        state.m_state[0] = d();
-    }
-    while (state.m_state[1] == 0) {
-        state.m_state[1] = d();
-    }
-}
-
 RandomDistribution::RandomDistribution(const std::vector<double>& weights)
 {
-    randomSeed(m_state); // initialize prng
     generateTable(weights);
 }
 
