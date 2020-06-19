@@ -16,9 +16,11 @@ The world may be rotated in the basis coordinate system. Orientation of the worl
 
 Definition of materials
 -----------------------
-The only material properties DXMClib cares for are mass attenuation coefficients, atomic form factors and scatter factors for chemical elements and compounds. Thankfully, Tom Schoonjans have created an excellent library providing these properties. For this reason xraylib_ is a required dependency of DXMClib. Materials can be specified by a chemical element, or a compound described by chemical symbol and number density, for example H2O or HO0.5 for water. In addition standard NIST materials are also included. 
+The only material properties DXMClib cares for are mass attenuation coefficients, atomic form factors and scatter factors for chemical elements and compounds. Thankfully, Tom Schoonjans have created an excellent library providing these properties. For this reason xraylib_ is a required dependency of DXMClib. Materials can be specified by a chemical element, or a compound described by chemical symbol and number density, for example H2O or HO0.5 for water. In addition, standard NIST materials are also included. 
 
 .. _xraylib: https://github.com/tschoonj/xraylib
 
-Photon transport
+Particle transport
 ----------------
+X-ray energies above 150 keV is rareley used in diagnostic imaging, for an electron with energy 150 keV the CSDA range in soft tissue is about 0.3 mm and on par with typical voxel size in CT imaging. DXMClib assumes that all interactions creating secondary electrons positions their energy in the current voxel. 
+For effective photon transport in a voxelized volume there are two suitable algorithms; calculating the radiologic path to compute interaction point or Woodcock tracking. 
