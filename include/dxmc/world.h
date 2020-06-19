@@ -105,7 +105,7 @@ private:
     std::vector<Material> m_materialMap;
     AttenuationLut m_attLut;
 
-    double m_attenuationLutMaxEnergy = 150.0;
+    double m_attenuationLutMaxEnergy = TUBEMAXVOLTAGE;
 };
 
 class CTDIPhantom : public World {
@@ -117,9 +117,8 @@ public:
         North };
     CTDIPhantom(std::size_t size = 320); // size im mm
     const std::vector<std::size_t>& holeIndices(CTDIPhantom::HolePosition position = HolePosition::Center);
-    double airDensity() { return m_airDensity; }
+    constexpr double airDensity();
 
 private:
     std::array<std::vector<std::size_t>, 5> m_holePositions;
-    double m_airDensity = 0.001205; // g/cm3
 };

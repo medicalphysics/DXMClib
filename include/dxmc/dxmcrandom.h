@@ -18,10 +18,8 @@ Copyright 2019 Erlend Andersen
 
 #pragma once // include guard
 
-#include <cstdint>
 #include <limits>
 #include <random>
-#include <utility>
 #include <vector>
 
 class RandomState {
@@ -41,6 +39,11 @@ public:
     RandomState(const RandomState&) = delete; // non construction-copyable
     RandomState& operator=(const RandomState&) = delete; // non copyable
 
+    /**
+     * @brief Generate a random floating point number in range [0, 1.0)
+     * @tparam T Must satisfy std::is_floating_point<T>::value == True
+     * @return Random floating point in range [0, 1)
+    */
     template <typename T>
     inline T randomUniform() noexcept
     {

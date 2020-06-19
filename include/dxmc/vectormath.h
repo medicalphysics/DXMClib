@@ -190,7 +190,7 @@ inline void peturb(T vec[3], const T theta, const T phi)
     // First we find a vector orthogonal to the vector direction
     T vec_xy[3], k[3] = { 0, 0, 0 };
 
-    auto minInd = argmin3<std::uint_fast32_t, T>(vec);
+    const auto minInd = argmin3<std::uint_fast32_t, T>(vec);
 
     k[minInd] = 1.0;
 

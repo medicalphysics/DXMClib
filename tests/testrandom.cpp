@@ -99,6 +99,7 @@ void testUniformIndex()
     const auto start = std::chrono::high_resolution_clock::now();
     for (std::size_t i = 0; i < S; ++i) {
         const auto t = state.randomUniform(N);
+        assert(t < N);
         pcg[t]++;
     }
     const auto end = std::chrono::high_resolution_clock::now();
@@ -123,7 +124,7 @@ void testUniformIndex()
 
 int main(int argc, char* argv[])
 {
-    //testUniform();
+    testUniform();
     testUniformRange();
     testUniformIndex();
    

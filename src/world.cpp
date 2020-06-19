@@ -23,6 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <future>
 
+constexpr double AIRDENSITY = 0.001205; // g/cm3
+
 World::World()
 {
     vectormath::cross(m_directionCosines.data(), m_depthDirectionCosine.data());
@@ -300,7 +302,6 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
     addMaterialToMap(air);
     addMaterialToMap(air); // we want two to differentiate between air around phantom and air inside rods
     addMaterialToMap(pmma);
-    m_airDensity = air.standardDensity();
 
     constexpr double holeDiameter = 13.1;
     constexpr double holeRadii = holeDiameter / 2.0;
@@ -310,7 +311,7 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
     const auto sp = spacing();
 
     //making phantom
-    auto dBufferPtr = std::make_shared<std::vector<double>>(size(), m_airDensity);
+    auto dBufferPtr = std::make_shared<std::vector<double>>(size(), airDensity());
     auto mBufferPtr = std::make_shared<std::vector<unsigned char>>(size(), 0);
     auto measurementPtr = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
     setDensityArray(dBufferPtr);
@@ -379,6 +380,10 @@ CTDIPhantom::CTDIPhantom(std::size_t diameter)
         for (const auto idx : vIdx)
             measBuffer[idx] = 1;
     validate();
+}
+constexpr double CTDIPhantom::airDensity()
+{
+    return AIRDENSITY;
 }
 
 const std::vector<std::size_t>& CTDIPhantom::holeIndices(CTDIPhantom::HolePosition position)

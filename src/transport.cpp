@@ -49,7 +49,6 @@ constexpr double N_ERROR = 1.0e-9;
 		atomicValue.fetch_add(addValue);
 	}
 	*/
-
 inline void safeEnergyAdd(double& value, const double addValue)
 {
     std::scoped_lock guard(DOSE_MUTEX);
@@ -68,7 +67,7 @@ inline void safeVarianceAdd(double& value, const double addValue)
     value += addValue;
 }
 
-void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState &state, double& cosAngle)
+void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& state, double& cosAngle)
 {
     // theta is scattering angle
     // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -89,7 +88,7 @@ void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, co
     } while ((0.5 + cosAngle * cosAngle * 0.5) < state.randomUniform<double>());
 
     const double theta = std::acos(cosAngle);
-    const double phi = state.randomUniform<double>( PI_VAL2);
+    const double phi = state.randomUniform<double>(PI_VAL2);
     vectormath::peturb<double>(particle.dir, theta, phi);
 }
 
@@ -154,7 +153,7 @@ double comptonScatter(Particle& particle, RandomState& state, double& cosAngle)
 
     cosAngle = 1.0 - t;
     const double theta = std::acos(cosAngle);
-    const double phi = state.randomUniform<double>( PI_VAL2);
+    const double phi = state.randomUniform<double>(PI_VAL2);
     vectormath::peturb<double>(particle.dir, theta, phi);
 
     const double E0 = particle.energy;
@@ -201,7 +200,7 @@ bool computeInteractionsForced(const double eventProbability, const AttenuationL
     const double r2 = state.randomUniform<double>();
     if (r2 < eventProbability) {
 
-        const double r3 = state.randomUniform<double>( attCompt + attRayl);
+        const double r3 = state.randomUniform<double>(attCompt + attRayl);
 
         if (r3 <= attCompt) // Compton event
         {
@@ -211,19 +210,24 @@ bool computeInteractionsForced(const double eventProbability, const AttenuationL
 #else
             const double e = comptonScatter(p, state, cosangle);
 #endif
-            if (p.energy < ENERGY_CUTOFF_THRESHOLD) {
-                const double energyImparted = (e + p.energy) * p.weight;
-                safeEnergyAdd(doseAdress, energyImparted);
-                safeTallyAdd(tallyAdress);
-                safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
-                return false;
-            } else {
-                const double energyImparted = e * p.weight;
-                safeEnergyAdd(doseAdress, energyImparted);
-                safeTallyAdd(tallyAdress);
-                safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
-                updateMaxAttenuation = true;
-            }
+            if (p.energy < ENERGY_CUTOFF_THRESHOLD)
+                [[unlikely]]
+                {
+                    const double energyImparted = (e + p.energy) * p.weight;
+                    safeEnergyAdd(doseAdress, energyImparted);
+                    safeTallyAdd(tallyAdress);
+                    safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                    return false;
+                }
+            else
+                [[likely]]
+                {
+                    const double energyImparted = e * p.weight;
+                    safeEnergyAdd(doseAdress, energyImparted);
+                    safeTallyAdd(tallyAdress);
+                    safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                    updateMaxAttenuation = true;
+                }
         } else // Rayleigh scatter event
         {
             double cosangle;
@@ -256,19 +260,24 @@ bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsi
 #else
         const double e = comptonScatter(p, state, cosangle);
 #endif
-        if (p.energy < ENERGY_CUTOFF_THRESHOLD) {
-            const double energyImparted = (e + p.energy) * p.weight;
-            safeEnergyAdd(doseAdress, energyImparted);
-            safeTallyAdd(tallyAdress);
-            safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
-            return false;
-        } else {
-            const double energyImparted = e * p.weight;
-            safeEnergyAdd(doseAdress, energyImparted);
-            safeTallyAdd(tallyAdress);
-            safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
-            updateMaxAttenuation = true;
-        }
+        if (p.energy < ENERGY_CUTOFF_THRESHOLD)
+            [[unlikely]]
+            {
+                const double energyImparted = (e + p.energy) * p.weight;
+                safeEnergyAdd(doseAdress, energyImparted);
+                safeTallyAdd(tallyAdress);
+                safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                return false;
+            }
+        else
+            [[likely]]
+            {
+                const double energyImparted = e * p.weight;
+                safeEnergyAdd(doseAdress, energyImparted);
+                safeTallyAdd(tallyAdress);
+                safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                updateMaxAttenuation = true;
+            }
     } else // Rayleigh scatter event
     {
         double cosangle;
@@ -312,14 +321,16 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
                 [[likely]] // naive sampling
                 {
                     const double r2 = state.randomUniform<double>();
-                if (r2 < eventProbability) // an event will happend
-                {
-                    continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
+                    if (r2 < eventProbability) // an event will happend
+                    {
+                        continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
+                    }
                 }
-            } else [[unlikely]]// forced photoelectric effect
-            {
-                continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
-            }
+            else
+                [[unlikely]] // forced photoelectric effect
+                {
+                    continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
+                }
 
             if (continueSampling) {
                 if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD) && ruletteCandidate) {
