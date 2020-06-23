@@ -26,13 +26,23 @@ X-ray energies above 150 keV is rareley used in diagnostic imaging, for an elect
 For efficient photon transport in a voxelized volume there are two suitable algorithms; calculating the radiologic path to compute interaction point [#SUNDERMAN1998]_ or Woodcock tracking [#WOODCOCK1965]_. While Siddons path algorithm by calculating the radiologic path thorugh the whole volume to find an interaction point are suitable to track even a few photons it's quite inefficient compared to Woodcock tracking for large number of voxels. Woodcock tracking are perhaps best explained by introducing photon transport in a homogeneous volume first.
 To sample a path length of a photon in a homogeneous volume, draw a random number :math:`r` in interval [0, 1). The photon path length is then :math:`l= -\ln(r)/(\mu \rho)` where :math:`\mu` and :math:`\rho` is mass attenuation coefficient and density of the material. This can be extended to a heterogeneous volume by introducing virtual interactions. The path lenght is calculated in a similar way: :math:`l= -\ln(r)/\zeta` with
 
-..math::
-    \zeta = \max\left[ \mu_i \rho_i \right]
+.. math::
+    \zeta = \max_i \left( \mu_i \rho_i \right)
 
-For the material corresponding to the traversed step :math:`l`, an interaction happends if 
-..math::
-    \frac{\mu\rho}{\zeta} < r
-where :math:`r` is a random number in interval [0, 1), otherwise the interaction is virtual and a new step is calculated.
+for each volume element :math:`i`. For the material corresponding to the traversed step :math:`l`, an interaction happends if 
+
+.. math::
+    \frac{\mu \rho}{\zeta} \leqslant r
+
+where :math:`r` is a random number in interval [0, 1), otherwise the interaction is virtual (i.e nothing happends) and a new step is calculated. This method is numerical effective but only valid when a large number of photons are simulated, and is unsuitable to showcase one particle track. 
+
+When an interaction occurs type of interaction is sampled by drawing a new random number :math:`r` in interval [0, :math:`\mu`).
+
+.. math::
+    \mu = \mu_{photoelectric} + \mu_{incoherent} + \mu_{coherent}
+
+if :math:`r < \mu_{photoelectric}` a photoelectric event happends, if :math:`r < \mu_{photoelectric} + \mu_{incoherent}` an inchorenent scattering event happends and else a coherent scattering event. 
+
 
 .. [#SUNDERMAN1998] A Fast Algorithm to Calculate the Exact Radiological Path Through a Pixel Or Voxel Space, Sunderman E. et al. Journal of Computing and Information Technology 6(1). December 1998.
 .. [#WOODCOCK1965] Woodcock E.R. et al. Techniques used in the GEM code for Monte Carlo neutronics calculations in reactors and other systems of complex geometry. ANL-7050. Argonne National Laboratory, 1965.
