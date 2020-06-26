@@ -40,9 +40,9 @@ where :math:`r` is a random number in interval [0, 1), otherwise the interaction
 When an interaction occurs type of interaction is sampled by drawing a new random number :math:`r` in interval [0, :math:`\mu`).
 
 .. math::
-    \mu = \mu_{photoelectric} + \mu_{incoherent} + \mu_{coherent}
+    \mu = \mu_{photoelectric} + \mu_{compton} + \mu_{rayleight}
 
-if :math:`r < \mu_{photoelectric}` a photoelectric event happens, if :math:`r < \mu_{photoelectric} + \mu_{incoherent}` an incoherent scattering event happens and else a coherent scattering event. 
+if :math:`r < \mu_{photoelectric}` a photoelectric event happens, if :math:`r < \mu_{photoelectric} + \mu_{compton}` an Compton scattering event happens and else a Rayleight scattering event. 
 
 Forced interactions can be used as a variance reduction technique, for example calculating dose in an air chamber inside an CTDI phantom. Since air is thankfully a low density material, relative few interactions occurs compared to in water or plastic. Forcing interactions in a voxel can decrease the variance of a dose calculation in a voxel without spending more CPU cycles to simulate more histories. Forced interactions are implemented such that when a photon steps into a voxel with a forced interaction flag an photoelectric event is scored, even if the interaction is considered virtual. To balance out the scored energy only a fraction 
 
@@ -54,7 +54,7 @@ of the photon energy is scored. The weight of the photon is reduced accordingly 
 .. math::
     w_{after} = w_{before}(1-\frac{\mu_{photoelectric}\rho}{\zeta})
 
-Further transport of the photon is done by the ordinary method by sampling a random number to determine if an interaction occurs and determine if a coherent or noncoherent event will happen (photoelectric effect is already dealt with).
+Further transport of the photon is done by the ordinary method by sampling a random number to determine if an interaction occurs and determine if a Rayleight or Compton event will happen (photoelectric effect is already dealt with).
 
 Generating x-ray spectra
 ------------------------
@@ -70,8 +70,37 @@ The sampled photon is first checked for intersecting the voxel volume, also call
 
 Photoelectric effect
 ____________
+This is the simplest of three types of interactions handled by DXMClib. When a photoelectric event is triggered the photon transfers all it's energy to the voxel. The energy from a scattered electron and any photons from bremsstrahlung is assumed not to escape the voxel.
 
+Compton scattering
+__________________
+Compton events are handled 
 
+Rayleigh scattering
+___________________
+Differential cross section for Rayleigh scattering follows Thomson differential cross section for a free electron
+
+.. math::
+    \frac{d\rho}{d\Omega} = \frac{r_c^2}{2}\left( 1-\cos^2\theta\right)
+
+This is valid for bound atomic electrons for energies up to 2 keV. For higher energies the photon scatter angle is decreased due to the electronic configuration of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of an atomic form factor or scatter factor :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
+
+.. math::
+    q = E \sin\left( \frac{\theta}{2}\right) \frac{1}{hc}
+
+for photon energy :math:`E` and :math:`hc` as Planck's constant and speed of light in vacuum. 
+
+The differential cross section for Rayleigh scattering is then
+
+.. math::
+    \frac{d\rho}{d\Omega} = \frac{r_c^2}{2}\left( 1-\cos^2\theta\right) \left[F(q, Z)\right]^2
+
+For sampling of scatter angle DXMClib uses a similar approach as the EGS5 monte carlo code. By defining 
+
+.. math::
+    A(q_{max}^2) = \int_0^{q_{max}^2} \left[F(q, Z)\right]^2 dq^2
+
+with :math:`q_{max} = E/hc`. :math:`[F(q,Z)]^2/A(q_{max}^2)` can be used as a probability density function and :math:`(1-\cos^2\theta)/2` as a rejection function. To sample a scatter angle :math:`q` is first sampled by :math:`A(q^2) = r A(q_{max}^2)` with :math:`r` as a random uniform number in interval [0,1). In DXMClib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. 
 
 
 
