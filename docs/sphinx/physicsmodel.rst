@@ -74,7 +74,55 @@ This is the simplest of three types of interactions handled by DXMClib. When a p
 
 Compton scattering
 __________________
-Compton events are handled 
+Compton events are handled by sampling the Klein Nishina differential cross section for an unbound electron:
+
+.. math::
+    \frac{d\rho}{d\epsilon} = \pi r_e^2\frac{m_ec^2}{E_0}Z\left[\frac{1}{\epsilon}+\epsilon \right] \left[ 1-\frac{\epsilon \sin^2\theta}{1+\epsilon^2} \right]
+
+with :math:`r_e` as the classical electron radius, :math:`m_ec^2`: electron mass, :math:`E_0` and :math:`E_1` as energy of incident and scattered photon respectivly, and :math:`\epsilon` as :math:`E_1/E_0`. Scatter angle :math:`\theta` is given by the Compton formula:
+
+.. math::
+    \epsilon = \frac{m_ec^2}{m_ec^2 + E_0(1-\cos\theta)}
+
+The minimum and maximum values for :math:`\epsilon` follows from the compton formula with 
+
+.. math::
+    \epsilon_{min} = \frac{m_ec^2}{m_ec^2 +2E_0}
+
+and 
+
+.. math::
+    \epsilon_{max} = \frac{m_ec^2}{m_ec^2} = 1
+
+so :math:`\epsilon \in [\epsilon_{min}, 1]`. For low photon energies, i.e typical diagnostic energy levels, it's most efficient to uniformly sample :math:`\epsilon` with the rejection function: 
+
+.. math::
+    g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right)
+
+with
+
+.. math::
+    g_{max} = \frac{1}{\epsilon_{min}}+\epsilon_{min}
+
+To sample the Klein-Nishina cross section an :math:`\epsilon` is uniformly sampled by 
+
+.. math::
+    \epsilon = r_1+(1-r_1)\epsilon_{min}
+
+where :math:`r_1` is a random number in interval :math:`[0, 1]`. For the sampled :math:`\epsilon` calculate :math:`g` and :math:`\theta`. Draw a new random number :math:`r_2` in interval :math:`[0,1]`, if :math:`r_2 \leqslant g` accept the sampled :math:`\epsilon` (and :math:`\theta`) else repeat the process. 
+
+The sampling methods described above ignores any binding effects on the electron and will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction and is enabled by default by CMake option DXMC_USE_LOW_ENERGY_COMPTON. This correction takes into account Hubbel`s atomic form factor [#Hubbell]_. In this case the sampling is performed by the same procedure as a free electron except for a slighly modified rejection function:
+
+.. math::
+    g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right) \frac{SF(q)}{Z}
+
+Where :math:`SF(q)` is the scatter factor, :math:`Z` is the atomic number for the material and :math:`q` is the momentum transfer function:
+
+.. math::
+    q = E_0 \sin\left( \frac{\theta}{2}\right) \frac{1}{hc}
+
+In DXMClib the scatter factor for composite materials is obtained by the independent atom approximation, simply put the scatter factor is a weighted average over the atoms in the material. A lookup table for scatter factors are generated for materials in each simulation run and involves computing of a square root thus is more computationally demanding.  
+
 
 Rayleigh scattering
 ___________________
@@ -83,7 +131,7 @@ Differential cross section for Rayleigh scattering follows Thomson differential 
 .. math::
     \frac{d\rho}{d\Omega} = \frac{r_c^2}{2}\left( 1-\cos^2\theta\right)
 
-This is valid for bound atomic electrons for energies up to 2 keV. For higher energies the photon scatter angle is decreased due to the electronic configuration of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of an atomic form factor or scatter factor :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
+This is valid for bound atomic electrons for energies up to 2 keV. For higher energies the photon scatter angle is decreased due to the electronic configuration of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of an atomic form factor [#Hubbell]_ :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
 
 .. math::
     q = E \sin\left( \frac{\theta}{2}\right) \frac{1}{hc}
@@ -100,13 +148,18 @@ For sampling of scatter angle DXMClib uses a similar approach as the EGS5 monte 
 .. math::
     A(q_{max}^2) = \int_0^{q_{max}^2} \left[F(q, Z)\right]^2 dq^2
 
-with :math:`q_{max} = E/hc`. :math:`[F(q,Z)]^2/A(q_{max}^2)` can be used as a probability density function and :math:`(1-\cos^2\theta)/2` as a rejection function. To sample a scatter angle :math:`q` is first sampled by :math:`A(q^2) = r A(q_{max}^2)` with :math:`r` as a random uniform number in interval [0,1). In DXMClib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. 
+with :math:`q_{max} = E/hc`. :math:`[F(q,Z)]^2/A(q_{max}^2)` can be used as a probability density function and :math:`(1-\cos^2\theta)/2` as a rejection function. To sample a scatter angle :math:`q` is first sampled by :math:`A(q^2) = r_1 A(q_{max}^2)` with :math:`r_1` as a random uniform number in interval [0,1). In DXMClib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. Scatter angle :math:`\theta` is also obtained from the sampled :math:`q` value. The sampled momentum transfer and therefore scatter angle is accepted if 
 
+.. math::
+    \frac{1+\cos^2 \theta}{2} > r_2
+
+where :math:`r_2` is a random number in interval [0, 1). 
 
 
 References
 ----------
-.. [#SUNDERMAN1998] A Fast Algorithm to Calculate the Exact Radiological Path Through a Pixel Or Voxel Space, Sunderman E. et al. Journal of Computing and Information Technology 6(1). December 1998.
+.. [#SUNDERMAN1998] Sunderman E. et al. A Fast Algorithm to Calculate the Exact Radiological Path Through a Pixel Or Voxel Space. Journal of Computing and Information Technology 6(1). December 1998.
 .. [#WOODCOCK1965] Woodcock E.R. et al. Techniques used in the GEM code for Monte Carlo neutronics calculations in reactors and other systems of complex geometry. ANL-7050. Argonne National Laboratory, 1965.
-.. [#Poludniowski1] Poludniowski, G.G. and Evans, P.M. (2007), Calculation of x‐ray spectra emerging from an x‐ray tube. Part I. Electron penetration characteristics in x‐ray targets. Med. Phys., 34: 2164-2174. doi:10.1118/1.2734725
-.. [#Poludniowski2] Poludniowski, G.G. (2007), Calculation of x‐ray spectra emerging from an x‐ray tube. Part II. X‐ray production and filtration in x‐ray targets. Med. Phys., 34: 2175-2186. doi:10.1118/1.2734726
+.. [#Poludniowski1] Poludniowski G.G. and Evans, P.M. Calculation of x‐ray spectra emerging from an x‐ray tube. Part I. Electron penetration characteristics in x‐ray targets. Med. Phys., 34: 2164-2174 (2007). doi:10.1118/1.2734725
+.. [#Poludniowski2] Poludniowski G.G. Calculation of x‐ray spectra emerging from an x‐ray tube. Part II. X‐ray production and filtration in x‐ray targets. Med. Phys., 34: 2175-2186 (2007). doi:10.1118/1.2734726
+.. [#Hubbell] Hubbell J.H. et al Atomic form factors, incoherent scattering functions, and photon scattering cross sections, J. Phys. Chem. Ref. Data, Vol.4, No. 3, 1975
