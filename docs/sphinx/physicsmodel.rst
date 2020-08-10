@@ -156,6 +156,11 @@ with :math:`q_{max} = E/hc`. :math:`[F(q,Z)]^2/A(q_{max}^2)` can be used as a pr
 where :math:`r_2` is a random number in interval [0, 1). 
 
 
+Radiation sources modelled
+--------------------------
+Beskriv ulike kilder, koordinatsystemer, filtre og dosenormalisering.
+
+
 References
 ----------
 .. [#SUNDERMAN1998] Sunderman E. et al. A Fast Algorithm to Calculate the Exact Radiological Path Through a Pixel Or Voxel Space. Journal of Computing and Information Technology 6(1). December 1998.
