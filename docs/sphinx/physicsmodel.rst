@@ -21,7 +21,7 @@ The only material properties DXMClib cares for are mass attenuation coefficients
 .. _xraylib: https://github.com/tschoonj/xraylib
 
 Particle transport
-----------------
+------------------
 X-ray energies above 150 keV is rarely used in diagnostic imaging, for an electron with energy 150 keV the CSDA range in soft tissue is about 0.3 mm and on par with typical voxel size in CT imaging. DXMClib assumes that all interactions creating secondary electrons positions their energy in the current voxel. All photons are described simply by a position, unit direction vector, energy and weight. Of these only the weight attribute should need an explanation. Ideally all photons will have a weight of unity or one. The weight is introduced to simplify variations in fluence from a source, for example modeling of a CT bow-tie filter. Instead of randomly sampling photons with a fluence profile mimicking a bow-tie filter a flat fluence profile can be used instead and assigning photon weight according to the bow-tie fluence profile. The expectation weight of a large number of photons is 1.0 with the added effect that same number density of photons are simulated on the filter edge as at the center of the filter. 
 
 For efficient photon transport in a voxelized volume there are two suitable algorithms; calculating the radiologic path to compute interaction point [#SUNDERMAN1998]_ or Woodcock tracking [#WOODCOCK1965]_. While Siddons path algorithm by calculating the radiologic path through the whole volume to find an interaction point are suitable to track even a few photons it's quite inefficient compared to Woodcock tracking for large number of voxels. Woodcock tracking are perhaps best explained by introducing photon transport in a homogeneous volume first.
@@ -111,7 +111,7 @@ To sample the Klein-Nishina cross section an :math:`\epsilon` is uniformly sampl
 
 where :math:`r_1` is a random number in interval :math:`[0, 1]`. For the sampled :math:`\epsilon` calculate :math:`g` and :math:`\theta`. Draw a new random number :math:`r_2` in interval :math:`[0,1]`, if :math:`r_2 \leqslant g` accept the sampled :math:`\epsilon` (and :math:`\theta`) else repeat the process. 
 
-The sampling methods described above ignores any binding effects on the electron and will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction and is enabled by default by CMake option DXMC_USE_LOW_ENERGY_COMPTON. This correction takes into account Hubbel`s atomic form factor [#Hubbell]_. In this case the sampling is performed by the same procedure as a free electron except for a slighly modified rejection function:
+The sampling methods described above ignores any binding effects on the electron and will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction and is enabled by default by CMake option DXMC_USE_LOW_ENERGY_COMPTON. This correction takes into account Hubbel's atomic form factor [#Hubbell]_. In this case the sampling is performed by the same procedure as a free electron except for a slighly modified rejection function:
 
 .. math::
     g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right) \frac{SF(q)}{Z}
@@ -156,7 +156,7 @@ with :math:`q_{max} = E/hc`. :math:`[F(q,Z)]^2/A(q_{max}^2)` can be used as a pr
 where :math:`r_2` is a random number in interval [0, 1). 
 
 
-Radiation sources modelled
+Radiation sources
 --------------------------
 Beskriv ulike kilder, koordinatsystemer, filtre og dosenormalisering.
 
