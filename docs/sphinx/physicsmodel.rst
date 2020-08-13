@@ -58,7 +58,7 @@ Further transport of the photon is done by the ordinary method by sampling a ran
 
 Generating x-ray spectra
 ------------------------
-Since most diagnostic x-ray units do not emit monochromatic photon beams this library includes a x-ray spectra generator. The implementation uses a semi-analytical model proposed by Poludniowski [#Poludniowski1]_ [#Poludniowski2]_ for simulating a spectra from a pure tungsten anode. The model is valid tube potentials from 50kVp to 150 kVp but is accurate up to 300 kVp. The implementation allows for adding filtration of any material and to freely select tube potential and anode angle proving quite flexible. Since the model requires an evaluation of a double integral for each energy bin which is quite computational expensive this implementation is multi threaded. The same formalism is also used in the SpekCalc application also by Poludniowski et al. 
+Since most diagnostic x-ray units do not emit monochromatic photon beams this library includes a x-ray spectra generator. The implementation uses a semi-analytical model proposed by Poludniowski [#Poludniowski1]_ [#Poludniowski2]_ for simulating a spectra from a pure tungsten anode. The model is valid tube potentials from 50kVp to 150 kVp but is accurate up to 300 kVp. The implementation allows for adding filtration of any material and to freely select tube potential and anode angle proving quite flexible. Since the model requires an evaluation of a double integral for each energy bin which is quite computational expensive this implementation is multi threaded. The same formalism is also used in the SpekCalc application also by Poludniowski et al. The Heel effect is also modelled for collimated beams along the anode cathode direction, and is equivalent to a corresponding change in anode angle in the model proposed by Poludniowski.  
 
 Sampling photon energies from a specter is implemented by the squaring of histogram method which is quite fast after an initial generation of a lookup table. When an energy bin is sampled the photon energy is finally uniformly sampled within the bin width. 
 
@@ -158,6 +158,25 @@ where :math:`r_2` is a random number in interval [0, 1).
 
 Radiation sources
 --------------------------
+DXMClib models a few radiation sources that should cover most setups in clinical x-ray imaging:
+
+- DX: A x-ray tube source with rectangular collimation.
+- CT seq: A CT source for sequental og step and shoot imaging.
+- CT spiral: A CT source for spiral aqusitions.
+- CT dual: A CT source for dual energy aqusitions.
+- Pencil beam: A monochromatic pencil beam.
+- Isotropic beam: A rectangular collimated beam, either monochromatic or a user supplied specter.
+
+All of the radiation sources can be positioned arbitrary with the use of source direction cosines and a position vector, although most sources also implements som helper functions to make life easier. Source direction cosines are three orthonormal vectors with the first (:math:`\vec x`) perpendicular to the second vector (:math:`\vec y`) along the anode cathode direction. The third vector :math:`\vec z = \vec x \times \vec y` is along the beam direction. All vectors have basis in the world coordinate system. 
+
+All sources in DXMClib uses the concept of an *exposure* meaning a static position and direction where a number of photon histories are emitted. This makes hardly any sense for conventional x-ray examinations, but for CT examinations an exposure is a position around the patient where a number of photons is emitted.  
+
+.. NOTE::
+    Each exposure can run in parallell for computers with multiple cores (all computers nowadays). For optimal performance use atleast twice as many exposures as cores available. Note that number of exposures for CT sources can only be controlled indirectly by setting step angle between each exposure. 
+
+Number of histories per exposure can be set for every source. The optimal number of histories is dependent on the requirered resolution and certainties for a specific application. For example, calculating dose in a large volume of plastics requires much fewer histories compared to a detailed dose map of a CT examination. Voxel size also matters since reaching many events in a small voxel needs more histories. As a guideline, a detailed dose calculation on the voxel level for a thorax examination, either CT or DX, the total number of histories should be about :math:`10^{10}`.   
+
+
 Beskriv ulike kilder, koordinatsystemer, filtre og dosenormalisering.
 
 
@@ -168,3 +187,4 @@ References
 .. [#Poludniowski1] Poludniowski G.G. and Evans, P.M. Calculation of x‐ray spectra emerging from an x‐ray tube. Part I. Electron penetration characteristics in x‐ray targets. Med. Phys., 34: 2164-2174 (2007). doi:10.1118/1.2734725
 .. [#Poludniowski2] Poludniowski G.G. Calculation of x‐ray spectra emerging from an x‐ray tube. Part II. X‐ray production and filtration in x‐ray targets. Med. Phys., 34: 2175-2186 (2007). doi:10.1118/1.2734726
 .. [#Hubbell] Hubbell J.H. et al Atomic form factors, incoherent scattering functions, and photon scattering cross sections, J. Phys. Chem. Ref. Data, Vol.4, No. 3, 1975
+
