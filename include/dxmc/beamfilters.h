@@ -49,7 +49,7 @@ public:
 	 * @param  name of filter. Defaults to empty string.
 	 * @return name of filter. Defaults to empty string.
 	*/
-    std::string_view filterName(void) { return std::string_view { m_filterName }; }
+    const std::string& filterName(void) const { return m_filterName; }
     /**
 	 * @brief Set the name of the filter
 	 * This is provided so we can keep track of many filters if needed. 
@@ -289,7 +289,7 @@ public:
 	 * @param  name of filter. Defaults to empty string.
 	 * @return name of filter. Defaults to empty string.
 	*/
-    std::string_view filterName(void) { return std::string_view { m_filterName }; }
+    const std::string& filterName(void) const { return m_filterName; }
     /**
 	 * @brief Set the name of the filter
 	 * This is provided so we can keep track of many filters if needed. 
@@ -327,7 +327,7 @@ public:
 	 * @param  name of filter. Defaults to empty string.
 	 * @return name of filter. Defaults to empty string.
 	*/
-    std::string_view filterName(void) { return std::string_view { m_filterName }; }
+    const std::string& filterName(void) const { return m_filterName; }
     /**
 	 * @brief Set the name of the filter
 	 * This is provided so we can keep track of many filters if needed. 
