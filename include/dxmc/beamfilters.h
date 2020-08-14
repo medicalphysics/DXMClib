@@ -21,6 +21,7 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/world.h"
 
 #include <array>
+#include <string>
 #include <vector>
 
 /**
@@ -42,6 +43,23 @@ public:
 	 * @return double Photon weight
 	 */
     virtual double sampleIntensityWeight(const double angle) const = 0;
+    /**
+	 * @brief Get the name of the filter
+	 * This is provided so we can keep track of many filters if needed. 
+	 * @param  name of filter. Defaults to empty string.
+	 * @return name of filter. Defaults to empty string.
+	*/
+    std::string_view filterName(void) { return std::string_view { m_filterName }; }
+    /**
+	 * @brief Set the name of the filter
+	 * This is provided so we can keep track of many filters if needed. 
+	 * @param  name of filter. Defaults to empty string.
+	 * @return name of filter. Defaults to empty string.
+	*/
+    void setFilterName(const std::string& name) { m_filterName = name; }
+
+private:
+    std::string m_filterName = "";
 };
 
 /**
@@ -265,6 +283,20 @@ public:
     std::size_t energySize() const { return m_energySize; }
     std::size_t angleSize() const { return m_angleSize; }
     const std::vector<double>& weights() const { return m_weights; }
+    /**
+	 * @brief Get the name of the filter
+	 * This is provided so we can keep track of many filters if needed. 
+	 * @param  name of filter. Defaults to empty string.
+	 * @return name of filter. Defaults to empty string.
+	*/
+    std::string_view filterName(void) { return std::string_view { m_filterName }; }
+    /**
+	 * @brief Set the name of the filter
+	 * This is provided so we can keep track of many filters if needed. 
+	 * @param  name of filter. Defaults to empty string.
+	 * @return name of filter. Defaults to empty string.
+	*/
+    void setFilterName(const std::string& name) { m_filterName = name; }
 
 private:
     double m_energyStep = 2.0;
@@ -276,6 +308,7 @@ private:
     std::size_t m_angleSize = 5;
     std::vector<double> m_energies;
     std::vector<double> m_weights; //vector of m_angleSize*m_energySize weights
+    std::string m_filterName = "";
 };
 
 class AECFilter {
@@ -288,6 +321,20 @@ public:
     bool isValid() const { return m_valid; }
     const std::vector<double>& mass() const { return m_mass; }
     const std::vector<double>& massIntensity() const { return m_massIntensity; }
+    /**
+	 * @brief Get the name of the filter
+	 * This is provided so we can keep track of many filters if needed. 
+	 * @param  name of filter. Defaults to empty string.
+	 * @return name of filter. Defaults to empty string.
+	*/
+    std::string_view filterName(void) { return std::string_view { m_filterName }; }
+    /**
+	 * @brief Set the name of the filter
+	 * This is provided so we can keep track of many filters if needed. 
+	 * @param  name of filter. Defaults to empty string.
+	 * @return name of filter. Defaults to empty string.
+	*/
+    void setFilterName(const std::string& name) { m_filterName = name; }
 
 protected:
     void generateMassWeightMap(std::vector<double>::const_iterator densBeg, std::vector<double>::const_iterator densEnd, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
@@ -302,4 +349,5 @@ private:
     double m_positionMin = 0.0;
     double m_positionMax = 0.0;
     std::vector<double> m_positionIntensity;
+    std::string m_filterName = "";
 };
