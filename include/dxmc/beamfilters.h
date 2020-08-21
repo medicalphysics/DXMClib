@@ -63,9 +63,9 @@ private:
 };
 
 /**
- * @brief Class for simple CT bowtie filter modelling. 
+ * @brief Class for simple CT bowtie filter modeling. 
  * 
- * Filter to adjust photon weight based on a measured bowtie filter profile. Note that beamhardening of a specter is not modelled
+ * Filter to adjust photon weight based on a measured bowtie filter profile. Note that beamhardening of a specter is not modeled
  * and the bowtie filter simply adjust photon fluence according to a profile. 
  */
 class BowTieFilter : public BeamFilter {
@@ -117,7 +117,7 @@ private:
 };
 
 /**
- * @brief Filter for modelling of organ exposure control for Siemens CT scanners (XCare).
+ * @brief Filter for modeling of organ exposure control for Siemens CT scanners (XCare).
  * 
  * This filter modifies a particle's weight along the rotation angle in the same manner as Simens have iplementet on some CT scanner models.
  * The result is decreased fluence (photon weight) along the filters span angle and increased fluence outside the filter angle. The mean photon weight over all angles in a rotation is unity. 
@@ -246,7 +246,7 @@ public:
     /**
 	 * @brief Photon weight for angles outside span angle
 	 * 
-	 * Highets photon weight outside span angle. This value is calculated such that mean weight from all angles is 1.0
+	 * Highest photon weight outside span angle. This value is calculated such that mean weight from all angles is 1.0
 	 * @return double Photon hight weight
 	 */
     double highWeight() const;
@@ -271,7 +271,7 @@ private:
 /**
  * @brief Filter to model Heel effect of a tube.
  * 
- * Filter for modelling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects. 
+ * Filter for modeling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects. 
  * 
  */
 class HeelFilter {
