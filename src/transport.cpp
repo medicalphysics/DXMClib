@@ -23,7 +23,7 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <memory>
 #include <mutex>
-#include <thread>
+//#include <thread>
 
 namespace transport {
 
@@ -35,10 +35,10 @@ constexpr double RUSSIAN_RULETTE_ENERGY_THRESHOLD = 10.0; // keV
 constexpr double ENERGY_CUTOFF_THRESHOLD = 1.0; // keV
 constexpr double KEV_TO_MJ = 1.6021773e-13;
 
-std::mutex DOSE_MUTEX;
+/*std::mutex DOSE_MUTEX;
 std::mutex TALLY_MUTEX;
 std::mutex VARIANCE_MUTEX;
-
+*/
 constexpr double N_ERROR = 1.0e-9;
 
 /*
@@ -49,7 +49,7 @@ constexpr double N_ERROR = 1.0e-9;
 		atomicValue.fetch_add(addValue);
 	}
 	*/
-inline void safeEnergyAdd(double& value, const double addValue)
+/*inline void safeEnergyAdd(double& value, const double addValue)
 {
     std::scoped_lock guard(DOSE_MUTEX);
     value += addValue;
@@ -66,6 +66,8 @@ inline void safeVarianceAdd(double& value, const double addValue)
     std::scoped_lock guard(VARIANCE_MUTEX);
     value += addValue;
 }
+*/
+
 
 void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& state, double& cosAngle)
 {
@@ -182,7 +184,7 @@ inline std::size_t indexFromPosition(const double pos[3], const World& world)
     return idx;
 }
 
-bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, double& varianceAdress, RandomState& state, bool& updateMaxAttenuation)
+bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, Result* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation)
 {
     const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
     const double attPhoto = atts[0];
@@ -192,9 +194,9 @@ bool computeInteractionsForced(const double eventProbability, const AttenuationL
 
     const double weightCorrection = eventProbability * attPhoto / attenuationTotal;
     const double energyImparted = p.energy * p.weight * weightCorrection;
-    safeEnergyAdd(doseAdress, energyImparted);
-    safeTallyAdd(tallyAdress);
-    safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+    safeValueAdd(result->dose[resultBufferIdx], energyImparted, result->locks[resultBufferIdx].dose);
+    safeValueAdd(result->nEvents[resultBufferIdx], std::uint32_t { 1 }, result->locks[resultBufferIdx].nEvents);
+    safeValueAdd(result->variance[resultBufferIdx], energyImparted * energyImparted, result->locks[resultBufferIdx].variance);
     p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
 
     const double r2 = state.randomUniform<double>();
@@ -214,18 +216,18 @@ bool computeInteractionsForced(const double eventProbability, const AttenuationL
                 [[unlikely]]
                 {
                     const double energyImparted = (e + p.energy) * p.weight;
-                    safeEnergyAdd(doseAdress, energyImparted);
-                    safeTallyAdd(tallyAdress);
-                    safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                    safeValueAdd(result->dose[resultBufferIdx], energyImparted, result->locks[resultBufferIdx].dose);
+                    safeValueAdd(result->nEvents[resultBufferIdx], std::uint32_t { 1 }, result->locks[resultBufferIdx].nEvents);
+                    safeValueAdd(result->variance[resultBufferIdx], energyImparted * energyImparted, result->locks[resultBufferIdx].variance);
                     return false;
                 }
             else
                 [[likely]]
                 {
                     const double energyImparted = e * p.weight;
-                    safeEnergyAdd(doseAdress, energyImparted);
-                    safeTallyAdd(tallyAdress);
-                    safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                    safeValueAdd(result->dose[resultBufferIdx], energyImparted, result->locks[resultBufferIdx].dose);
+                    safeValueAdd(result->nEvents[resultBufferIdx], std::uint32_t { 1 }, result->locks[resultBufferIdx].nEvents);
+                    safeValueAdd(result->variance[resultBufferIdx], energyImparted * energyImparted, result->locks[resultBufferIdx].variance);
                     updateMaxAttenuation = true;
                 }
         } else // Rayleigh scatter event
@@ -236,7 +238,7 @@ bool computeInteractionsForced(const double eventProbability, const AttenuationL
     }
     return true;
 }
-bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, double& doseAdress, std::uint32_t& tallyAdress, double& varianceAdress, RandomState& state, bool& updateMaxAttenuation)
+bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, Result* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation)
 {
     const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
     const double attPhoto = atts[0];
@@ -247,9 +249,9 @@ bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsi
     if (r3 <= attPhoto) // Photoelectric event
     {
         const double energyImparted = p.energy * p.weight;
-        safeEnergyAdd(doseAdress, energyImparted);
-        safeTallyAdd(tallyAdress);
-        safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+        safeValueAdd(result->dose[resultBufferIdx], energyImparted, result->locks[resultBufferIdx].dose);
+        safeValueAdd(result->nEvents[resultBufferIdx], std::uint32_t { 1 }, result->locks[resultBufferIdx].nEvents);
+        safeValueAdd(result->variance[resultBufferIdx], energyImparted * energyImparted, result->locks[resultBufferIdx].variance);
         p.energy = 0.0;
         return false;
     } else if (r3 <= attPhoto + attCompt) // Compton event
@@ -264,18 +266,18 @@ bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsi
             [[unlikely]]
             {
                 const double energyImparted = (e + p.energy) * p.weight;
-                safeEnergyAdd(doseAdress, energyImparted);
-                safeTallyAdd(tallyAdress);
-                safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                safeValueAdd(result->dose[resultBufferIdx], energyImparted, result->locks[resultBufferIdx].dose);
+                safeValueAdd(result->nEvents[resultBufferIdx], std::uint32_t { 1 }, result->locks[resultBufferIdx].nEvents);
+                safeValueAdd(result->variance[resultBufferIdx], energyImparted * energyImparted, result->locks[resultBufferIdx].variance);
                 return false;
             }
         else
             [[likely]]
             {
                 const double energyImparted = e * p.weight;
-                safeEnergyAdd(doseAdress, energyImparted);
-                safeTallyAdd(tallyAdress);
-                safeVarianceAdd(varianceAdress, energyImparted * energyImparted);
+                safeValueAdd(result->dose[resultBufferIdx], energyImparted, result->locks[resultBufferIdx].dose);
+                safeValueAdd(result->nEvents[resultBufferIdx], std::uint32_t { 1 }, result->locks[resultBufferIdx].nEvents);
+                safeValueAdd(result->variance[resultBufferIdx], energyImparted * energyImparted, result->locks[resultBufferIdx].variance);
                 updateMaxAttenuation = true;
             }
     } else // Rayleigh scatter event
@@ -292,10 +294,7 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
     const double* densityBuffer = world.densityBuffer();
     const unsigned char* materialBuffer = world.materialIndexBuffer();
     const std::uint8_t* measurementBuffer = world.measurementMapBuffer();
-    double* energyImparted = result->dose.data();
-    auto* tally = result->nEvents.data();
-    double* variance = result->variance.data();
-
+    
     double maxAttenuationInv;
     bool updateMaxAttenuation = true;
     bool continueSampling = true;
@@ -321,15 +320,15 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
                 [[likely]] // naive sampling
                 {
                     const double r2 = state.randomUniform<double>();
-                    if (r2 < eventProbability) // an event will happend
+                    if (r2 < eventProbability) // an event will happen
                     {
-                        continueSampling = computeInteractions(lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
+                        continueSampling = computeInteractions(lutTable, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
                 }
             else
                 [[unlikely]] // forced photoelectric effect
                 {
-                    continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, energyImparted[bufferIdx], tally[bufferIdx], variance[bufferIdx], state, updateMaxAttenuation);
+                    continueSampling = computeInteractionsForced(eventProbability, lutTable, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                 }
 
             if (continueSampling) {
@@ -446,7 +445,7 @@ void parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result* resu
                 if (progressbar->cancel())
                     return;
             source->getExposure(exposure, i);
-            auto pos = source->position();
+            const auto& pos = source->position();
             exposure.subtractPosition(pos); // aligning to center of phantom
             exposure.setPositionZ(0.0);
             exposure.alignToDirectionCosines(worldBasis);
@@ -494,7 +493,7 @@ void computeResultVariance(Result& res)
     }
 }
 
-void energyImpartedToDose(const World& world, Result& res, const double calibrationValue)
+void energyImpartedToDose(const World& world, Result res, const double calibrationValue)
 {
     auto spacing = world.spacing();
     const double voxelVolume = spacing[0] * spacing[1] * spacing[2] / 1000.0; // cm3
@@ -514,14 +513,8 @@ void energyImpartedToDose(const World& world, Result& res, const double calibrat
 
 Result run(const World& world, Source* source, ProgressBar* progressbar, bool calculateDose)
 {
-    Result result;
-    result.dose.resize(world.size());
-    result.nEvents.resize(world.size());
-    result.variance.resize(world.size());
-    std::fill(result.dose.begin(), result.dose.end(), 0.0);
-    std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
-    std::fill(result.variance.begin(), result.variance.end(), 0.0);
-
+    Result result(world.size());
+    
     if (!source)
         return result;
 
@@ -570,14 +563,8 @@ Result run(const World& world, Source* source, ProgressBar* progressbar, bool ca
 
 Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressbar)
 {
-    Result result;
-    result.dose.resize(world.size());
-    result.nEvents.resize(world.size());
-    result.variance.resize(world.size());
-    std::fill(result.dose.begin(), result.dose.end(), 0.0);
-    std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
-    std::fill(result.variance.begin(), result.variance.end(), 0.0);
-
+    Result result(world.size());
+    
     if (!source)
         return result;
 

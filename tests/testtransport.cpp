@@ -4,6 +4,34 @@
 #include "xraylib.h"
 #include <iostream>
 
+
+void addValue(transport::Result* res)
+{
+    const double add = 1.0;
+    for (std::size_t i = 0; i < 1000; ++i)
+        for (std::size_t j = 0; j < 10; ++j)
+            transport::safeValueAdd(res->dose[j], add, res->locks[j].dose);
+
+}
+
+bool testAtomic()
+{
+    transport::Result res(10);
+
+    std::vector<std::thread> v;
+    for (int n = 0; n < 10; ++n) {
+        v.emplace_back(addValue, &res);
+    }
+    for (auto& t : v) {
+        t.join();
+    }
+    for (auto el : res.dose)
+        std::cout << el << ", " << 1000 << std::endl;
+    return true;
+}
+
+
+
 bool testCompton(double keV, const Material& mat)
 {
     constexpr std::size_t nHist = 100;
@@ -103,12 +131,13 @@ bool testRayleight(double keV, const Material& mat)
 
 int main(int argc, char* argv[])
 {
+    testAtomic();
 
     //testCompton(30.0);
     //Material mat("Water, Liquid");
-    Material mat(6);
+    //Material mat(6);
     //Material mat(8);
     //testRayleight(10, mat);
-    testCompton(10, mat);
+    //testCompton(10, mat);
     return 0;
 }
