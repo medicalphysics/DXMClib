@@ -176,10 +176,6 @@ All sources in DXMClib uses the concept of an *exposure* meaning a static positi
 
 Number of histories per exposure can be set for every source. The optimal number of histories is dependent on the requirered resolution and certainties for a specific application. For example, calculating dose in a large volume of plastics requires much fewer histories compared to a detailed dose map of a CT examination. Voxel size also matters since reaching many events in a small voxel needs more histories. As a guideline, a detailed dose calculation on the voxel level for a thorax examination, either CT or DX, the total number of histories should be about :math:`10^{10}`.   
 
-
-Beskriv ulike kilder, koordinatsystemer, filtre og dosenormalisering.
-
-
 References
 ----------
 .. [#SUNDERMAN1998] Sunderman E. et al. A Fast Algorithm to Calculate the Exact Radiological Path Through a Pixel Or Voxel Space. Journal of Computing and Information Technology 6(1). December 1998.

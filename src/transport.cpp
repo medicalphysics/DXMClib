@@ -34,11 +34,6 @@ constexpr double RUSSIAN_RULETTE_PROBABILITY = 0.8;
 constexpr double RUSSIAN_RULETTE_ENERGY_THRESHOLD = 10.0; // keV
 constexpr double ENERGY_CUTOFF_THRESHOLD = 1.0; // keV
 constexpr double KEV_TO_MJ = 1.6021773e-13;
-
-/*std::mutex DOSE_MUTEX;
-std::mutex TALLY_MUTEX;
-std::mutex VARIANCE_MUTEX;
-*/
 constexpr double N_ERROR = 1.0e-9;
 
 /*
@@ -49,25 +44,6 @@ constexpr double N_ERROR = 1.0e-9;
 		atomicValue.fetch_add(addValue);
 	}
 	*/
-/*inline void safeEnergyAdd(double& value, const double addValue)
-{
-    std::scoped_lock guard(DOSE_MUTEX);
-    value += addValue;
-}
-
-template <typename T>
-inline void safeTallyAdd(T& value)
-{
-    std::scoped_lock guard(TALLY_MUTEX);
-    value += static_cast<T>(1);
-}
-inline void safeVarianceAdd(double& value, const double addValue)
-{
-    std::scoped_lock guard(VARIANCE_MUTEX);
-    value += addValue;
-}
-*/
-
 
 void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& state, double& cosAngle)
 {
@@ -80,13 +56,9 @@ void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, co
 
     do {
         const double r1 = state.randomUniform<double>();
-
         const double aatq = amax * r1;
-
         const double q = attLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
-
         cosAngle = attLut.cosAngle(particle.energy, q);
-
     } while ((0.5 + cosAngle * cosAngle * 0.5) < state.randomUniform<double>());
 
     const double theta = std::acos(cosAngle);
@@ -294,7 +266,7 @@ void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Re
     const double* densityBuffer = world.densityBuffer();
     const unsigned char* materialBuffer = world.materialIndexBuffer();
     const std::uint8_t* measurementBuffer = world.measurementMapBuffer();
-    
+
     double maxAttenuationInv;
     bool updateMaxAttenuation = true;
     bool continueSampling = true;
@@ -421,7 +393,7 @@ void parallellRun(const World& w, const Source* source, Result* result,
     std::uint64_t expBegThread = expBeg;
     std::uint64_t expEndThread = expBegThread + threadLen;
     for (std::size_t i = 0; i < nJobs - 1; ++i) {
-        jobs.push_back(std::thread(parallellRun, w, source, result, expBegThread, expEndThread, 1, progressbar));
+        jobs.emplace_back(parallellRun, w, source, result, expBegThread, expEndThread, 1, progressbar);
         expBegThread = expEndThread;
         expEndThread = expBegThread + threadLen;
     }
@@ -463,8 +435,7 @@ void parallellRunCtdi(const CTDIPhantom& w, const CTSource* source, Result* resu
     std::uint64_t expBegThread = expBeg;
     std::uint64_t expEndThread = expBegThread + threadLen;
     for (std::size_t i = 0; i < nJobs - 1; ++i) {
-        //jobs.push_back(std::async(std::launch::async, parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar));
-        jobs.push_back(std::thread(parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar));
+        jobs.emplace_back(parallellRunCtdi, w, source, result, expBegThread, expEndThread, 1, progressbar);
         expBegThread = expEndThread;
         expEndThread = expBegThread + threadLen;
     }
@@ -514,7 +485,7 @@ void energyImpartedToDose(const World& world, Result res, const double calibrati
 Result run(const World& world, Source* source, ProgressBar* progressbar, bool calculateDose)
 {
     Result result(world.size());
-    
+
     if (!source)
         return result;
 
@@ -564,7 +535,7 @@ Result run(const World& world, Source* source, ProgressBar* progressbar, bool ca
 Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressbar)
 {
     Result result(world.size());
-    
+
     if (!source)
         return result;
 

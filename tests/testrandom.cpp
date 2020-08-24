@@ -40,8 +40,8 @@ void testUniform()
         std::cout << S / N << ", " << t << ", " << diff << "\n";
     }
 
-    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), 0) << "\n";
-    assert(std::accumulate(pcg.cbegin(), pcg.cend(), 0) == S);
+    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) << "\n";
+    assert(std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) == S);
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -75,8 +75,8 @@ void testUniformRange() {
         std::cout << S / N << ", " << t << ", " << diff << "\n";
     }
 
-    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), 0) << "\n";
-    assert(std::accumulate(pcg.cbegin(), pcg.cend(), 0) == S);
+    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) << "\n";
+    assert(std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) == S);
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
 
@@ -111,8 +111,8 @@ void testUniformIndex()
         std::cout << S / N << ", " << t << ", " << diff << "\n";
     }
 
-    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), 0) << "\n";
-    assert(std::accumulate(pcg.cbegin(), pcg.cend(), 0) == S);
+    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) << "\n";
+    assert(std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) == S);
 
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds> (end - start);

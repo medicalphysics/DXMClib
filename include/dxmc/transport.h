@@ -41,6 +41,9 @@ void safeValueAdd(T& value, const T addValue, std::atomic_flag& lock)
     lock.clear(std::memory_order_release);
 }
 
+/**
+ * @brief A simple holder for atomic locks while we wait for atomic_ref support in all major compilers
+*/
 struct resultLock {
     std::atomic_flag dose;
     std::atomic_flag nEvents;
@@ -57,6 +60,7 @@ struct resultLock {
     {
     }
 };
+
 struct Result {
     std::vector<double> dose;
     std::vector<std::uint32_t> nEvents;
