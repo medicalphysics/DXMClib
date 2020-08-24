@@ -76,13 +76,8 @@ std::size_t RandomDistribution::sampleIndex()
     return sampleIndex(m_state);
 }
 
-std::size_t RandomDistribution::sampleIndex(RandomState &state) const
+std::size_t RandomDistribution::sampleIndex(RandomState& state) const
 {
-    /*const double r1 = state.randomUniform<double>();
-    const double r2 = state.randomUniform<double>();
-    std::size_t k = static_cast<std::size_t>(m_size * r1);
-    return r2 < m_probs[k] ? k : m_alias[k];
-    */
     const double r = state.randomUniform<double>();
     const double k = state.randomUniform<std::size_t>(m_size);
     return r < m_probs[k] ? k : m_alias[k];
@@ -98,7 +93,7 @@ double SpecterDistribution::sampleValue()
 {
     return sampleValue(m_state);
 }
-double SpecterDistribution::sampleValue(RandomState &state) const
+double SpecterDistribution::sampleValue(RandomState& state) const
 {
     const std::size_t ind = sampleIndex(state);
     return ind < m_energies.size() - 1 ? state.randomUniform(m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
