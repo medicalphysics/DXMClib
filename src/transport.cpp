@@ -23,10 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <memory>
 #include <mutex>
-//#include <thread>
 
 namespace transport {
-
 constexpr double ELECTRON_REST_MASS = 510.9989461; // keV
 constexpr double PI_VAL = 3.14159265358979323846264338327950288;
 constexpr double PI_VAL2 = PI_VAL + PI_VAL;
