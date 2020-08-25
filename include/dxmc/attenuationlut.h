@@ -283,13 +283,20 @@ private:
     double m_momtranfStep = 0;
 
     std::size_t m_nMaterials = 0;
-    std::vector<double>
-        m_attData; // energy, array-> total, photo, compton, rauleight
+    std::vector<double> m_attData; // energy, array-> total, photo, compton, rauleight
     std::vector<double> m_rayleighFormFactorSqr; // qsquared, array-> A(qsquared)
     std::vector<double> m_comptonScatterFactor;
     std::vector<double> m_maxMassAtt;
 };
 
+/**
+ * @brief Compute maximum mass-attenuation for this world
+ * @tparam It1 Iterator type
+ * @tparam It2 Iterator type
+ * @param materialIndexBegin Material index start iterator 
+ * @param materialIndexEnd Material index end iterator
+ * @param densityBegin Density array start iterator
+*/
 template <typename It1, typename It2>
 void AttenuationLut::generateMaxMassTotalAttenuation(It1 materialIndexBegin,
     It1 materialIndexEnd,

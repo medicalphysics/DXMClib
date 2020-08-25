@@ -22,8 +22,15 @@ Copyright 2019 Erlend Andersen
 #include <random>
 #include <vector>
 
+/**
+ * @brief Class for simple generation of random numbers
+ * This class aims to provide a small and fast PRNG, but should perhaps be replaced by a STL random generator.
+*/
 class RandomState {
 public:
+    /**
+     * @brief Initiate a RandomState with a seed from the local machine random device implementation.
+    */
     RandomState()
     {
         std::random_device d;
@@ -31,6 +38,10 @@ public:
         m_state[0] = static_cast<std::uint64_t>(dist(d));
         m_state[1] = static_cast<std::uint64_t>(dist(d));
     }
+    /**
+     * @brief Initiate RandomState with a custom seed
+     * @param state Pointer to a array with two unsigned 64 bit numbers. Both numbers must not be zero. 
+    */
     RandomState(std::uint64_t state[2])
     {
         m_state[0] = state[0];
@@ -53,7 +64,7 @@ public:
     }
 
     /**
-     * @brief Random uniform number in interval from 0 to max, exclusive
+     * @brief Generate random uniform number in interval from 0 to max, exclusive
      * @tparam T Type of number, either integral or floating point
      * @param max Max of range
      * @return Random number in range [0, max).
@@ -74,6 +85,13 @@ public:
             static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
     }
 
+    /**
+     * @brief Generate random uniform number in interval from 0 to max, exclusive
+     * @tparam T Type of number, either integral or floating point.
+     * @param min Min of range. 
+     * @param max Max of range.
+     * @return Random number in range [min, max).
+    */
     template <typename T>
     inline T randomUniform(const T min, const T max) noexcept
     {
@@ -89,9 +107,13 @@ public:
             static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
     }
 
-    // The function below is borrowed from:
-    // *Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
-    // Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
+    /**
+     * @brief Implementation of the pcg32 random number generator
+     * The function below is borrowed from:
+     * Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
+     * Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
+     * @return A random 32 bit unsigned integer. 
+    */
     inline std::uint32_t pcg32() noexcept
     {
         const std::uint64_t oldstate = m_state[0];

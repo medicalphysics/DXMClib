@@ -72,7 +72,7 @@ class BowTieFilter : public BeamFilter {
 public:
     /**
 	 * @brief Construct a new Bow Tie Filter object
-	 * 
+	 * Construct a new Bow Tie Filter object
 	 * 
 	 * @param angles A vector of angles in radians for the fluence profile. The filter is assumed to be symmetrical and only absolute values of angles are used.
 	 * @param weights Photon fluence for the corresponding angles. The fluence measurements are normalized such that the average photon weight is 1.0 when number of samples -> infinity. 
@@ -81,22 +81,22 @@ public:
 
     /**
 	 * @brief Construct a new Bow Tie Filter object
-	 * 
+	 * Construct a new Bow Tie Filter object
 	 * @param angleWeightsPairs A vector of angle in radians and photon fluence pairs.
 	 */
     BowTieFilter(const std::vector<std::pair<double, double>>& angleWeightsPairs);
 
     /**
 	 * @brief Construct a new Bow Tie Filter object from another BowTieFilter
-	 * 
+	 * Construct a new Bow Tie Filter object
 	 * @param other BowTiefilter
 	 */
     BowTieFilter(const BowTieFilter& other);
     virtual ~BowTieFilter() = default;
 
     /**
-	 * @brief Sample photon weight modifier for a photon with direction angle in radians along the first Source cosine direction 
-	 * 
+	 * @brief Sample photon weight
+	 * Sample photon weight modifier for a photon with direction angle in radians along the first Source cosine direction 
 	 * @param angle Photon angle in radians 
 	 * @return double Photon fluence weight modifier 
 	 */
@@ -104,12 +104,16 @@ public:
 
     /**
 	 * @brief Filter data
-	 * 
-	 * @return const std::vector<std::pair<double, double>>& A vector reference to angle in radians and normalized fluence weight pairs  
+	 * Returns a vector reference to angle in radians and normalized fluence weight pairs  
+	 * @return const std::vector<std::pair<double, double>>& Vector of <angle, weight> pairs
 	 */
     const std::vector<std::pair<double, double>>& data() const { return m_data; }
 
 protected:
+    /**
+     * @brief Normalize filter
+	 * Normalize filter such that expectation value of sampleIntensityWeight approches unity for large number of samples.
+    */
     void normalizeData();
 
 private:
@@ -239,14 +243,14 @@ public:
 	 * @brief Set photon weight in the filters span angle excluding angle ramps 
 	 * 
 	 * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
-	 * @param weight 
+	 * @param weight
 	 */
     void setLowWeight(double weight);
 
     /**
 	 * @brief Photon weight for angles outside span angle
 	 * 
-	 * Highest photon weight outside span angle. This value is calculated such that mean weight from all angles is 1.0
+	 * Highest photon weight outside span angle. This value is calculated such that expectation weight across all angles is 1.0
 	 * @return double Photon hight weight
 	 */
     double highWeight() const;
@@ -276,12 +280,41 @@ private:
  */
 class HeelFilter {
 public:
+    /**
+     * @brief Constructs a new Heel filter
+     * @param tube Tube to use when calculating Heel effect
+     * @param heel_angle_span Span angle in radians to calculate Heel effect. This should be atleast as large as the beam collimation from the radiation source.
+    */
     HeelFilter(const Tube& tube, const double heel_angle_span = 0.0);
+    /**
+     * @brief Update this filter with a new tube.
+     * @param tube Tube to use when calculating Heel effect
+     * @param heel_angle_span Span angle in radians to calculate Heel effect. This should be atleast as large as the beam collimation from the radiation source.
+    */
     void update(const Tube& tube, const double heel_angle_span = 0.0);
+    /**
+     * @brief Sample weight from angle and photon energy
+	 * The expectation value of weight from a large number of samples for a specific pfoton energy is normalized to unity. 
+     * @param angle Angle of photon direction in anode cathode direction of a tube.
+     * @param energy Ebergy in keV for photon. 
+     * @return Weight of photon.
+    */
     double sampleIntensityWeight(const double angle, const double energy) const;
-
+    /**
+     * @brief Size of energy bins used for interpolation
+     * @return 
+    */
     std::size_t energySize() const { return m_energySize; }
+    /**
+     * @brief Size of angle bins used for interpolation
+     * @return 
+    */
     std::size_t angleSize() const { return m_angleSize; }
+    /**
+     * @brief Buffer for angle and energy weights
+	 * A buffer of angle size * energy size of weights used to interpolate across photon energies and angles.  
+     * @return 
+    */
     const std::vector<double>& weights() const { return m_weights; }
     /**
 	 * @brief Get the name of the filter
@@ -311,15 +344,61 @@ private:
     std::string m_filterName = "";
 };
 
+/**
+ * @brief Filter to adjust photon weights according to a tube current profile for CT examinations.
+ * Filter to simulate automatic exposure control for CT examinations. This filter will match a given tube current profile to a denisty image to generate a lookup table of photon weights according to a ddensity profile. 
+*/
 class AECFilter {
 public:
+    /**
+     * @brief Constructs a new AECFilter
+     * @param densityImage Density array of size dimension[0]*dimension[1]*dimension[2]. 
+     * @param spacing Spacing of each voxel for the density array.
+     * @param dimensions Dimensions of the densityImage.
+     * @param exposuremapping Exposure along the z (3rd) dimension, must be of size dimension[2].
+    */
     AECFilter(const std::vector<double>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
+    /**
+     * @brief Constructs a new AECFilter
+     * @param densityImage Density array of size dimension[0]*dimension[1]*dimension[2]. 
+     * @param spacing Spacing of each voxel for the density array.
+     * @param dimensions Dimensions of the densityImage.
+     * @param exposuremapping Exposure along the z (3rd) dimension, must be of size dimension[2].
+    */
     AECFilter(std::shared_ptr<std::vector<double>>& densityImage, const std::array<double, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<double>& exposuremapping);
+    /**
+     * @brief Constructs a new AECFilter directly from mass and weight arrays
+     * @param mass Array of masses. Must be of same size as intensity array.
+     * @param intensity Array of intensity or exposure corresponding to each mass in mass array. Must be of same size as mass array
+    */
     AECFilter(const std::vector<double>& mass, const std::vector<double>& intensity);
+    /**
+     * @brief Sample weight of photon from a position in a world object.
+     * Sample AEC weight of photon originating from position. This function assumes that updateFromWorld is called with the same World object the position is generated from. The expected value of weight from a large number of samples across all valid positions (the extent of the world object) is unity.
+     * @param position Position to interpolate photon weight.
+     * @return photon weight
+    */
     double sampleIntensityWeight(const std::array<double, 3>& position) const;
+    /**
+     * @brief Update AECFilter from a World. 
+     * This function will generate position lookup tables based on world, such as that photon weights can be sampled from a position within the world object.
+     * @param world 
+    */
     void updateFromWorld(const World& world);
+    /**
+     * @brief Returns if the AECFilter is valid and has been updated from a world.
+     * @return 
+    */
     bool isValid() const { return m_valid; }
+    /**
+     * @brief Masses used for interpolation of photon weights
+     * @return Array of mass values
+    */
     const std::vector<double>& mass() const { return m_mass; }
+    /**
+     * @brief Intensities used for interpolation of photon weights
+     * @return Array of intensity values.
+    */
     const std::vector<double>& massIntensity() const { return m_massIntensity; }
     /**
 	 * @brief Get the name of the filter
