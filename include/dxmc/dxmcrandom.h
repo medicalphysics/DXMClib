@@ -127,11 +127,33 @@ public:
     std::uint64_t m_state[2];
 };
 
+/**
+ * @brief Class for sampling of random numbers from a specified descreet distribution. 
+ * Class for sampling of random numbers from a specified descreet distribution. This implementation use the filling of histogram method.
+*/
 class RandomDistribution {
 public:
+    /**
+     * @brief Initialize RandomDistribution class
+     * @param weights A vector of probabilities for each bin. Weights should be atleast of size two. The weights vector will be normalized such that sum of weights is unity.
+    */
     RandomDistribution(const std::vector<double>& weights);
+    /**
+     * @brief Sample an index from 0 to size() - 1 according to weights.
+     * @return index with probability according to weights[index].
+    */
     std::size_t sampleIndex();
+    /**
+     * @brief Sample an index from 0 to size() - 1 according to weights. This function is thread safe.
+     * @param state Random state for sampling of an index.
+     * @return index with probability according to weights[index].
+    */
     std::size_t sampleIndex(RandomState& state) const;
+    /**
+     * @brief Size of the weights vector
+     * @return Size of weights vector.
+    */
+    std::size_t size() const { return m_size; }
 
 protected:
     RandomState m_state;
@@ -143,11 +165,29 @@ private:
     std::size_t m_size = 0;
 };
 
+/**
+ * @brief Class for sampling of a specter of values according to a distribution.
+*/
 class SpecterDistribution : public RandomDistribution {
 public:
+    /**
+     * @brief Initialize specter distribution
+     * @param weights A vector of probabilities for each bin. Weights should be atleast of size two. The weights vector will be normalized such that sum of weights is unity.
+     * @param energies A vector of values that are sampled according to weights. Values must be monotomic increasing. Lenght of energies must be equal to lenght of weights.
+    */
     SpecterDistribution(const std::vector<double>& weights, const std::vector<double>& energies);
+    /**
+     * @brief Sample an energy value according to weights probabiliy. 
+     * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
+     * @return a random energy according to weights probability
+    */
     double sampleValue();
-    double sampleValue(RandomState& state) const; // thread safe
+    /**
+     * @brief Sample an energy value according to weights probabiliy. This function is thread safe.
+     * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
+     * @return a random energy according to weights probability
+    */
+    double sampleValue(RandomState& state) const;
 private:
     std::vector<double> m_energies;
 };
