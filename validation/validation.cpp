@@ -598,20 +598,20 @@ bool TG195Case42AbsorbedEnergy()
     }
     std::cout << "Position, Angle [deg], Collimation, Specter, Dose [eV/hist], N events, TG195 result [ev/hist], Difference, Difference [%], Total time[s], Total histories \n";
 
-    for (auto r : results_mono_10) {
+    for (const auto& r : results_mono_10) {
         std::cout << "Center,     " << r.angle << ", 10, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
         std::cout << "Pheriphery, " << r.angle << ", 10, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
         "\n";
     }
-    for (auto r : results_mono_80) {
+    for (const auto& r : results_mono_80) {
         std::cout << "Center,     " << r.angle << ", 80, mono, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
         std::cout << "Pheriphery, " << r.angle << ", 80, mono, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
     }
-    for (auto r : results_poly_10) {
+    for (const auto& r : results_poly_10) {
         std::cout << "Center,     " << r.angle << ", 10, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
         std::cout << "Pheriphery, " << r.angle << ", 10, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
     }
-    for (auto r : results_poly_80) {
+    for (const auto& r : results_poly_80) {
         std::cout << "Center,     " << r.angle << ", 80, poly, " << r.doseC << ", " << r.tallyC << ", " << r.doseC_TG195 << ", " << r.doseC - r.doseC_TG195 << ", " << (r.doseC / r.doseC_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
         std::cout << "Pheriphery, " << r.angle << ", 80, poly, " << r.doseP << ", " << r.tallyP << ", " << r.doseP_TG195 << ", " << r.doseP - r.doseP_TG195 << ", " << (r.doseP / r.doseP_TG195 - 1) * 100 << ", " << r.time_seconds << ", " << r.nHist << "\n";
     }

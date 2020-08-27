@@ -67,7 +67,7 @@ struct Result {
     std::vector<double> variance;
     std::vector<resultLock> locks;
 
-    std::chrono::duration<float> simulationTime;
+    std::chrono::duration<float> simulationTime {0};
 
     Result(std::size_t size)
     {
