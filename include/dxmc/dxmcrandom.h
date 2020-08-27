@@ -188,6 +188,7 @@ public:
      * @return a random energy according to weights probability
     */
     double sampleValue(RandomState& state) const;
+
 private:
     std::vector<double> m_energies;
 };

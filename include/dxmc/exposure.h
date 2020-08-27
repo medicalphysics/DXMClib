@@ -23,40 +23,126 @@ Copyright 2019 Erlend Andersen
 #include <array>
 #include <vector>
 
+/**
+ * @brief Simple struct to describe a photon 
+*/
 struct Particle {
+    /**
+     * @brief Position vector in three dimensions.
+    */
     double pos[3];
+    /**
+     * @brief Direction vector in three dimension. This vector is threated as a normal vector.
+    */
     double dir[3];
+    /**
+     * @brief Photon energy in keV.
+    */
     double energy;
+    /**
+     * @brief Photon relative weight.
+    */
     double weight;
 };
-
+/**
+ * @brief Class to describe an exposure.
+ * An exposure is used to describe a particle emitter where random distributions, position and, direction and collimation do not change for particles created.  
+*/
 class Exposure {
 public:
+    /**
+     * @brief Initialize the exposure class
+     * @param filter A BeamFilter to modify photon or particle weight according to the BeamFilter weight distribution. An example is a CT bowtie filter.
+     * @param specter A SpecterDistribution to sample photon energies, if null all particles will be emittet with same energy. (see set setMonoenergeticPhotonEnergy)
+     * @param heelFilter A HeelFilter to model the Heel effect of an x-ray tube. If null no Heel effect is modelled.
+    */
     Exposure(const BeamFilter* filter = nullptr, const SpecterDistribution* specter = nullptr, const HeelFilter* heelFilter = nullptr);
 
+    /**
+     * @brief Set position of the exposure and also each particle starting point. Initial value is zero in all dimensions.
+     * @param x 
+     * @param y 
+     * @param z 
+    */
     void setPosition(double x, double y, double z);
+    /**
+     * @brief Set position of the exposure and also each particle starting point. Initial value is zero in all dimensions.
+     * @param pos 
+    */
     void setPosition(const double pos[3]);
+    /**
+     * @brief Set position of the exposure and also each particle starting point. Initial value is zero in all dimensions.
+     * @param pos 
+    */
     void setPosition(const std::array<double, 3>& pos) { m_position = pos; }
+    /**
+     * @brief Set position of the exposure in the Z or third dimension.
+     * @param posZ 
+    */
     void setPositionZ(const double posZ) { m_position[2] = posZ; }
+    /**
+     * @brief Position of the exposure and also each particle starting point.
+     * @param  
+     * @return 
+    */
     const std::array<double, 3>& position(void) const;
 
+    /**
+     * @brief Add to current exposure position
+     * @param pos 
+    */
     void addPosition(const std::array<double, 3>& pos)
     {
         for (std::size_t i = 0; i < 3; ++i)
             m_position[i] += pos[i];
     }
+    /**
+     * @brief Subtract from the current position
+     * @param pos 
+    */
     void subtractPosition(const std::array<double, 3>& pos)
     {
         for (std::size_t i = 0; i < 3; ++i)
             m_position[i] -= pos[i];
     }
 
+    /**
+     * @brief Set the direction cosines for this exposure. 
+     * Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
+     * @param x1 
+     * @param x2 
+     * @param x3 
+     * @param y1 
+     * @param y2 
+     * @param y3 
+    */
     void setDirectionCosines(double x1, double x2, double x3, double y1, double y2, double y3);
+    /**
+     * @brief Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
+     * @param cosines 
+    */
     void setDirectionCosines(const double cosines[6]);
+    /**
+     * @brief Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
+     * @param cosines 
+    */
     void setDirectionCosines(const std::array<double, 6>& cosines);
+    /**
+     * @brief Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
+     * @param cosinesX 
+     * @param cosinesY 
+    */
     void setDirectionCosines(const std::array<double, 3>& cosinesX, const std::array<double, 3>& cosinesY);
+    /**
+     * @brief Direction cosines for the exposure 
+     * @return An array of six values where the first three is the X directional cosine and the last three is the Y directional cosine
+    */
     const std::array<double, 6>& directionCosines(void) const { return m_directionCosines; }
 
+    /**
+     * @brief Beam direction, given by X direction cosine cross Y direction cosine
+     * @return 
+    */
     const std::array<double, 3>& beamDirection(void) const { return m_beamDirection; }
 
     void setCollimationAngles(const double angles[2]);
