@@ -23,45 +23,51 @@ Copyright 2019 Erlend Andersen
 //Header library for simple 3D vector math
 
 namespace vectormath {
+template <typename T>
+concept Floating = std::is_floating_point_v<T>;
 
 template <typename T>
+concept Index = std::is_integral_v<T> && std::is_same<bool, T>::value == false;
+
+template <Floating T>
 inline T lenght_sqr(T vec[3])
 {
     const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
     return lsqr;
 }
 
-template <typename T>
+template <Floating T>
 inline T lenght(T vec[3])
 {
     const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
     return std::sqrt(lsqr);
 }
 
-template <typename T>
+template <Floating T>
 inline void normalize(T vec[3])
 {
     const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
-    const T norm = T(1) / std::sqrt(lsqr);
+    constexpr T one { 1 };
+    const T norm = one / std::sqrt(lsqr);
     vec[0] *= norm;
     vec[1] *= norm;
     vec[2] *= norm;
 }
 
-template <typename T>
+template <Floating T>
 inline T dot(const T v1[3], const T v2[3])
 {
     return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
 }
 
-template <typename T>
+template <Floating T>
 inline void cross(const T v1[3], const T v2[3], T res[3])
 {
     res[0] = v1[1] * v2[2] - v1[2] * v2[1];
     res[1] = v1[2] * v2[0] - v1[0] * v2[2];
     res[2] = v1[0] * v2[1] - v1[1] * v2[0];
 }
-template <typename T>
+template <Floating T>
 inline void cross(const T v1[6], T res[3])
 {
     res[0] = v1[1] * v1[5] - v1[2] * v1[4];
@@ -69,13 +75,13 @@ inline void cross(const T v1[6], T res[3])
     res[2] = v1[0] * v1[4] - v1[1] * v1[3];
 }
 
-template <typename T>
+template <Floating T>
 inline void rotate(T vec[3], const T axis[3], const T angle)
 {
     const T sang = std::sin(angle);
     const T cang = std::cos(angle);
-    constexpr T temp = T(1);
-    const T midt = (temp - cang) * dot(vec, axis);
+    constexpr T one { 1 };
+    const T midt = (one - cang) * dot(vec, axis);
 
     T out[3];
     out[0] = cang * vec[0] + midt * axis[0] + sang * (axis[1] * vec[2] - axis[2] * vec[1]);
@@ -87,7 +93,7 @@ inline void rotate(T vec[3], const T axis[3], const T angle)
     vec[2] = out[2];
 }
 
-template <typename T>
+template <Floating T>
 inline void projectToPlane(T vec[3], const T planeNormal[3])
 {
     const T d = dot(vec, planeNormal);
@@ -95,7 +101,7 @@ inline void projectToPlane(T vec[3], const T planeNormal[3])
         vec[i] = vec[i] - d * planeNormal[i];
 }
 
-template <typename T>
+template <Floating T>
 inline T angleBetween(const T vec1[3], const T vec2[3])
 {
     // Herons formula for numeric stable angle computation
@@ -112,7 +118,7 @@ inline T angleBetween(const T vec1[3], const T vec2[3])
     return static_cast<T>(2.0) * std::atan(std::sqrt(nom / den));
 }
 
-template <typename T>
+template <Floating T>
 inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
 {
     normalize(vec1);
@@ -124,7 +130,7 @@ inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
     return std::atan2(dot(cr, planeNormal), dot(vec1, vec2));
 }
 
-template <typename U, typename T>
+template <Index U, Floating T>
 inline U argmin3(const T vec[3])
 {
     const T x = std::abs(vec[0]);
@@ -133,7 +139,7 @@ inline U argmin3(const T vec[3])
     return x < y ? x < z ? 0 : 2 : y < z ? 1 : 2;
 }
 
-template <typename U, typename T>
+template <Index U, Floating T>
 inline U argmax3(const T vec[3])
 {
     const T x = std::abs(vec[0]);
@@ -142,14 +148,14 @@ inline U argmax3(const T vec[3])
     return x > y ? x > z ? 0 : 2 : y > z ? 1 : 2;
 }
 
-template <typename T>
+template <Floating T>
 inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3])
 {
     newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
     newVector[1] = b1[1] * vector[0] + b2[1] * vector[1] + b3[1] * vector[2];
     newVector[2] = b1[2] * vector[0] + b2[2] * vector[1] + b3[2] * vector[2];
 }
-template <typename T>
+template <Floating T>
 inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], T vector[3])
 {
     T newVector[3];
@@ -161,7 +167,7 @@ inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], T vector[3]
     vector[2] = newVector[2];
 }
 
-template <typename T>
+template <Floating T>
 inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3])
 {
     newVector[0] = b1[0] * vector[0] + b1[1] * vector[1] + b1[2] * vector[2];
@@ -169,7 +175,7 @@ inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], cons
     newVector[2] = b3[0] * vector[0] + b3[1] * vector[1] + b3[2] * vector[2];
 }
 
-template <typename T>
+template <Floating T>
 inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], T vector[3])
 {
     T newVector[3];
@@ -181,7 +187,7 @@ inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], T ve
     vector[2] = newVector[2];
 }
 
-template <typename T>
+template <Floating T>
 inline void peturb(T vec[3], const T theta, const T phi)
 {
     // rotates a unit vector theta degrees from its current direction
