@@ -110,13 +110,13 @@ bool testSourceAnglesMany()
 
 bool testCTCalibration()
 {
-    CTSpiralSource src;
+    CTAxialSource src;
     //src.setPitch(0.5);
     src.setExposureAngleStepDeg(1);
-    src.setHistoriesPerExposure(3000);
+    src.setHistoriesPerExposure(300000);
     auto prog = std::make_unique<ProgressBar>();
     //auto factor = src.getCalibrationValue();
-    auto handle = std::async(std::launch::async, &CTSpiralSource::getCalibrationValue, src, prog.get());
+    auto handle = std::async(std::launch::async, &CTAxialSource::getCalibrationValue, src, prog.get());
 
     using namespace std::chrono_literals;
     for (;;) {

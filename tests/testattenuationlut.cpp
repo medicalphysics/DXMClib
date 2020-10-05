@@ -13,6 +13,46 @@ bool isEqual(double a, double b)
     return std::abs(a - b) < ERRF;
 }
 
+bool testAttenuationLutXcom()
+{
+    std::vector<Material> mats;
+    mats.emplace_back("H62.95C12.91N1.17O22.78Na0.03P0.04S0.06Cl0.03K0.03");
+    mats.emplace_back(13);
+    mats[0].setStandardDensity(1.03);
+
+    AttenuationLut lut;
+    lut.setEnergyResolution(1.0);
+    
+
+    std::vector<double> energies {
+        1.0000, 10.0000, 15.0000, 20.0000, 30.0000, 40.0000, 50.0000, 54.6000, 60.0000, 80.0000, 100.0000, 150.0000, 200
+    };
+
+    lut.generate(mats, 1, 200);
+    std::cout << "Test XCOM Soft tissue\n";
+    std::cout << "Energy, Rayl, Compt, Photo, Total\n";
+    for (const auto e : energies) {
+        std::cout << e << ", ";
+        std::cout << lut.rayleightAttenuation(0, e) << ", ";
+        std::cout << lut.comptonAttenuation(0, e) << ", ";
+        std::cout << lut.photoelectricAttenuation(0, e) << ", ";
+        std::cout << lut.totalAttenuation(0, e) << "\n";
+    }
+    std::cout << "Test XCOM Aluminium\n";
+    std::cout << "Energy, Rayl, Compt, Photo, Total\n";
+    for (const auto e : energies) {
+        std::cout << e << ", ";
+        std::cout << lut.rayleightAttenuation(1, e) << ", ";
+        std::cout << lut.comptonAttenuation(1, e) << ", ";
+        std::cout << lut.photoelectricAttenuation(1, e) << ", ";
+        std::cout << lut.totalAttenuation(1, e) << "\n";
+    }
+
+
+
+    return false;
+}
+
 bool testAttenuationLutTG195()
 {
     constexpr double energy = 54.6;
@@ -68,6 +108,7 @@ bool testAttenuationLutTG195()
 
 int main(int argc, char* argv[])
 {
+    testAttenuationLutXcom();
     auto success = testAttenuationLutTG195();
     if (success)
         return EXIT_SUCCESS;

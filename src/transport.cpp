@@ -22,7 +22,6 @@ Copyright 2019 Erlend Andersen
 #include <atomic>
 #include <execution>
 #include <memory>
-#include <mutex>
 
 namespace transport {
 constexpr double ELECTRON_REST_MASS = 510.9989461; // keV
