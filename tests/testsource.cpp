@@ -1,5 +1,6 @@
 #include "dxmc/source.h"
 #include "dxmc/vectormath.h"
+#include "dxmc/transport.h"
 #include <cassert>
 #include <chrono>
 #include <future>
@@ -111,21 +112,35 @@ bool testSourceAnglesMany()
 bool testCTCalibration()
 {
     CTAxialSource src;
+    CTDIPhantom world(320);
+    World& w = world;
     //src.setPitch(0.5);
     src.setExposureAngleStepDeg(1);
-    src.setHistoriesPerExposure(300000);
+    src.setHistoriesPerExposure(100000);
+    
     auto prog = std::make_unique<ProgressBar>();
-    //auto factor = src.getCalibrationValue();
-    auto handle = std::async(std::launch::async, &CTAxialSource::getCalibrationValue, src, prog.get());
+    
+    auto res = transport::run(world, &src, prog.get(), true);
+    
+    typedef CTDIPhantom::HolePosition holePosition;
+    std::array<CTDIPhantom::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
-    using namespace std::chrono_literals;
-    for (;;) {
-        if (handle.wait_for(5s) == std::future_status::ready)
-            break;
-        std::cout << prog->getETA() << std::endl;
+    std::array<double, 5> measureDose;
+    measureDose.fill(0.0);
+    for (std::size_t i = 0; i < 5; ++i) {
+        auto holeIndices = world.holeIndices(position[i]);
+        for (auto idx : holeIndices)
+            measureDose[i] += res.dose[idx];
+        measureDose[i] /= static_cast<double>(holeIndices.size());
     }
-    auto factor = handle.get();
-
+    double pher = 0;
+    for (int i = 1; i < 5; ++i)
+        pher += measureDose[i];
+    pher /= 4.0;
+    double cent = measureDose[0];
+    double ctdi = pher * 2.0 / 3.0 + cent / 3.0;
+    if (ctdi > 0.990 || ctdi < 1.01)
+        return true;
     return false;
 }
 

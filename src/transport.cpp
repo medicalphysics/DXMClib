@@ -461,7 +461,7 @@ void computeResultVariance(Result& res)
     }
 }
 
-void energyImpartedToDose(const World& world, Result res, const double calibrationValue)
+void energyImpartedToDose(const World& world, Result& res, const double calibrationValue)
 {
     auto spacing = world.spacing();
     const double voxelVolume = spacing[0] * spacing[1] * spacing[2] / 1000.0; // cm3
@@ -522,7 +522,7 @@ Result run(const World& world, Source* source, ProgressBar* progressbar, bool ca
     computeResultVariance(result);
 
     if (calculateDose) {
-        double calibrationValue = source->getCalibrationValue(progressbar);
+        const double calibrationValue = source->getCalibrationValue(progressbar);
         //energy imparted to dose
         energyImpartedToDose(world, result, calibrationValue);
     }
