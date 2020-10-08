@@ -72,14 +72,9 @@ namespace transport {
 
         Result(std::size_t size)
         {
-            dose.resize(size);
-            std::fill(dose.begin(), dose.end(), 0.0);
-            nEvents.resize(size);
-            std::fill(nEvents.begin(), nEvents.end(), 0);
-            variance.resize(size);
-            std::fill(variance.begin(), variance.end(), 0.0);
-
-            locks.clear();
+            dose.resize(size, 0.0);
+            nEvents.resize(size, 0);
+            variance.resize(size, 0.0);
             locks.resize(size);
         }
     };
