@@ -28,23 +28,14 @@ Copyright 2019 Erlend Andersen
 #include <atomic>
 #include <chrono>
 #include <memory>
-#include <mutex>
+
 namespace dxmc {
 
 namespace transport {
 
-    template <typename T>
-    void safeValueAdd(T& value, const T addValue, std::atomic_flag& lock)
-    {
-        while (lock.test_and_set(std::memory_order_acquire)) // acquire lock
-            ; // spin
-        value += addValue;
-        lock.clear(std::memory_order_release);
-    }
-
     /**
- * @brief A simple holder for atomic locks while we wait for atomic_ref support in all major compilers
-*/
+     * @brief A simple holder for atomic locks while we wait for atomic_ref support in all major compilers
+    */
     struct resultLock {
         std::atomic_flag dose;
         std::atomic_flag nEvents;
