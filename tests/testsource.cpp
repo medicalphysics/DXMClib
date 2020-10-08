@@ -1,11 +1,14 @@
 #include "dxmc/source.h"
 #include "dxmc/vectormath.h"
 #include "dxmc/transport.h"
+
 #include <cassert>
 #include <chrono>
 #include <future>
 #include <iostream>
 #include <thread>
+
+using namespace dxmc;
 
 constexpr double RAD2DEG = 180.0 / 3.14159265359;
 constexpr double DEG2RAD = 1.0 / RAD2DEG;

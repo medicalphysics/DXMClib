@@ -22,6 +22,8 @@ Copyright 2019 Erlend Andersen
 #include <cmath>
 #include <string>
 
+namespace dxmc {
+
 constexpr double KEV_TO_ANGSTROM = 12.398520;
 
 void AttenuationLut::generate(const std::vector<Material>& materials,
@@ -297,4 +299,5 @@ void AttenuationLut::generateSFdata(const std::vector<Material>& materials)
         auto start = m_comptonScatterFactor.begin() + m_momtranfResolution + i * m_momtranfResolution;
         std::copy(sfmax.cbegin(), sfmax.cend(), start);
     }
+}
 }

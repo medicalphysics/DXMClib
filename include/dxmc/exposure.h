@@ -23,6 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <array>
 #include <vector>
 
+namespace dxmc {
+
 /**
  * @brief Simple struct to describe a photon 
 */
@@ -183,3 +185,4 @@ private:
     double m_monoenergeticPhotonEnergy = 0.0;
     std::size_t m_nHistories;
 };
+}

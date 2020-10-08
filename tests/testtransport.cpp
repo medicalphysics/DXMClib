@@ -1,9 +1,11 @@
 
 
 #include "dxmc/transport.h"
+
 #include "xraylib.h"
 #include <iostream>
 
+using namespace dxmc;
 
 void addValue(transport::Result* res)
 {

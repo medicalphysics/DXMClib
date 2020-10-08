@@ -28,6 +28,8 @@ Copyright 2019 Erlend Andersen
 #include <string>
 #include <vector>
 
+namespace dxmc {
+
 struct DoseProgressImageData {
     std::array<std::size_t, 2> dimensions = { 0, 0 };
     std::array<double, 2> spacing = { 0, 0 };
@@ -224,3 +226,4 @@ private:
     std::array<double, 3> m_doseSpacing = { 1, 1, 1 };
     Axis m_doseAxis = Axis::Y;
 };
+}

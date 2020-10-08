@@ -1,10 +1,13 @@
 
-#include "transport.h"
-#include "vectormath.h"
+#include "dxmc/transport.h"
+#include "dxmc/vectormath.h"
+
 #include <array>
 #include <fstream>
 #include <iostream>
 #include <string>
+
+using namespace dxmc;
 
 inline std::size_t index(std::size_t i, std::size_t j, std::size_t k, const std::size_t dim[3])
 {

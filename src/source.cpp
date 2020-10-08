@@ -23,6 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <future>
 #include <numeric>
 
+namespace dxmc {
+
 constexpr double PI = 3.14159265358979323846; /* pi */
 constexpr double PI_2 = 2.0 * PI;
 constexpr double DEG_TO_RAD = PI / 180.0;
@@ -953,4 +955,5 @@ void CTDualSource::updateSpecterDistribution()
 
         m_specterValid = true;
     }
+}
 }

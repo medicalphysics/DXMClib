@@ -19,6 +19,8 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/dxmcrandom.h"
 #include <numeric>
 
+namespace dxmc {
+
 RandomDistribution::RandomDistribution(const std::vector<double>& weights)
 {
     generateTable(weights);
@@ -97,4 +99,5 @@ double SpecterDistribution::sampleValue(RandomState& state) const
 {
     const std::size_t ind = sampleIndex(state);
     return ind < m_energies.size() - 1 ? state.randomUniform(m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
+}
 }

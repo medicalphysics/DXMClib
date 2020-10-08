@@ -24,6 +24,8 @@ Copyright 2019 Erlend Andersen
 #include <string>
 #include <vector>
 
+namespace dxmc {
+
 /**
  * @brief Base class for filters on a photon beam
  * 
@@ -430,3 +432,5 @@ private:
     std::vector<double> m_positionIntensity;
     std::string m_filterName = "";
 };
+
+}

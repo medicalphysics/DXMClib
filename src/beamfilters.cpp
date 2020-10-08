@@ -23,6 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <numeric>
 #include <vector>
 
+namespace dxmc {
+
 constexpr double PI = 3.14159265359;
 constexpr double PI_2 = PI + PI;
 constexpr double DEG_TO_RAD = PI / 180.0;
@@ -402,4 +404,5 @@ double HeelFilter::sampleIntensityWeight(const double angle, const double energy
         return interp(a0, a1, w0, w1, angle);
     }
     return m_weights[w_index];
+}
 }

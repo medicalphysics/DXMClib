@@ -1,8 +1,11 @@
 
 #include "dxmc/source.h"
 #include "dxmc/vectormath.h"
+
 #include <cassert>
 #include <iostream>
+
+using namespace dxmc;
 
 void testArgMax()
 {

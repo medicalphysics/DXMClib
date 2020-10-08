@@ -22,7 +22,7 @@ Copyright 2019 Erlend Andersen
 #include <atomic>
 #include <execution>
 #include <memory>
-
+namespace dxmc {
 namespace transport {
 constexpr double ELECTRON_REST_MASS = 510.9989461; // keV
 constexpr double PI_VAL = 3.14159265358979323846264338327950288;
@@ -564,5 +564,6 @@ Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressbar)
 
     energyImpartedToDose(world, result, 1.0);
     return result;
+}
 }
 }

@@ -22,6 +22,8 @@ Copyright 2019 Erlend Andersen
 #include <utility>
 #include <vector>
 
+namespace dxmc {
+
 constexpr double TUBEMAXVOLTAGE = 150.0;
 constexpr double TUBEMINVOLTAGE = 50.0;
 
@@ -75,3 +77,4 @@ private:
     bool m_hasCachedHVL = false;
     std::vector<std::pair<Material, double>> m_filtrationMaterials;
 };
+}

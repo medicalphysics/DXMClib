@@ -23,6 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <future>
 
+namespace dxmc {
+
 constexpr double AIRDENSITY = 0.001205; // g/cm3
 
 World::World()
@@ -397,4 +399,5 @@ const std::vector<std::size_t>& CTDIPhantom::holeIndices(CTDIPhantom::HolePositi
     else if (position == HolePosition::South)
         return m_holePositions[1];
     return m_holePositions[0];
+}
 }

@@ -12,6 +12,8 @@
 #include <iostream>
 #include <numeric>
 
+using namespace dxmc;
+
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
 constexpr std::size_t nExposures = 16;

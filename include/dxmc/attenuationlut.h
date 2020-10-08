@@ -30,6 +30,8 @@ Copyright 2019 Erlend Andersen
  * about 1000 keV (before pair production in electron fields may occur). This
  * class is typical used internally in the World class.
  */
+namespace dxmc {
+
 class AttenuationLut {
 public:
     /**
@@ -317,4 +319,5 @@ void AttenuationLut::generateMaxMassTotalAttenuation(It1 materialIndexBegin,
             m_maxMassAtt[i] = std::max(m_maxMassAtt[i], totalAttenuation(material, m_attData[i]) * maxDens[material]);
         }
     }
+}
 }

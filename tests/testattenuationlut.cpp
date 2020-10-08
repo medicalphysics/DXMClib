@@ -6,6 +6,8 @@
 #include <iostream>
 #include <vector>
 
+using namespace dxmc;
+
 constexpr double ERRF = 1E-4;
 
 bool isEqual(double a, double b)

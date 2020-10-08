@@ -23,6 +23,8 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <numeric>
 
+namespace dxmc {
+
 double Material::getPhotoelectricAttenuation(double energy) const
 {
     return CS_Photo_CP(m_name.c_str(), energy, nullptr);
@@ -230,4 +232,5 @@ void Material::setByMaterialName(const std::string& name)
         FreeCompoundDataNIST(m);
         m = nullptr;
     }
+}
 }

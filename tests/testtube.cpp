@@ -6,6 +6,8 @@
 
 #include "dxmc/tube.h"
 
+using namespace dxmc;
+
 constexpr double DOUBLEERRF = 1E-6;
 
 bool testHalfLayerCalculation()

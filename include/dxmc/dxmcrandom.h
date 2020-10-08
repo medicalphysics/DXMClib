@@ -22,6 +22,8 @@ Copyright 2019 Erlend Andersen
 #include <random>
 #include <vector>
 
+namespace dxmc {
+
 /**
  * @brief Class for simple generation of random numbers
  * This class aims to provide a small and fast PRNG, but should perhaps be replaced by a STL random generator.
@@ -192,3 +194,4 @@ public:
 private:
     std::vector<double> m_energies;
 };
+}

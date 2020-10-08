@@ -29,63 +29,65 @@ Copyright 2019 Erlend Andersen
 #include <chrono>
 #include <memory>
 #include <mutex>
+namespace dxmc {
 
 namespace transport {
 
-template <typename T>
-void safeValueAdd(T& value, const T addValue, std::atomic_flag& lock)
-{
-    while (lock.test_and_set(std::memory_order_acquire)) // acquire lock
-        ; // spin
-    value += addValue;
-    lock.clear(std::memory_order_release);
-}
+    template <typename T>
+    void safeValueAdd(T& value, const T addValue, std::atomic_flag& lock)
+    {
+        while (lock.test_and_set(std::memory_order_acquire)) // acquire lock
+            ; // spin
+        value += addValue;
+        lock.clear(std::memory_order_release);
+    }
 
-/**
+    /**
  * @brief A simple holder for atomic locks while we wait for atomic_ref support in all major compilers
 */
-struct resultLock {
-    std::atomic_flag dose;
-    std::atomic_flag nEvents;
-    std::atomic_flag variance;
-    resultLock()
-    {
-    }
+    struct resultLock {
+        std::atomic_flag dose;
+        std::atomic_flag nEvents;
+        std::atomic_flag variance;
+        resultLock()
+        {
+        }
 
-    resultLock(const resultLock& other)
-    {
-    }
+        resultLock(const resultLock& other)
+        {
+        }
 
-    resultLock& operator=(const resultLock& other)
-    {
-    }
-};
+        resultLock& operator=(const resultLock& other)
+        {
+        }
+    };
 
-struct Result {
-    std::vector<double> dose;
-    std::vector<std::uint32_t> nEvents;
-    std::vector<double> variance;
-    std::vector<resultLock> locks;
+    struct Result {
+        std::vector<double> dose;
+        std::vector<std::uint32_t> nEvents;
+        std::vector<double> variance;
+        std::vector<resultLock> locks;
 
-    std::chrono::duration<float> simulationTime {0};
+        std::chrono::duration<float> simulationTime { 0 };
 
-    Result(std::size_t size)
-    {
-        dose.resize(size);
-        std::fill(dose.begin(), dose.end(), 0.0);
-        nEvents.resize(size);
-        std::fill(nEvents.begin(), nEvents.end(), 0);
-        variance.resize(size);
-        std::fill(variance.begin(), variance.end(), 0.0);
+        Result(std::size_t size)
+        {
+            dose.resize(size);
+            std::fill(dose.begin(), dose.end(), 0.0);
+            nEvents.resize(size);
+            std::fill(nEvents.begin(), nEvents.end(), 0);
+            variance.resize(size);
+            std::fill(variance.begin(), variance.end(), 0.0);
 
-        locks.clear();
-        locks.resize(size);
-    }
-};
+            locks.clear();
+            locks.resize(size);
+        }
+    };
 
-double comptonScatter(Particle& particle, RandomState& seed, double& cosAngle);
-double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
-void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
-Result run(const World& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
-Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressBar = nullptr);
+    double comptonScatter(Particle& particle, RandomState& seed, double& cosAngle);
+    double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
+    void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
+    Result run(const World& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
+    Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressBar = nullptr);
+}
 }

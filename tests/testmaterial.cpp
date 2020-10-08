@@ -2,9 +2,12 @@
 
 #include "dxmc/material.h"
 #include "dxmc/transport.h"
+
 #include <cassert>
 #include <iostream>
 #include <numeric>
+
+using namespace dxmc;
 
 bool testMaterialParser()
 {

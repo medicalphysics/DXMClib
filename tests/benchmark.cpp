@@ -1,14 +1,16 @@
 
 
-#include "material.h"
-#include "transport.h"
-#include "world.h"
+#include "dxmc/material.h"
+#include "dxmc/transport.h"
+#include "dxmc/world.h"
 
 #include <algorithm>
 #include <array>
 #include <chrono>
 #include <execution>
 #include <iostream>
+
+using namespace dxmc;
 
 inline std::array<std::size_t, 3> index3(std::size_t idx, const std::array<std::size_t, 3>& dim)
 {

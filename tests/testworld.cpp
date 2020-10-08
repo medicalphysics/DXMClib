@@ -2,7 +2,10 @@
 
 #include "dxmc/transport.h"
 #include "dxmc/world.h"
+
 #include <iostream>
+
+using namespace dxmc;
 
 inline std::size_t index(std::size_t i, std::size_t j, std::size_t k, std::array<std::size_t, 3> dim)
 {

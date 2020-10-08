@@ -21,6 +21,8 @@ Copyright 2019 Erlend Andersen
 #include <string>
 #include <vector>
 
+namespace dxmc {
+
 class Material {
 public:
     Material(const std::string& xraylibMaterialNameOrCompound = "", const std::string& prettyName = "");
@@ -61,3 +63,4 @@ private:
     bool m_valid = false;
     bool m_hasDensity = false;
 };
+}

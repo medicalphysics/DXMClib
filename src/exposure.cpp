@@ -19,6 +19,8 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/exposure.h"
 #include "dxmc/vectormath.h"
 
+namespace dxmc {
+
 Exposure::Exposure(const BeamFilter* filter, const SpecterDistribution* specter, const HeelFilter* heelFilter)
 {
     for (std::size_t i = 0; i < 3; ++i) {
@@ -173,7 +175,7 @@ void Exposure::alignToDirectionCosines(const std::array<double, 6>& directionCos
     vectormath::changeBasisInverse(b1, b2, b3, m_beamDirection.data());
 }
 
-void Exposure::sampleParticle(Particle& p, RandomState &state) const
+void Exposure::sampleParticle(Particle& p, RandomState& state) const
 {
 
     p.pos[0] = m_position[0];
@@ -182,7 +184,7 @@ void Exposure::sampleParticle(Particle& p, RandomState &state) const
 
     // particle direction
     const double theta = state.randomUniform(-m_collimationAngles[0] / 2.0, m_collimationAngles[0] / 2.0);
-    const double phi = state.randomUniform( -m_collimationAngles[1] / 2.0, m_collimationAngles[1] / 2.0);
+    const double phi = state.randomUniform(-m_collimationAngles[1] / 2.0, m_collimationAngles[1] / 2.0);
     const double sintheta = std::sin(theta);
     const double sinphi = std::sin(phi);
     const double sin2theta = sintheta * sintheta;
@@ -205,4 +207,5 @@ void Exposure::sampleParticle(Particle& p, RandomState &state) const
     if (m_heelFilter) {
         p.weight *= m_heelFilter->sampleIntensityWeight(phi, p.energy);
     }
+}
 }

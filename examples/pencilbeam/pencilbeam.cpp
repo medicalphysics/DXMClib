@@ -10,6 +10,8 @@
 #include <memory>
 #include <numeric>
 
+using namespace dxmc;
+
 int main(int argc, char* argv[])
 {
     // Lets create a world that describes our voxelized model to score dose in.

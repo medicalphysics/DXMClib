@@ -1,12 +1,13 @@
 
-#include "attenuationlut.h"
-#include "dxmcrandom.h"
-#include "exposure.h"
-#include "material.h"
-#include "source.h"
-#include "transport.h"
-#include "vectormath.h"
-#include "world.h"
+#include "dxmc/attenuationlut.h"
+#include "dxmc/dxmcrandom.h"
+#include "dxmc/exposure.h"
+#include "dxmc/material.h"
+#include "dxmc/source.h"
+#include "dxmc/transport.h"
+#include "dxmc/vectormath.h"
+#include "dxmc/world.h"
+
 #include <xraylib.h>
 
 #include <array>
@@ -14,6 +15,8 @@
 #include <map>
 #include <memory>
 #include <vector>
+
+using namespace dxmc;
 
 constexpr double PIVAL = 3.14159265359;
 constexpr double RAD_TO_DEG = 180.0 / PIVAL;

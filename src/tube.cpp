@@ -26,6 +26,8 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/tube.h"
 #include "xraylib.h"
 
+namespace dxmc {
+
 //ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN
 constexpr double SIMULATED_ENERGY = 100.0; //Elektron energy [keV] for MonteCarlo simulation of electron penetration in tungsten
 
@@ -608,4 +610,5 @@ void Tube::normalizeSpecter(std::vector<double>& specter) const
 {
     double sum = std::reduce(std::execution::par, specter.begin(), specter.end());
     std::for_each(std::execution::par_unseq, specter.begin(), specter.end(), [=](double& n) { n = n / sum; });
+}
 }

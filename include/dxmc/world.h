@@ -28,6 +28,7 @@ Copyright 2019 Erlend Andersen
 #include <memory>
 #include <string>
 #include <vector>
+namespace dxmc {
 
 class World {
 public:
@@ -122,3 +123,4 @@ public:
 private:
     std::array<std::vector<std::size_t>, 5> m_holePositions;
 };
+}

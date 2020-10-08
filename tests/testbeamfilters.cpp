@@ -4,6 +4,8 @@
 #include "dxmc/dxmcrandom.h"
 #include "dxmc/tube.h"
 
+using namespace dxmc;
+
 bool testUniformWeights(const HeelFilter& filter, double angle_span, double energy)
 {
     std::uint64_t s[2];
