@@ -41,7 +41,7 @@ public:
         Pencil,
         Isotropic };
     Source();
-    virtual bool getExposure(Exposure& exposure, std::uint64_t i) const = 0;
+    virtual bool getExposure(Exposure<double>& exposure, std::uint64_t i) const = 0;
     virtual double maxPhotonEnergyProduced() const { return Tube::maxVoltage(); }
 
     void setPosition(const std::array<double, 3>& position) { m_position = position; }
@@ -121,7 +121,7 @@ class IsotropicSource final : public Source {
 public:
     IsotropicSource();
     virtual ~IsotropicSource() = default;
-    bool getExposure(Exposure& exposure, std::uint64_t exposureNumber) const override;
+    bool getExposure(Exposure<double>& exposure, std::uint64_t exposureNumber) const override;
     double maxPhotonEnergyProduced() const override
     {
         return m_maxPhotonEnergy;
@@ -159,7 +159,7 @@ class DXSource final : public Source {
 public:
     DXSource();
     virtual ~DXSource() = default;
-    bool getExposure(Exposure& exposure, std::uint64_t i) const override;
+    bool getExposure(Exposure<double>& exposure, std::uint64_t i) const override;
 
     Tube& tube(void)
     {
@@ -242,7 +242,7 @@ class CTSource : public Source {
 public:
     CTSource();
     virtual ~CTSource() = default;
-    virtual bool getExposure(Exposure& exposure, std::uint64_t i) const override = 0;
+    virtual bool getExposure(Exposure<double>& exposure, std::uint64_t i) const override = 0;
 
     Tube& tube(void)
     {
@@ -358,7 +358,7 @@ protected:
 class CTSpiralSource final : public CTSource {
 public:
     CTSpiralSource();
-    bool getExposure(Exposure& exposure, std::uint64_t i) const override;
+    bool getExposure(Exposure<double>& exposure, std::uint64_t i) const override;
     void setPitch(double pitch);
     double pitch(void) const;
     void setScanLenght(double scanLenght) override;
@@ -373,7 +373,7 @@ private:
 class CTAxialSource final : public CTSource {
 public:
     CTAxialSource();
-    bool getExposure(Exposure& exposure, std::uint64_t i) const override;
+    bool getExposure(Exposure<double>& exposure, std::uint64_t i) const override;
     void setStep(double step);
     double step(void) const;
     void setScanLenght(double scanLenght) override;
@@ -389,7 +389,7 @@ class CTDualSource final : public CTSource {
 public:
     //Source overrides
     CTDualSource();
-    bool getExposure(Exposure& exposure, std::uint64_t i) const override;
+    bool getExposure(Exposure<double>& exposure, std::uint64_t i) const override;
 
     double tubeAmas() const { return m_tubeAmas; }
     double tubeBmas() const { return m_tubeBmas; }

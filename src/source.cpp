@@ -86,7 +86,7 @@ IsotropicSource::IsotropicSource()
     m_specterDistribution = std::make_unique<SpecterDistribution>(weights, energies);
 }
 
-bool IsotropicSource::getExposure(Exposure& exposure, std::uint64_t exposureNumber) const
+bool IsotropicSource::getExposure(Exposure<double>& exposure, std::uint64_t exposureNumber) const
 {
     exposure.setNumberOfHistories(m_historiesPerExposure);
     exposure.setPosition(m_position);

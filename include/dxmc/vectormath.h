@@ -18,13 +18,15 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/floating.h"
+
 #include <cmath>
 #include <cstdint>
 //Header library for simple 3D vector math
 namespace dxmc {
 namespace vectormath {
-    template <typename T>
-    concept Floating = std::is_floating_point_v<T>;
+    //template <typename T>
+    //concept Floating = std::is_floating_point_v<T>;
 
     template <typename T>
     concept Index = std::is_integral_v<T>&& std::is_same<bool, T>::value == false;
@@ -115,7 +117,7 @@ namespace vectormath {
 
         const T nom = ((a - b) + c) * u;
         const T den = (a + (b + c)) * ((a - c) + b);
-        return static_cast<T>(2.0) * std::atan(std::sqrt(nom / den));
+        return T { 2.0 } * std::atan(std::sqrt(nom / den));
     }
 
     template <Floating T>
@@ -198,7 +200,7 @@ namespace vectormath {
 
         const auto minInd = argmin3<std::uint_fast32_t, T>(vec);
 
-        k[minInd] = 1.0;
+        k[minInd] = T { 1.0 };
 
         vectormath::cross(vec, k, vec_xy);
 

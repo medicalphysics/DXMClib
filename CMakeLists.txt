@@ -46,6 +46,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/floating.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc.h"
     )
 
