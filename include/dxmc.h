@@ -15,7 +15,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
-
+#pragma once
 #include "dxmc/world.h"
 #include "dxmc/transport.h"
 #include "dxmc/source.h"
