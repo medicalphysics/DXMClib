@@ -20,7 +20,7 @@ bool testCompton(double keV, const Material& mat)
     lut.generate(mats, 0., keV);
     lut.generate(mats);
 
-    Particle p;
+    Particle<double> p;
     p.energy = keV;
     double cosang;
     std::vector<std::size_t> histL(nHist, 0);
@@ -70,7 +70,7 @@ bool testRayleight(double keV, const Material& mat)
     mats.push_back(mat);
     lut.generate(mats);
 
-    Particle p;
+    Particle<double> p;
     p.energy = keV;
     double cosang;
 

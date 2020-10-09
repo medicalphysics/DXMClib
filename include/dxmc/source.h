@@ -85,7 +85,7 @@ class PencilSource final : public Source {
 public:
     PencilSource();
     virtual ~PencilSource() = default;
-    bool getExposure(Exposure& exposure, std::uint64_t i) const override;
+    bool getExposure(Exposure<double>& exposure, std::uint64_t i) const override;
 
     void setPhotonEnergy(double energy);
     double photonEnergy() const { return m_photonEnergy; }
@@ -238,6 +238,7 @@ private:
     bool m_modelHeelEffect = true;
 };
 
+
 class CTSource : public Source {
 public:
     CTSource();
@@ -332,6 +333,7 @@ public:
 
 protected:
     template <typename T>
+    requires std::is_base_of<CTSource, T>::value
     static double ctCalibration(T& ctSource, ProgressBar* progress = nullptr);
     virtual void updateSpecterDistribution();
 

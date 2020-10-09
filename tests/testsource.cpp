@@ -34,13 +34,13 @@ bool testIsotropicSourceSpecter()
 
     IsotropicSource src;
     src.setSpecter(weighs, energies);
-    Exposure exp;
+    Exposure<double> exp;
     src.getExposure(exp, 0);
 
     std::vector<double> hist(energies.size(), 0.0);
     const double emin = energies[0];
     const double estep = energies[1] - energies[0];
-    Particle particle;
+    Particle<double> particle;
     RandomState seed;
     
     for (std::size_t i = 0; i < 1e7; ++i) {

@@ -144,7 +144,7 @@ PencilSource::PencilSource()
     m_type = Type::Pencil;
 }
 
-bool PencilSource::getExposure(Exposure& exposure, std::uint64_t i) const
+bool PencilSource::getExposure(Exposure<double>& exposure, std::uint64_t i) const
 {
     exposure.setNumberOfHistories(m_historiesPerExposure);
     exposure.setPosition(m_position);
@@ -182,7 +182,7 @@ DXSource::DXSource()
     m_tube.setAlFiltration(2.0);
     setDirectionCosines(zeroDirectionCosines());
 }
-bool DXSource::getExposure(Exposure& exposure, std::uint64_t i) const
+bool DXSource::getExposure(Exposure<double>& exposure, std::uint64_t i) const
 {
     exposure.setNumberOfHistories(m_historiesPerExposure);
     exposure.setPosition(tubePosition());
@@ -592,7 +592,9 @@ void CTSource::updateSpecterDistribution()
     }
 }
 
+
 template <typename T>
+requires std::is_base_of<CTSource, T>::value
 static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
 {
     CTDIPhantom world(sourceCopy.ctdiPhantomDiameter());
@@ -603,7 +605,7 @@ static double CTSource::ctCalibration(T& sourceCopy, ProgressBar* progressBar)
 
     double meanWeight = 0;
     for (std::size_t i = 0; i < sourceCopy.totalExposures(); ++i) {
-        Exposure dummy;
+        Exposure<double> dummy;
         sourceCopy.getExposure(dummy, i);
         meanWeight += dummy.beamIntensityWeight();
     }
@@ -676,7 +678,7 @@ void CTSpiralSource::setScanLenght(double scanLenght)
     m_scanLenght = std::max(std::abs(scanLenght), m_collimation * m_pitch * 0.5);
 }
 
-bool CTSpiralSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
+bool CTSpiralSource::getExposure(Exposure<double>& exposure, std::uint64_t exposureIndex) const
 {
     std::array<double, 3> pos = { 0, -m_sdd / 2.0, 0 };
 
@@ -753,7 +755,7 @@ void CTAxialSource::setScanLenght(double scanLenght)
     m_scanLenght = std::max(m_step * std::ceil(std::abs(scanLenght) / m_step), m_step);
 }
 
-bool CTAxialSource::getExposure(Exposure& exposure, std::uint64_t exposureIndex) const
+bool CTAxialSource::getExposure(Exposure<double>& exposure, std::uint64_t exposureIndex) const
 {
     //calculating position
     std::array<double, 3> pos = { 0, -m_sdd / 2.0, 0 };
@@ -823,7 +825,7 @@ CTDualSource::CTDualSource()
     m_tubeB.setAlFiltration(7.0);
 }
 
-bool CTDualSource::getExposure(Exposure& exposure, std::uint64_t exposureIndexTotal) const
+bool CTDualSource::getExposure(Exposure<double>& exposure, std::uint64_t exposureIndexTotal) const
 {
     double sdd, startAngle, fov;
     uint64_t exposureIndex = exposureIndexTotal / 2;

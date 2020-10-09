@@ -181,11 +181,12 @@ private:
     std::array<T, 6> m_directionCosines;
     std::array<T, 3> m_beamDirection;
     std::array<T, 2> m_collimationAngles;
-    T m_beamIntensityWeight = 1.0;
+    T m_beamIntensityWeight { 1.0 };
     const BeamFilter* m_beamFilter = nullptr;
     const SpecterDistribution* m_specterDistribution = nullptr;
     const HeelFilter* m_heelFilter = nullptr;
-    T m_monoenergeticPhotonEnergy = 0.0;
+    T m_monoenergeticPhotonEnergy { 0.0 };
     std::size_t m_nHistories;
 };
-}
+Exposure<double>;
+};

@@ -51,7 +51,7 @@ namespace transport {
         lock.clear(std::memory_order_release);
     }
 
-    void rayleightScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& state, double& cosAngle)
+    void rayleightScatterLivermore(Particle<double>& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& state, double& cosAngle)
     {
         // theta is scattering angle
         // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -72,7 +72,7 @@ namespace transport {
         vectormath::peturb<double>(particle.dir, theta, phi);
     }
 
-    double comptonScatterLivermore(Particle& particle, unsigned char materialIdx, const AttenuationLut& lut, RandomState& state, double& cosAngle)
+    double comptonScatterLivermore(Particle<double>& particle, unsigned char materialIdx, const AttenuationLut& lut, RandomState& state, double& cosAngle)
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -107,7 +107,7 @@ namespace transport {
         return E0 * (1.0 - e);
     }
 
-    double comptonScatter(Particle& particle, RandomState& state, double& cosAngle)
+    double comptonScatter(Particle<double>& particle, RandomState& state, double& cosAngle)
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -142,7 +142,7 @@ namespace transport {
         return E0 * (1.0 - e);
     }
 
-    inline bool particleInsideWorld(const World& world, const Particle& particle)
+    inline bool particleInsideWorld(const World& world, const Particle<double>& particle)
     {
         const std::array<double, 6>& extent = world.matrixExtent();
         return (particle.pos[0] > extent[0] && particle.pos[0] < extent[1]) && (particle.pos[1] > extent[2] && particle.pos[1] < extent[3]) && (particle.pos[2] > extent[4] && particle.pos[2] < extent[5]);
@@ -162,7 +162,7 @@ namespace transport {
         return idx;
     }
 
-    bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, Result* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation)
+    bool computeInteractionsForced(const double eventProbability, const AttenuationLut& lutTable, Particle<double>& p, const unsigned char matIdx, Result* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation)
     {
         const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
         const double attPhoto = atts[0];
@@ -216,7 +216,7 @@ namespace transport {
         }
         return true;
     }
-    bool computeInteractions(const AttenuationLut& lutTable, Particle& p, const unsigned char matIdx, Result* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation)
+    bool computeInteractions(const AttenuationLut& lutTable, Particle<double>& p, const unsigned char matIdx, Result* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation)
     {
         const auto atts = lutTable.photoComptRayAttenuation(matIdx, p.energy);
         const double attPhoto = atts[0];
@@ -266,7 +266,7 @@ namespace transport {
         return true;
     }
 
-    void sampleParticleSteps(const World& world, Particle& p, RandomState& state, Result* result)
+    void sampleParticleSteps(const World& world, Particle<double>& p, RandomState& state, Result* result)
     {
         const AttenuationLut& lutTable = world.attenuationLut();
         const double* densityBuffer = world.densityBuffer();
@@ -328,7 +328,7 @@ namespace transport {
         }
     }
 
-    bool transportParticleToWorld(const World& world, Particle& particle)
+    bool transportParticleToWorld(const World& world, Particle<double>& particle)
     //returns false if particle do not intersect world
     {
         const bool isInside = particleInsideWorld(world, particle);
@@ -357,9 +357,9 @@ namespace transport {
         return false;
     }
 
-    void transport(const World& world, const Exposure& exposure, RandomState& state, Result* result)
+    void transport(const World& world, const Exposure<double>& exposure, RandomState& state, Result* result)
     {
-        Particle particle;
+        Particle<double> particle;
         const std::size_t nHistories = exposure.numberOfHistories();
         for (std::size_t i = 0; i < nHistories; ++i) {
             //Draw a particle
@@ -378,7 +378,7 @@ namespace transport {
         const std::uint64_t len = expEnd - expBeg;
         if ((len <= 1) || (nJobs <= 1)) {
             RandomState state;
-            Exposure exposure;
+            Exposure<double> exposure;
             const auto& worldBasis = w.directionCosines();
             for (std::size_t i = expBeg; i < expEnd; i++) {
                 if (progressbar)
@@ -416,7 +416,7 @@ namespace transport {
 
         if ((len == 1) || (nJobs <= 1)) {
             RandomState state;
-            Exposure exposure;
+            Exposure<double> exposure;
             const auto& worldBasis = w.directionCosines();
             for (std::size_t i = expBeg; i < expEnd; i++) {
                 if (progressbar)
