@@ -19,6 +19,7 @@ Copyright 2019 Erlend Andersen
 #pragma once
 #include "dxmc/dxmcrandom.h"
 #include "dxmc/exposure.h"
+#include "dxmc/particle.h"
 #include "dxmc/progressbar.h"
 #include "dxmc/source.h"
 #include "dxmc/vectormath.h"

@@ -47,13 +47,14 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/particle.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc.h"
     )
 
 add_library(libdxmc 
     src/world.cpp
     src/source.cpp
-    src/exposure.cpp
+    #src/exposure.cpp
     src/tube.cpp
     src/dxmcrandom.cpp
     src/beamfilters.cpp
