@@ -69,7 +69,7 @@ public:
 
     virtual bool isValid(void) const = 0;
     virtual bool validate(void) = 0;
-    virtual void updateFromWorld(const World& world) { }
+    virtual void updateFromWorld(const World<double>& world) { }
 
 protected:
     std::array<double, 3> m_position = { 0, 0, 0 };
@@ -322,7 +322,7 @@ public:
     void setAecFilter(std::shared_ptr<AECFilter> filter) { m_aecFilter = filter; }
     std::shared_ptr<AECFilter> aecFilter(void) { return m_aecFilter; }
 
-    virtual void updateFromWorld(const World& world) override
+    virtual void updateFromWorld(const World<double>& world) override
     {
         if (m_aecFilter)
             m_aecFilter->updateFromWorld(world);

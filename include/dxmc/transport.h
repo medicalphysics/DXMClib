@@ -74,7 +74,7 @@ namespace transport {
     double comptonScatter(Particle<double>& particle, RandomState& seed, double& cosAngle);
     double comptonScatterLivermore(Particle<double>& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
     void rayleightScatterLivermore(Particle<double>& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
-    Result run(const World& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
-    Result run(const CTDIPhantom& world, CTSource* source, ProgressBar* progressBar = nullptr);
+    Result run(const World<double>& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
+    Result run(const CTDIPhantom<double>& world, CTSource* source, ProgressBar* progressBar = nullptr);
 }
 }

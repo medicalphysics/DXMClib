@@ -19,97 +19,167 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 
 #include "dxmc/attenuationlut.h"
+#include "dxmc/floating.h"
 #include "dxmc/material.h"
 #include "dxmc/tube.h"
+#include "dxmc/vectormath.h"
 
 #include <algorithm>
 #include <array>
+#include <execution>
 #include <map>
 #include <memory>
+#include <ranges>
 #include <string>
 #include <vector>
+
 namespace dxmc {
 
+template <Floating T>
 class World {
 public:
     World();
-    void setDimensions(std::size_t x, std::size_t y, std::size_t z);
-    void setDimensions(const std::array<std::size_t, 3>& dimensions);
-    void setSpacing(double dx, double dy, double dz);
-    void setSpacing(double spacing[3]);
-    void setSpacing(const std::array<double, 3>& spacing);
-    void setOrigin(double x, double y, double z);
-    void setOrigin(double origin[3]);
-    void setOrigin(const std::array<double, 3>& origin);
-    void setDirectionCosines(double cosines[6]);
-    void setDirectionCosines(const std::array<double, 6>& cosines);
-    void setDirectionCosines(double x1, double x2, double x3, double y1, double y2, double y3);
+    void setDimensions(const std::array<std::size_t, 3>& dimensions)
+    {
+        m_dimensions = dimensions;
+        updateMatrixExtent();
+    }
+    void setSpacing(const std::array<T, 3>& spacing)
+    {
+        m_spacing = spacing;
+        updateMatrixExtent();
+    }
+    void setOrigin(const std::array<T, 3>& origin)
+    {
+        m_origin = origin;
+        updateMatrixExtent();
+    }
+
+    void setDirectionCosines(const std::array<T, 6>& cosines)
+    {
+        m_directionCosines = cosines;
+        vectormath::normalize(m_directionCosines.data());
+        vectormath::normalize(&m_directionCosines[3]);
+    }
 
     std::size_t size(void) const { return m_dimensions[0] * m_dimensions[1] * m_dimensions[2]; }
     const std::array<std::size_t, 3>& dimensions(void) const { return m_dimensions; }
-    const std::array<double, 3>& spacing(void) const { return m_spacing; }
-    const std::array<double, 3>& origin(void) const { return m_origin; }
-    const std::array<double, 6>& directionCosines(void) const { return m_directionCosines; }
-    const std::array<double, 3>& depthDirection(void) const { return m_depthDirectionCosine; }
-
-    void setDensityArray(std::shared_ptr<std::vector<double>> densityArray);
-    const double* densityBuffer() const { return m_density->data(); }
-    std::shared_ptr<std::vector<double>> densityArray(void) { return m_density; }
+    const std::array<T, 3>& spacing(void) const { return m_spacing; }
+    const std::array<T, 3>& origin(void) const { return m_origin; }
+    const std::array<T, 6>& directionCosines(void) const { return m_directionCosines; }
+    std::array<T, 3> depthDirection(void) const
+    {
+        std::array<T, 3> dir;
+        vectormath::cross(m_directionCosines.data(), dir.data());
+        return dir;
+    }
+    void setDensityArray(std::shared_ptr<std::vector<T>> densityArray) { m_density = densityArray; }
+    std::shared_ptr<std::vector<T>> densityArray(void) { return m_density; }
     const std::shared_ptr<std::vector<double>> densityArray(void) const { return m_density; }
 
-    void setMaterialIndexArray(std::shared_ptr<std::vector<unsigned char>> materialIndex);
-    const unsigned char* materialIndexBuffer() const { return m_materialIndex->data(); }
-    std::shared_ptr<std::vector<unsigned char>> materialIndexArray(void) { return m_materialIndex; }
-    const std::shared_ptr<std::vector<unsigned char>> materialIndexArray(void) const { return m_materialIndex; }
+    void setMaterialIndexArray(std::shared_ptr<std::vector<std::uint8_t>> materialIndex) { m_materialIndex = materialIndex; }
+    std::shared_ptr<std::vector<std::uint8_t>> materialIndexArray(void) { return m_materialIndex; }
+    const std::shared_ptr<std::vector<std::uint8_t>> materialIndexArray(void) const { return m_materialIndex; }
 
-    void setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap);
-    const std::uint8_t* measurementMapBuffer() const { return m_measurementMap->data(); }
+    void setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap) { m_measurementMap = measurementMap; }
     std::shared_ptr<std::vector<std::uint8_t>> measurementMapArray(void) { return m_measurementMap; }
     const std::shared_ptr<std::vector<std::uint8_t>> measurementMapArray(void) const { return m_measurementMap; }
 
     const std::vector<Material>& materialMap(void) const { return m_materialMap; }
-    bool addMaterialToMap(const Material& material);
-    bool addMaterialToMap(Material&& material);
+    bool addMaterialToMap(const Material& material)
+    {
+        if (material.isValid()) {
+            m_materialMap.push_back(material);
+            return true;
+        }
+        return false;
+    }
+    bool addMaterialToMap(Material&& material)
+    {
+        if (material.isValid()) {
+            m_materialMap.push_back(material);
+            return true;
+        }
+        return false;
+    }
+
     void clearMaterialMap(void) { m_materialMap.clear(); }
-
-    const AttenuationLut& attenuationLut() const { return m_attLut; }
-
-    void setAttenuationLutMaxEnergy(double max_keV);
-    double attenuationLutMaxEnergy(void) const { return m_attenuationLutMaxEnergy; }
-    void setAttenuationLutResolution(double keV);
-    double attenuationLutResolution(void) const { return m_attLut.energyResolution(); };
-
-    const std::array<double, 6>& matrixExtent(void) const { return m_worldExtent; }
-
-    bool isValid(void) const { return m_valid; }
-    bool validate(void);
+    const std::array<double, 6>& matrixExtent(void) const { return m_matrixExtent; }
+    [[noexcept]] bool isValid(void);
 
 protected:
-    void updateWorldMatrixExtent(void);
+    void updateMatrixExtent(void)
+    {
+        for (std::size_t i = 0; i < 3; i++) {
+            const T halfDist = (m_dimensions[i] * m_spacing[i]) * T { 0.5 };
+            m_matrixExtent[i * 2] = m_origin[i] - halfDist;
+            m_matrixExtent[i * 2 + 1] = m_origin[i] + halfDist;
+        }
+        return extent;
+    }
 
 private:
-    bool m_valid = false;
-
-    std::array<double, 3> m_spacing = { 1.0, 1.0, 1.0 };
-    std::array<double, 3> m_origin = { 0.0, 0.0, 0.0 };
-    std::array<double, 6> m_directionCosines = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
-    std::array<double, 3> m_depthDirectionCosine = { 0.0, 0.0, 1.0 };
+    std::array<T, 3> m_spacing = { 1.0, 1.0, 1.0 };
+    std::array<T, 3> m_origin = { 0.0, 0.0, 0.0 };
+    std::array<T, 6> m_directionCosines = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
     std::array<std::size_t, 3> m_dimensions = { 0L, 0L, 0L };
-
-    std::array<double, 6> m_worldExtent; // {x0, x1, y0, y1, z0, z1}
+    std ::array<T, 6> m_matrixExtent { 0, 0, 0, 0, 0, 0 };
 
     // m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
     std::shared_ptr<std::vector<double>> m_density = nullptr;
-    std::shared_ptr<std::vector<unsigned char>> m_materialIndex = nullptr;
+    std::shared_ptr<std::vector<std::uint8_t>> m_materialIndex = nullptr;
     std::shared_ptr<std::vector<std::uint8_t>> m_measurementMap = nullptr;
-
     std::vector<Material> m_materialMap;
-    AttenuationLut m_attLut;
-
-    double m_attenuationLutMaxEnergy = TUBEMAXVOLTAGE;
 };
 
-class CTDIPhantom : public World {
+template <Floating T>
+bool World<T>::isValid()
+{
+    if ((m_dimensions[0] * m_dimensions[1] * m_dimensions[2]) <= 0) {
+        return false;
+    }
+
+    if ((m_spacing[0] * m_spacing[1] * m_spacing[2]) <= 0.0) {
+        return false;
+    }
+
+    if (!m_density || !m_materialIndex) {
+        return false;
+    }
+    if (!m_measurementMap) {
+        m_measurementMap = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
+    }
+    const auto elements = size();
+    if (elements == 0) {
+        return false;
+    }
+
+    if (m_density->size() != elements || m_materialIndex->size() != elements || m_measurementMap->size() != elements) {
+        return false;
+    }
+
+    //testValidMaterials
+    for (auto const& mat : m_materialMap) {
+        const bool validMaterial = mat.isValid();
+        if (!validMaterial) {
+            return false;
+        }
+    }
+
+    auto depthDirectionCosine = depthDirection();
+    const T testOrtogonality = vectormath::dot(depthDirectionCosine.data(), m_directionCosines.data()) + vectormath::dot(depthDirectionCosine.data(), &m_directionCosines[3]) + vectormath::dot(&m_directionCosines[0], &m_directionCosines[3]);
+
+    if (std::abs(testOrtogonality) > 0.001) {
+        return false;
+    }
+
+    auto [min, max] = std::minmax_element(std::execution::par_unseq, m_materialIndex->cbegin(), m_materialIndex->cend());
+    const auto n = m_materialMap.size();
+    return (*min >= 0) && (*min < n) && (*max >= 0) && (*max < n);
+}
+
+template <Floating T>
+class CTDIPhantom : public World<T> {
 public:
     enum class HolePosition { Center,
         West,
@@ -118,9 +188,140 @@ public:
         North };
     CTDIPhantom(std::size_t size = 320); // size im mm
     const std::vector<std::size_t>& holeIndices(CTDIPhantom::HolePosition position = HolePosition::Center);
-    constexpr double airDensity();
+    constexpr double airDensity() const { return 0.001205; } // g/cm3
+protected:
+    static std::vector<std::size_t> circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius);
 
 private:
     std::array<std::vector<std::size_t>, 5> m_holePositions;
 };
+
+template <Floating T>
+CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
+{
+    const std::array<T, 6> directionCosines { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
+    const std::array<T, 3> sp { 1, 1, 2.5 };
+    const std::array<T, 3> origin { 0, 0, 0 };
+    setDirectionCosines(directionCosines);
+    setSpacing(sp);
+    setOrigin(origin);
+
+    if (diameter % 2 == 0) { // make sure odd dimensions in xy
+        std::array<std::size_t, 3> dim { diameter + 3, diameter + 3, 60 };
+        setDimensions(dim);
+    } else {
+        std::array<std::size_t, 3> dim { diameter + 2, diameter + 2, 60 };
+        setDimensions(dim);
+    }
+    Material air("Air, Dry (near sea level)");
+    Material pmma("Polymethyl Methacralate (Lucite, Perspex)");
+    addMaterialToMap(air);
+    addMaterialToMap(air); // we want two to differentiate between air around phantom and air inside rods
+    addMaterialToMap(pmma);
+
+    constexpr T holeDiameter { 13.1 };
+    constexpr T holeRadii { holeDiameter / 2.0 };
+    const T holeDisplacement = diameter % 2 == 0 ? T { 10 + 3 } : T { 10 + 2 };
+    const T radii = static_cast<T>(diameter) / T { 2 };
+    const auto dim = dimensions();
+
+    //making phantom
+    auto dBufferPtr = std::make_shared<std::vector<T>>(size(), airDensity());
+    auto mBufferPtr = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
+    auto measurementPtr = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
+    setDensityArray(dBufferPtr);
+    setMaterialIndexArray(mBufferPtr);
+    setMeasurementMapArray(measurementPtr);
+
+    //air holes indices
+    std::array<std::size_t, 2> fdim = { dim[0], dim[1] };
+    std::array<T, 2> fspacing = { sp[0], sp[1] };
+    std::array<T, 2> fcenter = { dim[0] * sp[0] * 0.5, dim[1] * sp[1] * 0.5 };
+
+    std::array<std::array<T, 2>, 5> hcenters;
+    hcenters[0][0] = 0.0;
+    hcenters[0][1] = 0.0;
+    hcenters[1][0] = 0.0;
+    hcenters[1][1] = radii - holeDisplacement;
+    hcenters[2][0] = 0.0;
+    hcenters[2][1] = -radii + holeDisplacement;
+    hcenters[3][0] = radii - holeDisplacement;
+    hcenters[3][1] = 0.0;
+    hcenters[4][0] = -radii + holeDisplacement;
+    hcenters[4][1] = 0.0;
+    for (auto& cvec : hcenters)
+        for (std::size_t i = 0; i < 2; ++i)
+            cvec[i] += fcenter[i];
+
+    //setting up measurement indices
+    for (std::size_t k = 0; k < dim[2]; ++k) {
+        const T slicePosCenter = sp[2] * (k - dim[2] * 0.5 + 0.5);
+        if (std::abs(slicePosCenter) <= 50.0) // from -50 to +50 mm into center of the phantom
+        {
+            const std::size_t offset = k * dim[0] * dim[1];
+            for (std::size_t i = 0; i < 5; ++i) {
+                auto idx = circleIndices2D(fdim, fspacing, hcenters[i], holeRadii);
+                std::transform(idx.begin(), idx.end(), idx.begin(), [=](std::size_t ind) { return ind + offset; }); //adding offset
+                auto& indices = m_holePositions[i];
+                indices.insert(indices.end(), idx.begin(), idx.end());
+            }
+        }
+    }
+
+    //making phantom
+    auto dBuffer = dBufferPtr->data();
+    auto mBuffer = mBufferPtr->data();
+
+    for (std::size_t k = 0; k < dim[2]; ++k) {
+        const std::size_t offset = k * dim[0] * dim[1];
+        auto indices = circleIndices2D(fdim, fspacing, fcenter, radii);
+        for (auto idx : indices) {
+            dBuffer[idx + offset] = pmma.standardDensity();
+            mBuffer[idx + offset] = 2;
+        }
+        //air holes
+        for (std::size_t i = 0; i < 5; ++i) {
+            auto indicesHoles = circleIndices2D(fdim, fspacing, hcenters[i], holeRadii);
+            for (auto idx : indicesHoles) {
+                dBuffer[idx + offset] = air.standardDensity();
+                mBuffer[idx + offset] = 1;
+            }
+        }
+    }
+
+    //filling measurementArray
+    auto measBuffer = measurementPtr->data();
+    for (const auto vIdx : m_holePositions)
+        for (const auto idx : vIdx)
+            measBuffer[idx] = 1;
+}
+template <Floating T>
+std::vector<std::size_t> CTDIPhantom<T>::circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius)
+{
+    std::vector<std::size_t> indices;
+    const auto r_int = static_cast<std::size_t>(std::ceil(radius));
+    indices.reserve(r_int * r_int * 4);
+
+    std::array<int, 4> flimits;
+    flimits[0] = static_cast<int>((center[0] - radius) / spacing[0]);
+    flimits[1] = static_cast<int>((center[0] + radius) / spacing[0]) + 1;
+    flimits[2] = static_cast<int>((center[1] - radius) / spacing[1]);
+    flimits[3] = static_cast<int>((center[1] + radius) / spacing[1]) + 1;
+    std::array<std::size_t, 4> limits;
+    limits[0] = static_cast<std::size_t>(std::max(flimits[0], 0));
+    limits[1] = static_cast<std::size_t>(std::min(flimits[1], static_cast<int>(dim[0])));
+    limits[2] = static_cast<std::size_t>(std::max(flimits[2], 0));
+    limits[3] = static_cast<std::size_t>(std::min(flimits[3], static_cast<int>(dim[1])));
+
+    const auto r2 = radius * radius;
+    for (std::size_t i = limits[0]; i < limits[1]; ++i) {
+        const auto posX = center[0] - i * spacing[0];
+        for (std::size_t j = limits[2]; j < limits[3]; ++j) {
+            const auto posY = center[1] - j * spacing[1];
+            if ((posX * posX + posY * posY) <= r2)
+                indices.push_back(i + j * dim[0]);
+        }
+    }
+    return indices;
+}
 }

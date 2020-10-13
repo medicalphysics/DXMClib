@@ -142,13 +142,13 @@ namespace transport {
         return E0 * (1.0 - e);
     }
 
-    inline bool particleInsideWorld(const World& world, const Particle<double>& particle)
+    inline bool particleInsideWorld(const World<double>& world, const Particle<double>& particle)
     {
         const std::array<double, 6>& extent = world.matrixExtent();
         return (particle.pos[0] > extent[0] && particle.pos[0] < extent[1]) && (particle.pos[1] > extent[2] && particle.pos[1] < extent[3]) && (particle.pos[2] > extent[4] && particle.pos[2] < extent[5]);
     }
 
-    inline std::size_t indexFromPosition(const double pos[3], const World& world)
+    inline std::size_t indexFromPosition(const double pos[3], const World<double>& world)
     {
         //assumes particle is inside world
         std::size_t arraypos[3];

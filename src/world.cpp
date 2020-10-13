@@ -16,6 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
+/*
 #include "dxmc/world.h"
 #include "dxmc/material.h"
 #include "dxmc/vectormath.h"
@@ -27,244 +28,13 @@ namespace dxmc {
 
 constexpr double AIRDENSITY = 0.001205; // g/cm3
 
-World::World()
-{
-    vectormath::cross(m_directionCosines.data(), m_depthDirectionCosine.data());
-    updateWorldMatrixExtent();
-    m_attenuationLutMaxEnergy = Tube::maxVoltage();
-}
-
-void World::updateWorldMatrixExtent(void)
-{
-    //compute world extent
-    for (std::size_t i = 0; i < 3; i++) {
-        auto halfDist = (m_dimensions[i] * m_spacing[i]) * 0.5;
-        m_worldExtent[i * 2] = m_origin[i] - halfDist;
-        m_worldExtent[i * 2 + 1] = m_origin[i] + halfDist;
-    }
-}
-
-void World::setDimensions(std::size_t x, std::size_t y, std::size_t z)
-{
-    m_dimensions[0] = x;
-    m_dimensions[1] = y;
-    m_dimensions[2] = z;
-    updateWorldMatrixExtent();
-
-    m_valid = false;
-}
-
-void World::setDimensions(const std::array<std::size_t, 3>& dimensions)
-{
-    m_dimensions = dimensions;
-    updateWorldMatrixExtent();
-    m_valid = false;
-}
-
-void World::setSpacing(double dx, double dy, double dz)
-{
-    m_spacing[0] = dx;
-    m_spacing[1] = dy;
-    m_spacing[2] = dz;
-    updateWorldMatrixExtent();
-}
-
-void World::setSpacing(double spacing[3])
-{
-    setSpacing(spacing[0], spacing[1], spacing[2]);
-}
-void World::setSpacing(const std::array<double, 3>& spacing)
-{
-    setSpacing(spacing[0], spacing[1], spacing[2]);
-}
-void World::setOrigin(double x, double y, double z)
-{
-    m_origin[0] = x;
-    m_origin[1] = y;
-    m_origin[2] = z;
-    updateWorldMatrixExtent();
-}
-
-void World::setOrigin(double position[3])
-{
-    setOrigin(position[0], position[1], position[2]);
-}
-
-void World::setOrigin(const std::array<double, 3>& position)
-{
-    setOrigin(position[0], position[1], position[2]);
-}
-
-void World::setDirectionCosines(const std::array<double, 6>& cosines)
-{
-    setDirectionCosines(
-        cosines[0],
-        cosines[1],
-        cosines[2],
-        cosines[3],
-        cosines[4],
-        cosines[5]);
-}
-void World::setDirectionCosines(double cosines[6])
-{
-    setDirectionCosines(
-        cosines[0],
-        cosines[1],
-        cosines[2],
-        cosines[3],
-        cosines[4],
-        cosines[5]);
-}
-void World::setDirectionCosines(double x1, double x2, double x3, double y1, double y2, double y3)
-{
-    m_directionCosines[0] = x1;
-    m_directionCosines[1] = x2;
-    m_directionCosines[2] = x3;
-    m_directionCosines[3] = y1;
-    m_directionCosines[4] = y2;
-    m_directionCosines[5] = y3;
-    vectormath::normalize(m_directionCosines.data());
-    vectormath::normalize(&m_directionCosines[3]);
-    vectormath::cross(m_directionCosines.data(), m_depthDirectionCosine.data());
-    updateWorldMatrixExtent();
-}
-
-bool World::addMaterialToMap(const Material& material)
-{
-    if (material.isValid()) {
-        m_materialMap.push_back(material);
-        m_valid = false;
-        return true;
-    }
-    return false;
-}
-bool World::addMaterialToMap(Material&& material)
-{
-    if (material.isValid()) {
-        m_materialMap.push_back(material);
-        m_valid = false;
-        return true;
-    }
-    return false;
-}
-
-void World::setDensityArray(std::shared_ptr<std::vector<double>> densityArray)
-{
-    m_density = densityArray;
-    m_valid = false;
-}
-
-void World::setMaterialIndexArray(std::shared_ptr<std::vector<unsigned char>> materialIndexArray)
-{
-    m_materialIndex = materialIndexArray;
-    m_valid = false;
-}
-
-void World::setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap)
-{
-    m_measurementMap = measurementMap;
-    m_valid = false;
-}
-
-void World::setAttenuationLutMaxEnergy(double max_keV)
-{
-    if (max_keV == m_attenuationLutMaxEnergy) // so we dont invalidate the world in vain
-        return;
-
-    if (max_keV < Tube::minVoltage())
-        m_attenuationLutMaxEnergy = Tube::minVoltage();
-    else if (max_keV > Tube::maxVoltage())
-        m_attenuationLutMaxEnergy = Tube::maxVoltage();
-    else
-        m_attenuationLutMaxEnergy = max_keV;
-    m_valid = false;
-}
-
-void World::setAttenuationLutResolution(double keV)
-{
-    m_attLut.setEnergyResolution(keV);
-    m_valid = false;
-}
-
-template <typename It, typename Value>
-bool testMaterialIndex(It beg, It end, const std::vector<Value>& materialMap)
-{ // validating that all material indices are present in the materialMap
-    auto [min, max] = std::minmax_element(std::execution::par_unseq, beg, end);
-    auto n = materialMap.size();
-    return (*min >= 0) && (*min < n) && (*max >= 0) && (*max < n);
-}
-
-bool World::validate()
-{
-    if (m_valid)
-        return m_valid;
-
-    if ((m_dimensions[0] * m_dimensions[1] * m_dimensions[2]) <= 0) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    if ((m_spacing[0] * m_spacing[1] * m_spacing[2]) <= 0.0) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    if (!m_density | !m_materialIndex) {
-        m_valid = false;
-        return m_valid;
-    }
-    if (!m_measurementMap) {
-        m_measurementMap = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
-    }
-
-    auto elements = size();
-    if (elements == 0) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    if (m_density->size() != elements) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    if (m_materialIndex->size() != elements) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    if (m_measurementMap->size() != elements) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    //testValidMaterials
-    for (auto const& mat : m_materialMap) {
-        bool validMaterial = mat.isValid();
-        if (!validMaterial) {
-            m_valid = false;
-            return m_valid;
-        }
-    }
-
-    const double testOrtogonality = vectormath::dot(m_depthDirectionCosine.data(), m_directionCosines.data()) + vectormath::dot(&m_depthDirectionCosine[0], &m_directionCosines[3]) + vectormath::dot(&m_directionCosines[0], &m_directionCosines[3]);
-
-    if (std::abs(testOrtogonality) > 0.00001) {
-        m_valid = false;
-        return m_valid;
-    }
-
-    m_valid = testMaterialIndex(m_materialIndex->begin(), m_materialIndex->end(), m_materialMap);
-    if (m_valid) {
-        m_attLut.generate(m_materialMap, 1.0, m_attenuationLutMaxEnergy);
-        m_attLut.generateMaxMassTotalAttenuation(m_materialIndex->begin(), m_materialIndex->end(), m_density->begin());
-    }
-    return m_valid;
-}
 
 std::vector<std::size_t> circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<double, 2>& spacing, const std::array<double, 2>& center, double radius)
 {
     std::vector<std::size_t> indices;
+    const auto r_int = static_cast<std::size_t>(std::ceil(radius));
+    indices.reserve(r_int * r_int);
+
     std::array<int, 4> flimits;
     flimits[0] = static_cast<int>((center[0] - radius) / spacing[0]);
     flimits[1] = static_cast<int>((center[0] + radius) / spacing[0]) + 1;
@@ -401,3 +171,4 @@ const std::vector<std::size_t>& CTDIPhantom::holeIndices(CTDIPhantom::HolePositi
     return m_holePositions[0];
 }
 }
+*/

@@ -1,6 +1,5 @@
 
 
-#include "dxmc/transport.h"
 #include "dxmc/world.h"
 
 #include <iostream>
@@ -14,9 +13,9 @@ inline std::size_t index(std::size_t i, std::size_t j, std::size_t k, std::array
 
 bool testCTDIgeneration(void)
 {
-    CTDIPhantom w;
+    CTDIPhantom<double> w;
 
-    w.validate();
+    
     bool valid = w.isValid();
     return !valid;
 }

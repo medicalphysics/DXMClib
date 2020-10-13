@@ -386,7 +386,15 @@ public:
      * This function will generate position lookup tables based on world, such as that photon weights can be sampled from a position within the world object.
      * @param world 
     */
-    void updateFromWorld(const World& world);
+    
+    void updateFromWorld(const World<double>& world)
+    {
+        const auto& dens = world.densityArray();
+        const auto& spacing = world.spacing();
+        const auto& dim = world.dimensions();
+        const auto& origin = world.origin();
+        generatePositionWeightMap(dens->cbegin(), dens->cend(), spacing, dim, origin);
+    }
     /**
      * @brief Returns if the AECFilter is valid and has been updated from a world.
      * @return 
