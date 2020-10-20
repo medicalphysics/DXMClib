@@ -20,6 +20,7 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/floating.h"
 
+#include <type_traits>
 #include <cmath>
 #include <cstdint>
 //Header library for simple 3D vector math

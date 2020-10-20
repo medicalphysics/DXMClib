@@ -18,7 +18,6 @@ Copyright 2019 Erlend Andersen
 
 #pragma once // include guard
 
-#include "dxmc/attenuationlut.h"
 #include "dxmc/floating.h"
 #include "dxmc/material.h"
 #include "dxmc/tube.h"
@@ -37,8 +36,36 @@ namespace dxmc {
 
 template <Floating T>
 class World {
+private:
+    std::array<T, 3> m_spacing = { 1.0, 1.0, 1.0 };
+    std::array<T, 3> m_origin = { 0.0, 0.0, 0.0 };
+    std::array<T, 6> m_directionCosines = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
+    std::array<std::size_t, 3> m_dimensions = { 0L, 0L, 0L };
+    std ::array<T, 6> m_matrixExtent { 0, 0, 0, 0, 0, 0 };
+
+    // m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
+    std::shared_ptr<std::vector<T>> m_density = nullptr;
+    std::shared_ptr<std::vector<std::uint8_t>> m_materialIndex = nullptr;
+    std::shared_ptr<std::vector<std::uint8_t>> m_measurementMap = nullptr;
+    std::vector<Material> m_materialMap;
+    bool m_valid = false;
+
+protected:
+    void updateMatrixExtent(void)
+    {
+        for (std::size_t i = 0; i < 3; i++) {
+            const T halfDist = (m_dimensions[i] * m_spacing[i]) * T { 0.5 };
+            m_matrixExtent[i * 2] = m_origin[i] - halfDist;
+            m_matrixExtent[i * 2 + 1] = m_origin[i] + halfDist;
+        }
+    }
+    bool validate();
+
 public:
-    World();
+    World()
+    {
+        updateMatrixExtent();
+    }
     void setDimensions(const std::array<std::size_t, 3>& dimensions)
     {
         m_dimensions = dimensions;
@@ -75,7 +102,7 @@ public:
     }
     void setDensityArray(std::shared_ptr<std::vector<T>> densityArray) { m_density = densityArray; }
     std::shared_ptr<std::vector<T>> densityArray(void) { return m_density; }
-    const std::shared_ptr<std::vector<double>> densityArray(void) const { return m_density; }
+    const std::shared_ptr<std::vector<T>> densityArray(void) const { return m_density; }
 
     void setMaterialIndexArray(std::shared_ptr<std::vector<std::uint8_t>> materialIndex) { m_materialIndex = materialIndex; }
     std::shared_ptr<std::vector<std::uint8_t>> materialIndexArray(void) { return m_materialIndex; }
@@ -104,42 +131,26 @@ public:
     }
 
     void clearMaterialMap(void) { m_materialMap.clear(); }
-    const std::array<double, 6>& matrixExtent(void) const { return m_matrixExtent; }
-    [[noexcept]] bool isValid(void);
+    const std::array<T, 6>& matrixExtent(void) const { return m_matrixExtent; }
 
-protected:
-    void updateMatrixExtent(void)
+    void makeValid(void) { m_valid = validate(); }
+
+    bool isValid(void) const { return m_valid; }
+    [[nodiscard]] bool isValid(void)
     {
-        for (std::size_t i = 0; i < 3; i++) {
-            const T halfDist = (m_dimensions[i] * m_spacing[i]) * T { 0.5 };
-            m_matrixExtent[i * 2] = m_origin[i] - halfDist;
-            m_matrixExtent[i * 2 + 1] = m_origin[i] + halfDist;
-        }
-        return extent;
+        makeValid();
+        return m_valid;
     }
-
-private:
-    std::array<T, 3> m_spacing = { 1.0, 1.0, 1.0 };
-    std::array<T, 3> m_origin = { 0.0, 0.0, 0.0 };
-    std::array<T, 6> m_directionCosines = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
-    std::array<std::size_t, 3> m_dimensions = { 0L, 0L, 0L };
-    std ::array<T, 6> m_matrixExtent { 0, 0, 0, 0, 0, 0 };
-
-    // m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
-    std::shared_ptr<std::vector<double>> m_density = nullptr;
-    std::shared_ptr<std::vector<std::uint8_t>> m_materialIndex = nullptr;
-    std::shared_ptr<std::vector<std::uint8_t>> m_measurementMap = nullptr;
-    std::vector<Material> m_materialMap;
 };
 
 template <Floating T>
-bool World<T>::isValid()
+bool World<T>::validate()
 {
     if ((m_dimensions[0] * m_dimensions[1] * m_dimensions[2]) <= 0) {
         return false;
     }
 
-    if ((m_spacing[0] * m_spacing[1] * m_spacing[2]) <= 0.0) {
+    if ((m_spacing[0] * m_spacing[1] * m_spacing[2]) <= T { 0 }) {
         return false;
     }
 
@@ -149,6 +160,7 @@ bool World<T>::isValid()
     if (!m_measurementMap) {
         m_measurementMap = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
     }
+
     const auto elements = size();
     if (elements == 0) {
         return false;
@@ -180,6 +192,13 @@ bool World<T>::isValid()
 
 template <Floating T>
 class CTDIPhantom : public World<T> {
+
+private:
+    std::array<std::vector<std::size_t>, 5> m_holePositions;
+
+protected:
+    static std::vector<std::size_t> circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius);
+
 public:
     enum class HolePosition { Center,
         West,
@@ -187,17 +206,25 @@ public:
         South,
         North };
     CTDIPhantom(std::size_t size = 320); // size im mm
-    const std::vector<std::size_t>& holeIndices(CTDIPhantom::HolePosition position = HolePosition::Center);
-    constexpr double airDensity() const { return 0.001205; } // g/cm3
-protected:
-    static std::vector<std::size_t> circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius);
-
-private:
-    std::array<std::vector<std::size_t>, 5> m_holePositions;
+    const std::vector<std::size_t>& holeIndices(CTDIPhantom<T>::HolePosition position)
+    {
+        if (position == HolePosition::West)
+            return m_holePositions[4];
+        else if (position == HolePosition::East)
+            return m_holePositions[3];
+        else if (position == HolePosition::North)
+            return m_holePositions[2];
+        else if (position == HolePosition::South)
+            return m_holePositions[1];
+        return m_holePositions[0];
+    }
+    constexpr T airDensity() const { return T { 0.001205 }; } // g/cm3
+    static constexpr std::uint64_t ctdiMinHistories() { return 100E6 ; }
 };
 
 template <Floating T>
 CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
+    : World<T>()
 {
     const std::array<T, 6> directionCosines { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
     const std::array<T, 3> sp { 1, 1, 2.5 };
@@ -221,9 +248,9 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
 
     constexpr T holeDiameter { 13.1 };
     constexpr T holeRadii { holeDiameter / 2.0 };
-    const T holeDisplacement = diameter % 2 == 0 ? T { 10 + 3 } : T { 10 + 2 };
+    const T holeDisplacement = diameter % 2 == 0 ? T { 13 } : T { 13 };
     const T radii = static_cast<T>(diameter) / T { 2 };
-    const auto dim = dimensions();
+    const auto& dim = dimensions();
 
     //making phantom
     auto dBufferPtr = std::make_shared<std::vector<T>>(size(), airDensity());
@@ -236,7 +263,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
     //air holes indices
     std::array<std::size_t, 2> fdim = { dim[0], dim[1] };
     std::array<T, 2> fspacing = { sp[0], sp[1] };
-    std::array<T, 2> fcenter = { dim[0] * sp[0] * 0.5, dim[1] * sp[1] * 0.5 };
+    std::array<T, 2> fcenter = { dim[0] * sp[0] * T { 0.5 }, dim[1] * sp[1] * T { 0.5 } };
 
     std::array<std::array<T, 2>, 5> hcenters;
     hcenters[0][0] = 0.0;
@@ -294,6 +321,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
     for (const auto vIdx : m_holePositions)
         for (const auto idx : vIdx)
             measBuffer[idx] = 1;
+    makeValid();
 }
 template <Floating T>
 std::vector<std::size_t> CTDIPhantom<T>::circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius)

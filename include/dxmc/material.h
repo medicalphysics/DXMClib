@@ -18,6 +18,8 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/floating.h"
+
 #include <string>
 #include <vector>
 
@@ -38,6 +40,25 @@ public:
     std::vector<double> getRayleightFormFactorSquared(const std::vector<double>& momentumTransfer) const;
     std::vector<double> getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const;
 
+    template <Floating T>
+    std::vector<T> getRayleightFormFactorSquared(const std::vector<T>& momentumTransfer) const
+    {
+        std::vector<double> in(momentumTransfer.cbegin(), momentumTransfer.cend());
+        auto vec = getRayleightFormFactorSquared(in);
+        std::vector<T> out(in.size());
+        std::transform(vec.cbegin(), vec.cend(), out.begin(), [](double e) -> T { return static_cast<T>(e); });
+        return out;
+    }
+    template <Floating T>
+    std::vector<T> getComptonNormalizedScatterFactor(const std::vector<T>& momentumTransfer) const
+    {
+        std::vector<double> in(momentumTransfer.cbegin(), momentumTransfer.cend());
+        auto vec = getComptonNormalizedScatterFactor(in);
+        std::vector<T> out(in.size());
+        std::transform(vec.cbegin(), vec.cend(), out.begin(), [](double e) -> T { return static_cast<T>(e); });
+        return out;
+    }
+
     double getPhotoelectricAttenuation(double energy) const;
     double getRayleightAttenuation(double energy) const;
     double getComptonAttenuation(double energy) const;
@@ -50,6 +71,8 @@ public:
     static std::vector<std::string> getNISTCompoundNames(void);
     static int getAtomicNumberFromSymbol(const std::string& symbol);
     static std::string getSymbolFromAtomicNumber(int Z);
+
+    static double getTotalAttenuation(int atomicNumber, double energy);
 
 protected:
     void setByCompoundName(const std::string& name);

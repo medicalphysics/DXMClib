@@ -13,14 +13,48 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2019 Erlend Andersen
+Copyright 2020 Erlend Andersen
 */
 
 #pragma once
 
-#include <type_traits>
+#include "dxmc/floating.h"
+#include <numbers>
 
 namespace dxmc {
-template <typename T>
-concept Floating = std::is_floating_point<T>::value;
+
+template <Floating T>
+constexpr T KEV_TO_ANGSTROM()
+{
+    return T { 12.398520 };
+}
+
+template <Floating T>
+constexpr T ELECTRON_REST_MASS()
+{
+    return T { 510.9989461 };
+}
+
+template <Floating T>
+constexpr T PI_VAL()
+{
+    return std::numbers::pi_v<T>;
+}
+
+template <Floating T>
+constexpr T DEG_TO_RAD()
+{
+    return PI_VAL<T>() / T { 180 };
+}
+template <Floating T>
+constexpr T RAD_TO_DEG()
+{
+    return T { 180 } / PI_VAL<T>();
+}
+
+template <Floating T>
+constexpr T KEV_TO_MJ()
+{
+    return T { 1.6021773e-13 }; // milli Joules}
+}
 }

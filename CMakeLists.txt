@@ -6,7 +6,7 @@ cmake_minimum_required(VERSION 3.10...3.20)
 
 # This is your project statement. You should always list languages;
 # Listing the version is nice here since it sets lots of useful variables
-project(dxmclib VERSION 0.5.0 LANGUAGES CXX)
+project(dxmclib VERSION 0.7.0 LANGUAGES CXX)
 
 # If you set any CMAKE_ variables, that can go here.
 # (But usually don't do this, except maybe for C++ standard)
@@ -44,23 +44,27 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/source.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/transport.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/tube_calculations.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/constants.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc.h"
+    
     )
 
 add_library(libdxmc 
-    src/world.cpp
-    src/source.cpp
+  #  src/world.cpp
+   # src/source.cpp
     #src/exposure.cpp
-    src/tube.cpp
-    src/dxmcrandom.cpp
-    src/beamfilters.cpp
+    #src/tube.cpp
+    #src/dxmcrandom.cpp
+    #src/beamfilters.cpp
     src/material.cpp
-    src/transport.cpp
-	src/attenuationlut.cpp
+    #src/transport.cpp
+	#src/attenuationlut.cpp
     ${HEADER_LIST}
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

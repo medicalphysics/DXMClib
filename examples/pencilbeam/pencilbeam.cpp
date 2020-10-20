@@ -12,14 +12,16 @@
 
 using namespace dxmc;
 
-int main(int argc, char* argv[])
+template <typename T>
+double calculate()
 {
+
     // Lets create a world that describes our voxelized model to score dose in.
-    World world;
+    World<T> world;
     // We need to specify dimensions and voxel spacing (in millimeters)
     std::array<std::size_t, 3> dimensions = { 56, 56, 56 };
     world.setDimensions(dimensions);
-    std::array<double, 3> spacing = { 1.0, 1.0, 1.0 };
+    std::array<T, 3> spacing = { 1.0, 1.0, 1.0 };
     world.setSpacing(spacing);
 
     // Now we fill the world box with som materials
@@ -34,9 +36,9 @@ int main(int argc, char* argv[])
     world.addMaterialToMap(aluminium);
 
     //now we create the density array and material index array
-    auto arraySize = dimensions[0] * dimensions[1] * dimensions[2];
+    auto arraySize = world.size();
     // the type of density array is double
-    auto densityArray = std::make_shared<std::vector<double>>(arraySize);
+    auto densityArray = std::make_shared<std::vector<T>>(arraySize);
     // the type of material index array is unsigned char (up to 255 materials are supported)
     auto materialIndexArray = std::make_shared<std::vector<unsigned char>>(arraySize);
     // Now fill the arrays
@@ -61,31 +63,37 @@ int main(int argc, char* argv[])
     world.setMaterialIndexArray(materialIndexArray);
 
     // we need a beam source
-    PencilSource pen;
+    PencilSource<T> pen;
 
     //pencilsource only support monochromatic intensity
     pen.setPhotonEnergy(60.0); // keV
-    world.setAttenuationLutMaxEnergy(60.0);
+
     //position the source above the world box
     //std::array<double, 3> source_position = { 0,0, -dimensions[2] * spacing[2] };
-    std::array<double, 3> source_position = { 0, 0, 0 };
+    std::array<T, 3> source_position = { 0, 0, 0 };
     pen.setPosition(source_position);
     // we want the cross product aka the beam direction to point towards the box
-    std::array<double, 6> beam_cosines = { -1, 0, 0, 0, 1, 0 };
+    std::array<T, 6> beam_cosines = { -1, 0, 0, 0, 1, 0 };
     pen.setDirectionCosines(beam_cosines);
-    pen.setTotalExposures(100); // number of batches
+    pen.setTotalExposures(10000); // number of batches
     pen.setHistoriesPerExposure(10000); // histories per batch
 
     //setting normalizing DAP value
     pen.setAirDose(1.0);
     //run simulation
-    auto test = world.validate();
-    auto res = transport::run(world, &pen);
+    world.makeValid();
+
+    Transport<T> transport;
+    ProgressBar<T> progressBar;
+
+    auto res = transport(world, &pen);
     auto dose = res.dose;
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count() / 1000.0;
 
     //printing dose dose along z direction of box
     auto materials = world.materialMap();
-    std::cout << "Depth [mm],  Dose, Material index, Material\n";
+    std::cout << "Simulation time, " << time << ", seconds\n";
+    std::cout << "Depth [mm],  Dose, nEvents, Material index, Material\n";
     for (std::size_t k = 0; k < dimensions[2]; ++k) {
         std::cout << spacing[2] * k << ", ";
         const auto offset = dimensions[0] * dimensions[1];
@@ -93,10 +101,19 @@ int main(int argc, char* argv[])
         auto sum_start = dose.begin() + k_offset;
         auto sum_end = dose.begin() + k_offset + offset;
         auto sum = std::accumulate(sum_start, sum_end, 0.0);
-        std::cout << sum / static_cast<double>(offset) << ", ";
+        std::cout << sum / static_cast<T>(offset) << ", ";
+        auto n_events = std::accumulate(res.nEvents.cbegin() + k_offset, res.nEvents.cbegin() + k_offset + offset, 0);
+        std::cout << n_events / static_cast<T>(offset) << ", ";
         auto material_index = static_cast<std::size_t>(materialIndexArray->data()[k_offset]);
         std::cout << material_index << ", " << materials[material_index].prettyName() << std::endl;
     }
+    return time;
+}
+
+int main(int argc, char* argv[])
+{
+    auto n_secs_d = calculate<double>();
+    auto n_secs_f = calculate<float>();
 
     return 1;
 }

@@ -1,5 +1,8 @@
 
 
+#include "dxmc/attenuationlut.h"
+#include "dxmc/dxmcrandom.h"
+#include "dxmc/material.h"
 #include "dxmc/transport.h"
 
 #include "xraylib.h"
@@ -14,7 +17,7 @@ bool testCompton(double keV, const Material& mat)
 
     RandomState seed;
 
-    AttenuationLut lut;
+    AttenuationLut<double> lut;
     std::vector<Material> mats;
     mats.push_back(mat);
     lut.generate(mats, 0., keV);

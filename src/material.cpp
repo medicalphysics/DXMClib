@@ -45,6 +45,11 @@ double Material::getTotalAttenuation(double energy) const
     return CS_Total_CP(m_name.c_str(), energy, nullptr);
 }
 
+double Material::getTotalAttenuation(int atomicNumber, double energy)
+{
+    return CS_Total(atomicNumber, energy, nullptr);
+}
+
 double Material::getMassEnergyAbsorbtion(double energy) const
 {
     return CS_Energy_CP(m_name.c_str(), energy, nullptr);
