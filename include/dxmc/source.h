@@ -116,24 +116,21 @@ public:
 
     void setPhotonEnergy(T energy)
     {
-        if (energy > 500.0)
-            m_photonEnergy = 500;
-        else if (energy < 0.0)
-            m_photonEnergy = 0.0;
+        if (energy > ELECTRON_REST_MASS<T>())
+            m_photonEnergy = ELECTRON_REST_MASS<T>();
+        else if (energy < 1)
+            m_photonEnergy = 1;
         else
             m_photonEnergy = energy;
     }
     T photonEnergy() const { return m_photonEnergy; }
-
     T maxPhotonEnergyProduced() const override { return m_photonEnergy; }
-
     std::uint64_t totalExposures(void) const override { return m_totalExposures; }
     void setTotalExposures(std::uint64_t exposures)
     {
         if (exposures > 0)
             m_totalExposures = exposures;
     }
-
     void setAirDose(T Gycm2)
     {
         if (Gycm2 > 0.0)
@@ -150,7 +147,6 @@ public:
         const T factor = m_airDose / calcOutput;
         return factor;
     }
-
     bool isValid(void) const override { return true; }
     bool validate(void) override { return true; }
 
@@ -706,10 +702,8 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_base_of<CTSource<T>, U>::value
-        T
-        ctCalibration(const U& source, ProgressBar<T>* progressBar = nullptr) const
-    //T ctCalibration(ProgressBar<T>* progress = nullptr) const
+    requires std::is_base_of<CTSource<T>, U>::value T ctCalibration(
+        const U& source, ProgressBar<T>* progressBar = nullptr) const
     {
 
         U sourceCopy(source);
@@ -730,7 +724,7 @@ protected:
         sourceCopy.setDirectionCosines(cosines);
 
         sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
-        std::size_t statCounter = world.ctdiMinHistories() / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
+        std::size_t statCounter = world.ctdiMinHistories() / 2 / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
         if (statCounter < 1)
             statCounter = 1;
 
@@ -761,7 +755,7 @@ protected:
                 measureTally[i] += result.nEvents[idx];
         }
 
-        const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / 4.0;
+        const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4.0 };
         const T ctdiCent = measureDose[0];
         const T ctdiw = (ctdiCent + T { 2 } * ctdiPher) / T { 3 } / static_cast<T>(statCounter);
         const T factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;

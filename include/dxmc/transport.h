@@ -91,9 +91,10 @@ protected:
     void safeValueAdd(U& value, const U addValue, std::atomic_flag& lock) const
     {
         while (lock.test_and_set(std::memory_order_acquire)) // acquire lock
-            ; // spin
+            while (lock.test(std::memory_order_relaxed)) // test lock
+                ; // spin
         value += addValue;
-        lock.clear(std::memory_order_release);
+        lock.clear(std::memory_order_release); // release lock
     }
 
     void rayleightScatterLivermore(Particle<T>& particle, unsigned char materialIdx, RandomState& state, T& cosAngle) const
