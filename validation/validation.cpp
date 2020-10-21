@@ -18,8 +18,6 @@ constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
 constexpr std::size_t nExposures = 16;
 
-constexpr double PI = 3.14159265359;
-
 // energy weighs pair for spectre
 /*RQR-8
 W/Al
@@ -44,7 +42,7 @@ HVL: 5.010 mm Al
 */
 const std::vector<double> TG195_120KV_raw({ 16.75, 1.107E-04, 17.25, 1.625E-04, 17.75, 2.308E-04, 18.25, 3.172E-04, 18.75, 4.220E-04, 19.25, 5.486E-04, 19.75, 6.956E-04, 20.25, 8.610E-04, 20.75, 1.056E-03, 21.25, 1.264E-03, 21.75, 1.499E-03, 22.25, 1.748E-03, 22.75, 2.019E-03, 23.25, 2.293E-03, 23.75, 2.601E-03, 24.25, 2.900E-03, 24.75, 3.203E-03, 25.25, 3.531E-03, 25.75, 3.858E-03, 26.25, 4.176E-03, 26.75, 4.511E-03, 27.25, 4.830E-03, 27.75, 5.163E-03, 28.25, 5.469E-03, 28.75, 5.786E-03, 29.25, 6.065E-03, 29.75, 6.349E-03, 30.25, 6.638E-03, 30.75, 6.879E-03, 31.25, 7.143E-03, 31.75, 7.372E-03, 32.25, 7.597E-03, 32.75, 7.804E-03, 33.25, 7.994E-03, 33.75, 8.171E-03, 34.25, 8.339E-03, 34.75, 8.483E-03, 35.25, 8.622E-03, 35.75, 8.745E-03, 36.25, 8.849E-03, 36.75, 8.949E-03, 37.25, 9.031E-03, 37.75, 9.109E-03, 38.25, 9.170E-03, 38.75, 9.219E-03, 39.25, 9.264E-03, 39.75, 9.297E-03, 40.25, 9.319E-03, 40.75, 9.332E-03, 41.25, 9.333E-03, 41.75, 9.332E-03, 42.25, 9.327E-03, 42.75, 9.307E-03, 43.25, 9.292E-03, 43.75, 9.259E-03, 44.25, 9.229E-03, 44.75, 9.187E-03, 45.25, 9.149E-03, 45.75, 9.101E-03, 46.25, 9.044E-03, 46.75, 8.996E-03, 47.25, 8.937E-03, 47.75, 8.871E-03, 48.25, 8.813E-03, 48.75, 8.747E-03, 49.25, 8.672E-03, 49.75, 8.605E-03, 50.25, 8.530E-03, 50.75, 8.456E-03, 51.25, 8.381E-03, 51.75, 8.300E-03, 52.25, 8.226E-03, 52.75, 8.145E-03, 53.25, 8.065E-03, 53.75, 7.985E-03, 54.25, 7.899E-03, 54.75, 7.820E-03, 55.25, 7.736E-03, 55.75, 7.652E-03, 56.25, 7.568E-03, 56.75, 7.486E-03, 57.25, 7.403E-03, 57.75, 3.335E-02, 58.25, 7.236E-03, 58.75, 7.155E-03, 59.25, 5.339E-02, 59.75, 6.986E-03, 60.25, 6.903E-03, 60.75, 6.821E-03, 61.25, 6.739E-03, 61.75, 6.658E-03, 62.25, 6.578E-03, 62.75, 6.494E-03, 63.25, 6.415E-03, 63.75, 6.338E-03, 64.25, 6.256E-03, 64.75, 6.175E-03, 65.25, 6.100E-03, 65.75, 6.021E-03, 66.25, 5.942E-03, 66.75, 2.242E-02, 67.25, 5.788E-03, 67.75, 5.712E-03, 68.25, 5.637E-03, 68.75, 9.988E-03, 69.25, 5.257E-03, 69.75, 4.045E-03, 70.25, 4.019E-03, 70.75, 3.988E-03, 71.25, 3.960E-03, 71.75, 3.932E-03, 72.25, 3.900E-03, 72.75, 3.871E-03, 73.25, 3.838E-03, 73.75, 3.808E-03, 74.25, 3.774E-03, 74.75, 3.743E-03, 75.25, 3.709E-03, 75.75, 3.674E-03, 76.25, 3.641E-03, 76.75, 3.606E-03, 77.25, 3.570E-03, 77.75, 3.537E-03, 78.25, 3.500E-03, 78.75, 3.463E-03, 79.25, 3.426E-03, 79.75, 3.389E-03, 80.25, 3.351E-03, 80.75, 3.313E-03, 81.25, 3.274E-03, 81.75, 3.238E-03, 82.25, 3.200E-03, 82.75, 3.160E-03, 83.25, 3.121E-03, 83.75, 3.079E-03, 84.25, 3.039E-03, 84.75, 3.000E-03, 85.25, 2.959E-03, 85.75, 2.919E-03, 86.25, 2.878E-03, 86.75, 2.838E-03, 87.25, 2.797E-03, 87.75, 2.756E-03, 88.25, 2.712E-03, 88.75, 2.671E-03, 89.25, 2.629E-03, 89.75, 2.588E-03, 90.25, 2.544E-03, 90.75, 2.502E-03, 91.25, 2.460E-03, 91.75, 2.418E-03, 92.25, 2.374E-03, 92.75, 2.331E-03, 93.25, 2.289E-03, 93.75, 2.244E-03, 94.25, 2.202E-03, 94.75, 2.159E-03, 95.25, 2.115E-03, 95.75, 2.072E-03, 96.25, 2.029E-03, 96.75, 1.984E-03, 97.25, 1.941E-03, 97.75, 1.896E-03, 98.25, 1.853E-03, 98.75, 1.809E-03, 99.25, 1.765E-03, 99.75, 1.722E-03, 100.25, 1.677E-03, 100.75, 1.634E-03, 101.25, 1.589E-03, 101.75, 1.546E-03, 102.25, 1.501E-03, 102.75, 1.458E-03, 103.25, 1.414E-03, 103.75, 1.370E-03, 104.25, 1.326E-03, 104.75, 1.282E-03, 105.25, 1.238E-03, 105.75, 1.195E-03, 106.25, 1.151E-03, 106.75, 1.107E-03, 107.25, 1.063E-03, 107.75, 1.019E-03, 108.25, 9.761E-04, 108.75, 9.323E-04, 109.25, 8.893E-04, 109.75, 8.456E-04, 110.25, 8.027E-04, 110.75, 7.592E-04, 111.25, 7.158E-04, 111.75, 6.731E-04, 112.25, 6.300E-04, 112.75, 5.874E-04, 113.25, 5.445E-04, 113.75, 5.017E-04, 114.25, 4.594E-04, 114.75, 4.168E-04, 115.25, 3.747E-04, 115.75, 3.324E-04, 116.25, 2.903E-04, 116.75, 2.485E-04, 117.25, 2.067E-04, 117.75, 1.650E-04, 118.25, 1.236E-04, 118.75, 8.222E-05, 119.25, 4.102E-05, 119.75, 3.417E-06 });
 
-template<typename T>
+template <typename T>
 std::pair<std::vector<T>, std::vector<T>> TG195_specter(const std::vector<double>& raw)
 {
     std::pair<std::vector<T>, std::vector<T>> s;
@@ -108,14 +106,13 @@ bool test120Specter()
     std::cout << std::endl;
     return true;
 }
-template<typename T>
+template <typename T>
 bool inline isEqual(T a, T b)
 {
     return std::abs(a - b) < ERRF;
 }
 
-
-template<typename T, typename U, typename W>
+template <typename T, typename U, typename W>
 bool betw(T v, U min, W max)
 {
     if (v >= min && v < max)
@@ -135,7 +132,7 @@ World<T> generateTG195Case2World()
     std::array<T, 3> spacing = { 5, 5, 5 }; // mm
     std::array<std::size_t, 3> dim = { 78, 78, 400 };
     const auto size = dim[0] * dim[1] * dim[2];
-    auto dens = std::make_shared<std::vector<T>>(size, air.standardDensity());
+    auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     auto idx = std::make_shared<std::vector<unsigned char>>(size, 0);
     // fill first slice with soft tissue
     for (std::size_t z = 0; z < dim[2]; ++z)
@@ -143,7 +140,7 @@ World<T> generateTG195Case2World()
             for (std::size_t x = 0; x < dim[0]; ++x) {
                 if (z < 40) {
                     const auto i = x + y * dim[0] + z * dim[0] * dim[1];
-                    dens->data()[i] = soft.standardDensity();
+                    dens->data()[i] = static_cast<T>(soft.standardDensity());
                     idx->data()[i] = static_cast<unsigned char>(1);
 
                     //center boxes
@@ -189,7 +186,7 @@ bool TG195Case2AbsorbedEnergyMono()
     auto w = generateTG195Case2World<T>();
     IsotropicSource<T> src;
     std::vector<T> s({ 1.0 }), e({ 56.4 });
-    
+
     w.makeValid();
     assert(w.isValid());
 
@@ -239,7 +236,7 @@ bool TG195Case2AbsorbedEnergy120()
     const auto specter = TG195_120KV<T>();
 
     const auto max_energy = *(std::max_element(specter.first.cbegin(), specter.first.cend()));
-    
+
     //w.setAttenuationLutResolution(0.4);
     w.makeValid();
     assert(w.isValid());
@@ -276,7 +273,7 @@ bool TG195Case2AbsorbedEnergy120()
     return true;
 }
 
-template<typename T>
+template <typename T>
 std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const std::array<std::size_t, 3>& dim, const std::array<T, 3>& spacing, const T radii = 1.0)
 {
     const T xo = dim[0] * spacing[0] * 0.5;
@@ -309,9 +306,9 @@ World<T> generateTG195Case4World1()
     pmma.setStandardDensity(1.19);
 
     auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
-    auto dens = std::make_shared<std::vector<T>>(size, air.standardDensity());
+    auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     //generate cylindar
-    auto circ_ind = circleIndices(.0, .0, dim, spacing, 160.0);
+    auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 160 });
     for (std::size_t z = 0; z < dim[2]; ++z)
         for (const auto ind : circ_ind) {
             const auto i = z * dim[0] * dim[1] + ind;
@@ -354,19 +351,19 @@ World<T> generateTG195Case4World2(bool force_interactions = false)
     pmma.setStandardDensity(1.19);
 
     auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
-    auto dens = std::make_shared<std::vector<T>>(size, air.standardDensity());
+    auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
     //generate cylindar
-    auto circ_ind = circleIndices(.0, .0, dim, spacing, 320. * 0.5);
-    auto pmma2_ind = circleIndices(-150.0, .0, dim, spacing, 5.0);
-    auto pmma1_ind = circleIndices(.0, .0, dim, spacing, 5.0);
+    auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 320 } * T { 0.5 });
+    auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
+    auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
     for (std::size_t z = 0; z < dim[2]; ++z) {
         for (const auto i : circ_ind) {
             const auto ind = z * dim[0] * dim[1] + i;
             mat->data()[ind] = static_cast<unsigned char>(1);
             dens->data()[ind] = pmma.standardDensity();
         }
-        if (std::abs((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5) < 50) {
+        if (std::abs((z + T { 0.5 }) * spacing[2] - spacing[2] * dim[2] * T { 0.5 }) < 50) {
             const auto offset = z * dim[0] * dim[1];
             for (const auto i : pmma1_ind) {
                 mat->data()[offset + i] = static_cast<unsigned char>(2);
@@ -414,7 +411,7 @@ bool TG195Case41AbsorbedEnergy()
     src.setTotalExposures(nExposures);
     src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
     auto w = generateTG195Case4World1<T>();
-    
+
     w.makeValid();
 
     Transport<T> transport;
@@ -550,7 +547,7 @@ bool TG195Case42AbsorbedEnergy()
         std::cout << '\r' << "Prosessing angle (0-360) [" << static_cast<int>(i / 360.0 * 100.0) << " %] "
                   << " current angle: " << i;
         const auto nHistories = src.historiesPerExposure() * src.totalExposures();
-        const T angle = i * PI / 180.0;
+        const T angle = i * DEG_TO_RAD<T>();
         std::array<T, 3> pos { -600, 0, 0 };
         std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
         vectormath::rotate(pos.data(), rot_axis, angle);
@@ -642,7 +639,8 @@ bool testAttenuation()
     std::array<T, 3> spacing = { .1, .1, 1 };
     std::array<std::size_t, 3> dim = { 1, 1, 200 };
     const auto size = std::accumulate(dim.cbegin(), dim.cend(), (std::size_t)1, std::multiplies<>());
-    auto dens = std::make_shared<std::vector<T>>(size, m.standardDensity());
+    const auto standardDensity = static_cast<T>(m.standardDensity());
+    auto dens = std::make_shared<std::vector<T>>(size, standardDensity);
     auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
     auto meas = std::make_shared<std::vector<unsigned char>>(size, 0);
     World<T> w;
@@ -705,12 +703,11 @@ int main(int argc, char* argv[])
 {
     //test120Specter();
     auto success = true;
-    testAttenuation<double>();
-    success = success && TG195Case2AbsorbedEnergyMono<double>();
-    //success = success && TG195Case2AbsorbedEnergyMono<float>();
-    success = success && TG195Case2AbsorbedEnergy120<double>();
-    success = success && TG195Case41AbsorbedEnergy<double>();
-    success = success && TG195Case42AbsorbedEnergy<double>();
+    testAttenuation<float>();
+    success = success && TG195Case2AbsorbedEnergyMono<float>();
+    success = success && TG195Case2AbsorbedEnergy120<float>();
+    success = success && TG195Case41AbsorbedEnergy<float>();
+    success = success && TG195Case42AbsorbedEnergy<float>();
     std::cout << "Press any key to exit";
     std::string dummy;
     std::cin >> dummy;
