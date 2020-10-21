@@ -655,14 +655,4 @@ void Transport<T>::parallellRunCtdi(const CTDIPhantom<T>& w, const CTSource<T>* 
     for (std::size_t i = 0; i < nJobs - 1; ++i)
         jobs[i].join();
 }
-
-/*
-namespace transport {
-
-    double comptonScatter(Particle<double>& particle, RandomState& seed, double& cosAngle);
-    double comptonScatterLivermore(Particle<double>& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
-    void rayleightScatterLivermore(Particle<double>& particle, unsigned char materialIdx, const AttenuationLut& attLut, RandomState& seed, double& cosAngle);
-    Result run(const World<double>& world, Source* source, ProgressBar* progressBar = nullptr, bool calculateDose = true);
-    Result run(const CTDIPhantom<double>& world, CTSource* source, ProgressBar* progressBar = nullptr);
-}*/
 }
