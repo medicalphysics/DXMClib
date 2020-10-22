@@ -7,6 +7,29 @@
 
 using namespace dxmc;
 
+constexpr double ERRF = 1e-4;
+
+template <typename T>
+bool isEqual(T f1, T f2)
+{
+    return std::abs(f1 - f2) < ERRF;
+}
+
+template<typename T>
+void testLenght()
+{
+    T arr[3];
+    arr[0] = 1;
+    arr[1] = 1;
+    arr[2] = 1;
+    std::array<T, 3> arr_std = { 1, 1, 1 };
+
+    auto l = vectormath::lenght(arr);
+    auto l_std = vectormath::lenght(arr_std.data());
+    
+    assert(isEqual(l, l_std));
+}
+
 void testArgMax()
 {
     std::array<double, 3> arr { 1, 2, 3 };
@@ -46,6 +69,8 @@ void testChangeBasis()
 
 int main(int argc, char* argv[])
 {
+    testLenght<double>();
+    testLenght<float>();
     testArgMax();
     testChangeBasis();
     return EXIT_SUCCESS;

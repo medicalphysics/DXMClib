@@ -22,7 +22,7 @@ bool testAttenuationLutXcom()
     mats.emplace_back(13);
     mats[0].setStandardDensity(1.03);
 
-    AttenuationLut lut;
+    AttenuationLut<double> lut;
     lut.setEnergyResolution(1.0);
     
 
@@ -58,7 +58,7 @@ bool testAttenuationLutXcom()
 bool testAttenuationLutTG195()
 {
     constexpr double energy = 54.6;
-    AttenuationLut lut;
+    AttenuationLut<double> lut;
     lut.setEnergyResolution(1.0);
 
     Material air("C0.02N78.44O21.08Ar0.47");
