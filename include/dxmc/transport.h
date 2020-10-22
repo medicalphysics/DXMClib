@@ -607,8 +607,8 @@ void Transport<T>::parallellRun(const World<T>& w, const Source<T>* source, Resu
     }
     expEndThread = expEnd;
     parallellRun(w, source, result, expBegThread, expEndThread, 1, progressbar);
-    for (std::size_t i = 0; i < nJobs - 1; ++i)
-        jobs[i].join();
+    for (auto job& : jobs)
+        job.join();
 }
 
 template <Floating T>
@@ -649,7 +649,7 @@ void Transport<T>::parallellRunCtdi(const CTDIPhantom<T>& w, const CTSource<T>* 
     }
     expEndThread = expEnd;
     parallellRunCtdi(w, source, result, expBegThread, expEndThread, 1, progressbar);
-    for (std::size_t i = 0; i < nJobs - 1; ++i)
-        jobs[i].join();
+    for (auto job& : jobs)
+        job.join();
 }
 }
