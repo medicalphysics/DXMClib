@@ -86,7 +86,7 @@ double calculate()
     // Specify number of exposures, each exposure is run on a single thread
     // so make sure there are more exposures than cores on your CPU for optimal performance.
     // For CT sources, number of exposures are determined by the geometry.
-    pen.setTotalExposures(200);
+    pen.setTotalExposures(20);
     // Set total number of histories per exposure
     pen.setHistoriesPerExposure(1000000);
 
