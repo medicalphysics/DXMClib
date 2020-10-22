@@ -218,8 +218,8 @@ public:
             return m_holePositions[1];
         return m_holePositions[0];
     }
-    constexpr T airDensity() const { return T { 0.001205 }; } // g/cm3
-    static constexpr std::uint64_t ctdiMinHistories() { return 100E6 ; }
+    static constexpr T airDensity() { return T { 0.001205 }; } // g/cm3
+    static constexpr std::uint64_t ctdiMinHistories() { return 100E6; }
 };
 
 template <Floating T>

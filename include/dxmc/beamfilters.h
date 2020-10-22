@@ -509,7 +509,7 @@ public:
     */
     T sampleIntensityWeight(const T angle, const T energy) const
     {
-        std::size_t e_index = (energy - m_energyStart + 0.5 * m_energyStep) / m_energyStep;
+        std::size_t e_index = (energy - m_energyStart + T { 0.5 } * m_energyStep) / m_energyStep;
         if (e_index >= m_energySize)
             e_index = m_energySize - 1;
         if (energy < m_energyStart)
@@ -622,7 +622,7 @@ protected:
 
     void generatePositionWeightMap(typename std::vector<T>::const_iterator densBeg, typename std::vector<T>::const_iterator densEnd, const std::array<T, 3> spacing, const std::array<std::size_t, 3>& dimensions, const std::array<T, 3>& origin)
     {
-        m_positionMin = origin[2] - spacing[2] * dimensions[2] * 0.5;
+        m_positionMin = origin[2] - spacing[2] * dimensions[2] * T { 0.5 };
         m_positionMax = m_positionMin + spacing[2] * dimensions[2];
         m_positionStep = (m_positionMax - m_positionMin) / dimensions[2]; // this should be equal to spacing[2]
         m_positionIntensity.resize(dimensions[2]);

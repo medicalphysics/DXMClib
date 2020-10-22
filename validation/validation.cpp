@@ -314,13 +314,13 @@ World<T> generateTG195Case4World1()
             const auto i = z * dim[0] * dim[1] + ind;
             (mat->data())[i] = static_cast<unsigned char>(1);
             (dens->data())[i] = pmma.standardDensity();
-            if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -5, 5))
+            if (betw((z + T { 0.5 }) * spacing[2] - spacing[2] * dim[2] * T { 0.5 }, -5, 5))
                 mat->data()[i] = static_cast<unsigned char>(2);
-            if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -15, -5))
+            if (betw((z + T { 0.5 }) * spacing[2] - spacing[2] * dim[2] * T { 0.5 }, -15, -5))
                 mat->data()[i] = static_cast<unsigned char>(3);
-            if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -25, -15))
+            if (betw((z + T { 0.5 }) * spacing[2] - spacing[2] * dim[2] * T { 0.5 }, -25, -15))
                 mat->data()[i] = static_cast<unsigned char>(4);
-            if (betw((z + 0.5) * spacing[2] - spacing[2] * dim[2] * 0.5, -35, -25))
+            if (betw((z + T { 0.5 }) * spacing[2] - spacing[2] * dim[2] * T { 0.5 }, -35, -25))
                 mat->data()[i] = static_cast<unsigned char>(5);
         }
 

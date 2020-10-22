@@ -1,6 +1,5 @@
 #include "dxmc/source.h"
 
-
 #include <cassert>
 #include <chrono>
 #include <future>
@@ -13,13 +12,24 @@ constexpr double RAD2DEG = 180.0 / 3.14159265359;
 constexpr double DEG2RAD = 1.0 / RAD2DEG;
 constexpr double ERRF = 1e-4;
 
-template<typename T>
+template <typename T>
 bool isEqual(T f1, T f2)
 {
     return std::abs(f1 - f2) < ERRF;
 }
 
-template<typename T>
+template <typename T>
+void initiateAll()
+{
+    PencilSource<T> pen;
+    DXSource<T> dx;
+    IsotropicSource<T> iso;
+    CTAxialSource<T> ax;
+    CTSpiralSource<T> spiral;
+    CTDualSource<T> de;
+}
+
+template <typename T>
 bool testDXSourceAngles(T pang, T sang, T tubeRotation)
 {
 
@@ -35,7 +45,7 @@ bool testDXSourceAngles(T pang, T sang, T tubeRotation)
     return isEqual(angles[0], anglesres[0]) && isEqual(angles[1], anglesres[1]);
 }
 
-template<typename T>
+template <typename T>
 bool testDXSourceAnglesMany()
 {
     bool success = true;
@@ -62,22 +72,24 @@ bool testDXSourceAnglesMany()
     return success;
 }
 
-template<typename T>
+template <typename T>
 bool testCTCalibration()
 {
     CTAxialSource<T> src;
     CTDIPhantom<T> world(320);
-    World<T>& w = world;
+    
     //src.setPitch(0.5);
     src.setExposureAngleStepDeg(1);
-    src.setHistoriesPerExposure(100000);
-   
-    
-   /* typedef CTDIPhantom::HolePosition holePosition;
-    std::array<CTDIPhantom::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
+    src.setHistoriesPerExposure(10000);
+
+    Transport<T> transport;
+    auto res = transport(world, &src);
+
+    typedef CTDIPhantom<T>::HolePosition holePosition;
+    std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
     std::array<T, 5> measureDose;
-    measureDose.fill(0.0);
+    measureDose.fill(0);
     for (std::size_t i = 0; i < 5; ++i) {
         auto holeIndices = world.holeIndices(position[i]);
         for (auto idx : holeIndices)
@@ -92,17 +104,19 @@ bool testCTCalibration()
     T ctdi = pher * 2.0 / 3.0 + cent / 3.0;
     if (ctdi > 0.990 || ctdi < 1.01)
         return true;
-        */
+
     return false;
 }
 
 int main(int argc, char* argv[])
 {
+    initiateAll<float>();
+    initiateAll<double>();
     bool success = true;
     success = success && testCTCalibration<float>();
     success = success && testCTCalibration<double>();
     success = success && testDXSourceAnglesMany<float>();
     success = success && testDXSourceAnglesMany<double>();
-    
+
     return !success;
 }

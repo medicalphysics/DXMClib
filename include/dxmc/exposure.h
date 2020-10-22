@@ -41,31 +41,18 @@ private:
     std::array<T, 6> m_directionCosines;
     std::array<T, 3> m_beamDirection;
     std::array<T, 2> m_collimationAngles;
-    T m_beamIntensityWeight { 1.0 };
+    T m_beamIntensityWeight;
     const BeamFilter<T>* m_beamFilter = nullptr;
     const SpecterDistribution<T>* m_specterDistribution = nullptr;
     const HeelFilter<T>* m_heelFilter = nullptr;
-    T m_monoenergeticPhotonEnergy { 0.0 };
-    std::size_t m_nHistories;
+    T m_monoenergeticPhotonEnergy { 0 };
+    std::uint64_t m_nHistories;
 
 protected:
     void normalizeDirectionCosines(void)
     {
-        T sumx { 0 };
-        T sumy { 0 };
-        for (std::size_t i = 0; i < 3; i++) {
-            sumx += m_directionCosines[i] * m_directionCosines[i];
-            sumy += m_directionCosines[i + 3] * m_directionCosines[i + 3];
-        }
-
-        sumx = T { 1.0 } / std::sqrt(sumx);
-        sumy = T { 1.0 } / std::sqrt(sumy);
-
-        for (std::size_t i = 0; i < 3; i++) {
-            m_directionCosines[i] *= sumx;
-            m_directionCosines[i + 3] *= sumy;
-        }
-
+        vectormath::normalize(&m_directionCosines[0]);
+        vectormath::normalize(&m_directionCosines[3]);
         calculateBeamDirection();
     }
 
@@ -81,22 +68,24 @@ public:
      * @param specter A SpecterDistribution to sample photon energies, if null all particles will be emittet with same energy. (see set setMonoenergeticPhotonEnergy)
      * @param heelFilter A HeelFilter to model the Heel effect of an x-ray tube. If null no Heel effect is modelled.
     */
-    Exposure(const BeamFilter<T>* filter = nullptr, const SpecterDistribution<T>* specter = nullptr, const HeelFilter<T>* heelFilter = nullptr)
+    Exposure(const std::array<T, 3>& position,
+        const std::array<T, 6>& directionCosines,
+        const std::array<T, 2>& collimationAngles,
+        std::uint64_t nHistories = 1000,
+        T beamIntensityWeight = 1,        
+        const SpecterDistribution<T>* specterDistribution = nullptr,
+        const HeelFilter<T>* heelFilter = nullptr,
+        const BeamFilter<T>* filter = nullptr )
+        : m_position(position)
+        , m_directionCosines(directionCosines)
+        , m_collimationAngles(collimationAngles)
+        , m_nHistories(nHistories)
+        , m_beamIntensityWeight(beamIntensityWeight)
+        , m_specterDistribution(specterDistribution)
+        , m_heelFilter(heelFilter)
+        , m_beamFilter(filter)
     {
-        for (std::size_t i = 0; i < 3; ++i) {
-            m_position[i] = T { 0.0 };
-            m_directionCosines[i] = T { 0.0 };
-            m_directionCosines[i + 3] = T { 0.0 };
-        }
-        m_directionCosines[0] = T { 1.0 };
-        m_directionCosines[5] = T { 1.0 };
-        calculateBeamDirection();
-        m_collimationAngles[0] = T { 0.35 }; // about 20 deg
-        m_collimationAngles[1] = T { 0.35 };
-        m_beamIntensityWeight = T { 1.0 };
-        m_specterDistribution = specter;
-        m_beamFilter = filter;
-        m_heelFilter = heelFilter;
+        normalizeDirectionCosines();
     }
 
     /**
@@ -271,21 +260,19 @@ public:
         vectormath::changeBasisInverse(b1, b2, b3, m_beamDirection.data());
     }
 
-    void sampleParticle(Particle<T>& p, RandomState& state) const // thread safe
+    Particle<T> sampleParticle(RandomState& state) const // thread safe
     {
-
-        p.pos[0] = m_position[0];
-        p.pos[1] = m_position[1];
-        p.pos[2] = m_position[2];
-
         // particle direction
-        const T theta = state.randomUniform(-m_collimationAngles[0] / 2.0, m_collimationAngles[0] / 2.0);
-        const T phi = state.randomUniform(-m_collimationAngles[1] / 2.0, m_collimationAngles[1] / 2.0);
+        const T theta = state.randomUniform(-m_collimationAngles[0] * T { 0.5 }, m_collimationAngles[0] * T { 0.5 });
+        const T phi = state.randomUniform(-m_collimationAngles[1] * T { 0.5 }, m_collimationAngles[1] * T { 0.5 });
         const T sintheta = std::sin(theta);
         const T sinphi = std::sin(phi);
         const T sin2theta = sintheta * sintheta;
         const T sin2phi = sinphi * sinphi;
-        const T norm = 1.0 / std::sqrt(1.0 + sin2phi + sin2theta);
+        const T norm = T { 1 } / std::sqrt(T { 1 } + sin2phi + sin2theta);
+
+        Particle p { .pos = m_position, .weight = m_beamIntensityWeight };
+
         for (std::size_t i = 0; i < 3; i++) {
             p.dir[i] = norm * (m_beamDirection[i] + sintheta * m_directionCosines[i] + sinphi * m_directionCosines[i + 3]);
         }
@@ -296,13 +283,13 @@ public:
             p.energy = m_monoenergeticPhotonEnergy;
         }
 
-        p.weight = m_beamIntensityWeight;
         if (m_beamFilter) {
             p.weight *= m_beamFilter->sampleIntensityWeight(theta);
         }
         if (m_heelFilter) {
             p.weight *= m_heelFilter->sampleIntensityWeight(phi, p.energy);
         }
+        return p;
     }
 };
 }
