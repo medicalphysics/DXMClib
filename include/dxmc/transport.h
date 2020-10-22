@@ -115,7 +115,7 @@ protected:
 
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
-        vectormath::peturb<T>(particle.dir, theta, phi);
+        vectormath::peturb<T>(particle.dir.data(), theta, phi);
     }
     T comptonScatterLivermore(Particle<T>& particle, unsigned char materialIdx, RandomState& state, T& cosAngle) const
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
@@ -144,7 +144,7 @@ protected:
 
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-        vectormath::peturb<T>(particle.dir, theta, phi);
+        vectormath::peturb<T>(particle.dir.data(), theta, phi);
 
         const auto E0 = particle.energy;
         particle.energy *= e;
@@ -402,11 +402,10 @@ protected:
 
     void transport(const World<T>& world, const Exposure<T>& exposure, RandomState& state, Result<T>* result) const
     {
-        Particle<T> particle;
         const auto nHistories = exposure.numberOfHistories();
         for (std::size_t i = 0; i < nHistories; ++i) {
             //Draw a particle
-            exposure.sampleParticle(particle, state);
+            auto particle = exposure.sampleParticle(state);
 
             // Is particle intersecting with world
             const bool isInWorld = transportParticleToWorld(world, particle);
@@ -582,13 +581,12 @@ void Transport<T>::parallellRun(const World<T>& w, const Source<T>* source, Resu
     const std::uint64_t len = expEnd - expBeg;
     if ((len <= 1) || (nJobs <= 1)) {
         RandomState state;
-        Exposure<T> exposure;
         const auto& worldBasis = w.directionCosines();
         for (std::size_t i = expBeg; i < expEnd; i++) {
             if (progressbar)
                 if (progressbar->cancel())
                     return;
-            source->getExposure(exposure, i);
+            auto exposure = source->getExposure(i);
             exposure.alignToDirectionCosines(worldBasis);
             transport(w, exposure, state, result);
             if (progressbar)
@@ -621,13 +619,12 @@ void Transport<T>::parallellRunCtdi(const CTDIPhantom<T>& w, const CTSource<T>* 
 
     if ((len == 1) || (nJobs <= 1)) {
         RandomState state;
-        Exposure<T> exposure;
         const auto& worldBasis = w.directionCosines();
         for (std::size_t i = expBeg; i < expEnd; i++) {
             if (progressbar)
                 if (progressbar->cancel())
                     return;
-            source->getExposure(exposure, i);
+            auto exposure = source->getExposure(i);
             const auto& pos = source->position();
             exposure.subtractPosition(pos); // aligning to center of phantom
             exposure.setPositionZ(0.0);
