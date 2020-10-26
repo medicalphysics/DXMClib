@@ -81,7 +81,6 @@ class Transport {
 public:
     Transport() { }
     Result<T> operator()(const World<T>& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true);
-
     Result<T> operator()(const CTDIPhantom<T>& world, CTSource<T>* source, ProgressBar<T>* progressbar = nullptr);
     const AttenuationLut<T>& attenuationLut() const { return m_attenuationLut; }
     AttenuationLut<T>& attenuationLut() { return m_attenuationLut; }
@@ -91,8 +90,8 @@ protected:
     void safeValueAdd(U& value, const U addValue, std::atomic_flag& lock) const
     {
         while (lock.test_and_set(std::memory_order_acquire)) // acquire lock
-            while (lock.test(std::memory_order_relaxed)) // test lock
-                ; // spin
+            // while (lock.test(std::memory_order_relaxed)) // test lock
+            ; // spin
         value += addValue;
         lock.clear(std::memory_order_release); // release lock
     }
@@ -117,74 +116,45 @@ protected:
         const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
     }
-    T comptonScatterLivermore(Particle<T>& particle, unsigned char materialIdx, RandomState& state, T& cosAngle) const
+    template <bool Livermore = true>
+    T comptonScatter(Particle<T>& particle, unsigned char materialIdx, RandomState& state, T& cosAngle) const
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
     {
         const auto k = particle.energy / ELECTRON_REST_MASS<T>();
-        const auto emin = T { 1.0 } / (T { 1.0 } + T { 2.0 } * k);
-        const auto gmax = T { 1.0 } / emin + emin;
+        const auto emin = 1 / (1 + 2 * k);
+        const auto gmax_inv = 1 / (1 / emin + emin);
         T e;
         bool rejected;
         do {
             const auto r1 = state.randomUniform<T>();
-            e = r1 + (T { 1.0 } - r1) * emin;
-            cosAngle = T { 1.0 } + T { 1.0 } / k - T { 1.0 } / (k * e);
-            const auto sinthetasqr = T { 1.0 } - cosAngle * cosAngle;
+            e = r1 + (1 - r1) * emin;
+            const T t = (1 - e) / (k * e);
+            const auto sinthetasqr = t * (2 - t);
 
-            const auto g = (T { 1.0 } / e + e - sinthetasqr) / gmax;
+            cosAngle = 1 - t;
 
-            const auto q = m_attenuationLut.momentumTransferFromCos(particle.energy, cosAngle);
-            const auto scatterFactor = m_attenuationLut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
-            const auto r2 = state.randomUniform<T>();
-            rejected = r2 > g * scatterFactor;
+            const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
+            if constexpr (Livermore) {
+                const auto q = m_attenuationLut.momentumTransferFromCos(particle.energy, cosAngle);
+                const auto scatterFactor = m_attenuationLut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
+                const auto r2 = state.randomUniform<T>();
+                rejected = r2 > g * scatterFactor;
+            } else {
+                const auto r2 = state.randomUniform<T>();
+                rejected = r2 > g;
+            }
 
         } while (rejected);
 
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
-
         const auto E0 = particle.energy;
         particle.energy *= e;
 
-        return E0 * (T { 1.0 } - e);
-    }
-
-    T comptonScatter(Particle<T>& particle, RandomState& state, T& cosAngle) const
-    // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
-    // and
-    // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
-    {
-        const auto k = particle.energy / ELECTRON_REST_MASS<T>();
-        const auto emin = T { 1.0 } / (T { 1.0 } + T { 2.0 } * k);
-        const auto gmax = T { 1.0 } / emin + emin;
-
-        bool rejected;
-        T sinthetasqr, e, t;
-        do {
-            const auto r1 = state.randomUniform<T>();
-            e = r1 + (T { 1.0 } - r1) * emin;
-
-            t = (T { 1.0 } - e) / (k * e);
-            sinthetasqr = t * (T { 2.0 } - t);
-
-            const auto g = (T { 1.0 } / e + e - sinthetasqr) / gmax;
-
-            const auto r2 = state.randomUniform<T>();
-            rejected = r2 > g;
-        } while (rejected);
-
-        cosAngle = T { 1.0 } - t;
-        const auto theta = std::acos(cosAngle);
-        const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-        vectormath::peturb<T>(particle.dir, theta, phi);
-
-        const auto E0 = particle.energy;
-        particle.energy *= e;
-
-        return E0 * (T { 1.0 } - e);
+        return E0 * (T { 1 } - e);
     }
 
     inline bool particleInsideWorld(const World<T>& world, const Particle<T>& particle) const
@@ -206,6 +176,7 @@ protected:
         std::size_t idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
         return idx;
     }
+    template <bool Livermore = true>
     bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const unsigned char matIdx, Result<T>* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
@@ -229,11 +200,7 @@ protected:
             if (r3 <= attCompt) // Compton event
             {
                 T cosangle;
-#ifdef DXMC_USE_LOWENERGY_COMPTON
-                const auto e = comptonScatterLivermore(p, matIdx, state, cosangle);
-#else
-                const auto e = comptonScatter(p, state, cosangle);
-#endif
+                const auto e = comptonScatter<Livermore>(p, matIdx, state, cosangle);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                     [[unlikely]]
                     {
@@ -260,6 +227,7 @@ protected:
         }
         return true;
     }
+    template <bool Livermore = true>
     bool computeInteractions(Particle<T>& p, const unsigned char matIdx, Result<T>* result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
@@ -279,11 +247,8 @@ protected:
         } else if (r3 <= attPhoto + attCompt) // Compton event
         {
             T cosangle;
-#ifdef DXMC_USE_LOWENERGY_COMPTON
-            const auto e = comptonScatterLivermore(p, matIdx, state, cosangle);
-#else
-            const auto e = comptonScatter(p, state, cosangle);
-#endif
+
+            const auto e = comptonScatter<Livermore>(p, matIdx, state, cosangle);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[unlikely]]
                 {
@@ -309,7 +274,7 @@ protected:
         }
         return true;
     }
-
+    template <bool Livermore = true>
     void sampleParticleSteps(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>* result) const
     {
         const auto densityBuffer = world.densityArray()->data();
@@ -343,13 +308,13 @@ protected:
                         const auto r2 = state.randomUniform<T>();
                         if (r2 < eventProbability) // an event will happen
                         {
-                            continueSampling = computeInteractions(p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                            continueSampling = computeInteractions<Livermore>(p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                         }
                     }
                 else
                     [[unlikely]] // forced photoelectric effect
                     {
-                        continueSampling = computeInteractionsForced(eventProbability, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                        continueSampling = computeInteractionsForced<Livermore>(eventProbability, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
 
                 if (continueSampling) {
@@ -399,7 +364,7 @@ protected:
         }
         return false;
     }
-
+    template <bool Livermore = true>
     void transport(const World<T>& world, const Exposure<T>& exposure, RandomState& state, Result<T>* result) const
     {
         const auto nHistories = exposure.numberOfHistories();
@@ -410,14 +375,87 @@ protected:
             // Is particle intersecting with world
             const bool isInWorld = transportParticleToWorld(world, particle);
             if (isInWorld)
-                sampleParticleSteps(world, particle, state, result);
+                sampleParticleSteps<Livermore>(world, particle, state, result);
         }
     }
+    template <bool Livermore = true>
     void parallellRun(const World<T>& w, const Source<T>* source, Result<T>* result,
-        const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const;
+        const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
+    {
+        const std::uint64_t len = expEnd - expBeg;
+        if ((len <= 1) || (nJobs <= 1)) {
+            RandomState state;
+            const auto& worldBasis = w.directionCosines();
+            for (std::size_t i = expBeg; i < expEnd; i++) {
+                if (progressbar)
+                    if (progressbar->cancel())
+                        return;
+                auto exposure = source->getExposure(i);
+                exposure.alignToDirectionCosines(worldBasis);
+                transport<Livermore>(w, exposure, state, result);
+                if (progressbar)
+                    progressbar->exposureCompleted();
+            }
+            return;
+        }
 
+        const auto threadLen = len / nJobs;
+        std::vector<std::thread> jobs;
+        jobs.reserve(nJobs - 1);
+        std::uint64_t expBegThread = expBeg;
+        std::uint64_t expEndThread = expBegThread + threadLen;
+        for (std::size_t i = 0; i < nJobs - 1; ++i) {
+            jobs.emplace_back(&Transport<T>::parallellRun<Livermore>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
+            expBegThread = expEndThread;
+            expEndThread = expBegThread + threadLen;
+        }
+        expEndThread = expEnd;
+        parallellRun<Livermore>(w, source, result, expBegThread, expEndThread, 1, progressbar);
+        for (auto& job : jobs)
+            job.join();
+    }
+
+    template <bool Livermore = true>
     void parallellRunCtdi(const CTDIPhantom<T>& w, const CTSource<T>* source, Result<T>* result,
-        const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const;
+        const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
+    {
+        const std::uint64_t len = expEnd - expBeg;
+
+        if ((len == 1) || (nJobs <= 1)) {
+            RandomState state;
+            const auto& worldBasis = w.directionCosines();
+            for (std::size_t i = expBeg; i < expEnd; i++) {
+                if (progressbar)
+                    if (progressbar->cancel())
+                        return;
+                auto exposure = source->getExposure(i);
+                const auto& pos = source->position();
+                exposure.subtractPosition(pos); // aligning to center of phantom
+                exposure.setPositionZ(0.0);
+                exposure.alignToDirectionCosines(worldBasis);
+                exposure.setBeamIntensityWeight(1.0);
+                transport<Livermore>(w, exposure, state, result);
+                if (progressbar)
+                    progressbar->exposureCompleted();
+            }
+            return;
+        }
+
+        const auto threadLen = len / nJobs;
+        std::vector<std::thread> jobs;
+        jobs.reserve(nJobs - 1);
+        std::uint64_t expBegThread = expBeg;
+        std::uint64_t expEndThread = expBegThread + threadLen;
+        for (std::size_t i = 0; i < nJobs - 1; ++i) {
+            jobs.emplace_back(&Transport<T>::parallellRunCtdi<Livermore>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
+            expBegThread = expEndThread;
+            expEndThread = expBegThread + threadLen;
+        }
+        expEndThread = expEnd;
+        parallellRunCtdi<Livermore>(w, source, result, expBegThread, expEndThread, 1, progressbar);
+        for (auto job& : jobs)
+            job.join();
+    }
 
     void computeResultVariance(Result<T>& res) const
     {
@@ -477,6 +515,7 @@ private:
     }
 
     AttenuationLut<T> m_attenuationLut;
+    bool m_useComptonLivermore = true;
 };
 
 #include "dxmc/source.h"
@@ -511,7 +550,10 @@ Result<T> Transport<T>::operator()(const World<T>& world, Source<T>* source, Pro
         progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
     }
     const auto start = std::chrono::system_clock::now();
-    parallellRun(world, source, &result, 0, totalExposures, nJobs, progressbar);
+    if (m_useComptonLivermore)
+        parallellRun<true>(world, source, &result, 0, totalExposures, nJobs, progressbar);
+    else
+        parallellRun<false>(world, source, &result, 0, totalExposures, nJobs, progressbar);
     result.simulationTime = std::chrono::system_clock::now() - start;
 
     if (progressbar) {
@@ -561,7 +603,10 @@ Result<T> Transport<T>::operator()(const CTDIPhantom<T>& world, CTSource<T>* sou
         progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing(), ProgressBar<T>::Axis::Z);
     }
     const auto start = std::chrono::system_clock::now();
-    parallellRunCtdi(world, source, &result, 0, totalExposures, nJobs, progressbar);
+    if (m_useComptonLivermore)
+        parallellRunCtdi<true>(world, source, &result, 0, totalExposures, nJobs, progressbar);
+    else
+        parallellRunCtdi<false>(world, source, &result, 0, totalExposures, nJobs, progressbar);
     result.simulationTime = std::chrono::system_clock::now() - start;
 
     //compute variance
@@ -574,82 +619,5 @@ Result<T> Transport<T>::operator()(const CTDIPhantom<T>& world, CTSource<T>* sou
     energyImpartedToDose(world, result, T { 1.0 });
     return result;
 }
-template <Floating T>
-void Transport<T>::parallellRun(const World<T>& w, const Source<T>* source, Result<T>* result,
-    const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
-{
-    const std::uint64_t len = expEnd - expBeg;
-    if ((len <= 1) || (nJobs <= 1)) {
-        RandomState state;
-        const auto& worldBasis = w.directionCosines();
-        for (std::size_t i = expBeg; i < expEnd; i++) {
-            if (progressbar)
-                if (progressbar->cancel())
-                    return;
-            auto exposure = source->getExposure(i);
-            exposure.alignToDirectionCosines(worldBasis);
-            transport(w, exposure, state, result);
-            if (progressbar)
-                progressbar->exposureCompleted();
-        }
-        return;
-    }
 
-    const auto threadLen = len / nJobs;
-    std::vector<std::thread> jobs;
-    jobs.reserve(nJobs - 1);
-    std::uint64_t expBegThread = expBeg;
-    std::uint64_t expEndThread = expBegThread + threadLen;
-    for (std::size_t i = 0; i < nJobs - 1; ++i) {
-        jobs.emplace_back(&Transport<T>::parallellRun, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
-        expBegThread = expEndThread;
-        expEndThread = expBegThread + threadLen;
-    }
-    expEndThread = expEnd;
-    parallellRun(w, source, result, expBegThread, expEndThread, 1, progressbar);
-    for (auto job& : jobs)
-        job.join();
-}
-
-template <Floating T>
-void Transport<T>::parallellRunCtdi(const CTDIPhantom<T>& w, const CTSource<T>* source, Result<T>* result,
-    const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
-{
-    const std::uint64_t len = expEnd - expBeg;
-
-    if ((len == 1) || (nJobs <= 1)) {
-        RandomState state;
-        const auto& worldBasis = w.directionCosines();
-        for (std::size_t i = expBeg; i < expEnd; i++) {
-            if (progressbar)
-                if (progressbar->cancel())
-                    return;
-            auto exposure = source->getExposure(i);
-            const auto& pos = source->position();
-            exposure.subtractPosition(pos); // aligning to center of phantom
-            exposure.setPositionZ(0.0);
-            exposure.alignToDirectionCosines(worldBasis);
-            exposure.setBeamIntensityWeight(1.0);
-            transport(w, exposure, state, result);
-            if (progressbar)
-                progressbar->exposureCompleted();
-        }
-        return;
-    }
-
-    const auto threadLen = len / nJobs;
-    std::vector<std::thread> jobs;
-    jobs.reserve(nJobs - 1);
-    std::uint64_t expBegThread = expBeg;
-    std::uint64_t expEndThread = expBegThread + threadLen;
-    for (std::size_t i = 0; i < nJobs - 1; ++i) {
-        jobs.emplace_back(&Transport<T>::parallellRunCtdi, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
-        expBegThread = expEndThread;
-        expEndThread = expBegThread + threadLen;
-    }
-    expEndThread = expEnd;
-    parallellRunCtdi(w, source, result, expBegThread, expEndThread, 1, progressbar);
-    for (auto job& : jobs)
-        job.join();
-}
 }
