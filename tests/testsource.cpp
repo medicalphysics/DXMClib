@@ -26,7 +26,7 @@ void initiateAll()
     IsotropicSource<T> iso;
     CTAxialSource<T> ax;
     CTSpiralSource<T> spiral;
-    CTDualSource<T> de;
+    CTSpiralDualSource<T> de;
 }
 
 template <typename T>

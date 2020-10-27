@@ -453,7 +453,7 @@ protected:
         }
         expEndThread = expEnd;
         parallellRunCtdi<Livermore>(w, source, result, expBegThread, expEndThread, 1, progressbar);
-        for (auto job& : jobs)
+        for (auto &job : jobs)
             job.join();
     }
 
@@ -523,7 +523,6 @@ private:
 template <Floating T>
 Result<T> Transport<T>::operator()(const World<T>& world, Source<T>* source, ProgressBar<T>* progressbar, bool calculateDose)
 {
-
     Result<T> result(world.size());
 
     if (!source)
