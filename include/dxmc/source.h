@@ -489,6 +489,7 @@ protected:
     }
 
     void updateCollimationAngles(const std::array<T, 2>& fieldSize);
+
     void updateSpecterDistribution()
     {
         if (!m_specterValid) {
@@ -902,7 +903,6 @@ protected:
         }
     }
 
-private:
     T m_sddB;
     T m_fovB;
     T m_startAngleB;
@@ -1008,6 +1008,12 @@ public:
         m_step = m_collimation;
         m_scanLenght = m_step;
     }
+    CTAxialSource(CTSpiralSource<T>& other)
+        : CTSource<T>(other)
+    {
+        m_step = m_collimation;
+        setScanLenght(other.scanLenght());
+    }
     Exposure<T> getExposure(std::uint64_t exposureIndex) const override
     {
         //calculating position
@@ -1097,13 +1103,7 @@ public:
         : CTDualSource<T>()
     {
         m_type = Type::CTDual;
-        m_sddB = m_sdd;
-        m_fovB = m_fov;
-        m_startAngleB = m_startAngle + PI_VAL<T>() * T { 0.5 };
-
         m_pitch = 1.0;
-        m_tube.setAlFiltration(7.0);
-        m_tubeB.setAlFiltration(7.0);
     }
 
     Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const override
@@ -1188,8 +1188,6 @@ public:
         return ctCalibration(me, progressBar) * m_pitch;
     }
 
-    
-
     T pitch(void) const { return m_pitch; }
     void setPitch(T pitch)
     {
@@ -1204,17 +1202,133 @@ public:
     
 
 private:
-    Tube<T> m_tubeB;
-    std::shared_ptr<SpecterDistribution<T>> m_specterDistributionB = nullptr;
-    T m_sddB;
-    T m_fovB;
-    T m_startAngleB;
-    T m_pitch = 1.0;
-    T m_tubeAmas = 100.0;
-    T m_tubeBmas = 100.0;
-    T m_tubeBweight = -1.0;
-    T m_tubeAweight = -1.0;
-    std::shared_ptr<BowTieFilter<T>> m_bowTieFilterB = nullptr;
-    std::shared_ptr<HeelFilter<T>> m_heelFilterB = nullptr;
+    T m_pitch = 1.0;  
 };
+
+
+
+
+template <Floating T>
+class CTAxialDualSource final : public CTDualSource<T> {
+public:
+    CTAxialDualSource()
+        : CTDualSource<T>()
+    {
+        m_type = Type::CTDual;
+        m_step = m_collimation;
+        m_scanLenght = m_step;
+    }
+    CTAxialDualSource(CTSpiralDualSource<T>& other)
+        : CTDualSource<T>(other)
+    {
+        m_step = m_collimation;
+        setScanLenght(other.scanLenght());
+    }
+    Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const override
+    {
+        T sdd, startAngle, fov;
+        uint64_t exposureIndex = exposureIndexTotal / 2;
+        BeamFilter<T>* bowTieFilter = nullptr;
+        SpecterDistribution<T>* specterDistribution = nullptr;
+        HeelFilter<T>* heelFilter = nullptr;
+        T weight { 1 };
+        if (exposureIndexTotal % 2 == 0) {
+            sdd = m_sdd;
+            startAngle = m_startAngle;
+            fov = m_fov;
+            bowTieFilter = m_bowTieFilter.get();
+            specterDistribution = m_specterDistribution.get();
+            heelFilter = m_heelFilter.get();
+            weight = m_tubeAweight;
+        } else {
+            sdd = m_sddB;
+            startAngle = m_startAngleB;
+            fov = m_fovB;
+            bowTieFilter = m_bowTieFilterB.get();
+            specterDistribution = m_specterDistributionB.get();
+            heelFilter = m_heelFilterB.get();
+            weight = m_tubeBweight;
+        }
+        //calculating position
+        std::array<T, 3> pos = { 0, -m_sdd / T { 2.0 }, 0 };
+
+        constexpr T PI_2 = 2 * PI_VAL<T>();
+
+        const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_2 / m_exposureAngleStep);
+        const std::uint64_t rotationNumber = exposureIndex / anglesPerRotation;
+
+        const auto angle = startAngle + m_exposureAngleStep * (exposureIndex - (rotationNumber * anglesPerRotation));
+
+        auto directionCosines = m_directionCosines;
+        T* rotationAxis = &directionCosines[3];
+        T* otherAxis = &directionCosines[0];
+        std::array<T, 3> tiltAxis = { 1, 0, 0 };
+        auto tiltCorrection = pos;
+        vectormath::rotate(tiltCorrection.data(), tiltAxis.data(), m_gantryTiltAngle);
+        vectormath::rotate(rotationAxis, tiltAxis.data(), m_gantryTiltAngle);
+        vectormath::rotate(otherAxis, tiltAxis.data(), m_gantryTiltAngle);
+        vectormath::rotate(pos.data(), rotationAxis, angle);
+        pos[2] += m_step * rotationNumber + tiltCorrection[2];
+
+        vectormath::rotate(otherAxis, rotationAxis, angle);
+        for (std::size_t i = 0; i < 3; ++i) {
+            pos[i] += m_position[i];
+        }
+        const std::array<T, 2> collimationAngles = {
+            std::atan(fov / sdd) * T { 2.0 },
+            std::atan(m_collimation / sdd) * T { 2.0 }
+        };
+
+        if (m_aecFilter)
+            weight *= m_aecFilter->sampleIntensityWeight(pos);
+        if (m_useXCareFilter)
+            weight *= m_xcareFilter.sampleIntensityWeight(angle);
+
+        Exposure<T> exposure(pos,
+            directionCosines,
+            collimationAngles,
+            m_historiesPerExposure,
+            weight,
+            specterDistribution,
+            heelFilter,
+            bowTieFilter);
+
+        return exposure;
+    }
+
+    void setStep(T step)
+    {
+        const auto absStep = std::abs(step);
+        const auto n_steps = m_scanLenght / m_step;
+        m_step = absStep > 0.01 ? absStep : 0.01;
+        setScanLenght(m_step * n_steps);
+    }
+
+    T step(void) const { return m_step; }
+    void setScanLenght(T scanLenght) override
+    {
+        m_scanLenght = std::max(m_step * std::ceil(std::abs(scanLenght) / m_step), m_step);
+    }
+
+    std::uint64_t totalExposures(void) const override
+    {
+        const std::uint64_t anglesPerRotation = static_cast<std::uint64_t>(PI_VAL<T>() * T { 2 } / m_exposureAngleStep);
+        const std::uint64_t rotationNumbers = static_cast<std::uint64_t>(std::round(m_scanLenght / m_step));
+        return anglesPerRotation * rotationNumbers * 2;
+    }
+
+    T getCalibrationValue(ProgressBar<T>* progressBar) const override
+    {
+        const auto& me = *this;
+        return ctCalibration(me, progressBar);
+    }
+
+private:
+    T m_step;
+};
+
+
+
+
+
 }

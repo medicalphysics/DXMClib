@@ -27,6 +27,11 @@ void initiateAll()
     CTAxialSource<T> ax;
     CTSpiralSource<T> spiral;
     CTSpiralDualSource<T> de;
+    CTAxialDualSource<T> de_ax;
+    spiral.setScanLenght(500);
+    CTAxialSource<T> from_spiral = spiral;
+    CTAxialDualSource<T> from_spiral_de = de;
+    
 }
 
 template <typename T>
