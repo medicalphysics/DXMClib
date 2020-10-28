@@ -76,9 +76,8 @@ public:
 
         for (std::size_t i = 0; i < 1e7; ++i) {
             p.energy = energy;
-            T dummy;
-            //comptonScatterLivermore(p, 0, state, dummy);
-            comptonScatter(p, 0, state, dummy);
+            //comptonScatterLivermore(p, 0, state);
+            comptonScatter(p, 0, state);
             const T e = p.energy / energy;
             auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
             auto idx = std::distance(earr.cbegin(), it);

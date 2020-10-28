@@ -202,7 +202,7 @@ bool TG195Case2AbsorbedEnergyMono()
     src.validate();
 
     Transport<T> transport;
-    auto res = transport(w, &src, nullptr, false);
+    auto res = transport(w, src, nullptr, false);
     auto& dose = res.dose;
 
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
@@ -251,7 +251,7 @@ bool TG195Case2AbsorbedEnergy120()
     src.setTotalExposures(nExposures);
     src.validate();
     Transport<T> transport;
-    auto res = transport(w, &src, nullptr, false);
+    auto res = transport(w, src, nullptr, false);
     auto& dose = res.dose;
 
     const T total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
@@ -416,7 +416,7 @@ bool TG195Case41AbsorbedEnergy()
 
     Transport<T> transport;
 
-    auto res = transport(w, &src, nullptr, false);
+    auto res = transport(w, src, nullptr, false);
 
     auto& dose = res.dose;
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
@@ -431,7 +431,7 @@ bool TG195Case41AbsorbedEnergy()
     std::cout << "Collimation: 80 mm:\n";
     src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
 
-    res = transport(w, &src, nullptr, false);
+    res = transport(w, src, nullptr, false);
     dose = res.dose;
 
     for (std::size_t i = 0; i < 4; ++i) {
@@ -451,7 +451,7 @@ bool TG195Case41AbsorbedEnergy()
     src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
 
     w.makeValid();
-    res = transport(w, &src, nullptr, false);
+    res = transport(w, src, nullptr, false);
 
     dose = res.dose;
     for (std::size_t i = 0; i < 4; ++i) {
@@ -464,7 +464,7 @@ bool TG195Case41AbsorbedEnergy()
     std::cout << "Collimation: 80 mm:\n";
     src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
 
-    res = transport(w, &src, nullptr, false);
+    res = transport(w, src, nullptr, false);
 
     dose = res.dose;
     for (std::size_t i = 0; i < 4; ++i) {
@@ -565,7 +565,7 @@ bool TG195Case42AbsorbedEnergy()
         {
             src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
             auto start = std::chrono::high_resolution_clock::now();
-            auto res = transport(w, &src, nullptr, false);
+            auto res = transport(w, src, nullptr, false);
             auto end = std::chrono::high_resolution_clock::now();
             results_mono_10.push_back(TG19542Res<T>(res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->cbegin(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
         }
@@ -573,7 +573,7 @@ bool TG195Case42AbsorbedEnergy()
         {
             src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
             auto start = std::chrono::high_resolution_clock::now();
-            auto res = transport(w, &src, nullptr, false);
+            auto res = transport(w, src, nullptr, false);
             auto end = std::chrono::high_resolution_clock::now();
             results_mono_80.push_back(TG19542Res<T>(res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->cbegin(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
         }
@@ -583,7 +583,7 @@ bool TG195Case42AbsorbedEnergy()
         {
             src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(5. / 600.) * 2.);
             auto start = std::chrono::high_resolution_clock::now();
-            auto res = transport(w, &src, nullptr, false);
+            auto res = transport(w, src, nullptr, false);
             auto end = std::chrono::high_resolution_clock::now();
             results_poly_10.push_back(TG19542Res<T>(res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->cbegin(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
         }
@@ -591,7 +591,7 @@ bool TG195Case42AbsorbedEnergy()
         {
             src.setCollimationAngles(std::atan(160. / 600.) * 2., std::atan(40. / 600.) * 2.);
             auto start = std::chrono::high_resolution_clock::now();
-            auto res = transport(w, &src, nullptr, false);
+            auto res = transport(w, src, nullptr, false);
             auto end = std::chrono::high_resolution_clock::now();
             results_poly_80.push_back(TG19542Res<T>(res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->cbegin(), res.nEvents.cbegin(), res.nEvents.cend(), nHistories, i, end - start));
         }
@@ -664,10 +664,10 @@ bool testAttenuation()
     const auto tot_hist = pen.historiesPerExposure() * pen.totalExposures();
 
     Transport<T> transport;
-    auto res_naive = transport(w, &pen, nullptr, false);
+    auto res_naive = transport(w, pen, nullptr, false);
     std::fill(meas->begin(), meas->end(), 1);
     w.makeValid();
-    auto res_force = transport(w, &pen, nullptr, false);
+    auto res_force = transport(w, pen, nullptr, false);
 
     std::vector<T> att(res_naive.dose.size());
     for (int i = 0; i < dim[2]; ++i)

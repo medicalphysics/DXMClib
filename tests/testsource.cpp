@@ -77,7 +77,7 @@ bool testCTCalibration()
     src.setHistoriesPerExposure(10000);
 
     Transport<T> transport;
-    auto res = transport(world, &src);
+    auto res = transport(world, src);
 
     typedef CTDIPhantom<T>::HolePosition holePosition;
     std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };

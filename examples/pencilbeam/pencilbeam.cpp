@@ -93,7 +93,7 @@ double calculate()
     // Create a transport object
     Transport<T> transport;
     // Do the simulation, this might take some time depending on total number of histories.
-    auto res = transport(world, &pen);
+    auto res = transport(world, pen);
 
     //Print the dose along z direction of box
     auto materials = world.materialMap();
