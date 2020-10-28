@@ -10,7 +10,7 @@ using namespace dxmc;
 
 constexpr double RAD2DEG = 180.0 / 3.14159265359;
 constexpr double DEG2RAD = 1.0 / RAD2DEG;
-constexpr double ERRF = 1e-4;
+constexpr double ERRF = 1e-3;
 
 template <typename T>
 bool isEqual(T f1, T f2)
@@ -25,13 +25,12 @@ void initiateAll()
     DXSource<T> dx;
     IsotropicSource<T> iso;
     CTAxialSource<T> ax;
+    CTAxialDualSource<T> de_ax;
+
     CTSpiralSource<T> spiral;
     CTSpiralDualSource<T> de;
-    CTAxialDualSource<T> de_ax;
-    spiral.setScanLenght(500);
     CTAxialSource<T> from_spiral = spiral;
     CTAxialDualSource<T> from_spiral_de = de;
-    
 }
 
 template <typename T>
@@ -42,9 +41,9 @@ bool testDXSourceAngles(T pang, T sang, T tubeRotation)
 
     std::array<T, 2> angles = { pang, sang };
     src.setTubeRotationDeg(tubeRotation);
+    std::cout << "angles set: " << angles[0] << ", " << angles[1];
     src.setSourceAnglesDeg(angles);
     auto anglesres = src.sourceAnglesDeg();
-    std::cout << "angles set: " << angles[0] << ", " << angles[1];
     std::cout << " angles res: " << anglesres[0] << ", " << anglesres[1];
     std::cout << " tube rot: " << tubeRotation << '\n';
     return isEqual(angles[0], anglesres[0]) && isEqual(angles[1], anglesres[1]);
@@ -54,24 +53,14 @@ template <typename T>
 bool testDXSourceAnglesMany()
 {
     bool success = true;
-
-    testDXSourceAngles<T>(90, 0, 45);
-    testDXSourceAngles<T>(90, 90, 45);
-    testDXSourceAngles<T>(90, 90, 90);
-
-    std::array<T, 7> angles = { -89, -60, -30, 0, 30, 60, 89 };
+    std::array<T, 7> angles = { -80, -60, -30, 0, 30, 60, 80 };
     auto tube_rot = angles;
     for (auto ap : angles)
         for (auto as : angles)
             for (auto tr : tube_rot) {
                 success = success && testDXSourceAngles(ap, as, tr);
+                assert(success);
             }
-
-    success = success && testDXSourceAngles<T>(30, 30, 0);
-    success = success && testDXSourceAngles<T>(150, 30, 0);
-    success = success && testDXSourceAngles<T>(-150, 30, 0);
-    success = success && testDXSourceAngles<T>(-150, 30, 90);
-    success = success && testDXSourceAngles<T>(-150, 30, 180);
 
     assert(success);
     return success;
@@ -82,7 +71,7 @@ bool testCTCalibration()
 {
     CTAxialSource<T> src;
     CTDIPhantom<T> world(320);
-    
+
     //src.setPitch(0.5);
     src.setExposureAngleStepDeg(1);
     src.setHistoriesPerExposure(10000);
@@ -109,7 +98,6 @@ bool testCTCalibration()
     T ctdi = pher * 2.0 / 3.0 + cent / 3.0;
     if (ctdi > 0.990 || ctdi < 1.01)
         return true;
-
     return false;
 }
 

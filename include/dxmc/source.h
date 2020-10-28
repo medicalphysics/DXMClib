@@ -29,7 +29,9 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/world.h"
 
 #include <array>
+#include <concepts>
 #include <memory>
+#include <type_traits>
 #include <vector>
 
 namespace dxmc {
@@ -330,10 +332,10 @@ public:
     void setSourceAngles(T primaryAngle, T secondaryAngle)
     {
         constexpr T ANGLE_ERRF = 1E-6;
-        if (secondaryAngle > PI_VAL<T>() * 0.5 - ANGLE_ERRF)
-            secondaryAngle = PI_VAL<T>() * 0.5 - ANGLE_ERRF;
-        if (secondaryAngle < -PI_VAL<T>() * 0.5 + ANGLE_ERRF)
-            secondaryAngle = -PI_VAL<T>() * 0.5 + ANGLE_ERRF;
+        if (secondaryAngle > PI_VAL<T>() / 2 - ANGLE_ERRF)
+            secondaryAngle = PI_VAL<T>() / 2 - ANGLE_ERRF;
+        if (secondaryAngle < -PI_VAL<T>() / 2 + ANGLE_ERRF)
+            secondaryAngle = -PI_VAL<T>() / 2 + ANGLE_ERRF;
         while (primaryAngle > PI_VAL<T>())
             primaryAngle -= PI_VAL<T>();
         while (primaryAngle < -PI_VAL<T>())
@@ -368,30 +370,34 @@ public:
         vectormath::rotate(&cos[3], beam_direction.data(), -m_tubeRotationAngle);
         vectormath::cross(cos.data(), beam_direction.data());
 
-        //handling floating point
-        T primAng, secAng;
-        if (beam_direction[0] < -1.0 + ANGLE_ERRF) {
-            primAng = PI_VAL<T>() / 2.0;
-            secAng = 0.0;
-        } else if (beam_direction[0] > 1.0 - ANGLE_ERRF) {
-            primAng = -PI_VAL<T>() / 2.0;
-            secAng = 0.0;
-        } else {
-            primAng = std::asin(-beam_direction[0]);
-            secAng = -std::atan(beam_direction[2] / beam_direction[1]);
-        }
-
-        std::array<T, 2> angles = { primAng, secAng };
-
-        T y[3] = { 0, 1, 0 };
-        const auto dot_dir = vectormath::dot(y, beam_direction.data());
-        if (dot_dir < 0.0) {
-            if (angles[0] < 0) {
-                angles[0] = -PI_VAL<T>() - angles[0];
+        const T xy_lenght = std::sqrt(beam_direction[0] * beam_direction[0] + beam_direction[1] * beam_direction[1]);
+        if (std::abs(xy_lenght) < ANGLE_ERRF) {
+            if (beam_direction[2] > 0) {
+                std::array<T, 2> angles = { 0, -PI_VAL<T>() / 2 };
+                return angles;
             } else {
-                angles[0] = PI_VAL<T>() - angles[0];
+                std::array<T, 2> angles = { 0, PI_VAL<T>() / 2 };
+                return angles;
             }
         }
+
+        //const T primAng = std::acos(beam_direction[1] / xy_lenght);
+        const T primAng = std::asin(-beam_direction[0]);
+
+        const T zy_lenght = std::sqrt(beam_direction[2] * beam_direction[2] + beam_direction[1] * beam_direction[1]);
+        if (std::abs(zy_lenght) < ANGLE_ERRF) {
+            if (beam_direction[2] > 0) {
+                std::array<T, 2> angles = { primAng, 0 };
+                return angles;
+            } else {
+                std::array<T, 2> angles = { primAng, 0 };
+                return angles;
+            }
+        }
+
+        const T secAng = -std::asin(beam_direction[2] / zy_lenght);
+
+        const std::array<T, 2> angles = { primAng, secAng };
 
         return angles;
     }
@@ -708,16 +714,8 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_base_of<CTSource<T>, U>::value T ctCalibration(
-        const U& source, ProgressBar<T>* progressBar = nullptr) const
+        requires std::is_same<typename CTAxialSource<T>, U>::value || std::is_same<typename CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar = nullptr)
     {
-
-        U sourceCopy(source);
-
-        CTDIPhantom<T> world(sourceCopy.ctdiPhantomDiameter());
-
-        sourceCopy.updateFromWorld(world);
-
         T meanWeight = 0;
         for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
             auto dummy = sourceCopy.getExposure(i);
@@ -727,18 +725,25 @@ protected:
 
         const std::array<T, 6> cosines({ -1, 0, 0, 0, 0, 1 });
         sourceCopy.setDirectionCosines(cosines);
+        const std::array<T, 3> pos = { 0, 0, 0 };
+        sourceCopy.setPosition(pos);
+        sourceCopy.setScanLenght(sourceCopy.collimation());
 
         sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
-        std::size_t statCounter = world.ctdiMinHistories() / 2 / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
+        std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / 2 / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
         if (statCounter < 1)
             statCounter = 1;
+
+        CTDIPhantom<T> world(sourceCopy.ctdiPhantomDiameter());
+
+        sourceCopy.updateFromWorld(world);
 
         const auto histories = sourceCopy.historiesPerExposure();
         sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
         sourceCopy.validate();
 
         Transport<T> transport;
-        auto result = transport(world, &sourceCopy, progressBar);
+        auto result = transport(world, &sourceCopy, progressBar, false);
 
         typedef CTDIPhantom<T>::HolePosition holePosition;
         std::array<CTDIPhantom<T>::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
@@ -801,9 +806,8 @@ protected:
     bool m_modelHeelEffect = true;
 };
 
-
-template<Floating T>
-class CTDualSource :public CTSource<T>{
+template <Floating T>
+class CTDualSource : public CTSource<T> {
 public:
     CTDualSource()
         : CTSource<T>()
@@ -916,7 +920,6 @@ protected:
     std::shared_ptr<HeelFilter<T>> m_heelFilterB = nullptr;
 };
 
-
 template <Floating T>
 class CTSpiralSource final : public CTSource<T> {
 public:
@@ -948,7 +951,7 @@ public:
         for (std::size_t i = 0; i < 3; ++i) {
             pos[i] += m_position[i];
         }
-        
+
         const std::array<T, 2> collimationAngles = {
             std::atan(m_fov / m_sdd) * T { 2.0 },
             std::atan(m_collimation / m_sdd) * T { 2.0 }
@@ -990,8 +993,9 @@ public:
 
     T getCalibrationValue(ProgressBar<T>* progressBar = nullptr) const override
     {
-        const auto& me = *this;
-        return ctCalibration(me, progressBar) * m_pitch;
+        CTAxialSource copy = *this;
+
+        return ctCalibration(copy, progressBar) * m_pitch;
     }
 
 private:
@@ -1008,7 +1012,7 @@ public:
         m_step = m_collimation;
         m_scanLenght = m_step;
     }
-    CTAxialSource(CTSpiralSource<T>& other)
+    CTAxialSource(const CTSpiralSource<T>& other)
         : CTSource<T>(other)
     {
         m_step = m_collimation;
@@ -1087,8 +1091,8 @@ public:
 
     T getCalibrationValue(ProgressBar<T>* progressBar) const override
     {
-        const auto& me = *this;
-        return ctCalibration(me, progressBar);
+        auto copy = *this;
+        return CTSource<T>::ctCalibration(copy, progressBar);
     }
 
 private:
@@ -1180,12 +1184,11 @@ public:
         return singleSourceExposure * 2;
     }
 
-   
-
     T getCalibrationValue(ProgressBar<T>* progressBar = nullptr) const override
     {
-        const auto& me = *this;
-        return ctCalibration(me, progressBar) * m_pitch;
+        CTAxialDualSource<T> copy = *this;
+
+        return ctCalibration(copy, progressBar) * m_pitch;
     }
 
     T pitch(void) const { return m_pitch; }
@@ -1199,14 +1202,9 @@ public:
         m_scanLenght = std::max(std::abs(scanLenght), m_collimation * m_pitch * T { 0.5 });
     }
 
-    
-
 private:
-    T m_pitch = 1.0;  
+    T m_pitch = 1.0;
 };
-
-
-
 
 template <Floating T>
 class CTAxialDualSource final : public CTDualSource<T> {
@@ -1218,7 +1216,7 @@ public:
         m_step = m_collimation;
         m_scanLenght = m_step;
     }
-    CTAxialDualSource(CTSpiralDualSource<T>& other)
+    CTAxialDualSource(const CTSpiralDualSource<T>& other)
         : CTDualSource<T>(other)
     {
         m_step = m_collimation;
@@ -1319,16 +1317,12 @@ public:
 
     T getCalibrationValue(ProgressBar<T>* progressBar) const override
     {
-        const auto& me = *this;
-        return ctCalibration(me, progressBar);
+        auto copy = *this;
+        return ctCalibration(copy, progressBar);
     }
 
 private:
     T m_step;
 };
-
-
-
-
 
 }

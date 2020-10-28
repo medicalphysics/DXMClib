@@ -671,7 +671,7 @@ bool testAttenuation()
 
     std::vector<T> att(res_naive.dose.size());
     for (int i = 0; i < dim[2]; ++i)
-        att[i] = std::exp(-(i + 1) * spacing[2] * 0.1 * m.standardDensity() * m.getTotalAttenuation(56.4));
+        att[i] = std::exp(-(i + 1) * spacing[2] * T { 0.1 } * m.standardDensity() * m.getTotalAttenuation(56.4));
 
     const auto att_max = *std::max_element(att.cbegin(), att.cend());
     const auto naive_max = *std::max_element(res_naive.dose.cbegin(), res_naive.dose.cend());
@@ -691,7 +691,7 @@ bool testAttenuation()
 		std::cout << att[i] / att_max << ", " << res_naive.nEvents[i] << ", " << res_force.nEvents[i] << "\n";
 	}
 	*/
-    if (rms_naive * 100 < 0.2 && rms_force * 100 < 0.2) {
+    if (rms_naive * 100 < T { 0.2 } && rms_force * 100 < T { 0.2 }) {
         std::cout << "SUCCESS\n\n";
         return true;
     }

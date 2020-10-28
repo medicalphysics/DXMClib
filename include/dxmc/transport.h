@@ -60,6 +60,7 @@ struct Result {
     std::vector<resultLock> locks;
 
     std::chrono::duration<float> simulationTime { 0 };
+    std::string_view dose_units = "";
 
     Result(std::size_t size)
     {
@@ -80,8 +81,64 @@ template <Floating T>
 class Transport {
 public:
     Transport() { }
-    Result<T> operator()(const World<T>& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true);
-    Result<T> operator()(const CTDIPhantom<T>& world, CTSource<T>* source, ProgressBar<T>* progressbar = nullptr);
+
+    template <typename U>
+    requires std::is_base_of<World<T>, U>::value
+        Result<T>
+        operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true)
+    {
+        Result<T> result(world.size());
+
+        if (!source)
+            return result;
+
+        if (!world.isValid())
+            return result;
+
+        source->updateFromWorld(world);
+        source->validate();
+        if (!source->isValid())
+            return result;
+
+        const auto maxEnergy = source->maxPhotonEnergyProduced();
+        constexpr T minEnergy { 1 };
+        m_attenuationLut.generate(world, minEnergy, maxEnergy);
+
+        const std::uint64_t totalExposures = source->totalExposures();
+
+        const std::uint64_t nThreads = std::thread::hardware_concurrency();
+        const std::uint64_t nJobs = std::max(nThreads, std::uint64_t { 1 });
+        if (progressbar) {
+            progressbar->setTotalExposures(totalExposures);
+            progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
+        }
+        const auto start = std::chrono::system_clock::now();
+        if (m_useComptonLivermore)
+            parallellRun<true>(world, source, &result, 0, totalExposures, nJobs, progressbar);
+        else
+            parallellRun<false>(world, source, &result, 0, totalExposures, nJobs, progressbar);
+        result.simulationTime = std::chrono::system_clock::now() - start;
+
+        if (progressbar) {
+            progressbar->clearDoseData();
+            if (progressbar->cancel()) {
+                std::fill(result.dose.begin(), result.dose.end(), T { 0.0 });
+                std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
+                std::fill(result.variance.begin(), result.variance.end(), T { 0.0 });
+                return result;
+            }
+        }
+
+        //compute variance
+        computeResultVariance(result);
+
+        if (calculateDose) {
+            const auto calibrationValue = source->getCalibrationValue(progressbar);
+            //energy imparted to dose
+            energyImpartedToDose(world, result, calibrationValue);
+        }
+        return result;
+    }
     const AttenuationLut<T>& attenuationLut() const { return m_attenuationLut; }
     AttenuationLut<T>& attenuationLut() { return m_attenuationLut; }
 
@@ -159,7 +216,7 @@ protected:
 
     inline bool particleInsideWorld(const World<T>& world, const Particle<T>& particle) const
     {
-        auto extent = world.matrixExtent();
+        const auto& extent = world.matrixExtent();
         return (particle.pos[0] > extent[0] && particle.pos[0] < extent[1]) && (particle.pos[1] > extent[2] && particle.pos[1] < extent[3]) && (particle.pos[2] > extent[4] && particle.pos[2] < extent[5]);
     }
 
@@ -173,7 +230,7 @@ protected:
 
         for (std::size_t i = 0; i < 3; i++)
             arraypos[i] = static_cast<std::size_t>((particle.pos[i] - wpos[i * 2]) / wspac[i]);
-        std::size_t idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
+        const auto idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
         return idx;
     }
     template <bool Livermore = true>
@@ -415,48 +472,6 @@ protected:
             job.join();
     }
 
-    template <bool Livermore = true>
-    void parallellRunCtdi(const CTDIPhantom<T>& w, const CTSource<T>* source, Result<T>* result,
-        const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
-    {
-        const std::uint64_t len = expEnd - expBeg;
-
-        if ((len == 1) || (nJobs <= 1)) {
-            RandomState state;
-            const auto& worldBasis = w.directionCosines();
-            for (std::size_t i = expBeg; i < expEnd; i++) {
-                if (progressbar)
-                    if (progressbar->cancel())
-                        return;
-                auto exposure = source->getExposure(i);
-                const auto& pos = source->position();
-                exposure.subtractPosition(pos); // aligning to center of phantom
-                exposure.setPositionZ(0.0);
-                exposure.alignToDirectionCosines(worldBasis);
-                exposure.setBeamIntensityWeight(1.0);
-                transport<Livermore>(w, exposure, state, result);
-                if (progressbar)
-                    progressbar->exposureCompleted();
-            }
-            return;
-        }
-
-        const auto threadLen = len / nJobs;
-        std::vector<std::thread> jobs;
-        jobs.reserve(nJobs - 1);
-        std::uint64_t expBegThread = expBeg;
-        std::uint64_t expEndThread = expBegThread + threadLen;
-        for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::parallellRunCtdi<Livermore>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
-            expBegThread = expEndThread;
-            expEndThread = expBegThread + threadLen;
-        }
-        expEndThread = expEnd;
-        parallellRunCtdi<Livermore>(w, source, result, expBegThread, expEndThread, 1, progressbar);
-        for (auto &job : jobs)
-            job.join();
-    }
-
     void computeResultVariance(Result<T>& res) const
     {
         //Computing variance by: Var[X] = E[X**2] - E[X]**2
@@ -517,106 +532,4 @@ private:
     AttenuationLut<T> m_attenuationLut;
     bool m_useComptonLivermore = true;
 };
-
-#include "dxmc/source.h"
-
-template <Floating T>
-Result<T> Transport<T>::operator()(const World<T>& world, Source<T>* source, ProgressBar<T>* progressbar, bool calculateDose)
-{
-    Result<T> result(world.size());
-
-    if (!source)
-        return result;
-
-    if (!world.isValid())
-        return result;
-
-    source->updateFromWorld(world);
-    source->validate();
-    if (!source->isValid())
-        return result;
-
-    const auto maxEnergy = source->maxPhotonEnergyProduced();
-    constexpr T minEnergy { 1 };
-    m_attenuationLut.generate(world, minEnergy, maxEnergy);
-
-    const std::uint64_t totalExposures = source->totalExposures();
-
-    const std::uint64_t nThreads = std::thread::hardware_concurrency();
-    const std::uint64_t nJobs = std::max(nThreads, static_cast<std::uint64_t>(1));
-    if (progressbar) {
-        progressbar->setTotalExposures(totalExposures);
-        progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
-    }
-    const auto start = std::chrono::system_clock::now();
-    if (m_useComptonLivermore)
-        parallellRun<true>(world, source, &result, 0, totalExposures, nJobs, progressbar);
-    else
-        parallellRun<false>(world, source, &result, 0, totalExposures, nJobs, progressbar);
-    result.simulationTime = std::chrono::system_clock::now() - start;
-
-    if (progressbar) {
-        progressbar->clearDoseData();
-        if (progressbar->cancel()) {
-            std::fill(result.dose.begin(), result.dose.end(), T { 0.0 });
-            std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
-            std::fill(result.variance.begin(), result.variance.end(), T { 0.0 });
-            return result;
-        }
-    }
-
-    //compute variance
-    computeResultVariance(result);
-
-    if (calculateDose) {
-        const auto calibrationValue = source->getCalibrationValue(progressbar);
-        //energy imparted to dose
-        energyImpartedToDose(world, result, calibrationValue);
-    }
-    return result;
-}
-template <Floating T>
-Result<T> Transport<T>::operator()(const CTDIPhantom<T>& world, CTSource<T>* source, ProgressBar<T>* progressbar)
-{
-    Result<T> result(world.size());
-
-    if (!source)
-        return result;
-
-    if (!world.isValid())
-        return result;
-
-    if (!source->isValid())
-        return result;
-
-    const auto maxEnergy = source->maxPhotonEnergyProduced();
-    constexpr T minEnergy { 1 };
-    m_attenuationLut.generate(world, minEnergy, maxEnergy);
-
-    const std::uint64_t totalExposures = source->exposuresPerRotatition();
-
-    const std::uint64_t nThreads = std::thread::hardware_concurrency();
-    const std::uint64_t nJobs = std::max(nThreads, static_cast<std::uint64_t>(1));
-    if (progressbar) {
-        progressbar->setTotalExposures(totalExposures, "CTDI Calibration");
-        progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing(), ProgressBar<T>::Axis::Z);
-    }
-    const auto start = std::chrono::system_clock::now();
-    if (m_useComptonLivermore)
-        parallellRunCtdi<true>(world, source, &result, 0, totalExposures, nJobs, progressbar);
-    else
-        parallellRunCtdi<false>(world, source, &result, 0, totalExposures, nJobs, progressbar);
-    result.simulationTime = std::chrono::system_clock::now() - start;
-
-    //compute variance
-    computeResultVariance(result);
-
-    if (progressbar) {
-        progressbar->clearDoseData();
-    }
-
-    energyImpartedToDose(world, result, T { 1.0 });
-    return result;
-}
-
 }
