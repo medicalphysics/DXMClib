@@ -80,7 +80,14 @@ class CTSource;
 template <Floating T>
 class Transport {
 public:
-    Transport() { }
+    Transport()
+    {
+        std::uint64_t nthreads = std::thread::hardware_concurrency();
+        m_nThreads = std::max(nthreads, std::uint64_t { 1 });
+    }
+
+    void setNumberOfWorkers(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
+    std::size_t numberOfWorkers() { return m_nThreads; }
 
     template <typename U>
     requires std::is_base_of<World<T>, U>::value
@@ -106,8 +113,7 @@ public:
 
         const std::uint64_t totalExposures = source->totalExposures();
 
-        const std::uint64_t nThreads = std::thread::hardware_concurrency();
-        const std::uint64_t nJobs = std::max(nThreads, std::uint64_t { 1 });
+        const std::uint64_t nJobs = std::max(m_nThreads, std::uint64_t { 1 });
         if (progressbar) {
             progressbar->setTotalExposures(totalExposures);
             progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
@@ -531,5 +537,6 @@ private:
 
     AttenuationLut<T> m_attenuationLut;
     bool m_useComptonLivermore = true;
+    std::uint64_t m_nThreads;
 };
 }
