@@ -57,7 +57,7 @@ private:
 protected:
     std::array<T, 3> m_position = { 0, 0, 0 };
     std::array<T, 6> m_directionCosines = { 1, 0, 0, 0, 1, 0 };
-    std::uint64_t m_historiesPerExposure = 1;
+    std::uint64_t m_historiesPerExposure = 1E6;
     Type m_type = Type::None;
 
 public:
