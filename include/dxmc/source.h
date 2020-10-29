@@ -494,7 +494,14 @@ protected:
         m_specterValid = false;
     }
 
-    void updateCollimationAngles(const std::array<T, 2>& fieldSize);
+    void updateCollimationAngles(const std::array<T, 2>& collimationAngles)
+    {
+        for (std::size_t i = 0; i < 2; ++i) {
+            m_collimationAngles[i] = collimationAngles[i];
+            m_fieldSize[i] = std::tan(m_collimationAngles[i] / 2) * m_sdd * 2;
+        }
+        m_specterValid = false;
+    }
 
     void updateSpecterDistribution()
     {
