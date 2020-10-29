@@ -743,7 +743,7 @@ protected:
         sourceCopy.validate();
 
         Transport<T> transport;
-        auto result = transport(world, sourceCopy, progressBar, false);
+        auto result = transport(world, &sourceCopy, progressBar, false);
 
         typedef CTDIPhantom<T>::HolePosition holePosition;
         std::array<CTDIPhantom<T>::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };

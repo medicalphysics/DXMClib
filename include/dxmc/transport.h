@@ -89,24 +89,29 @@ public:
     void setNumberOfWorkers(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
     std::size_t numberOfWorkers() { return m_nThreads; }
 
-    template <typename U, typename S>
-        requires(std::is_base_of<typename World<T>, U>::value) && (std::is_base_of<typename Source<T>, S>::value)Result<T> operator()(const U& world, S& source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true)
+    template <typename U>
+    requires std::is_base_of<typename World<T>, U>::value
+        Result<T>
+        operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true)
     {
         Result<T> result(world.size());
-
         if (!world.isValid())
             return result;
 
-        source.updateFromWorld(world);
-        source.validate();
-        if (!source.isValid())
+        if (!source)
             return result;
 
-        const auto maxEnergy = source.maxPhotonEnergyProduced();
+
+        source->updateFromWorld(world);
+        source->validate();
+        if (!source->isValid())
+            return result;
+
+        const auto maxEnergy = source->maxPhotonEnergyProduced();
         constexpr T minEnergy { 1 };
         m_attenuationLut.generate(world, minEnergy, maxEnergy);
 
-        const std::uint64_t totalExposures = source.totalExposures();
+        const std::uint64_t totalExposures = source->totalExposures();
 
         const std::uint64_t nJobs = std::max(m_nThreads, std::uint64_t { 1 });
         if (progressbar) {
@@ -115,9 +120,9 @@ public:
         }
         const auto start = std::chrono::system_clock::now();
         if (m_useComptonLivermore)
-            parallellRun<true, S>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            parallellRun<true>(world, source, result, 0, totalExposures, nJobs, progressbar);
         else
-            parallellRun<false, S>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            parallellRun<false>(world, source, result, 0, totalExposures, nJobs, progressbar);
         result.simulationTime = std::chrono::system_clock::now() - start;
 
         if (progressbar) {
@@ -134,7 +139,7 @@ public:
         computeResultVariance(result);
 
         if (calculateDose) {
-            const auto calibrationValue = source.getCalibrationValue(progressbar);
+            const auto calibrationValue = source->getCalibrationValue(progressbar);
             //energy imparted to dose
             energyImpartedToDose(world, result, calibrationValue);
         }
@@ -430,8 +435,8 @@ protected:
                 sampleParticleSteps<Livermore>(world, particle, state, result);
         }
     }
-    template <bool Livermore = true, typename S>
-    void parallellRun(const World<T>& w, const S& source, Result<T>& result,
+    template <bool Livermore = true>
+    void parallellRun(const World<T>& w, const Source<T>* source, Result<T>& result,
         const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
     {
         const std::uint64_t len = expEnd - expBeg;
@@ -442,7 +447,7 @@ protected:
                 if (progressbar)
                     if (progressbar->cancel())
                         return;
-                auto exposure = source.getExposure(i);
+                auto exposure = source->getExposure(i);
                 exposure.alignToDirectionCosines(worldBasis);
                 transport<Livermore>(w, exposure, state, result);
                 if (progressbar)
@@ -457,12 +462,12 @@ protected:
         std::uint64_t expBegThread = expBeg;
         std::uint64_t expEndThread = expBegThread + threadLen;
         for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::parallellRun<Livermore, S>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
+            jobs.emplace_back(&Transport<T>::parallellRun<Livermore>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
             expBegThread = expEndThread;
             expEndThread = expBegThread + threadLen;
         }
         expEndThread = expEnd;
-        parallellRun<Livermore, S>(w, source, result, expBegThread, expEndThread, 1, progressbar);
+        parallellRun<Livermore>(w, source, result, expBegThread, expEndThread, 1, progressbar);
         for (auto& job : jobs)
             job.join();
     }
