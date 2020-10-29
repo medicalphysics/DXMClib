@@ -95,6 +95,7 @@ public:
         operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true)
     {
         Result<T> result(world.size());
+
         if (!world.isValid())
             return result;
 

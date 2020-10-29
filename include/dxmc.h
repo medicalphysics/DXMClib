@@ -16,9 +16,9 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 #pragma once
-#include "dxmc/world.h"
-#include "dxmc/transport.h"
-#include "dxmc/source.h"
 #include "dxmc/beamfilters.h"
 #include "dxmc/material.h"
-
+#include "dxmc/source.h"
+#include "dxmc/transport.h"
+#include "dxmc/vectormath.h"
+#include "dxmc/world.h"
