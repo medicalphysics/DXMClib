@@ -29,7 +29,7 @@ Copyright 2019 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T = double>
 class Tube {
 public:
     Tube(T tubeVoltage = 120.0, T anodeAngleDeg = 12.0, T energyResolution = 1.0)

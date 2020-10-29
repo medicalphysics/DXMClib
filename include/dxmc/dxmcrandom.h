@@ -136,7 +136,7 @@ public:
  * @brief Class for sampling of random numbers from a specified descreet distribution. 
  * Class for sampling of random numbers from a specified descreet distribution. This implementation use the filling of histogram method.
 */
-template <Floating T>
+template <Floating T = double>
 class RandomDistribution {
 public:
     /**
@@ -247,7 +247,7 @@ private:
 /**
  * @brief Class for sampling of a specter of values according to a distribution.
 */
-template <Floating T>
+template <Floating T = double>
 class SpecterDistribution : public RandomDistribution<T> {
 public:
     /**
@@ -264,12 +264,11 @@ public:
      * @brief Initialize specter distribution
     */
     SpecterDistribution()
-        : RandomDistribution<T>(std::vector<T> {1})
+        : RandomDistribution<T>(std::vector<T> { 1 })
     {
         //std::vector<T> w { 1, 1 };
         //RandomDistribution<T>(w);
-        m_energies = std::vector<T> { 60};
-         
+        m_energies = std::vector<T> { 60 };
     }
 
     /**

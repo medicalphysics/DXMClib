@@ -52,7 +52,7 @@ struct resultLock {
     }
 };
 
-template <Floating T>
+template <Floating T = double>
 struct Result {
     std::vector<T> dose;
     std::vector<std::uint32_t> nEvents;
@@ -77,7 +77,7 @@ class Source;
 template <Floating T>
 class CTSource;
 
-template <Floating T>
+template <Floating T = double>
 class Transport {
 public:
     Transport()
@@ -100,7 +100,6 @@ public:
 
         if (!source)
             return result;
-
 
         source->updateFromWorld(world);
         source->validate();

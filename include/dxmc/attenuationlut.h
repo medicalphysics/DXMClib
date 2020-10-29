@@ -20,13 +20,12 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/constants.h"
 #include "dxmc/floating.h"
+#include "dxmc/interpolation.h"
 #include "dxmc/material.h"
 #include "dxmc/world.h"
-#include "dxmc/interpolation.h"
 #include <array>
 #include <vector>
 namespace dxmc {
-
 
 /**
  * @brief Attenuation look up tables.
@@ -37,7 +36,7 @@ namespace dxmc {
  * class is typical used internally in the World class.
  */
 
-template <Floating T>
+template <Floating T = double>
 class AttenuationLut {
 public:
     static constexpr T MAX_PHOTON_ENERGY() { return 2 * ELECTRON_REST_MASS<T>(); }
@@ -146,7 +145,7 @@ public:
 
         if (idx >= m_energyResolution - 1)
             return m_maxMassAtt[m_energyResolution - 1];
-        return interp(m_attData[idx], m_attData[idx + 1], m_maxMassAtt[idx], m_maxMassAtt[idx+1], energy);
+        return interp(m_attData[idx], m_attData[idx + 1], m_maxMassAtt[idx], m_maxMassAtt[idx + 1], energy);
     }
 
     /**

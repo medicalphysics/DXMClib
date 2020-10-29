@@ -34,7 +34,7 @@ Copyright 2019 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T = double>
 class World {
 private:
     std::array<T, 3> m_spacing = { 1.0, 1.0, 1.0 };
@@ -195,7 +195,7 @@ bool World<T>::validate()
     return (*min >= 0) && (*min < n) && (*max >= 0) && (*max < n);
 }
 
-template <Floating T>
+template <Floating T = double>
 class CTDIPhantom final : public World<T> {
 
 private:

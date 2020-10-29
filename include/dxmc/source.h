@@ -36,7 +36,7 @@ Copyright 2019 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T = double>
 class Source {
 public:
     enum class Type { None,
@@ -98,7 +98,7 @@ public:
     virtual void updateFromWorld(const World<T>& world) { }
 };
 
-template <Floating T>
+template <Floating T = double>
 class PencilSource final : public Source<T> {
 public:
     PencilSource()
@@ -160,7 +160,7 @@ protected:
     std::uint64_t m_totalExposures = 10;
 };
 
-template <Floating T>
+template <Floating T = double>
 class IsotropicSource final : public Source<T> {
 public:
     IsotropicSource()
@@ -245,7 +245,7 @@ private:
     T m_maxPhotonEnergy = 1.0;
 };
 
-template <Floating T>
+template <Floating T = double>
 class DXSource final : public Source<T> {
 public:
     DXSource()
@@ -530,7 +530,7 @@ private:
     bool m_modelHeelEffect = true;
 };
 
-template <Floating T>
+template <Floating T = double>
 class CTSource : public Source<T> {
 public:
     CTSource()
@@ -806,7 +806,7 @@ protected:
     bool m_modelHeelEffect = true;
 };
 
-template <Floating T>
+template <Floating T = double>
 class CTDualSource : public CTSource<T> {
 public:
     CTDualSource()
@@ -920,7 +920,7 @@ protected:
     std::shared_ptr<HeelFilter<T>> m_heelFilterB = nullptr;
 };
 
-template <Floating T>
+template <Floating T = double>
 class CTSpiralSource final : public CTSource<T> {
 public:
     CTSpiralSource()
@@ -1002,7 +1002,7 @@ private:
     T m_pitch;
 };
 
-template <Floating T>
+template <Floating T = double>
 class CTAxialSource final : public CTSource<T> {
 public:
     CTAxialSource()
@@ -1099,7 +1099,7 @@ private:
     T m_step;
 };
 
-template <Floating T>
+template <Floating T = double>
 class CTSpiralDualSource final : public CTDualSource<T> {
 public:
     //Source overrides
@@ -1206,7 +1206,7 @@ private:
     T m_pitch = 1.0;
 };
 
-template <Floating T>
+template <Floating T = double>
 class CTAxialDualSource final : public CTDualSource<T> {
 public:
     CTAxialDualSource()

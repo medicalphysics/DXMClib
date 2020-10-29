@@ -22,6 +22,7 @@ Copyright 2019 Erlend Andersen
 #include <algorithm>
 #include <iterator>
 #include <type_traits>
+#include <vector>
 
 namespace dxmc {
 
@@ -37,7 +38,7 @@ inline U interp(T x[2], T y[2], U xi)
 }
 
 template <typename It, Floating T>
-    requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
+requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
     T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
 {
     auto upper = std::upper_bound(xbegin, xend, xvalue);

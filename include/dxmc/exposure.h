@@ -33,7 +33,7 @@ namespace dxmc {
  * @brief Class to describe an exposure.
  * An exposure is used to describe a particle emitter where random distributions, position and, direction and collimation do not change for particles created.  
 */
-template <Floating T>
+template <Floating T = double>
 class Exposure {
 
 private:

@@ -32,7 +32,7 @@ Copyright 2019 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-template <Floating T>
+template <Floating T = double>
 struct DoseProgressImageData {
     std::array<std::size_t, 2> dimensions = { 0, 0 };
     std::array<T, 2> spacing = { 0, 0 };

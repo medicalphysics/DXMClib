@@ -19,9 +19,9 @@ Copyright 2019 Erlend Andersen
 #pragma once
 #include "dxmc/constants.h"
 #include "dxmc/floating.h"
+#include "dxmc/interpolation.h"
 #include "dxmc/tube.h"
 #include "dxmc/world.h"
-#include "dxmc/interpolation.h"
 
 #include <algorithm>
 #include <array>
@@ -39,14 +39,13 @@ namespace dxmc {
  * 
  * Base class for various filters on a photon beam based on angle of photom from beam direction along the first direction cosine vector of the source 
  */
-template <Floating T>
+template <Floating T = double>
 class BeamFilter {
 
 private:
     std::string m_filterName = "";
 
 public:
-    
     /**
 	 * @brief Sample intensity weigh
 	 * Sample the photon weight from this filter. The mean of photon weights sampled is 1.0 for N samples when N->infinity.  
@@ -76,7 +75,7 @@ public:
  * Filter to adjust photon weight based on a measured bowtie filter profile. Note that beamhardening of a specter is not modeled
  * and the bowtie filter simply adjust photon fluence according to a profile. 
  */
-template <Floating T>
+template <Floating T = double>
 class BowTieFilter : public BeamFilter<T> {
 private:
     std::vector<std::pair<T, T>> m_data;
@@ -204,7 +203,7 @@ public:
  * This filter modifies a particle's weight along the rotation angle in the same manner as Simens have iplementet on some CT scanner models.
  * The result is decreased fluence (photon weight) along the filters span angle and increased fluence outside the filter angle. The mean photon weight over all angles in a rotation is unity. 
  */
-template <Floating T>
+template <Floating T = double>
 class XCareFilter : public BeamFilter<T> {
 
 private:
@@ -433,7 +432,7 @@ public:
  * Filter for modeling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects. 
  * 
  */
-template <Floating T>
+template <Floating T = double>
 class HeelFilter {
 private:
     T m_energyStep = 2.0;
@@ -568,7 +567,7 @@ public:
  * @brief Filter to adjust photon weights according to a tube current profile for CT examinations.
  * Filter to simulate automatic exposure control for CT examinations. This filter will match a given tube current profile to a denisty image to generate a lookup table of photon weights according to a ddensity profile. 
 */
-template <Floating T>
+template <Floating T = double>
 class AECFilter {
 
 private:

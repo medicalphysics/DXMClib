@@ -26,7 +26,7 @@ namespace dxmc {
 /**
  * @brief Simple struct to describe a photon 
 */
-template <Floating T>
+template <Floating T = double>
 struct Particle {
     /**
      * @brief Position vector in three dimensions.
