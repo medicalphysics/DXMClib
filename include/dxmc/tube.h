@@ -18,16 +18,22 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.h"
 #include "dxmc/floating.h"
 #include "dxmc/material.h"
-#include "dxmc/tube_calculations.h"
 
 #include <algorithm>
+#include <array>
 #include <execution>
 #include <utility>
 #include <vector>
 
 namespace dxmc {
+
+namespace tube_implementation {
+    double betheHeitlerSpectra(double T0, double hv, double takeoffAngle);
+    std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, double takeoffAngle);
+}
 
 template <Floating T = double>
 class Tube {
@@ -182,6 +188,7 @@ public:
             map.push_back(std::make_pair(energies[i], specter[i]));
         return map;
     }
+
     std::vector<T> getSpecter(const std::vector<T>& energies, T anodeAngle, bool normalize = true) const
     {
         std::vector<T> specter;
@@ -261,7 +268,7 @@ protected:
         const auto sum = std::reduce(std::execution::par, specter.begin(), specter.end());
         std::for_each(std::execution::par_unseq, specter.begin(), specter.end(), [=](auto& n) { n = n / sum; });
     }
-    
+
     T calculatemmAlHalfValueLayer() const
     {
         auto energy = getEnergy();

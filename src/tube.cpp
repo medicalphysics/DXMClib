@@ -15,15 +15,13 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2019 Erlend Andersen
 */
-#pragma once
+
 
 #include "dxmc/constants.h"
 #include "dxmc/material.h"
+#include "dxmc/tube.h"
 
 #include <cmath>
-#include <array>
-#include <execution>
-#include <algorithm>
 
 namespace dxmc {
 
@@ -359,5 +357,7 @@ namespace tube_implementation {
     //END SEMIRELATIVISTIC BETHE HEITLER CROSS SECTION CALCULATION
 
 }
+
+
 
 }

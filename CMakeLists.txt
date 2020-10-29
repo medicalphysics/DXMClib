@@ -44,7 +44,6 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/source.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/transport.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.h"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/tube_calculations.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.h"
@@ -56,15 +55,8 @@ set(HEADER_LIST
     )
 
 add_library(libdxmc 
-  #  src/world.cpp
-   # src/source.cpp
-    #src/exposure.cpp
-    #src/tube.cpp
-    #src/dxmcrandom.cpp
-    #src/beamfilters.cpp
-    src/material.cpp
-    #src/transport.cpp
-	#src/attenuationlut.cpp
+    src/tube.cpp
+    src/material.cpp    
     ${HEADER_LIST}
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
