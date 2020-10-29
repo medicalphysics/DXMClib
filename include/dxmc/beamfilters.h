@@ -664,7 +664,7 @@ public:
     */
     AECFilter(const std::vector<T>& densityImage, const std::array<T, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<T>& exposuremapping)
     {
-        generateMassWeightMap(densityImage.cbegin(), densityImage.cend(), spacing, dimensions, exposure);
+        generateMassWeightMap(densityImage.cbegin(), densityImage.cend(), spacing, dimensions, exposuremapping);
     }
 
     /**
@@ -676,7 +676,7 @@ public:
     */
     AECFilter(std::shared_ptr<std::vector<T>>& densityImage, const std::array<T, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<T>& exposuremapping)
     {
-        generateMassWeightMap(densityImage->cbegin(), densityImage->cend(), spacing, dimensions, exposure);
+        generateMassWeightMap(densityImage->cbegin(), densityImage->cend(), spacing, dimensions, exposuremapping);
     }
     /**
      * @brief Constructs a new AECFilter directly from mass and weight arrays
