@@ -124,7 +124,7 @@ protected:
         if (!m_doseData)
             return nullptr;
 
-        auto doseProgressImage = std::make_shared<DoseProgressImageData>();
+        auto doseProgressImage = std::make_shared<DoseProgressImageData<T>>();
         m_doseMipBuffer.resize(m_doseDimensions[1] * m_doseDimensions[2]);
         std::fill(m_doseMipBuffer.begin(), m_doseMipBuffer.end(), 0.0);
         doseProgressImage->image.resize(m_doseDimensions[1] * m_doseDimensions[2], 0);
@@ -156,7 +156,7 @@ protected:
         if (!m_doseData)
             return nullptr;
 
-        auto doseProgressImage = std::make_shared<DoseProgressImageData>();
+        auto doseProgressImage = std::make_shared<DoseProgressImageData<T>>();
         m_doseMipBuffer.resize(m_doseDimensions[0] * m_doseDimensions[2]);
         std::fill(m_doseMipBuffer.begin(), m_doseMipBuffer.end(), 0.0);
         doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[2], 0);
@@ -189,7 +189,7 @@ protected:
         if (!m_doseData)
             return nullptr;
 
-        auto doseProgressImage = std::make_shared<DoseProgressImageData>();
+        auto doseProgressImage = std::make_shared<DoseProgressImageData<T>>();
         m_doseMipBuffer.resize(m_doseDimensions[0] * m_doseDimensions[1]);
         std::fill(m_doseMipBuffer.begin(), m_doseMipBuffer.end(), 0.0);
         doseProgressImage->image.resize(m_doseDimensions[0] * m_doseDimensions[1], 0);

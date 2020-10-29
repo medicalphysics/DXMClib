@@ -289,7 +289,7 @@ public:
     }
     void setTotalExposures(std::uint64_t exposures)
     {
-        m_totalExposures = std::max(exposures, 1);
+        m_totalExposures = std::max(exposures, std::uint64_t { 1 });
     }
 
     void setCollimationAngles(const std::array<T, 2>& angles)
@@ -302,9 +302,9 @@ public:
         return m_collimationAngles;
     }
 
-    void setCollimationAnglesDeg(const std::array<T, 2>& degrees)
+    void setCollimationAnglesDeg(const std::array<T, 2>& angles)
     {
-        std::array<T, 2> ang = { std::abs(angles[0]), std::abs(angles[1]) };
+        std::array<T, 2> ang = { std::abs(angles[0]) * DEG_TO_RAD<T>(), std::abs(angles[1]) * DEG_TO_RAD<T>() };
         updateCollimationAngles(ang);
     }
     const std::array<T, 2> collimationAnglesDeg(void) const
