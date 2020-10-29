@@ -292,7 +292,7 @@ public:
         m_totalExposures = std::max(exposures, 1);
     }
 
-    void setCollimationAngles(const std::array<T, 2>& radians)
+    void setCollimationAngles(const std::array<T, 2>& angles)
     {
         std::array<double, 2> ang = { std::abs(angles[0]), std::abs(angles[1]) };
         updateCollimationAngles(ang);
@@ -571,7 +571,7 @@ public:
     }
     T sourceDetectorDistance(void) const { return m_sdd; }
 
-    void setCollimation(T mmCollimation)
+    void setCollimation(T collimation)
     {
         m_collimation = std::abs(collimation);
         m_specterValid = false;

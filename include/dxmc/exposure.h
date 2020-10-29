@@ -271,7 +271,7 @@ public:
         const T sin2phi = sinphi * sinphi;
         const T norm = T { 1 } / std::sqrt(T { 1 } + sin2phi + sin2theta);
 
-        Particle p { .pos = m_position, .weight = m_beamIntensityWeight };
+        Particle<T> p { .pos = m_position, .weight = m_beamIntensityWeight };
 
         for (std::size_t i = 0; i < 3; i++) {
             p.dir[i] = norm * (m_beamDirection[i] + sintheta * m_directionCosines[i] + sinphi * m_directionCosines[i + 3]);
