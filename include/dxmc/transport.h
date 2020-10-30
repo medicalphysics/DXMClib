@@ -29,8 +29,9 @@ Copyright 2019 Erlend Andersen
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <memory>
 #include <cmath>
+#include <functional>
+#include <memory>
 
 namespace dxmc {
 /**
@@ -463,7 +464,7 @@ protected:
         std::uint64_t expBegThread = expBeg;
         std::uint64_t expEndThread = expBegThread + threadLen;
         for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::parallellRun<Livermore>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
+            jobs.emplace_back(&Transport<T>::parallellRun<Livermore>, this, std::cref(w), source, std::ref(result), expBegThread, expEndThread, 1, progressbar);
             expBegThread = expEndThread;
             expEndThread = expBegThread + threadLen;
         }
