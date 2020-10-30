@@ -639,10 +639,9 @@ public:
     void setExposureAngleStep(T angleStep)
     {
         const auto absAngle = std::abs(angleStep);
-        if (absAngle < PI_VAL<T>())
-            m_exposureAngleStep = absAngle;
-        else if (absAngle > T { 0.1 } * DEG_TO_RAD<T>())
-            m_exposureAngleStep = absAngle;
+        if (absAngle < PI_VAL<T>()) {
+            m_exposureAngleStep = std::max(absAngle, DEG_TO_RAD<T>() / 10);
+        }
     }
 
     T exposureAngleStep(void) const
