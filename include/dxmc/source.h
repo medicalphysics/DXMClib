@@ -748,6 +748,10 @@ protected:
         sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
         sourceCopy.validate();
 
+        if (progressBar) {
+            progressBar->setPlaneNormal(ProgressBar<T>::Axis::Z);
+        }
+
         Transport<T> transport;
         auto result = transport(world, &sourceCopy, progressBar, false);
 

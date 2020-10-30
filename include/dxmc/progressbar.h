@@ -79,14 +79,13 @@ public:
     {
         return m_cancel.load();
     }
-
-    void setDoseData(const T* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<T, 3>& doseSpacing, Axis planeNormal = Axis::Y)
+    void setPlaneNormal(Axis planeNormal) { m_doseAxis = planeNormal; }
+    void setDoseData(const T* doseData, const std::array<std::size_t, 3>& doseDimensions, const std::array<T, 3>& doseSpacing)
     {
         std::scoped_lock guard(m_doseMutex);
         m_doseData = doseData;
         m_doseDimensions = doseDimensions;
         m_doseSpacing = doseSpacing;
-        m_doseAxis = planeNormal;
     }
     void clearDoseData()
     {
