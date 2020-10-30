@@ -69,6 +69,7 @@ bool testDXSourceAnglesMany()
 template <typename T>
 bool testCTCalibration()
 {
+    std::cout << "Testing CT axial source calibration: ";
     CTAxialSource<T> src;
     CTDIPhantom<T> world(320);
 
@@ -96,8 +97,11 @@ bool testCTCalibration()
     pher /= 4.0;
     auto cent = measureDose[0];
     T ctdi = pher * 2.0 / 3.0 + cent / 3.0;
-    if (ctdi > 0.990 || ctdi < 1.01)
+    if (ctdi > 0.990 || ctdi < 1.01) {
+        std::cout << "Success\n";
         return true;
+    }
+    std::cout << "Failure\n";
     return false;
 }
 
