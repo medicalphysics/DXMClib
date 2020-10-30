@@ -30,6 +30,7 @@ Copyright 2019 Erlend Andersen
 #include <atomic>
 #include <chrono>
 #include <memory>
+#include <cmath>
 
 namespace dxmc {
 /**
@@ -415,7 +416,7 @@ protected:
         }
         if (amin < amax && amin > 0.0) {
             for (std::size_t i = 0; i < 3; i++) {
-                particle.pos[i] += (amin + N_ERROR()) * particle.dir[i]; // making sure particle is inside world
+                particle.pos[i] += std::nextafter(amin, amax) * particle.dir[i]; // making sure particle is inside world
             }
             return true;
         }
