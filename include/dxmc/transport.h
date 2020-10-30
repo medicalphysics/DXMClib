@@ -66,9 +66,9 @@ struct Result {
 
     Result(std::size_t size)
     {
-        dose.resize(size, 0.0);
+        dose.resize(size, 0);
         nEvents.resize(size, 0);
-        variance.resize(size, 0.0);
+        variance.resize(size, 0);
         locks.resize(size);
     }
 };
@@ -141,9 +141,11 @@ public:
         computeResultVariance(result);
 
         if (calculateDose) {
-            const auto calibrationValue = source->getCalibrationValue(progressbar);
+            const T calibrationValue = source->getCalibrationValue(progressbar);
             //energy imparted to dose
             energyImpartedToDose(world, result, calibrationValue);
+        } else {
+            energyImpartedToDose(world, result);
         }
         return result;
     }
@@ -495,7 +497,7 @@ protected:
 
     void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1)
     {
-        auto spacing = world.spacing();
+        const auto& spacing = world.spacing();
         const auto voxelVolume = spacing[0] * spacing[1] * spacing[2] / T { 1000.0 }; // cm3
         auto density = world.densityArray();
 
@@ -509,7 +511,8 @@ protected:
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
             [=](auto var, auto de) -> auto {
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
-                return de > T { 0.0 } ? calibrationValue * var / voxelMass : T { 0.0 };
+                const auto factor = calibrationValue * calibrationValue / (voxelMass * voxelMass);
+                return de > T { 0.0 } ? factor * var : T { 0.0 };
             });
     }
 
