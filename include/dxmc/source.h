@@ -443,23 +443,19 @@ public:
 
     T getCalibrationValue(ProgressBar<T>* = nullptr) const override
     {
-        auto specter = tube().getSpecter();
+        auto specter = tube().getSpecter(true);
         std::vector<T> massAbsorb(specter.size(), T { 0 });
         Material airMaterial("Air, Dry (near sea level)");
         std::transform(specter.begin(), specter.end(), massAbsorb.begin(), [&](const auto& el) -> T { return airMaterial.getMassEnergyAbsorbtion(el.first); });
 
-        const T nHist = totalExposures() * historiesPerExposure();
-
-        T calcOutput = 0.0; // Air KERMA [keV/g]
+        T calcOutput = 0.0; // Air KERMA [keV/g] == [1000 keV/kg/history]
         for (std::size_t i = 0; i < specter.size(); ++i) {
-            auto& [keV, weight] = specter[i];
-            calcOutput += keV * weight * nHist * massAbsorb[i];
+            const auto& [keV, weight] = specter[i];
+            calcOutput += 1000 * keV * weight * massAbsorb[i];
         }
-        calcOutput *= KEV_TO_MJ<T>() * 1000.0; // Air KERMA [mJ / kg] = [mGy]
 
-        // (m_dap * 1000.0): converting from Gycm2 to mGycm2
-        const T output = (m_dap * T { 1000.0 }) / (m_fieldSize[0] * m_fieldSize[1] * T { 0.01 }); //mm->cm
-        const T factor = output / calcOutput; // mGy/mGy
+        const T output = m_dap * 1000 / (m_fieldSize[0] * m_fieldSize[1] * T { 0.01 }); // mGy // mm->cm
+        const T factor = output / calcOutput;
         return factor;
     }
 

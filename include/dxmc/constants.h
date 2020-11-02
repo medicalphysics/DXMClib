@@ -57,4 +57,9 @@ constexpr T KEV_TO_MJ()
 {
     return T { 1.6021773e-13 }; // milli Joules}
 }
+template <Floating T>
+constexpr T MJ_TO_KEV()
+{
+    return T { 1 } / KEV_TO_MJ<T>();
+}
 }

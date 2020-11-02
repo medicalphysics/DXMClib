@@ -137,6 +137,13 @@ public:
             }
         }
 
+        //normalize dose to ev/history
+        const T normalization = T { 1 } / (source->totalExposures() * source->historiesPerExposure());
+        std::transform(std::execution::par_unseq, result.dose.cbegin(), result.dose.cend(), result.dose.begin(),
+            [=](const auto e) {
+                return e * normalization;
+            });
+
         //compute variance
         computeResultVariance(result);
 
@@ -144,11 +151,14 @@ public:
             const T calibrationValue = source->getCalibrationValue(progressbar);
             //energy imparted to dose
             energyImpartedToDose(world, result, calibrationValue);
+            result.dose_units = "mGy";
         } else {
             energyImpartedToDose(world, result);
+            result.dose_units = "keV/kg/history";
         }
         return result;
     }
+
     const AttenuationLut<T>& attenuationLut() const { return m_attenuationLut; }
     AttenuationLut<T>& attenuationLut() { return m_attenuationLut; }
 

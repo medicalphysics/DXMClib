@@ -36,22 +36,22 @@ void initiateAll()
 template <typename T>
 bool testDXSourceAngles(T pang, T sang, T tubeRotation)
 {
-
     DXSource<T> src;
 
     std::array<T, 2> angles = { pang, sang };
     src.setTubeRotationDeg(tubeRotation);
-    std::cout << "angles set: " << angles[0] << ", " << angles[1];
+    //std::cout << "angles set: " << angles[0] << ", " << angles[1];
     src.setSourceAnglesDeg(angles);
     auto anglesres = src.sourceAnglesDeg();
-    std::cout << " angles res: " << anglesres[0] << ", " << anglesres[1];
-    std::cout << " tube rot: " << tubeRotation << '\n';
+    //std::cout << " angles res: " << anglesres[0] << ", " << anglesres[1];
+    //std::cout << " tube rot: " << tubeRotation << '\n';
     return isEqual(angles[0], anglesres[0]) && isEqual(angles[1], anglesres[1]);
 }
 
 template <typename T>
 bool testDXSourceAnglesMany()
 {
+    std::cout << "Testing DX source angles: ";
     bool success = true;
     std::array<T, 7> angles = { -80, -60, -30, 0, 30, 60, 80 };
     auto tube_rot = angles;
@@ -63,9 +63,60 @@ bool testDXSourceAnglesMany()
             }
 
     assert(success);
+    if (success)
+        std::cout << "Success\n";
+    else
+        std::cout << "Failure\n";
     return success;
 }
 
+template <typename T>
+bool testDXCalibration()
+{
+    std::cout << "Testing DX source calibration: ";
+    DXSource<T> src;
+    CTDIPhantom<T> world(320);
+
+    auto dens = world.densityArray();
+    auto mat = world.materialIndexArray();
+    auto measArr = world.measurementMapArray();
+    std::fill(dens->begin(), dens->end(), dens->at(0));
+    std::fill(mat->begin(), mat->end(), 0);
+    std::fill(measArr->begin(), measArr->end(), 1);
+
+    const auto& dim = world.dimensions();
+    const auto& spacing = world.spacing();
+
+    auto idx = dim[0] / 2 + dim[1] / 2 * dim[0];
+
+    src.setTotalExposures(4);
+    src.setHistoriesPerExposure(500000);
+    std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
+    src.setDirectionCosines(cosines);
+    std::array<T, 2> fieldSize = { 10, 10 };
+    src.setFieldSize(fieldSize);
+    src.setDap(T { 1 });
+    src.validate();
+
+    Transport<T> transport;
+    auto res = transport(world, &src);
+
+    // dose at (0,0,0)
+    const T measureArea = spacing[0] * spacing[1] / 10 / 10;
+    const auto calcdose = src.dap() / measureArea;
+
+    const auto measuredose = res.dose[idx];
+
+
+    const auto diff = 100 * (calcdose - measuredose) / calcdose;
+
+    if (diff > -10 & diff < 10) {
+        std::cout << "Success\n";
+        return true;
+    }
+    std::cout << "Failure\n";
+    return false;
+}
 template <typename T>
 bool testCTCalibration()
 {
@@ -107,13 +158,22 @@ bool testCTCalibration()
 
 int main(int argc, char* argv[])
 {
+    std::cout << "Testing sources\n";
     initiateAll<float>();
     initiateAll<double>();
     bool success = true;
+    success = success && testDXCalibration<float>();
+    success = success && testDXCalibration<double>();
     success = success && testCTCalibration<float>();
     success = success && testCTCalibration<double>();
     success = success && testDXSourceAnglesMany<float>();
     success = success && testDXSourceAnglesMany<double>();
+
+    if (success)
+        std::cout << "Test sources : Success\n";
+    else
+        std::cout << "Test sources : Failure\n";
+
 
     return !success;
 }
