@@ -1004,7 +1004,7 @@ public:
     {
         CTAxialSource copy = *this;
 
-        return ctCalibration(copy, progressBar) / m_pitch;
+        return ctCalibration(copy, progressBar) * m_pitch;
     }
 
 private:
@@ -1197,7 +1197,7 @@ public:
     {
         CTAxialDualSource<T> copy = *this;
 
-        return ctCalibration(copy, progressBar) / m_pitch;
+        return ctCalibration(copy, progressBar) * m_pitch;
     }
 
     T pitch(void) const { return m_pitch; }
