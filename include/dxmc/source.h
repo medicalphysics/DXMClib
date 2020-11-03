@@ -45,7 +45,8 @@ public:
         DX,
         CTDual,
         Pencil,
-        Isotropic };
+        Isotropic,
+        Circle };
 
 private:
     void normalizeDirectionCosines(void)
@@ -172,7 +173,6 @@ public:
         const std::vector<T> weights = { 1.0 };
         m_maxPhotonEnergy = 60.0;
         m_specterDistribution = SpecterDistribution<T>(weights, energies);
-        //m_specterDistribution = std::make_unique<SpecterDistribution>(weights, energies);
     }
     virtual ~IsotropicSource() = default;
     Exposure<T> getExposure(std::uint64_t exposureNumber) const override
@@ -243,6 +243,138 @@ private:
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     SpecterDistribution<T> m_specterDistribution;
     T m_maxPhotonEnergy = 1.0;
+};
+
+template <Floating T = double>
+class CircleSource : public Source<T> {
+public:
+    CircleSource()
+        : Source<T>()
+    {
+        m_type = Type::Circle;
+        // initializing a specterdistribution
+        const std::vector<T> energies = { 60.0 };
+        const std::vector<T> weights = { 1.0 };
+        m_maxPhotonEnergy = 60.0;
+        m_specterDistribution = SpecterDistribution<T>(weights, energies);
+        setTotalExposures(m_totalExposures);
+    }
+    virtual ~CircleSource() = default;
+    void setRotationAxis(const std::array<T, 3>& axis)
+    {
+        m_rotationAxis = axis;
+        vectormath::normalize(m_rotationAxis.data());
+    }
+    const std::array<T, 3>& rotationAxis()
+    {
+        return m_rotationAxis;
+    }
+    void setRotationRadius(T radius) { m_rotationRadius = std::abs(radius); }
+    T rotationRadius() { return m_rotationRadius; }
+    Exposure<T> getExposure(std::uint64_t exposureNumber) const override
+    {
+        if (exposureNumber >= m_totalExposures)
+            return Exposure<T>();
+
+        //calculating rotation plane
+        std::array<T, 3> u3, u2 = { 0, 0, 0 };
+        const auto argmin = vectormath::argmin3<std::size_t>(m_rotationAxis.data());
+        u2[argmin] = 1;
+        //making u2 orthogonal to rotation axis
+        const auto proj = vectormath::dot(m_rotationAxis.data(), u2.data());
+        for (std::size_t i = 0; i < 3; ++i)
+            u2 -= proj * m_rotationAxis[i];
+        vectormath::normalize(u2.data());
+        //last orthogonal vector
+        vectormath::cross(m_rotationAxis.data(), u2.data(), u3.data());
+
+        //rotating plane vectors
+        vectormath::rotate(u2.data(), m_rotationAxis.data(), m_randomAngles[exposureNumber]);
+        vectormath::rotate(u3.data(), m_rotationAxis.data(), m_randomAngles[exposureNumber]);
+
+        std::array<T, 3> position;
+        std::array<T, 6> cosines;
+        for (std::size_t i = 0; i < 3; ++i) {
+            position[i] = m_rotationRadius * u2[i] + m_position[i];
+            cosines[i * 2] = m_rotationAxis[i];
+            cosines[i * 2 + 1] = -u3[i];
+        }
+
+        constexpr T weight { 1 };
+        Exposure<T> exposure(position,
+            cosines,
+            m_collimationAngles,
+            m_historiesPerExposure,
+            weight,
+            &m_specterDistribution);
+
+        return exposure;
+    }
+    T maxPhotonEnergyProduced() const override
+    {
+        return m_maxPhotonEnergy;
+    };
+    void setTotalExposures(std::uint64_t nExposures)
+    {
+        m_totalExposures = nExposures;
+        m_angles.resize(m_totalExposures);
+        constexpr T maxAngle = PI_VAL<T>() * 2;
+        for (std::uint64_t i = 0; i < nExposures; ++i)
+            m_angles[i] = m_randomState.randomUniform(maxAngle);
+    };
+    std::uint64_t totalExposures() const override
+    {
+        return m_totalExposures;
+    };
+
+    T getCalibrationValue(ProgressBar<T>* progress = nullptr) const override
+    {
+        return T { 1.0 };
+    };
+
+    bool isValid() const override { return true; }
+    bool validate() override { return true; }
+
+    void setSpecter(const std::vector<T>& weights, const std::vector<T>& energies)
+    {
+        const auto maxEnergyElement = std::max_element(energies.cbegin(), energies.cend());
+        m_maxPhotonEnergy = *maxEnergyElement;
+        m_specterDistribution = SpecterDistribution<T>(weights, energies);
+    }
+    void setCollimationAngles(T xRad, T yRad)
+    {
+        if (xRad < -PI_VAL<T>())
+            m_collimationAngles[0] = -PI_VAL<T>();
+        else if (xRad > PI_VAL<T>())
+            m_collimationAngles[0] = PI_VAL<T>();
+        else
+            m_collimationAngles[0] = xRad;
+
+        constexpr T PI_H = PI_VAL<T>() * T { 0.5 };
+
+        if (yRad < -PI_H)
+            m_collimationAngles[1] = -PI_H;
+        else if (yRad > PI_VAL<T>())
+            m_collimationAngles[1] = PI_H;
+        else
+            m_collimationAngles[1] = yRad;
+    }
+    std::pair<T, T> collimationAngles() const
+    {
+        return std::pair<T, T>(m_collimationAngles[0], m_collimationAngles[1]);
+    }
+
+protected:
+private:
+    RandomState m_randomState;
+    std::vector<T> m_randomAngles
+        std::uint64_t m_totalExposures
+        = 90;
+    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    SpecterDistribution<T> m_specterDistribution;
+    std::array<T, 3> m_rotationAxis = { 0, 0, 1 };
+    T m_rotationRadius = 1000;
+    T m_maxPhotonEnergy = 1;
 };
 
 template <Floating T = double>
