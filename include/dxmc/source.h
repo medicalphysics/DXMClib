@@ -448,13 +448,16 @@ public:
         Material airMaterial("Air, Dry (near sea level)");
         std::transform(specter.begin(), specter.end(), massAbsorb.begin(), [&](const auto& el) -> T { return airMaterial.getMassEnergyAbsorbtion(el.first); });
 
-        T calcOutput = 0.0; // Air KERMA [keV/g] == [1000 keV/kg/history]
+        T calcOutput = 0.0; // Air KERMA [keV/g] == [1000 keV/kg]
         for (std::size_t i = 0; i < specter.size(); ++i) {
             const auto& [keV, weight] = specter[i];
             calcOutput += 1000 * keV * weight * massAbsorb[i];
         }
+        calcOutput *= (totalExposures() * historiesPerExposure());
 
-        const T output = m_dap * 1000 / (m_fieldSize[0] * m_fieldSize[1] * T { 0.01 }); // mGy // mm->cm
+        constexpr T mmsqTOcmsq { 0.01 };
+
+        const T output = (m_dap * 1000) / (m_fieldSize[0] * m_fieldSize[1] * mmsqTOcmsq); // mGy // mm->cm
         const T factor = output / calcOutput;
         return factor;
     }
@@ -732,7 +735,7 @@ protected:
         sourceCopy.setScanLenght(sourceCopy.collimation());
 
         sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
-        std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / 2 / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
+        std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
         if (statCounter < 1)
             statCounter = 1;
 
@@ -1001,7 +1004,7 @@ public:
     {
         CTAxialSource copy = *this;
 
-        return ctCalibration(copy, progressBar) * m_pitch;
+        return ctCalibration(copy, progressBar) / m_pitch;
     }
 
 private:
@@ -1194,7 +1197,7 @@ public:
     {
         CTAxialDualSource<T> copy = *this;
 
-        return ctCalibration(copy, progressBar) * m_pitch;
+        return ctCalibration(copy, progressBar) / m_pitch;
     }
 
     T pitch(void) const { return m_pitch; }
