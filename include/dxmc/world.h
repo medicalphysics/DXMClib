@@ -73,22 +73,26 @@ public:
     }
     void setDimensions(const std::array<std::size_t, 3>& dimensions)
     {
+        m_valid = false;
         m_dimensions = dimensions;
         updateMatrixExtent();
     }
     void setSpacing(const std::array<T, 3>& spacing)
     {
+        m_valid = false;
         m_spacing = spacing;
         updateMatrixExtent();
     }
     void setOrigin(const std::array<T, 3>& origin)
     {
+        m_valid = false;
         m_origin = origin;
         updateMatrixExtent();
     }
 
     void setDirectionCosines(const std::array<T, 6>& cosines)
     {
+        m_valid = false;
         m_directionCosines = cosines;
         vectormath::normalize(m_directionCosines.data());
         vectormath::normalize(&m_directionCosines[3]);
@@ -105,21 +109,34 @@ public:
         vectormath::cross(m_directionCosines.data(), dir.data());
         return dir;
     }
-    void setDensityArray(std::shared_ptr<std::vector<T>> densityArray) { m_density = densityArray; }
+    void setDensityArray(std::shared_ptr<std::vector<T>> densityArray)
+    {
+        m_valid = false;
+        m_density = densityArray;
+    }
     std::shared_ptr<std::vector<T>> densityArray(void) { return m_density; }
     const std::shared_ptr<std::vector<T>> densityArray(void) const { return m_density; }
 
-    void setMaterialIndexArray(std::shared_ptr<std::vector<std::uint8_t>> materialIndex) { m_materialIndex = materialIndex; }
+    void setMaterialIndexArray(std::shared_ptr<std::vector<std::uint8_t>> materialIndex)
+    {
+        m_valid = false;
+        m_materialIndex = materialIndex;
+    }
     std::shared_ptr<std::vector<std::uint8_t>> materialIndexArray(void) { return m_materialIndex; }
     const std::shared_ptr<std::vector<std::uint8_t>> materialIndexArray(void) const { return m_materialIndex; }
 
-    void setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap) { m_measurementMap = measurementMap; }
+    void setMeasurementMapArray(std::shared_ptr<std::vector<std::uint8_t>> measurementMap)
+    {
+        m_valid = false;
+        m_measurementMap = measurementMap;
+    }
     std::shared_ptr<std::vector<std::uint8_t>> measurementMapArray(void) { return m_measurementMap; }
     const std::shared_ptr<std::vector<std::uint8_t>> measurementMapArray(void) const { return m_measurementMap; }
 
     const std::vector<Material>& materialMap(void) const { return m_materialMap; }
     bool addMaterialToMap(const Material& material)
     {
+        m_valid = false;
         if (material.isValid()) {
             m_materialMap.push_back(material);
             return true;
@@ -128,6 +145,7 @@ public:
     }
     bool addMaterialToMap(Material&& material)
     {
+        m_valid = false;
         if (material.isValid()) {
             m_materialMap.push_back(material);
             return true;
@@ -135,10 +153,19 @@ public:
         return false;
     }
 
-    void clearMaterialMap(void) { m_materialMap.clear(); }
+    void clearMaterialMap(void)
+    {
+        m_valid = false;
+        m_materialMap.clear();
+    }
     const std::array<T, 6>& matrixExtent(void) const { return m_matrixExtent; }
 
-    void makeValid(void) { m_valid = validate(); }
+    void makeValid(void)
+    {
+        if (!m_valid) {
+            m_valid = validate();
+        }
+    }
 
     bool isValid(void) const { return m_valid; }
     [[nodiscard]] bool isValid(void)

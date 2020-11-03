@@ -29,8 +29,9 @@ Copyright 2019 Erlend Andersen
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <memory>
 #include <cmath>
+#include <functional>
+#include <memory>
 
 namespace dxmc {
 /**
@@ -65,9 +66,9 @@ struct Result {
 
     Result(std::size_t size)
     {
-        dose.resize(size, 0.0);
+        dose.resize(size, 0);
         nEvents.resize(size, 0);
-        variance.resize(size, 0.0);
+        variance.resize(size, 0);
         locks.resize(size);
     }
 };
@@ -140,12 +141,17 @@ public:
         computeResultVariance(result);
 
         if (calculateDose) {
-            const auto calibrationValue = source->getCalibrationValue(progressbar);
+            const T calibrationValue = source->getCalibrationValue(progressbar);
             //energy imparted to dose
             energyImpartedToDose(world, result, calibrationValue);
+            result.dose_units = "mGy";
+        } else {
+            energyImpartedToDose(world, result);
+            result.dose_units = "keV/kg";
         }
         return result;
     }
+
     const AttenuationLut<T>& attenuationLut() const { return m_attenuationLut; }
     AttenuationLut<T>& attenuationLut() { return m_attenuationLut; }
 
@@ -463,7 +469,7 @@ protected:
         std::uint64_t expBegThread = expBeg;
         std::uint64_t expEndThread = expBegThread + threadLen;
         for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::parallellRun<Livermore>, this, w, source, result, expBegThread, expEndThread, 1, progressbar);
+            jobs.emplace_back(&Transport<T>::parallellRun<Livermore>, this, std::cref(w), source, std::ref(result), expBegThread, expEndThread, 1, progressbar);
             expBegThread = expEndThread;
             expEndThread = expBegThread + threadLen;
         }
@@ -494,7 +500,7 @@ protected:
 
     void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1)
     {
-        auto spacing = world.spacing();
+        const auto& spacing = world.spacing();
         const auto voxelVolume = spacing[0] * spacing[1] * spacing[2] / T { 1000.0 }; // cm3
         auto density = world.densityArray();
 
@@ -508,7 +514,8 @@ protected:
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
             [=](auto var, auto de) -> auto {
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
-                return de > T { 0.0 } ? calibrationValue * var / voxelMass : T { 0.0 };
+                const auto factor = calibrationValue * calibrationValue / (voxelMass * voxelMass);
+                return de > T { 0.0 } ? factor * var : T { 0.0 };
             });
     }
 

@@ -575,23 +575,22 @@ public:
 
     T getCalibrationValue(ProgressBar<T>* = nullptr) const override
     {
-        auto specter = tube().getSpecter();
+        auto specter = tube().getSpecter(true);
         std::vector<T> massAbsorb(specter.size(), T { 0 });
         Material airMaterial("Air, Dry (near sea level)");
         std::transform(specter.begin(), specter.end(), massAbsorb.begin(), [&](const auto& el) -> T { return airMaterial.getMassEnergyAbsorbtion(el.first); });
 
-        const T nHist = totalExposures() * historiesPerExposure();
-
-        T calcOutput = 0.0; // Air KERMA [keV/g]
+        T calcOutput = 0.0; // Air KERMA [keV/g] == [1000 keV/kg]
         for (std::size_t i = 0; i < specter.size(); ++i) {
-            auto& [keV, weight] = specter[i];
-            calcOutput += keV * weight * nHist * massAbsorb[i];
+            const auto& [keV, weight] = specter[i];
+            calcOutput += 1000 * keV * weight * massAbsorb[i];
         }
-        calcOutput *= KEV_TO_MJ<T>() * 1000.0; // Air KERMA [mJ / kg] = [mGy]
+        calcOutput *= (totalExposures() * historiesPerExposure());
 
-        // (m_dap * 1000.0): converting from Gycm2 to mGycm2
-        const T output = (m_dap * T { 1000.0 }) / (m_fieldSize[0] * m_fieldSize[1] * T { 0.01 }); //mm->cm
-        const T factor = output / calcOutput; // mGy/mGy
+        constexpr T mmsqTOcmsq { 0.01 };
+
+        const T output = (m_dap * 1000) / (m_fieldSize[0] * m_fieldSize[1] * mmsqTOcmsq); // mGy // mm->cm
+        const T factor = output / calcOutput;
         return factor;
     }
 
@@ -868,7 +867,7 @@ protected:
         sourceCopy.setScanLenght(sourceCopy.collimation());
 
         sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
-        std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / 2 / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
+        std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
         if (statCounter < 1)
             statCounter = 1;
 
@@ -879,6 +878,10 @@ protected:
         const auto histories = sourceCopy.historiesPerExposure();
         sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
         sourceCopy.validate();
+
+        if (progressBar) {
+            progressBar->setPlaneNormal(ProgressBar<T>::Axis::Z);
+        }
 
         Transport<T> transport;
         auto result = transport(world, &sourceCopy, progressBar, false);
