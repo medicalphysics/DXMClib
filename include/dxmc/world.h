@@ -55,12 +55,12 @@ protected:
     {
         for (std::size_t i = 0; i < 3; i++) {
             const T halfDist = (m_dimensions[i] * m_spacing[i]) * T { 0.5 };
-            m_matrixExtent[i * 2] = m_origin[i] - halfDist;
-            m_matrixExtent[i * 2 + 1] = m_origin[i] + halfDist;
+            const T lower = m_origin[i] - halfDist;
+            const T upper = m_origin[i] + halfDist;
             // Preventing rounding errors when using extent to determine if a
             // particle is inside the world
-            m_matrixExtent[i * 2] = std::nextafter(m_matrixExtent[i * 2], m_matrixExtent[i * 2 + 1]);
-            m_matrixExtent[i * 2 + 1] = std::nextafter(m_matrixExtent[i * 2 + 1], m_matrixExtent[i * 2]);
+            m_matrixExtent[i * 2] = std::nextafter(lower, upper);
+            m_matrixExtent[i * 2 + 1] = std::nextafter(upper, lower);
         }
     }
 

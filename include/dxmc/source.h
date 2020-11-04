@@ -367,9 +367,8 @@ public:
 protected:
 private:
     RandomState m_randomState;
-    std::vector<T> m_randomAngles
-        std::uint64_t m_totalExposures
-        = 90;
+    std::vector<T> m_randomAngles;
+    std::uint64_t m_totalExposures = 90;
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     SpecterDistribution<T> m_specterDistribution;
     std::array<T, 3> m_rotationAxis = { 0, 0, 1 };

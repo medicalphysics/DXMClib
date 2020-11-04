@@ -120,17 +120,46 @@ bool betw(T v, U min, W max)
     return false;
 }
 
+template <Floating T = double>
+std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world)
+{
+    //assumes particle is inside world
+    std::size_t arraypos[3];
+    const auto& wpos = world.matrixExtent();
+    const auto& wdim = world.dimensions();
+    const auto& wspac = world.spacing();
+
+    for (std::size_t i = 0; i < 3; i++)
+        arraypos[i] = static_cast<std::size_t>((pos[i] - wpos[i * 2]) / wspac[i]);
+    const auto idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
+    return idx;
+}
+
+template <Floating T = double>
+std::vector<T> getEVperHistory(const Result<T>& res, std::shared_ptr<std::vector<T>> density, const std::array<T, 3>& spacing, std::uint64_t histories)
+{
+    std::vector<T> ev(res.dose.size());
+    const T voxelVolume = spacing[0] * spacing[1] * spacing[2] * T { 0.001 }; // mm->cm
+    const T nHist = static_cast<T>(histories);
+
+    std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), ev.begin(), [=](auto e, auto d) -> T {
+        const T voxelMass = d * voxelVolume * T { 0.001 }; // kg
+        return 1000 * e * voxelMass / nHist; // returns eV/hist
+    });
+    return ev;
+}
+
 template <typename T>
 World<T> generateTG195Case2World()
 {
-
-    Material air("Air, Dry (near sea level)");
+    //Material air("Air, Dry (near sea level)");
+    Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
     air.setStandardDensity(0.001205);
     Material soft("H62.9539171935344C12.9077870263354N1.16702581276482O22.7840718642933Na0.026328553360443P0.0390933975009805S0.0566470278101205Cl0.0341543557411274K0.0309747686593447");
     soft.setStandardDensity(1.03);
 
     std::array<T, 3> spacing = { 5, 5, 5 }; // mm
-    std::array<std::size_t, 3> dim = { 78, 78, 400 };
+    std::array<std::size_t, 3> dim = { 78, 78, 360 };
     const auto size = dim[0] * dim[1] * dim[2];
     auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     auto idx = std::make_shared<std::vector<unsigned char>>(size, 0);
@@ -138,88 +167,159 @@ World<T> generateTG195Case2World()
     for (std::size_t z = 0; z < dim[2]; ++z)
         for (std::size_t y = 0; y < dim[1]; ++y)
             for (std::size_t x = 0; x < dim[0]; ++x) {
-                if (z < 40) {
+                const T zc = z * spacing[2] + spacing[2] / 2;
+                if (betw(zc, 1550, 1550 + 200)) {
+                    const T xc = x * spacing[0] + spacing[0] / 2;
+                    const T yc = y * spacing[1] + spacing[1] / 2;
+
                     const auto i = x + y * dim[0] + z * dim[0] * dim[1];
                     dens->data()[i] = static_cast<T>(soft.standardDensity());
                     idx->data()[i] = static_cast<unsigned char>(1);
 
                     //center boxes
-                    if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 5, 11))
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 4, 1550 + 25 + 30 * 5))
                         idx->data()[i] = static_cast<unsigned char>(9 + 1);
-                    if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 11, 17))
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 3, 1550 + 25 + 30 * 4))
                         idx->data()[i] = static_cast<unsigned char>(8 + 1);
-                    if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 17, 23))
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
                         idx->data()[i] = static_cast<unsigned char>(3 + 1);
-                    if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 23, 29))
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 1, 1550 + 25 + 30 * 2))
                         idx->data()[i] = static_cast<unsigned char>(7 + 1);
-                    if (betw(x, 36, 42) && betw(y, 36, 42) && betw(z, 29, 35))
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 0, 1550 + 25 + 30 * 1))
                         idx->data()[i] = static_cast<unsigned char>(6 + 1);
 
-                    //periphery y
-                    if (betw(x, 36, 42) && betw(y, 6, 12) && betw(z, 17, 23))
+                    //periphery y, x
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 30, 30 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
                         idx->data()[i] = static_cast<unsigned char>(1 + 1);
-                    if (betw(x, 36, 42) && betw(y, 66, 72) && betw(z, 17, 23))
+                    if (betw(xc, 180, 180 + 30) && betw(yc, 330, 330 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
                         idx->data()[i] = static_cast<unsigned char>(5 + 1);
-                    if (betw(x, 6, 12) && betw(y, 36, 42) && betw(z, 17, 23))
+                    if (betw(xc, 30, 30 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
                         idx->data()[i] = static_cast<unsigned char>(2 + 1);
-                    if (betw(x, 66, 72) && betw(y, 36, 42) && betw(z, 17, 23))
+                    if (betw(xc, 330, 330 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
                         idx->data()[i] = static_cast<unsigned char>(4 + 1);
                 }
             }
 
+    std::array<T, 3> origin = { 0, 0, 900 };
+
     World<T> w;
     w.setDimensions(dim);
     w.setSpacing(spacing);
+    w.setOrigin(origin);
+
+    /*for (std::size_t i = 1545; i < 1800;++i) {
+        const T pz = i;
+        std::array<T, 3> pos = { 0, 0, pz };
+        auto ind = indexFromPosition(pos, w);
+        std::cout << pz << ": " << static_cast<unsigned int>(idx->data()[ind]) << "\n";
+    }
+
+    for (int i = -390/2; i < 390/2; ++i) {
+        const T px = i;
+        std::array<T, 3> pos = { px, 0, 1550+100 };
+        auto ind = indexFromPosition(pos, w);
+        std::cout << px << ": " << static_cast<unsigned int>(idx->data()[ind]) << "\n";
+    }*/
+
     w.setDensityArray(dens);
     w.addMaterialToMap(air);
     for (std::size_t i = 0; i < 10; ++i)
         w.addMaterialToMap(soft);
     w.setMaterialIndexArray(idx);
+    w.makeValid();
     return w;
 }
 
 template <typename T>
-bool TG195Case2AbsorbedEnergyMono()
+bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 {
     std::cout << "TG195 Case 2\n";
-    std::cout << "Monochromatic source of 56.4 keV:\n";
+
     auto w = generateTG195Case2World<T>();
+
     IsotropicSource<T> src;
-    std::vector<T> s({ 1.0 }), e({ 56.4 });
 
-    w.makeValid();
-    assert(w.isValid());
+    if (specter) {
+        const auto specter = TG195_120KV<T>();
+        src.setSpecter(specter.second, specter.first);
+        std::cout << "Specter source of 120 kV:\n";
+    } else {
+        std::vector<T> s({ 1.0 }), e({ 56.4 });
+        src.setSpecter(s, e);
+        std::cout << "Monochromatic source of 56.4 keV:\n";
+    }
 
-    src.setSpecter(s, e);
-    auto extent = w.matrixExtent();
-    src.setPosition(0, 0, 1750 + extent[4]);
-    const T halfAng = std::atan(390 * 0.5 / 1800.0);
-    src.setCollimationAngles(halfAng * 2.0, halfAng * 2.0);
-    std::array<T, 6> cosines = { -1, 0, 0, 0, 1, 0 };
-    src.setDirectionCosines(cosines);
+    //const auto& extent = w.matrixExtent();
+
     src.setHistoriesPerExposure(histPerExposure);
     src.setTotalExposures(nExposures);
+
+    if (tomo) {
+        std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
+        std::array<T, 3> rotaxis = { 1, 0, 0 };
+        const T angle = DEG_TO_RAD<T>() * T { 15 };
+        vectormath::rotate(cosines.data(), rotaxis.data(), -angle);
+        vectormath::rotate(&cosines[3], rotaxis.data(), -angle);
+        src.setDirectionCosines(cosines);
+        src.setPosition(0, -std::tan(angle) * 1800, 0);
+        const T halfAng = std::tan((1800 / std::cos(angle) + 195 * std::sin(angle)) / (195 * std::cos(angle)));
+        src.setCollimationAngles(halfAng * 2, halfAng * 2);
+        auto exp = src.getExposure(0);
+        std::cout << "Incident angle is 15 degrees:\n";
+    } else {
+        src.setPosition(0, 0, 0);
+        const T halfAng = std::atan((T { 390 } / 2) / T { 1800 });
+        src.setCollimationAngles(halfAng * 2, halfAng * 2);
+        std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
+        src.setDirectionCosines(cosines);
+        std::cout << "Incident angle is 0 degrees:\n";
+    }
+
     src.validate();
+
+    //auto exp = src.getExposure(0);
+
+    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
     Transport<T> transport;
     auto res = transport(w, &src, nullptr, false);
-    auto& dose = res.dose;
+    auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
-    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
-    T total_ev = 1000 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [](auto d, auto i) -> T { return i > 0 ? d : 0; });
-    total_ev /= total_hist;
     std::array<T, 9> subvol_ev;
+    std::array<std::uint64_t, 9> subvol_events;
+    auto total_ev = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m > 0 ? d : 0; });
+    auto total_events = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m > 0 ? d : 0; });
     for (std::size_t i = 0; i < 9; ++i) {
-        subvol_ev[i] = 1000 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
-        subvol_ev[i] /= total_hist;
+        subvol_ev[i] = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
+        subvol_events[i] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m == i + 2 ? d : 0; });
     }
 
-    const T sim_ev = 33171.4;
-    std::array<T, 9> sim_subvol = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
+    T sim_ev;
+    std::array<T, 9> sim_subvol;
 
-    std::cout << "Total body dxmc: " << total_ev << ", TG195: " << sim_ev << ", difference aboslute: " << total_ev - sim_ev << ", difference [%]: " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
+    if (specter) {
+        if (tomo) {
+            sim_ev = 30923.13;
+            sim_subvol = { 30.35, 23.52, 31.64, 23.52, 8.90, 70.53, 47.74, 20.31, 12.51 };
+        } else {
+            sim_ev = 33125.98;
+            sim_subvol = { 24.97, 24.95, 33.52, 24.96, 24.97, 72.70, 49.99, 21.73, 13.48 };
+        }
+    } else {
+        if (tomo) {
+            sim_ev = 30883.83;
+            sim_subvol = { 33.0807985, 25.475272, 34.62570725, 25.50542125, 9.79069025, 70.80499875, 51.0616275, 22.2764985, 13.54431025 };
+        } else {
+            sim_ev = 33171.4;
+            sim_subvol = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
+        }
+    }
+
+    std::cout << "VOI, dxmc, dxmc nEvents, TG195, difference [eV/hist], difference [%]\n";
+
+    std::cout << "Total body, " << total_ev << ", " << total_events << ", " << sim_ev << ", " << total_ev - sim_ev << ", " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
     for (std::size_t i = 0; i < subvol_ev.size(); ++i)
-        std::cout << "VOI " << i + 1 << " dxmc: " << subvol_ev[i] << ", TG195: " << sim_subvol[i] << ", difference absolute: " << subvol_ev[i] - sim_subvol[i] << ", difference [%]: " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
+        std::cout << "VOI " << i + 1 << ", " << subvol_ev[i] << ", " << subvol_events[i] << ", " << sim_subvol[i] << ", " << subvol_ev[i] - sim_subvol[i] << ", " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
     std::cout << "\n";
     return true;
 }
@@ -702,9 +802,13 @@ bool testAttenuation()
 int main(int argc, char* argv[])
 {
     //test120Specter();
+    //testAttenuation<float>();
     auto success = true;
-    testAttenuation<float>();
-    success = success && TG195Case2AbsorbedEnergyMono<float>();
+    success = success && TG195Case2AbsorbedEnergy<float>(false, true);
+    success = success && TG195Case2AbsorbedEnergy<float>(false, false); // mono, tomo
+    
+    success = success && TG195Case2AbsorbedEnergy<float>(true, false);
+    success = success && TG195Case2AbsorbedEnergy<float>(true, true);
     success = success && TG195Case2AbsorbedEnergy120<float>();
     success = success && TG195Case41AbsorbedEnergy<float>();
     success = success && TG195Case42AbsorbedEnergy<float>();
