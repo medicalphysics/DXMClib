@@ -150,7 +150,7 @@ std::vector<T> getEVperHistory(const Result<T>& res, std::shared_ptr<std::vector
 }
 
 template <typename T>
-World<T> generateTG195Case2World()
+World<T> generateTG195Case2World(bool forcedInteractions = false)
 {
     //Material air("Air, Dry (near sea level)");
     Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
@@ -226,15 +226,24 @@ World<T> generateTG195Case2World()
     for (std::size_t i = 0; i < 10; ++i)
         w.addMaterialToMap(soft);
     w.setMaterialIndexArray(idx);
+
+    if (forcedInteractions) {
+        auto fmat = std::make_shared<std::vector<std::uint8_t>>(w.size(), 0);
+        std::transform(
+            std::execution::par_unseq, idx->cbegin(), idx->cend(), fmat->begin(), [](auto i) -> std::uint8_t { return i > 1 ? 1 : 0; });
+        w.setMeasurementMapArray(fmat);
+    }
+
     w.makeValid();
     return w;
 }
 
 template <typename T>
-bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
+bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forcedInteractions = false)
 {
     std::cout << "TG195 Case 2\n";
-
+    if (forcedInteractions)
+        std::cout << "Forcing interactions in subvolumes\n";
     auto w = generateTG195Case2World<T>();
 
     IsotropicSource<T> src;
@@ -242,14 +251,12 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     if (specter) {
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
-        std::cout << "Specter source of 120 kV:\n";
+        std::cout << "Specter source of 120 kV specter\n";
     } else {
         std::vector<T> s({ 1.0 }), e({ 56.4 });
         src.setSpecter(s, e);
-        std::cout << "Monochromatic source of 56.4 keV:\n";
+        std::cout << "Monochromatic source of 56.4 keV\n";
     }
-
-    //const auto& extent = w.matrixExtent();
 
     src.setHistoriesPerExposure(histPerExposure);
     src.setTotalExposures(nExposures);
@@ -258,26 +265,29 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
         std::array<T, 3> rotaxis = { 1, 0, 0 };
         const T angle = DEG_TO_RAD<T>() * T { 15 };
-        vectormath::rotate(cosines.data(), rotaxis.data(), -angle);
-        vectormath::rotate(&cosines[3], rotaxis.data(), -angle);
+
+        const T angX = 2 * std::atan((T { 390 } / 2) / T { 1800 });
+        const T angY = 2 * std::atan(195 * std::cos(angle) / (1800 / std::sin(angle) + 195 * sin(angle)));
+        src.setCollimationAngles(angX, angY);
+        vectormath::rotate(cosines.data(), rotaxis.data(), -angY / 2 - angle);
+        vectormath::rotate(&cosines[3], rotaxis.data(), -angY / 2 - angle);
         src.setDirectionCosines(cosines);
+
         src.setPosition(0, -std::tan(angle) * 1800, 0);
-        const T halfAng = std::tan((1800 / std::cos(angle) + 195 * std::sin(angle)) / (195 * std::cos(angle)));
-        src.setCollimationAngles(halfAng * 2, halfAng * 2);
         auto exp = src.getExposure(0);
-        std::cout << "Incident angle is 15 degrees:\n";
+        std::cout << "Incident angle is 15 degrees\n";
     } else {
         src.setPosition(0, 0, 0);
         const T halfAng = std::atan((T { 390 } / 2) / T { 1800 });
         src.setCollimationAngles(halfAng * 2, halfAng * 2);
         std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
         src.setDirectionCosines(cosines);
-        std::cout << "Incident angle is 0 degrees:\n";
+        std::cout << "Incident angle is 0 degrees\n";
     }
 
-    src.validate();
+   
 
-    //auto exp = src.getExposure(0);
+    src.validate();
 
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
@@ -314,61 +324,14 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
             sim_subvol = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
         }
     }
-
+    const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
+    std::cout << "Simulation time " << simtime << " seconds";
+    std::cout << " with " << simtime / total_hist << " seconds*CPU core per history\n";
     std::cout << "VOI, dxmc, dxmc nEvents, TG195, difference [eV/hist], difference [%]\n";
 
     std::cout << "Total body, " << total_ev << ", " << total_events << ", " << sim_ev << ", " << total_ev - sim_ev << ", " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
     for (std::size_t i = 0; i < subvol_ev.size(); ++i)
         std::cout << "VOI " << i + 1 << ", " << subvol_ev[i] << ", " << subvol_events[i] << ", " << sim_subvol[i] << ", " << subvol_ev[i] - sim_subvol[i] << ", " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
-    std::cout << "\n";
-    return true;
-}
-
-template <typename T>
-bool TG195Case2AbsorbedEnergy120()
-{
-    std::cout << "TG195 Case 2\n";
-    std::cout << "Specter source of 120 kV:\n";
-
-    auto w = generateTG195Case2World<T>();
-    IsotropicSource<T> src;
-
-    const auto specter = TG195_120KV<T>();
-
-    const auto max_energy = *(std::max_element(specter.first.cbegin(), specter.first.cend()));
-
-    //w.setAttenuationLutResolution(0.4);
-    w.makeValid();
-    assert(w.isValid());
-    src.setSpecter(specter.second, specter.first);
-    auto extent = w.matrixExtent();
-    src.setPosition(0, 0, 1750 + extent[4]);
-    const T halfAng = std::atan(390 * 0.5 / 1800.0);
-    src.setCollimationAngles(halfAng * 2.0, halfAng * 2.0);
-    std::array<T, 6> cosines = { -1, 0, 0, 0, 1, 0 };
-    src.setDirectionCosines(cosines);
-    src.setHistoriesPerExposure(histPerExposure);
-    src.setTotalExposures(nExposures);
-    src.validate();
-    Transport<T> transport;
-    auto res = transport(w, &src, nullptr, false);
-    auto& dose = res.dose;
-
-    const T total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
-    T total_ev = 1000.0 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0.0 }, std::plus<>(), [](T d, unsigned char i) -> T { return i > 0 ? d : 0.0; });
-    total_ev /= total_hist;
-    std::array<T, 9> subvol_ev;
-    for (std::size_t i = 0; i < 9; ++i) {
-        subvol_ev[i] = 1000 * std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0.0 }, std::plus<>(), [=](T d, unsigned char m) -> T { return m == i + 2 ? d : 0.0; });
-        subvol_ev[i] /= total_hist;
-    }
-
-    const T sim_ev = 33125.98;
-    std::array<T, 9> sim_subvol = { 24.97, 24.95, 33.52, 24.96, 24.97, 72.70, 49.99, 21.73, 13.48 };
-
-    std::cout << "Total body dxmc: " << total_ev << ", TG195: " << sim_ev << ", difference aboslute: " << total_ev - sim_ev << ", difference [%]: " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
-    for (std::size_t i = 0; i < subvol_ev.size(); ++i)
-        std::cout << "VOI " << i + 1 << " dxmc: " << subvol_ev[i] << ", TG195: " << sim_subvol[i] << ", difference absolute: " << subvol_ev[i] - sim_subvol[i] << ", difference [%]: " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
     std::cout << "\n";
     return true;
 }
@@ -804,14 +767,15 @@ int main(int argc, char* argv[])
     //test120Specter();
     //testAttenuation<float>();
     auto success = true;
-    success = success && TG195Case2AbsorbedEnergy<float>(false, true);
-    success = success && TG195Case2AbsorbedEnergy<float>(false, false); // mono, tomo
-    
-    success = success && TG195Case2AbsorbedEnergy<float>(true, false);
-    success = success && TG195Case2AbsorbedEnergy<float>(true, true);
-    success = success && TG195Case2AbsorbedEnergy120<float>();
-    success = success && TG195Case41AbsorbedEnergy<float>();
-    success = success && TG195Case42AbsorbedEnergy<float>();
+
+    success = success && TG195Case2AbsorbedEnergy<float>(false, true, false);
+    success = success && TG195Case2AbsorbedEnergy<float>(false, false, false); // mono, tomo
+
+    success = success && TG195Case2AbsorbedEnergy<float>(true, false, false);
+    success = success && TG195Case2AbsorbedEnergy<float>(true, true, false);
+
+    //success = success && TG195Case41AbsorbedEnergy<float>();
+    //success = success && TG195Case42AbsorbedEnergy<float>();
     std::cout << "Press any key to exit";
     std::string dummy;
     std::cin >> dummy;

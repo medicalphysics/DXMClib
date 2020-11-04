@@ -273,8 +273,8 @@ public:
     T rotationRadius() { return m_rotationRadius; }
     Exposure<T> getExposure(std::uint64_t exposureNumber) const override
     {
-        if (exposureNumber >= m_totalExposures)
-            return Exposure<T>();
+        //making sure we do not step over max total exposures
+        exposureNumber = exposureNumber % m_totalExposures;
 
         //calculating rotation plane
         std::array<T, 3> u3, u2 = { 0, 0, 0 };
