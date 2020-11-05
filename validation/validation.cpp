@@ -16,7 +16,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 16;
+constexpr std::size_t nExposures = 64;
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -264,16 +264,25 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
     if (tomo) {
         std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
         std::array<T, 3> rotaxis = { 1, 0, 0 };
-        const T angle = DEG_TO_RAD<T>() * T { 15 };
 
-        const T angX = 2 * std::atan((T { 390 } / 2) / T { 1800 });
-        const T angY = 2 * std::atan(195 * std::cos(angle) / (1800 / std::sin(angle) + 195 * sin(angle)));
+        //calculating angles to align beam
+        const T angle = DEG_TO_RAD<T>() * T { 15 };
+        const T g = 1800;
+        const T s = g * std::tan(angle);
+        const T h2 = 390 / 2;
+        const T a1 = std::atan(s / g - h2 / g);
+        const T a2 = std::atan(s / g + h2 / g);
+        const T a = (a2 - a1) / 2 + a1;
+        const T angY = 2 * (a - a1);
+
+        const T angX = 2 * std::atan(h2 / g);
+
         src.setCollimationAngles(angX, angY);
-        vectormath::rotate(cosines.data(), rotaxis.data(), -angY / 2 - angle);
-        vectormath::rotate(&cosines[3], rotaxis.data(), -angY / 2 - angle);
+        vectormath::rotate(cosines.data(), rotaxis.data(), -a);
+        vectormath::rotate(&cosines[3], rotaxis.data(), -a);
         src.setDirectionCosines(cosines);
 
-        src.setPosition(0, -std::tan(angle) * 1800, 0);
+        src.setPosition(0, -s, 0);
         auto exp = src.getExposure(0);
         std::cout << "Incident angle is 15 degrees\n";
     } else {
@@ -284,8 +293,6 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
         src.setDirectionCosines(cosines);
         std::cout << "Incident angle is 0 degrees\n";
     }
-
-   
 
     src.validate();
 
