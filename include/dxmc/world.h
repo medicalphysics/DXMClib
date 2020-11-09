@@ -359,8 +359,8 @@ template <Floating T>
 std::vector<std::size_t> CTDIPhantom<T>::circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius)
 {
     std::vector<std::size_t> indices;
-    const auto r_int = static_cast<std::size_t>(std::ceil(radius));
-    indices.reserve(r_int * r_int * 4);
+    const auto r_int = static_cast<std::size_t>(std::ceil(std::abs(radius)));
+    indices.reserve(r_int * r_int);
 
     std::array<int, 4> flimits;
     flimits[0] = static_cast<int>((center[0] - radius) / spacing[0]);
@@ -375,9 +375,9 @@ std::vector<std::size_t> CTDIPhantom<T>::circleIndices2D(const std::array<std::s
 
     const auto r2 = radius * radius;
     for (std::size_t i = limits[0]; i < limits[1]; ++i) {
-        const auto posX = center[0] - i * spacing[0];
+        const auto posX = center[0] - i * spacing[0] + spacing[0] / 2;
         for (std::size_t j = limits[2]; j < limits[3]; ++j) {
-            const auto posY = center[1] - j * spacing[1];
+            const auto posY = center[1] - j * spacing[1] + spacing[1] / 2;
             if ((posX * posX + posY * posY) <= r2)
                 indices.push_back(i + j * dim[0]);
         }
