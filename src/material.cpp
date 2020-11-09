@@ -206,9 +206,9 @@ double calculateMeanBindingEnergy(int Z)
     xrl_error* error = nullptr;
     int shell = 0;
     while (!error) {
-        const double p = FluorYield(Z, shell, &error);
-        const double e = EdgeEnergy(Z, shell, nullptr);
+        const double e = EdgeEnergy(Z, shell, &error);
         if (!error) {
+            const double p = JumpFactor(Z, shell, nullptr);
             probs.push_back(p);
             energy.push_back(e);
         }
@@ -240,7 +240,8 @@ void Material::setByCompoundName(const std::string& name)
         m_name = name;
         m_valid = true;
         m_hasDensity = false;
-        m_meanBindingEnergy = std::transform_reduce(m->nAtoms, m->nAtoms + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / (m->nAtomsAll); });
+        const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
+        m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
         FreeCompoundData(m);
         m = nullptr;
     }
@@ -255,14 +256,8 @@ void Material::setByMaterialName(const std::string& name)
         m_hasDensity = true;
         m_density = m->density;
 
-        std::vector<double> number_fractions(m->nElements);
-        for (int i = 0; i < m->nElements; ++i) {
-            number_fractions[i] = m->massFractions[i] / AtomicWeight(m->Elements[i], nullptr);
-        }
-        const auto number_fractions_sum = std::reduce(number_fractions.cbegin(), number_fractions.cend());
-
-        m_meanBindingEnergy = std::transform_reduce(number_fractions.cbegin(), number_fractions.cend(), m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / number_fractions_sum; });
-
+        const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
+        m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
         FreeCompoundDataNIST(m);
         m = nullptr;
     }
