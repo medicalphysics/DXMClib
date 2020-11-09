@@ -69,7 +69,16 @@ public:
    * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep
    * @param energyStep Energy stepsize in lut table, minimum 0.1 keV
    */
-    void generate(const World<T>& world, T minEnergy = 1.0, T maxEnergy = 150, T energyStep = 1.0);
+    void generate(const World<T>& world, T minEnergy = 1.0, T maxEnergy = 150, T energyStep = 1.0)
+    {
+        const auto& materials = world.materialMap();
+        generate(materials, minEnergy, maxEnergy, energyStep);
+
+        auto mat_beg = world.materialIndexArray()->cbegin();
+        auto mat_end = world.materialIndexArray()->cend();
+        auto dens_beg = world.densityArray()->cbegin();
+        generateMaxMassTotalAttenuation(mat_beg, mat_end, dens_beg);
+    }
 
     /**
    * @brief Generate lookup tables for attenuation data
@@ -88,10 +97,12 @@ public:
         m_maxEnergy = std::max(m_minEnergy + m_energyStep, m_maxEnergy);
 
         m_energyResolution = 1 + static_cast<std::size_t>(std::ceil((m_maxEnergy - m_minEnergy) / m_energyStep));
+        m_maxEnergy = m_minEnergy + (m_energyResolution - 1) * m_energyStep;
+
         m_nMaterials = materials.size();
 
         m_attData.resize(m_energyResolution * m_nMaterials * 4 + m_energyResolution);
-
+        m_meanBindingEnergy.resize(m_nMaterials);
         // generating energy table
         for (std::size_t i = 0; i < m_energyResolution; ++i)
             m_attData[i] = m_minEnergy + i * m_energyStep;
@@ -112,6 +123,9 @@ public:
             offset = 4 * m_energyResolution + m * m_energyResolution * 4;
             for (std::size_t i = 0; i < m_energyResolution; ++i)
                 m_attData[i + offset] = materials[m].getRayleightAttenuation(m_attData[i]);
+
+            //getting mean binding energy
+            m_meanBindingEnergy[m] = static_cast<T>(materials[m].getMeanBindingEnergy());
         }
 
         generateFFdata(materials);
@@ -146,6 +160,11 @@ public:
         if (idx >= m_energyResolution - 1)
             return m_maxMassAtt[m_energyResolution - 1];
         return interp(m_attData[idx], m_attData[idx + 1], m_maxMassAtt[idx], m_maxMassAtt[idx + 1], energy);
+    }
+
+    T meanBindingEnergy(std::size_t materialIdx) const
+    {
+        return m_meanBindingEnergy[materialIdx];
     }
 
     /**
@@ -417,10 +436,9 @@ protected:
     {
         std::vector<T> maxDens(m_nMaterials, T { 0 });
 
-        while (materialIndexBegin != materialIndexEnd) {
-            maxDens[*materialIndexBegin] = std::max(maxDens[*materialIndexBegin], *densityBegin);
-            ++materialIndexBegin;
-            ++densityBegin;
+        for (std::size_t i = 0; i < m_nMaterials; ++i) {
+            maxDens[i] = std::transform_reduce(
+                std::execution::par_unseq, materialIndexBegin, materialIndexEnd, densityBegin, T { 0 }, [](auto d1, auto d2) { return std::max(d1, d2); }, [=](auto m, auto d) -> T { return m == i ? d : 0; });
         }
 
         m_maxMassAtt.resize(m_energyResolution);
@@ -519,17 +537,6 @@ private:
     std::vector<T> m_rayleighFormFactorSqr; // qsquared, array-> A(qsquared)
     std::vector<T> m_comptonScatterFactor;
     std::vector<T> m_maxMassAtt;
+    std::vector<T> m_meanBindingEnergy;
 };
-
-template <Floating T>
-void AttenuationLut<T>::generate(const World<T>& world, T minEnergy, T maxEnergy, T energyStep)
-{
-    const auto& materials = world.materialMap();
-    generate(materials, minEnergy, maxEnergy, energyStep);
-
-    auto mat_beg = world.materialIndexArray()->cbegin();
-    auto mat_end = world.materialIndexArray()->cend();
-    auto dens_beg = world.densityArray()->cbegin();
-    generateMaxMassTotalAttenuation(mat_beg, mat_end, dens_beg);
-}
 }

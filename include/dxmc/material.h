@@ -65,6 +65,11 @@ public:
     double getTotalAttenuation(double energy) const;
     double getMassEnergyAbsorbtion(double energy) const;
 
+    double getMeanBindingEnergy() const
+    {        
+        return m_meanBindingEnergy;
+    }
+
     static double getAtomicWeight(int Z);
     static std::string getAtomicNumberToSymbol(int Z);
 
@@ -83,6 +88,7 @@ private:
     std::string m_name;
     std::string m_prettyName;
     double m_density = -1.0;
+    double m_meanBindingEnergy = 0; // binding energy in keV
     bool m_valid = false;
     bool m_hasDensity = false;
 };

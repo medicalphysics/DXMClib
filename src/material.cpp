@@ -200,17 +200,23 @@ std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vecto
     }
     return formFactor;
 }
-
-void Material::setByCompoundName(const std::string& name)
+double calculateMeanBindingEnergy(int Z)
 {
-    compoundData* m = CompoundParser(name.c_str(), nullptr);
-    if (m) {
-        m_name = name;
-        m_valid = true;
-        m_hasDensity = false;
-        FreeCompoundData(m);
-        m = nullptr;
+    std::vector<double> probs, energy;
+    xrl_error* error = nullptr;
+    int shell = 0;
+    while (!error) {
+        const double p = FluorYield(Z, shell, &error);
+        const double e = EdgeEnergy(Z, shell, nullptr);
+        if (!error) {
+            probs.push_back(p);
+            energy.push_back(e);
+        }
+        ++shell;
     }
+    const double sum_probs = std::reduce(probs.cbegin(), probs.cend(), 0.0);
+    const double mean_energy = std::transform_reduce(probs.cbegin(), probs.cend(), energy.cbegin(), 0.0, std::plus<>(), [=](auto p, auto e) { return e * p / sum_probs; });
+    return mean_energy;
 }
 
 void Material::setByAtomicNumber(int atomicNumber)
@@ -221,8 +227,22 @@ void Material::setByAtomicNumber(int atomicNumber)
         xrlFree(raw_name);
         raw_name = nullptr;
         m_density = ElementDensity(atomicNumber, nullptr);
+        m_meanBindingEnergy = calculateMeanBindingEnergy(atomicNumber);
         m_hasDensity = true;
         m_valid = true;
+    }
+}
+
+void Material::setByCompoundName(const std::string& name)
+{
+    compoundData* m = CompoundParser(name.c_str(), nullptr);
+    if (m) {
+        m_name = name;
+        m_valid = true;
+        m_hasDensity = false;
+        m_meanBindingEnergy = std::transform_reduce(m->nAtoms, m->nAtoms + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / (m->nAtomsAll); });
+        FreeCompoundData(m);
+        m = nullptr;
     }
 }
 
@@ -234,6 +254,15 @@ void Material::setByMaterialName(const std::string& name)
         m_valid = true;
         m_hasDensity = true;
         m_density = m->density;
+
+        std::vector<double> number_fractions(m->nElements);
+        for (int i = 0; i < m->nElements; ++i) {
+            number_fractions[i] = m->massFractions[i] / AtomicWeight(m->Elements[i], nullptr);
+        }
+        const auto number_fractions_sum = std::reduce(number_fractions.cbegin(), number_fractions.cend());
+
+        m_meanBindingEnergy = std::transform_reduce(number_fractions.cbegin(), number_fractions.cend(), m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / number_fractions_sum; });
+
         FreeCompoundDataNIST(m);
         m = nullptr;
     }

@@ -90,6 +90,8 @@ public:
 
     void setNumberOfWorkers(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
     std::size_t numberOfWorkers() { return m_nThreads; }
+    void setLivermoreComptonModel(bool use) { m_useComptonLivermore = use; }
+    void livermoreComptonModel(bool use) { return m_useComptonLivermore; }
 
     template <typename U>
     requires std::is_base_of<typename World<T>, U>::value
@@ -255,10 +257,13 @@ protected:
         const auto attenuationTotal = attPhoto + attCompt + attRayl;
 
         const auto weightCorrection = eventProbability * attPhoto / attenuationTotal;
-        const auto energyImparted = p.energy * p.weight * weightCorrection;
-        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+        const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
+        const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
+        if (energyImparted > 0) {
+            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
+            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
+            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+        }
         p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
 
         const auto r2 = state.randomUniform<T>();
@@ -272,19 +277,23 @@ protected:
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                     [[unlikely]]
                     {
-                        const auto energyImparted = (e + p.energy) * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                        const auto energyImparted = (e + p.energy - bindingEnergy) * p.weight;
+                        if (energyImparted > 0) {
+                            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
+                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
+                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                        }
                         return false;
                     }
                 else
                     [[likely]]
                     {
-                        const auto energyImparted = e * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                        const auto energyImparted = (e - bindingEnergy) * p.weight;
+                        if (energyImparted > 0) {
+                            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
+                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
+                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                        }
                         updateMaxAttenuation = true;
                     }
             } else // Rayleigh scatter event
@@ -305,10 +314,13 @@ protected:
         const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
         if (r3 <= attPhoto) // Photoelectric event
         {
-            const auto energyImparted = p.energy * p.weight;
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+            const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
+            const auto energyImparted = (p.energy - bindingEnergy) * p.weight;
+            if (energyImparted > 0) {
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+            }
             p.energy = 0.0;
             return false;
         } else if (r3 <= attPhoto + attCompt) // Compton event
@@ -317,19 +329,25 @@ protected:
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[unlikely]]
                 {
-                    const auto energyImparted = (e + p.energy) * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                    const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
+                    const auto energyImparted = (e + p.energy - bindingEnergy) * p.weight;
+                    if (energyImparted > 0) {
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                    }
                     return false;
                 }
             else
                 [[likely]]
                 {
-                    const auto energyImparted = e * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                    const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
+                    const auto energyImparted = (e - bindingEnergy) * p.weight;
+                    if (energyImparted > 0) {
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                    }
                     updateMaxAttenuation = true;
                 }
         } else // Rayleigh scatter event
