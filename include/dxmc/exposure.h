@@ -40,7 +40,7 @@ private:
     std::array<T, 3> m_position;
     std::array<T, 6> m_directionCosines;
     std::array<T, 3> m_beamDirection;
-    std::array<T, 2> m_collimationAngles;
+    std::array<T, 4> m_collimationAngles; // x0 x1 y0 y1
     T m_beamIntensityWeight;
     const BeamFilter<T>* m_beamFilter = nullptr;
     const SpecterDistribution<T>* m_specterDistribution = nullptr;
@@ -70,12 +70,12 @@ public:
     */
     Exposure(const std::array<T, 3>& position,
         const std::array<T, 6>& directionCosines,
-        const std::array<T, 2>& collimationAngles,
+        const std::array<T, 4>& collimationAngles,
         std::uint64_t nHistories = 1000,
-        T beamIntensityWeight = 1,        
+        T beamIntensityWeight = 1,
         const SpecterDistribution<T>* specterDistribution = nullptr,
         const HeelFilter<T>* heelFilter = nullptr,
-        const BeamFilter<T>* filter = nullptr )
+        const BeamFilter<T>* filter = nullptr)
         : m_position(position)
         , m_directionCosines(directionCosines)
         , m_collimationAngles(collimationAngles)
@@ -85,6 +85,26 @@ public:
         , m_heelFilter(heelFilter)
         , m_beamFilter(filter)
     {
+        normalizeDirectionCosines();
+    }
+
+    Exposure(const std::array<T, 3>& position,
+        const std::array<T, 6>& directionCosines,
+        const std::array<T, 2>& collimationAngles,
+        std::uint64_t nHistories = 1000,
+        T beamIntensityWeight = 1,
+        const SpecterDistribution<T>* specterDistribution = nullptr,
+        const HeelFilter<T>* heelFilter = nullptr,
+        const BeamFilter<T>* filter = nullptr)
+        : m_position(position)
+        , m_directionCosines(directionCosines)
+        , m_nHistories(nHistories)
+        , m_beamIntensityWeight(beamIntensityWeight)
+        , m_specterDistribution(specterDistribution)
+        , m_heelFilter(heelFilter)
+        , m_beamFilter(filter)
+    {
+        setCollimationAngles(collimationAngles);
         normalizeDirectionCosines();
     }
 
@@ -213,22 +233,19 @@ public:
     */
     const std::array<T, 3>& beamDirection(void) const { return m_beamDirection; }
 
-    void setCollimationAngles(const T angles[2])
-    {
-        m_collimationAngles[0] = angles[0];
-        m_collimationAngles[1] = angles[1];
-    }
-
-    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(const std::array<T, 2>& angles) { setCollimationAngles(angles[0], angles[2]); }
     void setCollimationAngles(const T angleX, const T angleY)
     {
-        m_collimationAngles[0] = angleX;
-        m_collimationAngles[1] = angleY;
+        m_collimationAngles[0] = -angleX / 2;
+        m_collimationAngles[1] = angleX / 2;
+        m_collimationAngles[2] = -angleY / 2;
+        m_collimationAngles[3] = angleY / 2;
     }
 
-    const std::array<T, 2>& collimationAngles(void) const { return m_collimationAngles; }
-    T collimationAngleX() const { return m_collimationAngles[0]; }
-    T collimationAngleY() const { return m_collimationAngles[1]; }
+    const std::array<T, 4>& collimationAngles(void) const { return m_collimationAngles; }
+    T collimationAngleX() const { return m_collimationAngles[1] - m_collimationAngles[0]; }
+    T collimationAngleY() const { return m_collimationAngles[3] - m_collimationAngles[2]; }
 
     void setBeamIntensityWeight(T weight) { m_beamIntensityWeight = weight; }
     T beamIntensityWeight(void) const { return m_beamIntensityWeight; }
@@ -263,8 +280,8 @@ public:
     Particle<T> sampleParticle(RandomState& state) const // thread safe
     {
         // particle direction
-        const T theta = state.randomUniform(-m_collimationAngles[0] * T { 0.5 }, m_collimationAngles[0] * T { 0.5 });
-        const T phi = state.randomUniform(-m_collimationAngles[1] * T { 0.5 }, m_collimationAngles[1] * T { 0.5 });
+        const T theta = state.randomUniform(m_collimationAngles[0] , m_collimationAngles[1]);
+        const T phi = state.randomUniform(m_collimationAngles[2], m_collimationAngles[3]);
         const T sintheta = std::sin(theta);
         const T sinphi = std::sin(phi);
         const T sin2theta = sintheta * sintheta;

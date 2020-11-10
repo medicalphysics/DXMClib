@@ -16,7 +16,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 8;
+constexpr std::size_t nExposures = 4;
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -42,6 +42,19 @@ HVL: 5.010 mm Al
 */
 const std::vector<double> TG195_120KV_raw({ 16.75, 1.107E-04, 17.25, 1.625E-04, 17.75, 2.308E-04, 18.25, 3.172E-04, 18.75, 4.220E-04, 19.25, 5.486E-04, 19.75, 6.956E-04, 20.25, 8.610E-04, 20.75, 1.056E-03, 21.25, 1.264E-03, 21.75, 1.499E-03, 22.25, 1.748E-03, 22.75, 2.019E-03, 23.25, 2.293E-03, 23.75, 2.601E-03, 24.25, 2.900E-03, 24.75, 3.203E-03, 25.25, 3.531E-03, 25.75, 3.858E-03, 26.25, 4.176E-03, 26.75, 4.511E-03, 27.25, 4.830E-03, 27.75, 5.163E-03, 28.25, 5.469E-03, 28.75, 5.786E-03, 29.25, 6.065E-03, 29.75, 6.349E-03, 30.25, 6.638E-03, 30.75, 6.879E-03, 31.25, 7.143E-03, 31.75, 7.372E-03, 32.25, 7.597E-03, 32.75, 7.804E-03, 33.25, 7.994E-03, 33.75, 8.171E-03, 34.25, 8.339E-03, 34.75, 8.483E-03, 35.25, 8.622E-03, 35.75, 8.745E-03, 36.25, 8.849E-03, 36.75, 8.949E-03, 37.25, 9.031E-03, 37.75, 9.109E-03, 38.25, 9.170E-03, 38.75, 9.219E-03, 39.25, 9.264E-03, 39.75, 9.297E-03, 40.25, 9.319E-03, 40.75, 9.332E-03, 41.25, 9.333E-03, 41.75, 9.332E-03, 42.25, 9.327E-03, 42.75, 9.307E-03, 43.25, 9.292E-03, 43.75, 9.259E-03, 44.25, 9.229E-03, 44.75, 9.187E-03, 45.25, 9.149E-03, 45.75, 9.101E-03, 46.25, 9.044E-03, 46.75, 8.996E-03, 47.25, 8.937E-03, 47.75, 8.871E-03, 48.25, 8.813E-03, 48.75, 8.747E-03, 49.25, 8.672E-03, 49.75, 8.605E-03, 50.25, 8.530E-03, 50.75, 8.456E-03, 51.25, 8.381E-03, 51.75, 8.300E-03, 52.25, 8.226E-03, 52.75, 8.145E-03, 53.25, 8.065E-03, 53.75, 7.985E-03, 54.25, 7.899E-03, 54.75, 7.820E-03, 55.25, 7.736E-03, 55.75, 7.652E-03, 56.25, 7.568E-03, 56.75, 7.486E-03, 57.25, 7.403E-03, 57.75, 3.335E-02, 58.25, 7.236E-03, 58.75, 7.155E-03, 59.25, 5.339E-02, 59.75, 6.986E-03, 60.25, 6.903E-03, 60.75, 6.821E-03, 61.25, 6.739E-03, 61.75, 6.658E-03, 62.25, 6.578E-03, 62.75, 6.494E-03, 63.25, 6.415E-03, 63.75, 6.338E-03, 64.25, 6.256E-03, 64.75, 6.175E-03, 65.25, 6.100E-03, 65.75, 6.021E-03, 66.25, 5.942E-03, 66.75, 2.242E-02, 67.25, 5.788E-03, 67.75, 5.712E-03, 68.25, 5.637E-03, 68.75, 9.988E-03, 69.25, 5.257E-03, 69.75, 4.045E-03, 70.25, 4.019E-03, 70.75, 3.988E-03, 71.25, 3.960E-03, 71.75, 3.932E-03, 72.25, 3.900E-03, 72.75, 3.871E-03, 73.25, 3.838E-03, 73.75, 3.808E-03, 74.25, 3.774E-03, 74.75, 3.743E-03, 75.25, 3.709E-03, 75.75, 3.674E-03, 76.25, 3.641E-03, 76.75, 3.606E-03, 77.25, 3.570E-03, 77.75, 3.537E-03, 78.25, 3.500E-03, 78.75, 3.463E-03, 79.25, 3.426E-03, 79.75, 3.389E-03, 80.25, 3.351E-03, 80.75, 3.313E-03, 81.25, 3.274E-03, 81.75, 3.238E-03, 82.25, 3.200E-03, 82.75, 3.160E-03, 83.25, 3.121E-03, 83.75, 3.079E-03, 84.25, 3.039E-03, 84.75, 3.000E-03, 85.25, 2.959E-03, 85.75, 2.919E-03, 86.25, 2.878E-03, 86.75, 2.838E-03, 87.25, 2.797E-03, 87.75, 2.756E-03, 88.25, 2.712E-03, 88.75, 2.671E-03, 89.25, 2.629E-03, 89.75, 2.588E-03, 90.25, 2.544E-03, 90.75, 2.502E-03, 91.25, 2.460E-03, 91.75, 2.418E-03, 92.25, 2.374E-03, 92.75, 2.331E-03, 93.25, 2.289E-03, 93.75, 2.244E-03, 94.25, 2.202E-03, 94.75, 2.159E-03, 95.25, 2.115E-03, 95.75, 2.072E-03, 96.25, 2.029E-03, 96.75, 1.984E-03, 97.25, 1.941E-03, 97.75, 1.896E-03, 98.25, 1.853E-03, 98.75, 1.809E-03, 99.25, 1.765E-03, 99.75, 1.722E-03, 100.25, 1.677E-03, 100.75, 1.634E-03, 101.25, 1.589E-03, 101.75, 1.546E-03, 102.25, 1.501E-03, 102.75, 1.458E-03, 103.25, 1.414E-03, 103.75, 1.370E-03, 104.25, 1.326E-03, 104.75, 1.282E-03, 105.25, 1.238E-03, 105.75, 1.195E-03, 106.25, 1.151E-03, 106.75, 1.107E-03, 107.25, 1.063E-03, 107.75, 1.019E-03, 108.25, 9.761E-04, 108.75, 9.323E-04, 109.25, 8.893E-04, 109.75, 8.456E-04, 110.25, 8.027E-04, 110.75, 7.592E-04, 111.25, 7.158E-04, 111.75, 6.731E-04, 112.25, 6.300E-04, 112.75, 5.874E-04, 113.25, 5.445E-04, 113.75, 5.017E-04, 114.25, 4.594E-04, 114.75, 4.168E-04, 115.25, 3.747E-04, 115.75, 3.324E-04, 116.25, 2.903E-04, 116.75, 2.485E-04, 117.25, 2.067E-04, 117.75, 1.650E-04, 118.25, 1.236E-04, 118.75, 8.222E-05, 119.25, 4.102E-05, 119.75, 3.417E-06 });
 
+/*
+RQR-M3
+Mo/Mo
+30 kVp
+15 deg anode angle
+0% Ripple
+Mo filter thickness: 0.0386 mm
+Mean Energy: 16.8 keV
+HVL: 0.3431 mm Al
+QVL: 0.7663 mm Al
+*/
+const std::vector<double> TG195_30KV_raw({ 7.25, 1.551E-04, 7.75, 4.691E-04, 8.25, 1.199E-03, 8.75, 2.405E-03, 9.25, 4.263E-03, 9.75, 6.797E-03, 10.25, 9.761E-03, 10.75, 1.314E-02, 11.25, 1.666E-02, 11.75, 2.013E-02, 12.25, 2.349E-02, 12.75, 2.666E-02, 13.25, 2.933E-02, 13.75, 3.167E-02, 14.25, 3.365E-02, 14.75, 3.534E-02, 15.25, 3.644E-02, 15.75, 3.741E-02, 16.25, 3.796E-02, 16.75, 3.823E-02, 17.25, 3.445E-01, 17.75, 3.770E-02, 18.25, 3.704E-02, 18.75, 3.639E-02, 19.25, 9.200E-02, 19.75, 2.178E-03, 20.25, 2.048E-03, 20.75, 2.043E-03, 21.25, 2.098E-03, 21.75, 2.193E-03, 22.25, 2.327E-03, 22.75, 2.471E-03, 23.25, 2.625E-03, 23.75, 2.770E-03, 24.25, 2.907E-03, 24.75, 3.000E-03, 25.25, 3.062E-03, 25.75, 3.058E-03, 26.25, 2.988E-03, 26.75, 2.823E-03, 27.25, 2.575E-03, 27.75, 2.233E-03, 28.25, 1.815E-03, 28.75, 1.290E-03, 29.25, 6.696E-04, 29.75, 4.086E-05 });
+
 template <typename T>
 std::pair<std::vector<T>, std::vector<T>> TG195_specter(const std::vector<double>& raw)
 {
@@ -65,6 +78,11 @@ template <typename T>
 std::pair<std::vector<T>, std::vector<T>> TG195_100KV()
 {
     return TG195_specter<T>(TG195_100KV_raw);
+}
+template <typename T>
+std::pair<std::vector<T>, std::vector<T>> TG195_30KV()
+{
+    return TG195_specter<T>(TG195_30KV_raw);
 }
 
 bool test120Specter()
@@ -361,6 +379,245 @@ std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const
             }
         }
     return ind;
+}
+
+template <typename T>
+World<T> generateTG195Case3World()
+{
+    //std::array<T, 3> spacing = { 1, 1, 1 };
+    //std::array<std::size_t, 3> dim = { 340, 300, 1320 };
+    //std::array<T, 3> spacing = { 2, 2, 2 };
+    //std::array<std::size_t, 3> dim = { 170, 150, 660};
+    std::array<T, 3> spacing = { 1, 1, 2 };
+    std::array<std::size_t, 3> dim = { 340, 300, 660 };
+    World<T> w;
+    w.setSpacing(spacing);
+    w.setDimensions(dim);
+    const auto size = w.size();
+
+    //materials
+    Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
+    air.setStandardDensity(0.001205);
+    Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
+    pmma.setStandardDensity(1.19);
+    Material breast("H61.9873215815672C25.2115870352038N0.812500094703561O11.959397097091P0.00826728025671175S0.00798629068764982K0.00655039238754296Ca0.00639022810261801", "breast");
+    breast.setStandardDensity(0.952);
+    Material breastSkin("H61.6819253067427C9.42172044694575N2.26874188115669O26.5008052432356P0.0359095410401931S0.034689042139856K0.02845211205691Ca0.027756426682265", "skin");
+    breastSkin.setStandardDensity(1.09);
+    Material water("H66.6220373399527O33.3779626600473", "water");
+    water.setStandardDensity(1.0);
+
+    std::vector<Material> materials({ air, water, pmma, breastSkin, breast });
+
+    //arrays
+    auto densArr = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
+    auto matArr = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+    auto dens = densArr->data();
+    auto mat = matArr->data();
+
+    //making volume
+    for (std::size_t z = 0; z < dim[2]; ++z) {
+        const T zpos = z * spacing[2] + spacing[2] / 2 - dim[2] * spacing[2] / 2;
+        for (std::size_t y = 0; y < dim[1]; ++y) {
+            const T ypos = y * spacing[1] + spacing[1] / 2 - dim[1] * spacing[1] / 2;
+            for (std::size_t x = 0; x < dim[0]; ++x) {
+                const T xpos = x * spacing[0] + spacing[0] / 2 - dim[0] * spacing[0] / 2;
+                const auto idx = x + y * dim[0] + z * dim[0] * dim[1];
+
+                //body
+                if (betw(zpos, -110, 190) && betw(xpos, -170, 0) && betw(ypos, -150, 150)) {
+                    dens[idx] = water.standardDensity();
+                    mat[idx] = 1;
+                }
+                //pmma plates
+                if (betw(zpos, 13, 15) || betw(zpos, 65, 67)) {
+                    if (betw(xpos, 0, 140) && betw(ypos, -130, 130)) {
+                        dens[idx] = pmma.standardDensity();
+                        mat[idx] = 2;
+                    }
+                }
+
+                //breast skin
+                if (betw(zpos, 15, 65) && betw(xpos, 0, 100) && betw(ypos, -100, 100)) {
+                    constexpr T radius_skin_sqr = T { 100 } * T { 100 };
+                    const T skin_dist_sqr = xpos * xpos + ypos * ypos;
+                    if (skin_dist_sqr < radius_skin_sqr) {
+                        dens[idx] = breastSkin.standardDensity();
+                        mat[idx] = 3;
+                    }
+
+                    //breast tissue
+                    if (betw(zpos, 17, 63)) {
+                        constexpr T radius_tissue_sqr = T { 98 } * T { 98 };
+                        const T tissue_dist_sqr = xpos * xpos + ypos * ypos;
+                        if (tissue_dist_sqr < radius_tissue_sqr) {
+                            dens[idx] = breast.standardDensity();
+                            mat[idx] = 4;
+                        }
+
+                        //making measurements VOIS, index start at 5
+                        if (betw(zpos, 35, 45)) {
+                            //central vois
+                            //voi 1
+                            if (betw(xpos, 40, 60) && betw(ypos, -60, -40)) {
+                                mat[idx] = 4 + 1;
+                            }
+                            //voi 2
+                            if (betw(xpos, 10, 30) && betw(ypos, -10, 10)) {
+                                mat[idx] = 4 + 2;
+                            }
+                            //voi 3
+                            if (betw(xpos, 40, 60) && betw(ypos, -10, 10)) {
+                                mat[idx] = 4 + 3;
+                            }
+                            //voi 4
+                            if (betw(xpos, 70, 90) && betw(ypos, -10, 10)) {
+                                mat[idx] = 4 + 4;
+                            }
+                            //voi 5
+                            if (betw(xpos, 40, 60) && betw(ypos, 40, 60)) {
+                                mat[idx] = 4 + 5;
+                            }
+                        }
+                        //voi 6
+                        if (betw(zpos, 20, 30) && betw(xpos, 40, 60) && betw(ypos, -10, 10)) {
+                            mat[idx] = 4 + 6;
+                        }
+                        //voi 7
+                        if (betw(zpos, 50, 60) && betw(xpos, 40, 60) && betw(ypos, -10, 10)) {
+                            mat[idx] = 4 + 7;
+                        }
+                    }
+                }
+            }
+        }
+    }
+    w.setDensityArray(densArr);
+    w.setMaterialIndexArray(matArr);
+
+    auto meas = std::make_shared<std::vector<std::uint8_t>>(w.size());
+    std::transform(std::execution::par_unseq, matArr->cbegin(), matArr->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 4; });
+    w.setMeasurementMapArray(meas);
+
+    w.addMaterialToMap(air);
+    w.addMaterialToMap(water);
+    w.addMaterialToMap(pmma);
+    w.addMaterialToMap(breastSkin);
+    w.addMaterialToMap(breast);
+    for (int i = 0; i < 7; ++i)
+        w.addMaterialToMap(breast);
+
+    w.makeValid();
+    return w;
+}
+
+template <typename T>
+bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false)
+{
+    std::cout << "TG195 Case 3\n";
+
+    auto w = generateTG195Case3World<T>();
+
+    IsotropicSource<T> src;
+
+    if (specter) {
+        const auto specter = TG195_30KV<T>();
+        src.setSpecter(specter.second, specter.first);
+        std::cout << "Specter source of 30 kV specter\n";
+    } else {
+        std::vector<T> s({ 1.0 }), e({ 16.8 });
+        src.setSpecter(s, e);
+        std::cout << "Monochromatic source of 16.8 keV\n";
+    }
+
+    src.setHistoriesPerExposure(histPerExposure);
+    src.setTotalExposures(nExposures);
+
+    if (tomo) {
+        std::array<T, 6> cosines = { 1, 0, 0, 0, -1, 0 };
+        std::array<T, 3> rotaxis = { 1, 0, 0 };
+
+        //calculating angles to align beam
+        const T angle = DEG_TO_RAD<T>() * T { 15 };
+        const T g = 660;
+        const T s = g * std::cos(angle);
+        const T k = g * std::sin(angle);
+        const T h2 = 260 / 2;
+        const T a2 = std::atan((h2 + k) / s);
+        const T a1 = std::atan((k - h2) / s);
+        const T a = a2 / 2;
+
+        const T angY = (a2 - a1) / 2;
+        const T angX = std::atan(140 / (g * std::cos(angle)));
+
+        src.setCollimationAngles(0, angX, -angY, angY);
+        vectormath::rotate(cosines.data(), rotaxis.data(), -a);
+        vectormath::rotate(&cosines[3], rotaxis.data(), -a);
+        src.setDirectionCosines(cosines);
+
+        src.setPosition(0, std::sin(angle) * g, std::cos(angle) * g);
+        auto exp = src.getExposure(0);
+        std::cout << "Incident angle is 15 degrees\n";
+    } else {
+        src.setPosition(0, 0, 660);
+        const T halfAngX = std::atan(T { 140 } / T { 660 });
+        const T halfAngY = std::atan(T { 130 } / T { 660 });
+
+        src.setCollimationAngles(0, halfAngX, -halfAngY, halfAngY);
+        std::array<T, 6> cosines = { 1, 0, 0, 0, -1, 0 };
+        src.setDirectionCosines(cosines);
+        std::cout << "Incident angle is 0 degrees\n";
+    }
+
+    src.validate();
+
+    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
+
+    Transport<T> transport;
+    transport.setBindingEnergyCorrection(true);
+    transport.setLivermoreComptonModel(true);
+    auto res = transport(w, &src, nullptr, false);
+    auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
+
+    std::array<T, 7> subvol_ev;
+    std::array<std::uint64_t, 7> subvol_events;
+    auto total_ev = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m > 3 ? d : 0; });
+    auto total_events = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m > 3 ? d : 0; });
+    for (std::size_t i = 5; i < 12; ++i) {
+        subvol_ev[i - 5] = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m == i ? d : 0; });
+        subvol_events[i - 5] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m == i ? d : 0; });
+    }
+
+    T sim_ev;
+    std::array<T, 7> sim_subvol;
+
+    if (specter) {
+        if (tomo) {
+            sim_ev = 4188.833;
+            sim_subvol = { 14.390, 15.825, 15.972, 15.445, 17.171, 5.619, 49.022 };
+        } else {
+            sim_ev = 4293.433;
+            sim_subvol = { 16.502, 16.658, 16.814, 16.249, 16.521, 6.041, 50.041 };
+        }
+    } else {
+        if (tomo) {
+            sim_ev = 4577.743;
+            sim_subvol = { 15.217, 16.836, 16.943, 16.431, 18.370, 5.043, 54.974 };
+        } else {
+            sim_ev = 4697.333;
+            sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
+        }
+    }
+    const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
+    std::cout << "Simulation time " << simtime << " seconds";
+    std::cout << " with " << simtime / total_hist << " seconds*CPU core per history\n";
+    std::cout << "VOI, dxmc, dxmc nEvents, TG195, difference [eV/hist], difference [%]\n";
+
+    std::cout << "Total body, " << total_ev << ", " << total_events << ", " << sim_ev << ", " << total_ev - sim_ev << ", " << (total_ev - sim_ev) / sim_ev * 100 << "\n";
+    for (std::size_t i = 0; i < subvol_ev.size(); ++i)
+        std::cout << "VOI " << i + 1 << ", " << subvol_ev[i] << ", " << subvol_events[i] << ", " << sim_subvol[i] << ", " << subvol_ev[i] - sim_subvol[i] << ", " << (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100 << "\n";
+    std::cout << "\n";
+    return true;
 }
 
 template <typename T>
@@ -711,7 +968,12 @@ int main(int argc, char* argv[])
     success = success && TG195Case2AbsorbedEnergy<float>(false, true, false);
     success = success && TG195Case2AbsorbedEnergy<float>(true, false, false);
     success = success && TG195Case2AbsorbedEnergy<float>(true, true, false);
-
+    
+    success = success && TG195Case3AbsorbedEnergy<float>(false, false);
+    success = success && TG195Case3AbsorbedEnergy<float>(false, true);
+    success = success && TG195Case3AbsorbedEnergy<float>(true, false);
+    success = success && TG195Case3AbsorbedEnergy<float>(true, true);
+    
     success = success && TG195Case41AbsorbedEnergy<float>(false, false);
     success = success && TG195Case41AbsorbedEnergy<float>(false, true);
     success = success && TG195Case41AbsorbedEnergy<float>(true, false);
@@ -721,6 +983,7 @@ int main(int argc, char* argv[])
     success = success && TG195Case42AbsorbedEnergy<float>(false, true);
     success = success && TG195Case42AbsorbedEnergy<float>(true, false);
     success = success && TG195Case42AbsorbedEnergy<float>(true, true);
+    
     std::cout << "Press any key to exit";
     std::string dummy;
     std::cin >> dummy;

@@ -214,33 +214,32 @@ public:
         m_maxPhotonEnergy = *maxEnergyElement;
         m_specterDistribution = SpecterDistribution<T>(weights, energies);
     }
+
+    void setCollimationAngles(T x0, T x1, T y0, T y1)
+    {
+        m_collimationAngles[0] = std::clamp(x0, -PI_VAL<T>() / 2, PI_VAL<T>() / 2);
+        m_collimationAngles[1] = std::clamp(x1, -PI_VAL<T>() / 2, PI_VAL<T>() / 2);
+        m_collimationAngles[2] = std::clamp(y0, -PI_VAL<T>(), PI_VAL<T>());
+        m_collimationAngles[3] = std::clamp(y1, -PI_VAL<T>(), PI_VAL<T>());
+    }
+
     void setCollimationAngles(T xRad, T yRad)
     {
-        if (xRad < -PI_VAL<T>())
-            m_collimationAngles[0] = -PI_VAL<T>();
-        else if (xRad > PI_VAL<T>())
-            m_collimationAngles[0] = PI_VAL<T>();
-        else
-            m_collimationAngles[0] = xRad;
-
-        constexpr T PI_H = PI_VAL<T>() * T { 0.5 };
-
-        if (yRad < -PI_H)
-            m_collimationAngles[1] = -PI_H;
-        else if (yRad > PI_VAL<T>())
-            m_collimationAngles[1] = PI_H;
-        else
-            m_collimationAngles[1] = yRad;
+        const T x0 = -xRad / 2;
+        const T x1 = xRad / 2;
+        const T y0 = -yRad / 2;
+        const T y1 = yRad / 2;
+        setCollimationAngles(x0, x1, y0, y1);
     }
-    std::pair<T, T> collimationAngles() const
+    const std::array<T, 4>& collimationAngles() const
     {
-        return std::pair<T, T>(m_collimationAngles[0], m_collimationAngles[1]);
+        return m_collimationAngles;
     }
 
 protected:
 private:
     std::uint64_t m_totalExposures = 1;
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     SpecterDistribution<T> m_specterDistribution;
     T m_maxPhotonEnergy = 1.0;
 };
