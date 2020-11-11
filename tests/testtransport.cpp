@@ -168,7 +168,7 @@ public:
         }
     }
 
-    bool testSafeValueAdd(bool locks)
+    bool testSafeValueAdd()
     {
 
         const std::size_t N = 1E6;
@@ -182,10 +182,7 @@ public:
         jobs.reserve(nJobs);
         auto start = std::chrono::high_resolution_clock::now();
         for (std::size_t i = 0; i < nJobs; ++i) {
-            if (locks)
-                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerDose<true>, this, &res, addValue, N, 0);
-            else
-                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerDose<false>, this, &res, addValue, N, 0);
+            jobs.emplace_back(&Test<T>::testSafeValueAddWorkerDose<false>, this, &res, addValue, N, 0);
         }
         for (auto& job : jobs) {
             job.join();
@@ -195,8 +192,8 @@ public:
 
         const T expected = N * addValue * nJobs;
         const T value = res.dose[0];
-        std::cout << "Test safe atomic add:\nUsing locks: " << locks;
-        std::cout << "\nTime: " << time.count() / 1000.0;
+        std::cout << "Test safe atomic add:\n";
+        std::cout << "Time: " << time.count() / 1000.0;
         std::cout << "s\nAdded " << addValue << " " << N << " times in " << nJobs;
         std::cout << " threads.\nResult is expected to be " << expected << " and is ";
         std::cout << value << "\n";
@@ -205,10 +202,7 @@ public:
         jobs.reserve(nJobs);
         const std::uint32_t addValueEvents { 1 };
         for (std::size_t i = 0; i < nJobs; ++i) {
-            if (locks)
-                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerEvents<true>, this, &res, addValueEvents, N, 0);
-            else
-                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerEvents<false>, this, &res, addValueEvents, N, 0);
+            jobs.emplace_back(&Test<T>::testSafeValueAddWorkerEvents<false>, this, &res, addValueEvents, N, 0);
         }
         for (auto& job : jobs) {
             job.join();
@@ -216,7 +210,7 @@ public:
 
         const std::uint32_t expectedEvents = N * addValueEvents * nJobs;
         const std::uint32_t valueEvents = res.nEvents[0];
-        std::cout << "Test safe atomic add:\nUsing locks: " << locks << "\nAdded " << addValueEvents << " " << N << " times in " << nJobs;
+        std::cout << "Test safe atomic add:\nAdded " << addValueEvents << " " << N << " times in " << nJobs;
         std::cout << " threads.\nResult is expected to be " << expectedEvents << " and is ";
         std::cout << valueEvents << "\n";
 
@@ -231,8 +225,7 @@ bool testTransport()
 
     T energy = 54;
     bool success = t.testCompton(energy, 13);
-    success = success && t.testSafeValueAdd(false);
-    success = success && t.testSafeValueAdd(true);
+    success = success && t.testSafeValueAdd();
     return success;
 }
 

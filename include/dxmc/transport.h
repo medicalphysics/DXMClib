@@ -34,33 +34,12 @@ Copyright 2019 Erlend Andersen
 #include <memory>
 
 namespace dxmc {
-/**
-     * @brief A simple holder for atomic locks while we wait for atomic_ref support in all major compilers
-    */
-struct resultLock {
-    std::atomic_flag dose;
-    std::atomic_flag nEvents;
-    std::atomic_flag variance;
-    resultLock()
-    {
-    }
-
-    resultLock(const resultLock& other)
-    {
-    }
-
-    resultLock& operator=(const resultLock& other)
-    {
-    }
-};
 
 template <Floating T = double>
 struct Result {
     std::vector<T> dose;
     std::vector<std::uint32_t> nEvents;
     std::vector<T> variance;
-    std::vector<resultLock> locks;
-
     std::chrono::duration<float> simulationTime { 0 };
     std::string_view dose_units = "";
 
@@ -69,7 +48,6 @@ struct Result {
         dose.resize(size, 0);
         nEvents.resize(size, 0);
         variance.resize(size, 0);
-        locks.resize(size);
     }
 };
 
@@ -169,22 +147,13 @@ public:
 
 protected:
     template <typename U>
-    inline void safeValueAdd(U& value, const U addValue, std::atomic_flag& lock) const
-    {
-        while (lock.test_and_set(std::memory_order_acquire)) // acquire lock
-            // while (lock.test(std::memory_order_relaxed)) // test lock
-            ; // spin
-        value += addValue;
-        lock.clear(std::memory_order_release); // release lock
-    }
-    template <typename U>
     inline void safeValueAdd(U& value, const U addValue) const
     {
         std::atomic_ref value_l(value);
         value_l.fetch_add(addValue);
     }
 
-    void rayleightScatterLivermore(Particle<T>& particle, unsigned char materialIdx, RandomState& state) const
+    void rayleightScatterLivermore(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const
     {
         // theta is scattering angle
         // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -205,7 +174,7 @@ protected:
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
     }
     template <bool Livermore = true>
-    T comptonScatter(Particle<T>& particle, unsigned char materialIdx, RandomState& state) const
+    T comptonScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -264,7 +233,7 @@ protected:
         return idx;
     }
     template <bool Livermore = true, bool bindingEnergyCorrection = false>
-    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const unsigned char matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
+    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
@@ -277,15 +246,15 @@ protected:
             const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
             const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
             if (energyImparted > 0) {
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             }
         } else {
             const auto energyImparted = p.energy * p.weight * weightCorrection;
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
         }
         p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
 
@@ -304,15 +273,15 @@ protected:
                             const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                             const auto energyImparted = (e + p.energy - bindingEnergy) * p.weight;
                             if (energyImparted > 0) {
-                                safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                             }
                         } else {
                             const auto energyImparted = (e + p.energy) * p.weight;
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                         }
                         return false;
                     }
@@ -323,15 +292,15 @@ protected:
                             const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                             const auto energyImparted = (e - bindingEnergy) * p.weight;
                             if (energyImparted > 0) {
-                                safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                             }
                         } else {
                             const auto energyImparted = e * p.weight;
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                         }
                         updateMaxAttenuation = true;
                     }
@@ -343,7 +312,7 @@ protected:
         return true;
     }
     template <bool Livermore = true, bool bindingEnergyCorrection = false>
-    bool computeInteractions(Particle<T>& p, const unsigned char matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
+    bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
@@ -357,15 +326,15 @@ protected:
                 const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                 const auto energyImparted = (p.energy - bindingEnergy) * p.weight;
                 if (energyImparted > 0) {
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 }
             } else {
                 const auto energyImparted = p.energy * p.weight;
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             }
             p.energy = 0.0;
             return false;
@@ -379,15 +348,15 @@ protected:
                         const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                         const auto energyImparted = (e + p.energy - bindingEnergy) * p.weight;
                         if (energyImparted > 0) {
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                         }
                     } else {
                         const auto energyImparted = (e + p.energy) * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     }
                     return false;
                 }
@@ -398,15 +367,15 @@ protected:
                         const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                         const auto energyImparted = (e - bindingEnergy) * p.weight;
                         if (energyImparted > 0) {
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                         }
                     } else {
                         const auto energyImparted = e * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted, result.locks[resultBufferIdx].dose);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 }, result.locks[resultBufferIdx].nEvents);
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted, result.locks[resultBufferIdx].variance);
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     }
                     updateMaxAttenuation = true;
                 }

@@ -180,7 +180,7 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
     std::array<std::size_t, 3> dim = { 78, 78, 360 };
     const auto size = dim[0] * dim[1] * dim[2];
     auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
-    auto idx = std::make_shared<std::vector<unsigned char>>(size, 0);
+    auto idx = std::make_shared<std::vector<std::uint8_t>>(size, 0);
     // fill first slice with soft tissue
     for (std::size_t z = 0; z < dim[2]; ++z)
         for (std::size_t y = 0; y < dim[1]; ++y)
@@ -192,29 +192,29 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
 
                     const auto i = x + y * dim[0] + z * dim[0] * dim[1];
                     dens->data()[i] = static_cast<T>(soft.standardDensity());
-                    idx->data()[i] = static_cast<unsigned char>(1);
+                    idx->data()[i] = static_cast<std::uint8_t>(1);
 
                     //center boxes
                     if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 4, 1550 + 25 + 30 * 5))
-                        idx->data()[i] = static_cast<unsigned char>(9 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(9 + 1);
                     if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 3, 1550 + 25 + 30 * 4))
-                        idx->data()[i] = static_cast<unsigned char>(8 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(8 + 1);
                     if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<unsigned char>(3 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(3 + 1);
                     if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 1, 1550 + 25 + 30 * 2))
-                        idx->data()[i] = static_cast<unsigned char>(7 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(7 + 1);
                     if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 0, 1550 + 25 + 30 * 1))
-                        idx->data()[i] = static_cast<unsigned char>(6 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(6 + 1);
 
                     //periphery y, x
                     if (betw(xc, 180, 180 + 30) && betw(yc, 30, 30 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<unsigned char>(1 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(1 + 1);
                     if (betw(xc, 180, 180 + 30) && betw(yc, 330, 330 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<unsigned char>(5 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(5 + 1);
                     if (betw(xc, 30, 30 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<unsigned char>(2 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(2 + 1);
                     if (betw(xc, 330, 330 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<unsigned char>(4 + 1);
+                        idx->data()[i] = static_cast<std::uint8_t>(4 + 1);
                 }
             }
 
@@ -634,7 +634,7 @@ World<T> generateTG195Case4World1()
     Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689");
     pmma.setStandardDensity(1.19);
 
-    auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
+    auto mat = std::make_shared<std::vector<std::uint8_t>>(size, static_cast<std::uint8_t>(0));
     auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     //generate cylindar
     auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 160 });
@@ -642,16 +642,16 @@ World<T> generateTG195Case4World1()
         const auto zpos = z * spacing[2] - (dim[2] * spacing[2]) / 2;
         for (const auto ind : circ_ind) {
             const auto i = z * dim[0] * dim[1] + ind;
-            (mat->data())[i] = static_cast<unsigned char>(1);
+            (mat->data())[i] = static_cast<std::uint8_t>(1);
             (dens->data())[i] = pmma.standardDensity();
             if (betw(zpos + spacing[2] / 2, -5, 5))
-                mat->data()[i] = static_cast<unsigned char>(2);
+                mat->data()[i] = static_cast<std::uint8_t>(2);
             if (betw(zpos + spacing[2] / 2, -15, -5))
-                mat->data()[i] = static_cast<unsigned char>(3);
+                mat->data()[i] = static_cast<std::uint8_t>(3);
             if (betw(zpos + spacing[2] / 2, -25, -15))
-                mat->data()[i] = static_cast<unsigned char>(4);
+                mat->data()[i] = static_cast<std::uint8_t>(4);
             if (betw(zpos + spacing[2] / 2, -35, -25))
-                mat->data()[i] = static_cast<unsigned char>(5);
+                mat->data()[i] = static_cast<std::uint8_t>(5);
         }
     }
     World<T> w;
@@ -690,17 +690,17 @@ World<T> generateTG195Case4World2()
         const T zpos = z * spacing[2] - (spacing[2] * dim[2]) / 2;
         for (const auto i : circ_ind) {
             const auto ind = z * dim[0] * dim[1] + i;
-            mat->data()[ind] = static_cast<unsigned char>(1);
+            mat->data()[ind] = static_cast<std::uint8_t>(1);
             dens->data()[ind] = pmma.standardDensity();
         }
         if (betw(zpos + spacing[2] / 2, -50, 50)) {
             const auto offset = z * dim[0] * dim[1];
             for (const auto i : pmma1_ind) {
-                mat->data()[offset + i] = static_cast<unsigned char>(2);
+                mat->data()[offset + i] = static_cast<std::uint8_t>(2);
                 meas->data()[offset + i] = static_cast<std::uint8_t>(1);
             }
             for (const auto i : pmma2_ind) {
-                mat->data()[offset + i] = static_cast<unsigned char>(3);
+                mat->data()[offset + i] = static_cast<std::uint8_t>(3);
                 meas->data()[offset + i] = static_cast<std::uint8_t>(1);
             }
         }
@@ -899,8 +899,8 @@ bool testAttenuation()
     const auto size = std::accumulate(dim.cbegin(), dim.cend(), (std::size_t)1, std::multiplies<>());
     const auto standardDensity = static_cast<T>(m.standardDensity());
     auto dens = std::make_shared<std::vector<T>>(size, standardDensity);
-    auto mat = std::make_shared<std::vector<unsigned char>>(size, static_cast<unsigned char>(0));
-    auto meas = std::make_shared<std::vector<unsigned char>>(size, 0);
+    auto mat = std::make_shared<std::vector<std::uint8_t>>(size, static_cast<std::uint8_t>(0));
+    auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
     World<T> w;
     w.setDimensions(dim);
     w.setSpacing(spacing);

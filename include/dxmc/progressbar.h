@@ -36,7 +36,7 @@ template <Floating T = double>
 struct DoseProgressImageData {
     std::array<std::size_t, 2> dimensions = { 0, 0 };
     std::array<T, 2> spacing = { 0, 0 };
-    std::vector<unsigned char> image;
+    std::vector<std::uint8_t> image;
 };
 
 template <Floating T>
@@ -145,7 +145,7 @@ protected:
         const T scalefactor = T { 255.0 } / global_max;
 
         std::transform(std::execution::par_unseq, m_doseMipBuffer.cbegin(), m_doseMipBuffer.cend(), doseProgressImage->image.begin(),
-            [=](const T el) -> unsigned char { return static_cast<unsigned char>(el * scalefactor); });
+            [=](const T el) -> std::uint8_t { return static_cast<std::uint8_t>(el * scalefactor); });
 
         return doseProgressImage;
     }
@@ -178,7 +178,7 @@ protected:
         const T scalefactor = 255.0 / global_max;
 
         std::transform(std::execution::par_unseq, m_doseMipBuffer.cbegin(), m_doseMipBuffer.cend(), doseProgressImage->image.begin(),
-            [=](const T el) -> unsigned char { return static_cast<unsigned char>(el * scalefactor); });
+            [=](const T el) -> std::uint8_t { return static_cast<std::uint8_t>(el * scalefactor); });
 
         return doseProgressImage;
     }
@@ -211,7 +211,7 @@ protected:
         const T scalefactor = 255.0 / global_max;
 
         std::transform(std::execution::par_unseq, m_doseMipBuffer.cbegin(), m_doseMipBuffer.cend(), doseProgressImage->image.begin(),
-            [=](const T el) -> unsigned char { return static_cast<unsigned char>(el * scalefactor); });
+            [=](const T el) -> std::uint8_t { return static_cast<std::uint8_t>(el * scalefactor); });
         return doseProgressImage;
     }
 

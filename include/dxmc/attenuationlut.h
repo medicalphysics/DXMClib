@@ -133,11 +133,11 @@ public:
 
         // maxenergies
         std::vector<T> densArray;
-        std::vector<unsigned char> matArray;
+        std::vector<std::uint8_t> matArray;
         for (std::size_t i = 0; i < m_nMaterials; ++i) {
             const auto dens = static_cast<T>(materials[i].standardDensity());
             densArray.push_back(dens);
-            matArray.push_back(static_cast<unsigned char>(i));
+            matArray.push_back(static_cast<std::uint8_t>(i));
         }
         generateMaxMassTotalAttenuation(matArray.begin(), matArray.end(),
             densArray.begin());
