@@ -20,6 +20,7 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/floating.h"
 
+#include <algorithm>
 #include <string>
 #include <vector>
 
@@ -66,7 +67,7 @@ public:
     double getMassEnergyAbsorbtion(double energy) const;
 
     double getMeanBindingEnergy() const
-    {        
+    {
         return m_meanBindingEnergy;
     }
 

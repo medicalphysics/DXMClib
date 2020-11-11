@@ -24,6 +24,7 @@ Copyright 2019 Erlend Andersen
 
 #include <algorithm>
 #include <array>
+#include <cmath>
 #include <execution>
 #include <utility>
 #include <vector>
@@ -240,7 +241,7 @@ protected:
         const double anode_d { anodeAngle() };
 
         auto kEdge = tube_implementation::characteristicTungstenKedge(voltage_d, anode_d);
-        for (auto [e, n] : kEdge) {
+        for (const auto& [e, n] : kEdge) {
             //find closest energy
             const auto e_t = static_cast<T>(e);
             const auto n_t = static_cast<T>(n);

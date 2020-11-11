@@ -218,7 +218,7 @@ public:
 	 * Constructs new XCareFilter with default values
 	 */
     XCareFilter()
-        : BeamFilter()
+        : BeamFilter<T>()
     {
         m_filterAngle = 0.0;
         m_spanAngle = 120.0 * DEG_TO_RAD<T>();

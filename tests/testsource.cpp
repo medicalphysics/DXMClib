@@ -25,12 +25,14 @@ void initiateAll()
     DXSource<T> dx;
     IsotropicSource<T> iso;
     CTAxialSource<T> ax;
+    auto tube = ax.tube();
+
     CTAxialDualSource<T> de_ax;
 
     CTSpiralSource<T> spiral;
     CTSpiralDualSource<T> de;
-    CTAxialSource<T> from_spiral = spiral;
-    CTAxialDualSource<T> from_spiral_de = de;
+    CTAxialSource<T> from_spiral(spiral);
+    CTAxialDualSource<T> from_spiral_de(de);
 }
 
 template <typename T>
@@ -107,10 +109,9 @@ bool testDXCalibration()
 
     const auto measuredose = res.dose[idx];
 
-
     const auto diff = 100 * (calcdose - measuredose) / calcdose;
 
-    if (diff > -10 & diff < 10) {
+    if ((diff > -10) && (diff < 10)) {
         std::cout << "Success\n";
         return true;
     }
@@ -137,8 +138,8 @@ bool testCTCalibration()
     std::array<T, 5> measureDose;
     measureDose.fill(0);
     for (std::size_t i = 0; i < 5; ++i) {
-        auto holeIndices = world.holeIndices(position[i]);
-        for (auto idx : holeIndices)
+        const auto& holeIndices = world.holeIndices(position[i]);
+        for (const auto& idx : holeIndices)
             measureDose[i] += res.dose[idx];
         measureDose[i] /= static_cast<double>(holeIndices.size());
     }
@@ -173,7 +174,6 @@ int main(int argc, char* argv[])
         std::cout << "Test sources : Success\n";
     else
         std::cout << "Test sources : Failure\n";
-
 
     return !success;
 }

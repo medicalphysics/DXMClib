@@ -85,10 +85,10 @@ public:
     Transport()
     {
         std::uint64_t nthreads = std::thread::hardware_concurrency();
-        m_nThreads = std::max(nthreads, std::uint64_t { 1 });
+        this->m_nThreads = std::max(nthreads, std::uint64_t { 1 });
     }
 
-    void setNumberOfWorkers(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
+    void setNumberOfWorkers(std::uint64_t n) { this->m_nThreads = std::max(n, std::uint64_t { 1 }); }
     std::size_t numberOfWorkers() { return m_nThreads; }
     void setLivermoreComptonModel(bool use) { m_useComptonLivermore = use; }
     bool livermoreComptonModel() const { return m_useComptonLivermore; }
@@ -96,7 +96,7 @@ public:
     bool bindingEnergyCorrection() const { return m_useBindingEnergyCorrection; }
 
     template <typename U>
-    requires std::is_base_of<typename World<T>, U>::value
+    requires std::is_base_of<World<T>, U>::value
         Result<T>
         operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true)
     {
@@ -176,6 +176,12 @@ protected:
             ; // spin
         value += addValue;
         lock.clear(std::memory_order_release); // release lock
+    }
+    template <typename U>
+    inline void safeValueAdd(U& value, const U addValue) const
+    {
+        std::atomic_ref value_l(value);
+        value_l.fetch_add(addValue);
     }
 
     void rayleightScatterLivermore(Particle<T>& particle, unsigned char materialIdx, RandomState& state) const

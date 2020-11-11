@@ -261,36 +261,36 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
     const std::array<T, 6> directionCosines { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
     const std::array<T, 3> sp { 1, 1, 2.5 };
     const std::array<T, 3> origin { 0, 0, 0 };
-    setDirectionCosines(directionCosines);
-    setSpacing(sp);
-    setOrigin(origin);
+    this->setDirectionCosines(directionCosines);
+    this->setSpacing(sp);
+    this->setOrigin(origin);
 
     if (diameter % 2 == 0) { // make sure odd dimensions in xy
         std::array<std::size_t, 3> dim { diameter + 3, diameter + 3, 60 };
-        setDimensions(dim);
+        this->setDimensions(dim);
     } else {
         std::array<std::size_t, 3> dim { diameter + 2, diameter + 2, 60 };
-        setDimensions(dim);
+        this->setDimensions(dim);
     }
     Material air("Air, Dry (near sea level)");
     Material pmma("Polymethyl Methacralate (Lucite, Perspex)");
-    addMaterialToMap(air);
-    addMaterialToMap(air); // we want two to differentiate between air around phantom and air inside rods
-    addMaterialToMap(pmma);
+    this->addMaterialToMap(air);
+    this->addMaterialToMap(air); // we want two to differentiate between air around phantom and air inside rods
+    this->addMaterialToMap(pmma);
 
     constexpr T holeDiameter { 13.1 };
     constexpr T holeRadii { holeDiameter / 2.0 };
     const T holeDisplacement = diameter % 2 == 0 ? T { 13 } : T { 13 };
     const T radii = static_cast<T>(diameter) / T { 2 };
-    const auto& dim = dimensions();
+    const auto& dim = this->dimensions();
 
     //making phantom
-    auto dBufferPtr = std::make_shared<std::vector<T>>(size(), airDensity());
-    auto mBufferPtr = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
-    auto measurementPtr = std::make_shared<std::vector<std::uint8_t>>(size(), 0);
-    setDensityArray(dBufferPtr);
-    setMaterialIndexArray(mBufferPtr);
-    setMeasurementMapArray(measurementPtr);
+    auto dBufferPtr = std::make_shared<std::vector<T>>(this->size(), airDensity());
+    auto mBufferPtr = std::make_shared<std::vector<std::uint8_t>>(this->size(), 0);
+    auto measurementPtr = std::make_shared<std::vector<std::uint8_t>>(this->size(), 0);
+    this->setDensityArray(dBufferPtr);
+    this->setMaterialIndexArray(mBufferPtr);
+    this->setMeasurementMapArray(measurementPtr);
 
     //air holes indices
     std::array<std::size_t, 2> fdim = { dim[0], dim[1] };
@@ -350,10 +350,10 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
 
     //filling measurementArray
     auto measBuffer = measurementPtr->data();
-    for (const auto vIdx : m_holePositions)
+    for (const auto& vIdx : m_holePositions)
         for (const auto idx : vIdx)
             measBuffer[idx] = 1;
-    makeValid();
+    this->makeValid();
 }
 template <Floating T>
 std::vector<std::size_t> CTDIPhantom<T>::circleIndices2D(const std::array<std::size_t, 2>& dim, const std::array<T, 2>& spacing, const std::array<T, 2>& center, T radius)

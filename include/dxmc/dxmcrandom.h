@@ -252,8 +252,8 @@ class SpecterDistribution : public RandomDistribution<T> {
 public:
     /**
      * @brief Initialize specter distribution
-     * @param weights A vector of probabilities for each bin. Weights should be atleast of size two. The weights vector will be normalized such that sum of weights is unity.
-     * @param energies A vector of values that are sampled according to weights. Values must be monotomic increasing. Lenght of energies must be equal to lenght of weights.
+     * @param weights A vector of probabilities for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity.
+     * @param energies A vector of values that are sampled according to weights. Values must be monotonic increasing. Length of energies must be equal to length of weights.
     */
     SpecterDistribution(const std::vector<T>& weights, const std::vector<T>& energies)
         : RandomDistribution<T>(weights)
@@ -272,22 +272,22 @@ public:
     }
 
     /**
-     * @brief Sample an energy value according to weights probabiliy. 
+     * @brief Sample an energy value according to weights probability. 
      * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
      * @return a random energy according to weights probability
     */
     T sampleValue()
     {
-        return sampleValue(m_state);
+        return sampleValue(this->m_state);
     }
     /**
-     * @brief Sample an energy value according to weights probabiliy. This function is thread safe.
+     * @brief Sample an energy value according to weights probability. This function is thread safe.
      * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
      * @return a random energy according to weights probability
     */
     T sampleValue(RandomState& state) const
     {
-        const std::size_t ind = sampleIndex(state);
+        const std::size_t ind = this->sampleIndex(state);
         return ind < m_energies.size() - 1 ? state.randomUniform(m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
     }
 

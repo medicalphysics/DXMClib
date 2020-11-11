@@ -21,6 +21,7 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/transport.h"
 
 #include <array>
+#include <chrono>
 #include <functional>
 #include <iostream>
 #include <thread>
@@ -52,7 +53,7 @@ public:
     bool testCompton(T energy, std::size_t Z)
     {
 
-        auto& att = attenuationLut();
+        auto& att = this->attenuationLut();
         std::vector<Material> materials;
         materials.emplace_back(Material(Z));
         att.generate(materials, T { 1 }, T { 60 });
@@ -73,11 +74,11 @@ public:
         }
 
         RandomState state;
-
-        for (std::size_t i = 0; i < 1e7; ++i) {
+        std::size_t nSamp = 1e6;
+        for (std::size_t i = 0; i < nSamp; ++i) {
             p.energy = energy;
             //comptonScatterLivermore(p, 0, state);
-            comptonScatter(p, 0, state);
+            this->comptonScatter<true>(p, 0, state);
             const T e = p.energy / energy;
             auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
             auto idx = std::distance(earr.cbegin(), it);
@@ -113,7 +114,7 @@ public:
 
         std::cout << "Compton differential scattering cross section\n";
         std::cout << "with initial energy " << energy << " keV in material Z=" << Z << "\n";
-        std::cout << "Sampling 1E7 interactions with RMS differential cross section deviation of\n";
+        std::cout << "Sampling " << nSamp << " interactions with RMS differential cross section deviation of\n";
         const auto ms = std::transform_reduce(res.cbegin(), res.cend(), meas.cbegin(), T { 0 }, std::plus<>(), [](auto m, auto e) { return (m - e) * (m - e); });
         const auto rmsd = std::sqrt(ms / res.size());
         std::cout << rmsd << "\n";
@@ -140,20 +141,34 @@ public:
         return false;
     }
 
+    template <bool locks = true>
     void testSafeValueAddWorkerDose(Result<T>* res, T addValue, std::size_t N, std::size_t idx = 0) const
     {
-        for (std::size_t i = 0; i < N; ++i) {
-            safeValueAdd(res->dose[idx], addValue, res->locks[idx].dose);
+        if constexpr (locks) {
+            for (std::size_t i = 0; i < N; ++i) {
+                this->safeValueAdd(res->dose[idx], addValue, res->locks[idx].dose);
+            }
+        } else {
+            for (std::size_t i = 0; i < N; ++i) {
+                this->safeValueAdd(res->dose[idx], addValue);
+            }
         }
     }
+    template <bool locks = true>
     void testSafeValueAddWorkerEvents(Result<T>* res, std::uint32_t addValue, std::size_t N, std::size_t idx = 0) const
     {
-        for (std::size_t i = 0; i < N; ++i) {
-            safeValueAdd(res->nEvents[idx], addValue, res->locks[idx].nEvents);
+        if constexpr (locks) {
+            for (std::size_t i = 0; i < N; ++i) {
+                this->safeValueAdd(res->nEvents[idx], addValue, res->locks[idx].nEvents);
+            }
+        } else {
+            for (std::size_t i = 0; i < N; ++i) {
+                this->safeValueAdd(res->nEvents[idx], addValue);
+            }
         }
     }
 
-    bool testSafeValueAdd()
+    bool testSafeValueAdd(bool locks)
     {
 
         const std::size_t N = 1E6;
@@ -162,19 +177,27 @@ public:
 
         const T addValue { 1 };
         const std::uint64_t nThreads = std::thread::hardware_concurrency();
-        const std::uint64_t nJobs = std::max(nThreads, static_cast<std::uint64_t>(2));
+        const std::uint64_t nJobs = std::max(nThreads, static_cast<std::uint64_t>(8));
         std::vector<std::thread> jobs;
         jobs.reserve(nJobs);
+        auto start = std::chrono::high_resolution_clock::now();
         for (std::size_t i = 0; i < nJobs; ++i) {
-            jobs.emplace_back(&Test<T>::testSafeValueAddWorkerDose, this, &res, addValue, N, 0);
+            if (locks)
+                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerDose<true>, this, &res, addValue, N, 0);
+            else
+                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerDose<false>, this, &res, addValue, N, 0);
         }
         for (auto& job : jobs) {
             job.join();
         }
+        auto duration = std::chrono::high_resolution_clock::now() - start;
+        auto time = std::chrono::duration_cast<std::chrono::milliseconds>(duration);
 
         const T expected = N * addValue * nJobs;
         const T value = res.dose[0];
-        std::cout << "Test safe atomic add:\n Added " << addValue << " " << N << " times in " << nJobs;
+        std::cout << "Test safe atomic add:\nUsing locks: " << locks;
+        std::cout << "\nTime: " << time.count() / 1000.0;
+        std::cout << "s\nAdded " << addValue << " " << N << " times in " << nJobs;
         std::cout << " threads.\nResult is expected to be " << expected << " and is ";
         std::cout << value << "\n";
 
@@ -182,7 +205,10 @@ public:
         jobs.reserve(nJobs);
         const std::uint32_t addValueEvents { 1 };
         for (std::size_t i = 0; i < nJobs; ++i) {
-            jobs.emplace_back(&Test<T>::testSafeValueAddWorkerEvents, this, &res, addValueEvents, N, 0);
+            if (locks)
+                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerEvents<true>, this, &res, addValueEvents, N, 0);
+            else
+                jobs.emplace_back(&Test<T>::testSafeValueAddWorkerEvents<false>, this, &res, addValueEvents, N, 0);
         }
         for (auto& job : jobs) {
             job.join();
@@ -190,7 +216,7 @@ public:
 
         const std::uint32_t expectedEvents = N * addValueEvents * nJobs;
         const std::uint32_t valueEvents = res.nEvents[0];
-        std::cout << "Test safe atomic add:\n Added " << addValueEvents << " " << N << " times in " << nJobs;
+        std::cout << "Test safe atomic add:\nUsing locks: " << locks << "\nAdded " << addValueEvents << " " << N << " times in " << nJobs;
         std::cout << " threads.\nResult is expected to be " << expectedEvents << " and is ";
         std::cout << valueEvents << "\n";
 
@@ -205,7 +231,8 @@ bool testTransport()
 
     T energy = 54;
     bool success = t.testCompton(energy, 13);
-    success = success && t.testSafeValueAdd();
+    success = success && t.testSafeValueAdd(false);
+    success = success && t.testSafeValueAdd(true);
     return success;
 }
 

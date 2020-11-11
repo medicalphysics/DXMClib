@@ -234,7 +234,7 @@ public:
     const std::array<T, 3>& beamDirection(void) const { return m_beamDirection; }
 
     void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
-    void setCollimationAngles(const std::array<T, 2>& angles) { setCollimationAngles(angles[0], angles[2]); }
+    void setCollimationAngles(const std::array<T, 2>& angles) { setCollimationAngles(angles[0], angles[1]); }
     void setCollimationAngles(const T angleX, const T angleY)
     {
         m_collimationAngles[0] = -angleX / 2;

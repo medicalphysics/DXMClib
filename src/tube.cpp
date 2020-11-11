@@ -16,10 +16,9 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-
+#include "dxmc/tube.h"
 #include "dxmc/constants.h"
 #include "dxmc/material.h"
-#include "dxmc/tube.h"
 
 #include <cmath>
 
@@ -287,8 +286,7 @@ namespace tube_implementation {
     constexpr double FINE_STRUCTURE_CONSTANT = 7.29735308E-03;
     constexpr double CLASSIC_ELECTRON_RADIUS = 2.81794092E-15; // [m]
     constexpr double PHI_BAR = static_cast<double>(TUNGSTEN_ATOMIC_NUMBER) * static_cast<double>(TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS * CLASSIC_ELECTRON_RADIUS * FINE_STRUCTURE_CONSTANT;
-    
-    
+
     //BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSS ECTION CALCULATION
     double tungstenFiltration(double tungstenAtt, double x, double takeoffAngle)
     // filtrates a photon in the tungsten anode. hv :photon energy [keV], x depth in tungsten (density*distance) [mg/cm2], takeoffAngle: scatter angle in radians
@@ -357,7 +355,5 @@ namespace tube_implementation {
     //END SEMIRELATIVISTIC BETHE HEITLER CROSS SECTION CALCULATION
 
 }
-
-
 
 }
