@@ -119,7 +119,7 @@ public:
 	 * @param angleWeightsPairs A vector of angle in radians and photon fluence pairs.
 	 */
     BowTieFilter(const std::vector<std::pair<T, T>>& angleWeightsPairs)
-        : BeamFilter()
+        : BeamFilter<T>()
         , m_data(angleWeightsPairs)
     {
         for (auto& p : m_data) {
@@ -135,7 +135,7 @@ public:
 	 * @param other BowTiefilter
 	 */
     BowTieFilter(const BowTieFilter& other)
-        : BeamFilter()
+        : BeamFilter<T>()
     {
         m_data = other.data();
     }
