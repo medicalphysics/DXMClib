@@ -32,6 +32,7 @@ Copyright 2019 Erlend Andersen
 #include <cmath>
 #include <functional>
 #include <memory>
+#include <optional>
 
 namespace dxmc {
 
@@ -48,6 +49,47 @@ struct Result {
         dose.resize(size, 0);
         nEvents.resize(size, 0);
         variance.resize(size, 0);
+    }
+};
+
+class EvenTaskPool {
+    std::list<std::pair<std::uint64_t, std::uint64_t>> m_intervals;
+    std::list<std::pair<std::uint64_t, std::uint64_t>>::iterator m_idx;
+    std::mutex m_mutex;
+
+public:
+    EvenTaskPool(std::uint64_t start, std::uint64_t stop, std::uint64_t nworkers)
+    {
+        nworkers = std::max(std::uint64_t { 1 }, nworkers);
+        const auto step = std::max((std::max(start, stop) - std::min(start, stop)) / nworkers,
+            std::uint64_t { 1 });
+
+        const auto max = std::max(start, stop);
+        for (auto min = std::min(start, stop); min < max; min += step) {
+            m_intervals.push_back(std::make_pair(min, std::min(min + step, max)));
+        }
+        m_idx = m_intervals.begin();
+    }
+
+    std::optional<std::uint64_t> getJob()
+    {
+        std::lock_guard lock(m_mutex);
+
+        if (m_idx == m_intervals.end())
+            return {};
+
+        if (m_idx->first >= m_idx->second) {
+            m_idx = m_intervals.erase(m_idx);
+        } else {
+            m_idx++;
+        }
+        if (m_idx == m_intervals.end()) {
+            m_idx = m_intervals.begin();
+            if (m_idx == m_intervals.end())
+                return {};
+        }
+        const auto job = (m_idx->first)++;
+        return job;
     }
 };
 
@@ -489,39 +531,38 @@ protected:
                 sampleParticleSteps<Livermore, bindingEnergyCorrection>(world, particle, state, result);
         }
     }
-    template <bool Livermore = true, bool bindingEnergyCorrection = false>
+
+    template <bool Livermore = true, bool bindingEnergyCorrection = true>
+    void workerRun(const World<T>& w, const Source<T>* source, Result<T>& result,
+        EvenTaskPool& taskpool, ProgressBar<T>* progressbar) const
+    {
+        RandomState state;
+        const auto& worldBasis = w.directionCosines();
+        auto job = taskpool.getJob();
+        while (job) {
+            if (progressbar)
+                if (progressbar->cancel())
+                    return;
+            auto exposure = source->getExposure(job.value());
+            exposure.alignToDirectionCosines(worldBasis);
+            transport<Livermore>(w, exposure, state, result);
+            if (progressbar)
+                progressbar->exposureCompleted();
+            job = taskpool.getJob();
+        }
+    }
+
+    template <bool Livermore = true, bool bindingEnergyCorrection = true>
     void parallellRun(const World<T>& w, const Source<T>* source, Result<T>& result,
         const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
     {
-        const std::uint64_t len = expEnd - expBeg;
-        if ((len <= 1) || (nJobs <= 1)) {
-            RandomState state;
-            const auto& worldBasis = w.directionCosines();
-            for (std::size_t i = expBeg; i < expEnd; i++) {
-                if (progressbar)
-                    if (progressbar->cancel())
-                        return;
-                auto exposure = source->getExposure(i);
-                exposure.alignToDirectionCosines(worldBasis);
-                transport<Livermore>(w, exposure, state, result);
-                if (progressbar)
-                    progressbar->exposureCompleted();
-            }
-            return;
-        }
-
-        const auto threadLen = len / nJobs;
+        EvenTaskPool taskpool(expBeg, expEnd, nJobs);
         std::vector<std::thread> jobs;
         jobs.reserve(nJobs - 1);
-        std::uint64_t expBegThread = expBeg;
-        std::uint64_t expEndThread = expBegThread + threadLen;
         for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::parallellRun<Livermore, bindingEnergyCorrection>, this, std::cref(w), source, std::ref(result), expBegThread, expEndThread, 1, progressbar);
-            expBegThread = expEndThread;
-            expEndThread = expBegThread + threadLen;
+            jobs.emplace_back(&Transport<T>::workerRun<Livermore, bindingEnergyCorrection>, this, std::cref(w), source, std::ref(result), std::ref(taskpool), progressbar);
         }
-        expEndThread = expEnd;
-        parallellRun<Livermore, bindingEnergyCorrection>(w, source, result, expBegThread, expEndThread, 1, progressbar);
+        workerRun<Livermore, bindingEnergyCorrection>(w, source, result, taskpool, progressbar);
         for (auto& job : jobs)
             job.join();
     }
