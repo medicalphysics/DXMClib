@@ -229,6 +229,34 @@ bool testTransport()
     return success;
 }
 
+template<typename T>
+bool testStepping()
+{
+    std::array<std::size_t, 3> dim = {1,1,512};
+    std::array<T, 3> spacing = { .1, .1, , 1 };
+    //generate world
+    World<T> w;
+    w.setDimensions(dim);
+    w.setSpacing(spacing);
+
+    Material air("");
+    Material water();
+    Material pmma();
+    Material al();
+
+    auto matInd = std::make_shared<std::vector<std::uint8_t>>(w.size());
+    auto dens = std::make_shared<std::vector<T>>(w.size());
+    w.setDensityArray(dens);
+    w.setMaterialIndexArray(matInd);
+    w.addMaterialToMap(air);
+
+    //todo
+    //compare intensity against analytical attenuation
+
+
+}
+
+
 int main()
 {
     bool success_d = testTransport<double>();
