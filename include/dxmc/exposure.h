@@ -282,17 +282,12 @@ public:
         // particle direction
         const T theta = state.randomUniform(m_collimationAngles[0] , m_collimationAngles[1]);
         const T phi = state.randomUniform(m_collimationAngles[2], m_collimationAngles[3]);
-        const T sintheta = std::sin(theta);
-        const T sinphi = std::sin(phi);
-        const T sin2theta = sintheta * sintheta;
-        const T sin2phi = sinphi * sinphi;
-        const T norm = T { 1 } / std::sqrt(T { 1 } + sin2phi + sin2theta);
 
-        Particle<T> p { .pos = m_position, .weight = m_beamIntensityWeight };
+                
+        Particle<T> p { .pos = m_position,.dir=m_beamDirection, .weight = m_beamIntensityWeight };
 
-        for (std::size_t i = 0; i < 3; i++) {
-            p.dir[i] = norm * (m_beamDirection[i] + sintheta * m_directionCosines[i] + sinphi * m_directionCosines[i + 3]);
-        }
+        vectormath::rotate(p.dir.data(), &m_directionCosines[3], theta);
+        vectormath::rotate(p.dir.data(), &m_directionCosines[0], phi);
 
         if (m_specterDistribution) {
             p.energy = m_specterDistribution->sampleValue(state);

@@ -65,11 +65,12 @@ public:
     {
         const auto cExp = m_currentExposures.load();
         if (cExp == 0)
-            return " ETA: estimating...";
+            return "ETA: estimating... [0%]";
         const auto secondsElapsed = m_secondsElapsed.load();
         const auto totExp = m_totalExposures.load();
         const auto secondsRemaining = secondsElapsed / cExp * (totExp - cExp);
-        return makePrettyTime(secondsRemaining);
+        const auto percent = (T { 100 } * cExp) / totExp;
+        return makePrettyTime(secondsRemaining, percent);
     }
     void setCancel(bool cancel) // threadsafe
     {
@@ -106,15 +107,16 @@ public:
     }
 
 protected:
-    std::string makePrettyTime(double seconds) const
+    std::string makePrettyTime(T seconds, T percent) const
     {
         std::stringstream ss;
         ss << std::fixed << std::setprecision(0);
-        ss << m_message << " ETA: about ";
-        if (seconds > 120.0)
-            ss << seconds / 60.0 << " minutes";
+        ss << m_message << "ETA: about ";
+        if (seconds > 120)
+            ss << seconds / 60 << " minutes";
         else
             ss << seconds << " seconds";
+        ss << " [" << percent << "%]";
         return ss.str();
     }
 
@@ -219,7 +221,7 @@ private:
     std::atomic<std::uint64_t> m_totalExposures = 0;
     std::atomic<std::uint64_t> m_currentExposures = 0;
     std::chrono::system_clock::time_point m_startTime;
-    std::atomic<double> m_secondsElapsed;
+    std::atomic<T> m_secondsElapsed;
     std::string m_message;
     std::atomic<bool> m_cancel = false;
     std::mutex m_doseMutex;

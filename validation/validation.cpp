@@ -15,8 +15,8 @@
 using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 1e7;
-constexpr std::size_t nExposures = 4;
+constexpr std::size_t histPerExposure = 1e6;
+constexpr std::size_t nExposures = 50;
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -151,6 +151,28 @@ std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world
         arraypos[i] = static_cast<std::size_t>((pos[i] - wpos[i * 2]) / wspac[i]);
     const auto idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
     return idx;
+}
+
+template <typename T>
+auto runDispatcher(Transport<T> transport, const World<T> world, Source<T>* src)
+{
+    ProgressBar<T> progress;
+    Result<T> res;
+    bool running = true;
+    std::thread job([&]() {
+        res = transport(world, src, &progress);
+        running = false;
+    });
+    std::string message;
+    while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(3000));
+        std::cout << std::string(message.length(), ' ') << "\r";
+        message = progress.getETA();
+        std::cout << message << "\r";
+    }
+    job.join();
+    std::cout << std::string(message.length(), ' ') << "\r";
+    return res;
 }
 
 template <Floating T = double>
@@ -317,7 +339,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
     Transport<T> transport;
-    auto res = transport(w, &src, nullptr, false);
+    auto res = runDispatcher(transport, w, &src);
     auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
     std::array<T, 9> subvol_ev;
@@ -574,9 +596,7 @@ bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false)
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
     Transport<T> transport;
-    transport.setBindingEnergyCorrection(true);
-    transport.setLivermoreComptonModel(true);
-    auto res = transport(w, &src, nullptr, false);
+    auto res = runDispatcher(transport, w, &src);
     auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
     std::array<T, 7> subvol_ev;
@@ -674,7 +694,7 @@ World<T> generateTG195Case4World2()
     const std::array<T, 3> spacing = { 1, 1, 50 };
     const auto size = std::accumulate(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
 
-    Material air("Air, Dry (near sea level)");
+    Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
     air.setStandardDensity(0.001205);
     Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689");
     pmma.setStandardDensity(1.19);
@@ -753,8 +773,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
     auto w = generateTG195Case4World1<T>();
 
     Transport<T> transport;
-
-    auto res = transport(w, &src, nullptr, false);
+    auto res = runDispatcher(transport, w, &src);
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
     const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
@@ -846,7 +865,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
 
     //simulate 36 projections
     for (std::size_t i = 0; i < 36; ++i) {
-        std::cout << "Prosessing angle " << i * 10 << " [" << static_cast<int>(i / 36.0 * 100.0) << " %]";
+        //std::cout << "Prosessing angle " << i * 10 << " [" << static_cast<int>(i / 36.0 * 100.0) << " %]";
         const auto nHistories = src.historiesPerExposure() * src.totalExposures();
         const T angle = (i * 10) * DEG_TO_RAD<T>();
         std::array<T, 3> rot_axis = { 0, 0, 1 };
@@ -858,10 +877,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
         vectormath::rotate(&cos[3], rot_axis.data(), angle);
         src.setDirectionCosines(cos);
 
-        T dir[3];
-        vectormath::cross(cos.data(), dir);
-
-        auto res = transport(w, &src, nullptr, false);
+        auto res = runDispatcher(transport, w, &src);
         const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
         const T simtime = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count();
@@ -968,12 +984,12 @@ int main(int argc, char* argv[])
     success = success && TG195Case2AbsorbedEnergy<float>(false, true, false);
     success = success && TG195Case2AbsorbedEnergy<float>(true, false, false);
     success = success && TG195Case2AbsorbedEnergy<float>(true, true, false);
-    
+
     success = success && TG195Case3AbsorbedEnergy<float>(false, false);
     success = success && TG195Case3AbsorbedEnergy<float>(false, true);
     success = success && TG195Case3AbsorbedEnergy<float>(true, false);
     success = success && TG195Case3AbsorbedEnergy<float>(true, true);
-    
+
     success = success && TG195Case41AbsorbedEnergy<float>(false, false);
     success = success && TG195Case41AbsorbedEnergy<float>(false, true);
     success = success && TG195Case41AbsorbedEnergy<float>(true, false);
@@ -983,7 +999,7 @@ int main(int argc, char* argv[])
     success = success && TG195Case42AbsorbedEnergy<float>(false, true);
     success = success && TG195Case42AbsorbedEnergy<float>(true, false);
     success = success && TG195Case42AbsorbedEnergy<float>(true, true);
-    
+
     std::cout << "Press any key to exit";
     std::string dummy;
     std::cin >> dummy;

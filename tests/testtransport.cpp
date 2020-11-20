@@ -18,7 +18,9 @@ Copyright 2019 Erlend Andersen
 
 #include "xraylib.h"
 
+#include "dxmc/source.h"
 #include "dxmc/transport.h"
+#include "dxmc/material.h"
 
 #include <array>
 #include <chrono>
@@ -229,36 +231,108 @@ bool testTransport()
     return success;
 }
 
-template<typename T>
+template <typename T>
 bool testStepping()
 {
-    std::array<std::size_t, 3> dim = {1,1,512};
-    std::array<T, 3> spacing = { .1, .1, , 1 };
+    const T energy = 56.4;
+    std::array<std::size_t, 3> dim = { 1, 1, 100 };
+    std::array<T, 3> spacing = { .01, .01, .5 };
     //generate world
     World<T> w;
     w.setDimensions(dim);
     w.setSpacing(spacing);
 
-    Material air("");
-    Material water();
-    Material pmma();
-    Material al();
+    std::vector<Material> materials;
+    //materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
+    //materials.back().setStandardDensity(0.001205);
+    const auto air_material = 1;
+    //materials.emplace_back(13);
+    materials.emplace_back("H2O", "water");
+    materials.back().setStandardDensity(1.0);
+    materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
+    materials.back().setStandardDensity(0.001205);
+    materials.emplace_back("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
+    materials.back().setStandardDensity(1.19);
+    //materials.emplace_back(13);
 
     auto matInd = std::make_shared<std::vector<std::uint8_t>>(w.size());
     auto dens = std::make_shared<std::vector<T>>(w.size());
+    auto meas = std::make_shared<std::vector<std::uint8_t>>(w.size(), 0);
     w.setDensityArray(dens);
     w.setMaterialIndexArray(matInd);
-    w.addMaterialToMap(air);
+    for (const auto& m : materials) {
+        w.addMaterialToMap(m);
+    }
 
-    //todo
-    //compare intensity against analytical attenuation
+    auto mBuf = matInd->data();
+    auto dBuf = dens->data();
+    auto fBuf = meas->data();
 
+    //populating arrays
+    for (std::size_t i = 0; i < dim[2]; ++i) {
+        const auto part = i * materials.size() / dim[2];
+        mBuf[i] = static_cast<std::uint8_t>(part);
+    }
+    for (std::size_t i = 0; i < dim[2]; ++i) {
+        const auto part = i * materials.size() / dim[2];
+        dBuf[i] = static_cast<T>(materials[part].standardDensity());
+    }
+    for (std::size_t i = 0; i < dim[2]; ++i) {
+        const auto part = i * materials.size() / dim[2];
+        //fBuf[i] = part == air_material ? 1 : 0;
+    }
 
+    w.makeValid();
+
+    PencilSource<T> pen;
+    pen.setTotalExposures(400);
+    pen.setHistoriesPerExposure(1000000);
+    std::array<T, 3> pos = { 0, 0, -(dim[2] * spacing[2]) };
+    std::array<T, 6> cos = { 1, 0, 0, 0, 1, 0 };
+    pen.setDirectionCosines(cos);
+    pen.setPosition(pos);
+    pen.setPhotonEnergy(energy);
+
+    Transport<T> transport;
+    auto res = transport(w, &pen);
+
+    const auto& att = transport.attenuationLut();
+    auto maxAtt = att.maxMassTotalAttenuation(energy);
+    std::vector<T> attm;
+    for (const auto& m : materials) {
+        attm.push_back(m.getTotalAttenuation(energy)*m.standardDensity());
+    }
+
+    std::vector<T> ana(dim[2]);
+    
+    ana[0] = 1;
+    const auto step = spacing[2] / 10;
+    for (std::size_t i = 1; i < dim[2]; ++i) {
+        const auto u = att.totalAttenuation(mBuf[i], energy) * dBuf[i];
+        ana[i] = ana[i - 1] * std::exp(-u * step);
+    }
+    std::vector<T> kerma(dim[2]);
+    for (std::size_t i = 0; i < dim[2]; ++i) {
+        const std::size_t matIdx = mBuf[i];
+        kerma[i] = ana[i] * energy * materials[matIdx].getMassEnergyAbsorbtion(energy);
+    }
+    std::cout << "Energy: " << energy << std::endl;
+    std::cout << "Position, kerma, sim,  nevents, material\n";
+    for (std::size_t i = 0; i < dim[2]; ++i) {
+        std::cout << i * spacing[2] << ", ";
+        std::cout << kerma[i]/kerma[0] << ", ";
+        std::cout << res.dose[i] / res.dose[0] << ", ";
+        std::cout << res.nEvents[i] << ", ";
+        const std::size_t matIdx = mBuf[i];
+        std::cout << materials[matIdx].prettyName() << "\n";
+    }
+
+    return true;
 }
-
 
 int main()
 {
+    bool success_t = testStepping<float>();
     bool success_d = testTransport<double>();
     bool success_f = testTransport<float>();
     if (success_d && success_f)
