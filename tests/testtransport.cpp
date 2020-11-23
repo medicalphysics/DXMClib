@@ -243,12 +243,14 @@ bool testStepping()
     w.setSpacing(spacing);
 
     std::vector<Material> materials;
-    //materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
-    //materials.back().setStandardDensity(0.001205);
+    
     const auto air_material = 1;
     //materials.emplace_back(13);
     materials.emplace_back("H2O", "water");
     materials.back().setStandardDensity(1.0);
+    materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
+    materials.back().setStandardDensity(0.001205);
+    
     materials.emplace_back("Polymethyl Methacralate (Lucite, Perspex)");
     materials.emplace_back("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
     materials.back().setStandardDensity(1.19);
@@ -262,6 +264,7 @@ bool testStepping()
     for (const auto& m : materials) {
         w.addMaterialToMap(m);
     }
+    w.setMeasurementMapArray(meas);
 
     auto mBuf = matInd->data();
     auto dBuf = dens->data();
@@ -292,11 +295,18 @@ bool testStepping()
     pen.setPosition(pos);
     pen.setPhotonEnergy(energy);
 
+    std::cout << "Energy: " << energy << std::endl;
+    
+    
+    
     Transport<T> transport;
-    transport.setSiddonTracking(true);
-    auto res_sidd = transport(w, &pen);
     transport.setSiddonTracking(false);
+    auto res_sidd = transport(w, &pen);
+    std::cout << "Simulation time Siddon: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_sidd.simulationTime).count() << std::endl;
+    transport.setSiddonTracking(false);
+    pen.setTotalExposures(pen.totalExposures()*100);
     auto res_wood = transport(w, &pen);
+    std::cout << "Simulation time Woodcock: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_wood.simulationTime).count() << std::endl;
 
     const auto& att = transport.attenuationLut();
     auto maxAtt = att.maxMassTotalAttenuation(energy);
@@ -318,9 +328,6 @@ bool testStepping()
         const std::size_t matIdx = mBuf[i];
         kerma[i] = ana[i] * energy * materials[matIdx].getMassEnergyAbsorbtion(energy);
     }
-    std::cout << "Energy: " << energy << std::endl;
-    std::cout << "Simulation time Siddon: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_sidd.simulationTime).count() << std::endl;
-    std::cout << "Simulation time Woodcock: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_wood.simulationTime).count() << std::endl;
     std::cout << "Position, kerma, sim_wood, sim_siddon,  nevents_wood, nevents_siddon, material\n";
     for (std::size_t i = 0; i < dim[2]; ++i) {
         std::cout << i * spacing[2] << ", ";

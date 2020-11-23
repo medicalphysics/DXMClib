@@ -334,7 +334,7 @@ protected:
             safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
             safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
         }
-        p.weight = p.weight * (1.0 - weightCorrection); // to prevent bias
+        p.weight *= (1 - weightCorrection); // to prevent bias
 
         const auto r2 = state.randomUniform<T>();
         if (r2 < eventProbability) {
@@ -468,6 +468,7 @@ protected:
     {
         const auto densBuffer = world.densityArray()->data();
         const auto matBuffer = world.materialIndexArray()->data();
+        const auto measBuffer = world.measurementMapArray()->data();
 
         //parameterized path: pos1 = pos0 + alpha*dir
 
@@ -501,8 +502,30 @@ protected:
         do {
             //update accumulator
             const auto arrIdx = index[0] + index[1] * dim[0] + index[2] * dim[0] * dim[1];
-            const auto attenuation = m_attenuationLut.totalAttenuation(matBuffer[arrIdx], p.energy) * densBuffer[arrIdx] / 10; // cm->mm
-            accumulator *= std::exp(-alpha[alpha_ind] * attenuation);
+            const auto matIdx = matBuffer[arrIdx];
+            const auto attenuation = m_attenuationLut.totalAttenuation(matIdx, p.energy);
+            const auto attenuationStepProb = std::exp(-alpha[alpha_ind] * attenuation * densBuffer[arrIdx] / 10); // cm->mm
+            accumulator *= attenuationStepProb;
+
+            if (measBuffer[arrIdx]) {
+                const auto attPhoto = m_attenuationLut.photoelectricAttenuation(matIdx, p.energy);
+                const auto weightCorrection = (1 - attenuationStepProb) * attPhoto / attenuation;
+                if constexpr (bindingEnergyCorrection) {
+                    const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
+                    const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
+
+                    safeValueAdd(result.dose[arrIdx], energyImparted);
+                    safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[arrIdx], energyImparted * energyImparted);
+
+                } else {
+                    const auto energyImparted = p.energy * p.weight * weightCorrection;
+                    safeValueAdd(result.dose[arrIdx], energyImparted);
+                    safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[arrIdx], energyImparted * energyImparted);
+                }
+                p.weight *= (1 - weightCorrection); // to prevent bias
+            }
             //calculate current pos
             for (std::size_t i = 0; i < 3; ++i) {
                 p.pos[i] += p.dir[i] * alpha[alpha_ind];
