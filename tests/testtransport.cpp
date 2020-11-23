@@ -236,7 +236,7 @@ bool testStepping()
 {
     const T energy = 56.4;
     std::array<std::size_t, 3> dim = { 1, 1, 100 };
-    std::array<T, 3> spacing = { .01, .01, .5 };
+    std::array<T, 3> spacing = { .01, .01, .1 };
     //generate world
     World<T> w;
     w.setDimensions(dim);
@@ -249,8 +249,7 @@ bool testStepping()
     //materials.emplace_back(13);
     materials.emplace_back("H2O", "water");
     materials.back().setStandardDensity(1.0);
-    materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
-    materials.back().setStandardDensity(0.001205);
+    materials.emplace_back("Polymethyl Methacralate (Lucite, Perspex)");
     materials.emplace_back("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
     materials.back().setStandardDensity(1.19);
     //materials.emplace_back(13);
@@ -285,7 +284,7 @@ bool testStepping()
     w.makeValid();
 
     PencilSource<T> pen;
-    pen.setTotalExposures(400);
+    pen.setTotalExposures(40);
     pen.setHistoriesPerExposure(1000000);
     std::array<T, 3> pos = { 0, 0, -(dim[2] * spacing[2]) };
     std::array<T, 6> cos = { 1, 0, 0, 0, 1, 0 };
@@ -294,7 +293,10 @@ bool testStepping()
     pen.setPhotonEnergy(energy);
 
     Transport<T> transport;
-    auto res = transport(w, &pen);
+    transport.setSiddonTracking(true);
+    auto res_sidd = transport(w, &pen);
+    transport.setSiddonTracking(false);
+    auto res_wood = transport(w, &pen);
 
     const auto& att = transport.attenuationLut();
     auto maxAtt = att.maxMassTotalAttenuation(energy);
@@ -317,12 +319,16 @@ bool testStepping()
         kerma[i] = ana[i] * energy * materials[matIdx].getMassEnergyAbsorbtion(energy);
     }
     std::cout << "Energy: " << energy << std::endl;
-    std::cout << "Position, kerma, sim,  nevents, material\n";
+    std::cout << "Simulation time Siddon: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_sidd.simulationTime).count() << std::endl;
+    std::cout << "Simulation time Woodcock: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_wood.simulationTime).count() << std::endl;
+    std::cout << "Position, kerma, sim_wood, sim_siddon,  nevents_wood, nevents_siddon, material\n";
     for (std::size_t i = 0; i < dim[2]; ++i) {
         std::cout << i * spacing[2] << ", ";
         std::cout << kerma[i]/kerma[0] << ", ";
-        std::cout << res.dose[i] / res.dose[0] << ", ";
-        std::cout << res.nEvents[i] << ", ";
+        std::cout << res_wood.dose[i] / res_wood.dose[0] << ", ";
+        std::cout << res_sidd.dose[i] / res_sidd.dose[0] << ", ";
+        std::cout << res_wood.nEvents[i] << ", ";
+        std::cout << res_sidd.nEvents[i] << ", ";
         const std::size_t matIdx = mBuf[i];
         std::cout << materials[matIdx].prettyName() << "\n";
     }
@@ -333,9 +339,10 @@ bool testStepping()
 int main()
 {
     bool success_t = testStepping<float>();
-    bool success_d = testTransport<double>();
+    /*bool success_d = testTransport<double>();
     bool success_f = testTransport<float>();
     if (success_d && success_f)
         return 1;
+        */
     return 0;
 }
