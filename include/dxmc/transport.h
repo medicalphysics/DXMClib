@@ -656,7 +656,7 @@ protected:
                 amax = std::min(amax, std::max(a0, an));
             }
         }
-        if (amin < amax && amin > 0.0) {
+        if (amin < amax && amin > 0) {
             for (std::size_t i = 0; i < 3; i++) {
                 particle.pos[i] += amin * particle.dir[i]; // making sure particle is inside world
             }

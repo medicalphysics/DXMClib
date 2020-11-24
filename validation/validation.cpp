@@ -16,7 +16,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 50;
+constexpr std::size_t nExposures = 500;
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -279,12 +279,12 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
 }
 
 template <typename T>
-bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forcedInteractions = false)
+bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forcedInteractions = false, bool forceInteractions = false)
 {
     std::cout << "TG195 Case 2\n";
     if (forcedInteractions)
         std::cout << "Forcing interactions in subvolumes\n";
-    auto w = generateTG195Case2World<T>();
+    auto w = generateTG195Case2World<T>(forceInteractions);
 
     IsotropicSource<T> src;
 
@@ -404,7 +404,7 @@ std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const
 }
 
 template <typename T>
-World<T> generateTG195Case3World()
+World<T> generateTG195Case3World(bool forceInteractions = false)
 {
     //std::array<T, 3> spacing = { 1, 1, 1 };
     //std::array<std::size_t, 3> dim = { 340, 300, 1320 };
@@ -516,10 +516,11 @@ World<T> generateTG195Case3World()
     }
     w.setDensityArray(densArr);
     w.setMaterialIndexArray(matArr);
-
-    auto meas = std::make_shared<std::vector<std::uint8_t>>(w.size());
-    std::transform(std::execution::par_unseq, matArr->cbegin(), matArr->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 4; });
-    w.setMeasurementMapArray(meas);
+    if (forceInteractions) {
+        auto meas = std::make_shared<std::vector<std::uint8_t>>(w.size());
+        std::transform(std::execution::par_unseq, matArr->cbegin(), matArr->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 4; });
+        w.setMeasurementMapArray(meas);
+    }
 
     w.addMaterialToMap(air);
     w.addMaterialToMap(water);
@@ -534,11 +535,11 @@ World<T> generateTG195Case3World()
 }
 
 template <typename T>
-bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false)
+bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     std::cout << "TG195 Case 3\n";
 
-    auto w = generateTG195Case3World<T>();
+    auto w = generateTG195Case3World<T>(forceInteractions);
 
     IsotropicSource<T> src;
 
@@ -641,7 +642,7 @@ bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false)
 }
 
 template <typename T>
-World<T> generateTG195Case4World1()
+World<T> generateTG195Case4World1(bool forceInteractions = false)
 {
 
     const std::array<std::size_t, 3> dim = { 300, 300, 600 };
@@ -674,6 +675,7 @@ World<T> generateTG195Case4World1()
                 mat->data()[i] = static_cast<std::uint8_t>(5);
         }
     }
+
     World<T> w;
     w.setSpacing(spacing);
     w.setDimensions(dim);
@@ -683,12 +685,19 @@ World<T> generateTG195Case4World1()
     w.addMaterialToMap(pmma);
     for (int i = 0; i < 4; ++i)
         w.addMaterialToMap(pmma);
+
+    if (forceInteractions) {
+        auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+        std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
+        w.setMeasurementMapArray(meas);
+    }
+
     w.makeValid();
     return w;
 }
 
 template <typename T>
-World<T> generateTG195Case4World2()
+World<T> generateTG195Case4World2(bool forceInteractions = false)
 {
     const std::array<std::size_t, 3> dim = { 1201, 1201, 60 };
     const std::array<T, 3> spacing = { 1, 1, 50 };
@@ -717,11 +726,9 @@ World<T> generateTG195Case4World2()
             const auto offset = z * dim[0] * dim[1];
             for (const auto i : pmma1_ind) {
                 mat->data()[offset + i] = static_cast<std::uint8_t>(2);
-                meas->data()[offset + i] = static_cast<std::uint8_t>(1);
             }
             for (const auto i : pmma2_ind) {
                 mat->data()[offset + i] = static_cast<std::uint8_t>(3);
-                meas->data()[offset + i] = static_cast<std::uint8_t>(1);
             }
         }
     }
@@ -736,12 +743,19 @@ World<T> generateTG195Case4World2()
     w.addMaterialToMap(pmma);
     for (int i = 0; i < 2; ++i)
         w.addMaterialToMap(pmma);
+
+    if (forceInteractions) {
+        auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+        std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
+        w.setMeasurementMapArray(meas);
+    }
+
     w.makeValid();
     return w;
 }
 
 template <typename T>
-bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = false)
+bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
     std::cout << "TG195 Case 4.1:\n";
     IsotropicSource<T> src;
@@ -770,7 +784,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
         std::cout << "Collimation: 10 mm:\n";
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
     }
-    auto w = generateTG195Case4World1<T>();
+
+    auto w = generateTG195Case4World1<T>(forceInteractions);
 
     Transport<T> transport;
     auto res = runDispatcher(transport, w, &src);
@@ -813,9 +828,9 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
 }
 
 template <typename T>
-bool TG195Case42AbsorbedEnergy(bool specter = false, bool wide_collimation = false)
+bool TG195Case42AbsorbedEnergy(
+    bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
-
     std::array<T, 36> sim_ev_center, sim_ev_pher;
     if (specter) {
         if (wide_collimation) {
@@ -857,7 +872,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
     }
 
-    auto w = generateTG195Case4World2<T>();
+    auto w = generateTG195Case4World2<T>(forceInteractions);
 
     Transport<T> transport;
 
@@ -980,25 +995,27 @@ int main(int argc, char* argv[])
 
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<float>(false, false, false); // mono, tomo
+
+    // call  by (use specter, wide collimation, force interactions)
+    success = success && TG195Case2AbsorbedEnergy<float>(false, false, false); 
     success = success && TG195Case2AbsorbedEnergy<float>(false, true, false);
     success = success && TG195Case2AbsorbedEnergy<float>(true, false, false);
     success = success && TG195Case2AbsorbedEnergy<float>(true, true, false);
 
-    success = success && TG195Case3AbsorbedEnergy<float>(false, false);
-    success = success && TG195Case3AbsorbedEnergy<float>(false, true);
-    success = success && TG195Case3AbsorbedEnergy<float>(true, false);
-    success = success && TG195Case3AbsorbedEnergy<float>(true, true);
+    success = success && TG195Case3AbsorbedEnergy<float>(false, false, false);
+    success = success && TG195Case3AbsorbedEnergy<float>(false, true, false);
+    success = success && TG195Case3AbsorbedEnergy<float>(true, false, false);
+    success = success && TG195Case3AbsorbedEnergy<float>(true, true, false);
 
-    success = success && TG195Case41AbsorbedEnergy<float>(false, false);
-    success = success && TG195Case41AbsorbedEnergy<float>(false, true);
-    success = success && TG195Case41AbsorbedEnergy<float>(true, false);
-    success = success && TG195Case41AbsorbedEnergy<float>(true, true);
+    success = success && TG195Case41AbsorbedEnergy<float>(false, false, false);
+    success = success && TG195Case41AbsorbedEnergy<float>(false, true, false);
+    success = success && TG195Case41AbsorbedEnergy<float>(true, false, false);
+    success = success && TG195Case41AbsorbedEnergy<float>(true, true, false);
 
-    success = success && TG195Case42AbsorbedEnergy<float>(false, false);
-    success = success && TG195Case42AbsorbedEnergy<float>(false, true);
-    success = success && TG195Case42AbsorbedEnergy<float>(true, false);
-    success = success && TG195Case42AbsorbedEnergy<float>(true, true);
+    success = success && TG195Case42AbsorbedEnergy<float>(false, false, false);
+    success = success && TG195Case42AbsorbedEnergy<float>(false, true, false);
+    success = success && TG195Case42AbsorbedEnergy<float>(true, false, false);
+    success = success && TG195Case42AbsorbedEnergy<float>(true, true, false);
 
     std::cout << "Press any key to exit";
     std::string dummy;
