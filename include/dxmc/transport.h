@@ -504,12 +504,12 @@ protected:
             const auto arrIdx = index[0] + index[1] * dim[0] + index[2] * dim[0] * dim[1];
             const auto matIdx = matBuffer[arrIdx];
             const auto attenuation = m_attenuationLut.totalAttenuation(matIdx, p.energy);
-            const auto attenuationStepProb = std::exp(-alpha[alpha_ind] * attenuation * densBuffer[arrIdx] / 10); // cm->mm
+            const auto attenuationStepProb = std::exp(-alpha[alpha_ind] * attenuation * densBuffer[arrIdx] / T { 10 }); // cm->mm
             accumulator *= attenuationStepProb;
 
             if (measBuffer[arrIdx]) {
                 const auto attPhoto = m_attenuationLut.photoelectricAttenuation(matIdx, p.energy);
-                const auto weightCorrection = (1 - attenuationStepProb) * attPhoto / attenuation;
+                const auto weightCorrection = (T { 1 } - attenuationStepProb) * attPhoto / attenuation;
                 if constexpr (bindingEnergyCorrection) {
                     const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                     const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
@@ -524,7 +524,7 @@ protected:
                     safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
                     safeValueAdd(result.variance[arrIdx], energyImparted * energyImparted);
                 }
-                p.weight *= (1 - weightCorrection); // to prevent bias
+                p.weight *= (T { 1 } - weightCorrection); // to prevent bias
             }
             //calculate current pos
             for (std::size_t i = 0; i < 3; ++i) {
@@ -588,11 +588,11 @@ protected:
         bool ruletteCandidate = true;
         while (continueSampling) {
             if (updateMaxAttenuation) {
-                maxAttenuationInv = T { 1.0 } / m_attenuationLut.maxMassTotalAttenuation(p.energy);
+                maxAttenuationInv = T { 1 } / m_attenuationLut.maxMassTotalAttenuation(p.energy);
                 updateMaxAttenuation = false;
             }
             const auto r1 = state.randomUniform<T>();
-            const auto stepLenght = -std::log(r1) * maxAttenuationInv * T { 10.0 }; // cm -> mm
+            const auto stepLenght = -std::log(r1) * maxAttenuationInv * T { 10 }; // cm -> mm
             for (std::size_t i = 0; i < 3; i++)
                 p.pos[i] += p.dir[i] * stepLenght;
 
@@ -625,7 +625,7 @@ protected:
                         if (r4 < RUSSIAN_RULETTE_PROBABILITY()) {
                             continueSampling = false;
                         } else {
-                            constexpr T factor = T { 1.0 } / (T { 1.0 } - RUSSIAN_RULETTE_PROBABILITY());
+                            constexpr T factor = T { 1 } / (T { 1 } - RUSSIAN_RULETTE_PROBABILITY());
                             p.weight *= factor;
                         }
                     }
