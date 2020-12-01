@@ -424,7 +424,7 @@ public:
 
     void setCollimationAngles(const std::array<T, 2>& angles)
     {
-        std::array<double, 2> ang = { std::abs(angles[0]), std::abs(angles[1]) };
+        std::array<T, 2> ang = { std::abs(angles[0]), std::abs(angles[1]) };
         updateCollimationAngles(ang);
     }
     const std::array<T, 2>& collimationAngles(void) const
