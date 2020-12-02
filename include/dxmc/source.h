@@ -36,19 +36,36 @@ Copyright 2019 Erlend Andersen
 
 namespace dxmc {
 
+/**
+ * @brief Abstract class for Sources
+ * This class is intended to be a base class for implementation of arbitrary sources.
+ * The main purpose for this class and it's derived classes is to specify geometry, x-ray source
+ * and calibration to absolute dose.
+*/
 template <Floating T = double>
 class Source {
 public:
-    enum class Type { None,
+    /**
+     * @brief This enumeration is not used by dxmc but is provided for
+     * convenience in case of down casting of Source types.
+    */
+    enum class Type {
+        None,
         CTSpiral,
         CTAxial,
         DX,
         CTDual,
         Pencil,
         Isotropic,
-        Circle };
+        Other
+    };
 
 private:
+    /**
+     * @brief Normalization of both cosine direction vectors to lenght of one
+     * Note that direction cosines must be orthogonal.
+     * @param  
+    */
     void normalizeDirectionCosines(void)
     {
         vectormath::normalize(&m_directionCosines[0]);
@@ -62,36 +79,112 @@ protected:
     Type m_type = Type::None;
 
 public:
+    /**
+     * @brief Default constructor whos only job is to set source type to Type::None.
+    */
     Source()
         : m_type(Type::None) {};
+    /**
+     * @brief Generate an exposure
+     * Generate an exposure that specifies emitting numberOfHistoriesPerExposure 
+     * from a specific point and with a specific direction and collimation. 
+     * @param i Exposure number, should be less that numberOfExposures.
+     * @return Exposure object
+    */
     virtual Exposure<T> getExposure(std::uint64_t i) const = 0;
+    /**
+     * @brief Return max photon energy produced by this source
+     * This is used to generate attenuation look up tables 
+     * @return max photon energy with units keV
+    */
     virtual T maxPhotonEnergyProduced() const { return Tube<T>::maxVoltage(); }
-
+    /**
+     * @brief Set source position
+     * @param position 
+    */
     void setPosition(const std::array<T, 3>& position) { m_position = position; }
+    /**
+     * @brief Set source position
+     * @param x 
+     * @param y 
+     * @param z 
+    */
     void setPosition(T x, T y, T z)
     {
         m_position[0] = x;
         m_position[1] = y;
         m_position[2] = z;
     };
+    /**
+     * @brief Get source position
+     * @param  
+     * @return 
+    */
     std::array<T, 3>& position(void) { return m_position; }
+    /**
+     * @brief Get source position
+     * @param  
+     * @return 
+    */
     const std::array<T, 3>& position(void) const { return m_position; }
-
+    /**
+     * @brief Set direction cosines
+     * Direction cosines are two orthogonal vectors used to identify orientation of the source
+     * the vectors are given as an array of size 6 with the x vector first and y vector last.
+     * The cross product (x * y) gives the beam direction vector. 
+     * @param cosines 
+    */
     void setDirectionCosines(const std::array<T, 6>& cosines)
     {
         m_directionCosines = cosines;
         normalizeDirectionCosines();
     }
+    /**
+     * @brief Get direction cosines
+     * Direction cosines are two orthogonal vectors used to identify orientation of the source
+     * the vectors are given as an array of size 6 with the x vector first and y vector last.
+     * The cross product (x * y) gives the beam direction vector. 
+     * @return
+    */
     const std::array<T, 6>& directionCosines(void) const { return m_directionCosines; }
+    /**
+     * @brief Get direction cosines
+     * Direction cosines are two orthogonal vectors used to identify orientation of the source
+     * the vectors are given as an array of size 6 with the x vector first and y vector last.
+     * The cross product (x * y) gives the beam direction vector. 
+     * @return
+    */
     std::array<T, 6>& directionCosines(void) { return m_directionCosines; }
-
+    /**
+     * @brief Set histories per exposure
+     * Histories per exposure denotes number of photon histories emitted per exposure
+     * @param histories 
+    */
     void setHistoriesPerExposure(std::uint64_t histories) { m_historiesPerExposure = histories; }
+    /**
+     * @brief Get histories per exposure
+     * Histories per exposure denotes number of photon histories emitted per exposure
+     * @return 
+    */
     std::uint64_t historiesPerExposure(void) const { return m_historiesPerExposure; }
-
+    /**
+     * @brief Total exposures for this source
+     * @return number of exposures for this source
+    */
     virtual std::uint64_t totalExposures(void) const = 0;
-
+    /**
+     * @brief Get source type
+     * @return 
+    */
     Source::Type type() const { return m_type; }
-
+    /**
+     * @brief Get calibration value for absolute dose
+     * For sources this function must be implemented for calculation of absolute doses
+     * See implementation examples for derived classes DXSource and CTAxialSource.
+     * @param progress Progress bar for feedback if calculations are time 
+     * consuming. 
+     * @return calibration value such as dose = calibrationvalue * relative dose
+    */
     virtual T getCalibrationValue(ProgressBar<T>* progress = nullptr) const = 0;
 
     virtual bool isValid(void) const = 0;
@@ -156,8 +249,8 @@ public:
     bool validate(void) override { return true; }
 
 protected:
-    T m_photonEnergy = 100.0;
-    T m_airDose = 1.0;
+    T m_photonEnergy = 100;
+    T m_airDose = 1;
     std::uint64_t m_totalExposures = 10;
 };
 
@@ -202,7 +295,7 @@ public:
 
     T getCalibrationValue(ProgressBar<T>* progress = nullptr) const override
     {
-        return T { 1.0 };
+        return T { 1 };
     };
 
     bool isValid() const override { return true; }
@@ -242,137 +335,6 @@ private:
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     SpecterDistribution<T> m_specterDistribution;
     T m_maxPhotonEnergy = 1.0;
-};
-
-template <Floating T = double>
-class CircleSource : public Source<T> {
-public:
-    CircleSource()
-        : Source<T>()
-    {
-        this->m_type = Source<T>::Type::Circle;
-        // initializing a specterdistribution
-        const std::vector<T> energies = { 60.0 };
-        const std::vector<T> weights = { 1.0 };
-        m_maxPhotonEnergy = 60.0;
-        m_specterDistribution = SpecterDistribution<T>(weights, energies);
-        setTotalExposures(m_totalExposures);
-    }
-    virtual ~CircleSource() = default;
-    void setRotationAxis(const std::array<T, 3>& axis)
-    {
-        m_rotationAxis = axis;
-        vectormath::normalize(m_rotationAxis.data());
-    }
-    const std::array<T, 3>& rotationAxis()
-    {
-        return m_rotationAxis;
-    }
-    void setRotationRadius(T radius) { m_rotationRadius = std::abs(radius); }
-    T rotationRadius() { return m_rotationRadius; }
-    Exposure<T> getExposure(std::uint64_t exposureNumber) const override
-    {
-        //making sure we do not step over max total exposures
-        exposureNumber = exposureNumber % m_totalExposures;
-
-        //calculating rotation plane
-        std::array<T, 3> u3, u2 = { 0, 0, 0 };
-        const auto argmin = vectormath::argmin3<std::size_t>(m_rotationAxis.data());
-        u2[argmin] = 1;
-        //making u2 orthogonal to rotation axis
-        const auto proj = vectormath::dot(m_rotationAxis.data(), u2.data());
-        for (std::size_t i = 0; i < 3; ++i)
-            u2 -= proj * m_rotationAxis[i];
-        vectormath::normalize(u2.data());
-        //last orthogonal vector
-        vectormath::cross(m_rotationAxis.data(), u2.data(), u3.data());
-
-        //rotating plane vectors
-        vectormath::rotate(u2.data(), m_rotationAxis.data(), m_randomAngles[exposureNumber]);
-        vectormath::rotate(u3.data(), m_rotationAxis.data(), m_randomAngles[exposureNumber]);
-
-        std::array<T, 3> position;
-        std::array<T, 6> cosines;
-        for (std::size_t i = 0; i < 3; ++i) {
-            position[i] = m_rotationRadius * u2[i] + this->m_position[i];
-            cosines[i * 2] = m_rotationAxis[i];
-            cosines[i * 2 + 1] = -u3[i];
-        }
-
-        constexpr T weight { 1 };
-        Exposure<T> exposure(position,
-            cosines,
-            this->m_collimationAngles,
-            this->m_historiesPerExposure,
-            weight,
-            &m_specterDistribution);
-
-        return exposure;
-    }
-    T maxPhotonEnergyProduced() const override
-    {
-        return m_maxPhotonEnergy;
-    };
-    void setTotalExposures(std::uint64_t nExposures)
-    {
-        m_totalExposures = nExposures;
-        this->m_angles.resize(m_totalExposures);
-        constexpr T maxAngle = PI_VAL<T>() * 2;
-        for (std::uint64_t i = 0; i < nExposures; ++i)
-            this->m_angles[i] = m_randomState.randomUniform(maxAngle);
-    };
-    std::uint64_t totalExposures() const override
-    {
-        return m_totalExposures;
-    };
-
-    T getCalibrationValue(ProgressBar<T>* progress = nullptr) const override
-    {
-        return T { 1.0 };
-    };
-
-    bool isValid() const override { return true; }
-    bool validate() override { return true; }
-
-    void setSpecter(const std::vector<T>& weights, const std::vector<T>& energies)
-    {
-        const auto maxEnergyElement = std::max_element(energies.cbegin(), energies.cend());
-        m_maxPhotonEnergy = *maxEnergyElement;
-        m_specterDistribution = SpecterDistribution<T>(weights, energies);
-    }
-    void setCollimationAngles(T xRad, T yRad)
-    {
-        if (xRad < -PI_VAL<T>())
-            m_collimationAngles[0] = -PI_VAL<T>();
-        else if (xRad > PI_VAL<T>())
-            m_collimationAngles[0] = PI_VAL<T>();
-        else
-            m_collimationAngles[0] = xRad;
-
-        constexpr T PI_H = PI_VAL<T>() * T { 0.5 };
-
-        if (yRad < -PI_H)
-            m_collimationAngles[1] = -PI_H;
-        else if (yRad > PI_VAL<T>())
-            m_collimationAngles[1] = PI_H;
-        else
-            m_collimationAngles[1] = yRad;
-    }
-    std::pair<T, T> collimationAngles() const
-    {
-        return std::pair<T, T>(m_collimationAngles[0], m_collimationAngles[1]);
-    }
-
-protected:
-private:
-    RandomState m_randomState;
-    std::vector<T> m_randomAngles;
-    std::uint64_t m_totalExposures = 90;
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
-    SpecterDistribution<T> m_specterDistribution;
-    std::array<T, 3> m_rotationAxis = { 0, 0, 1 };
-    T m_rotationRadius = 1000;
-    T m_maxPhotonEnergy = 1;
 };
 
 template <Floating T = double>
@@ -982,13 +944,13 @@ protected:
             std::transform(std::execution::par_unseq, specterA.cbegin(), specterA.cend(), specterA.begin(), [=](auto i) { return i / sumA; });
             std::transform(std::execution::par_unseq, specterB.cbegin(), specterB.cend(), specterB.begin(), [=](auto i) { return i / sumB; });
 
-            m_tubeAweight = weightA * T { 2.0 } / (weightA + weightB);
-            m_tubeBweight = weightB * T { 2.0 } / (weightA + weightB);
+            m_tubeAweight = weightA * T { 2 } / (weightA + weightB);
+            m_tubeBweight = weightB * T { 2 } / (weightA + weightB);
 
             this->m_specterDistribution = std::make_shared<SpecterDistribution<T>>(specterA, energyA);
             m_specterDistributionB = std::make_shared<SpecterDistribution<T>>(specterB, energyB);
 
-            const auto heel_span_angle = std::atan(this->m_collimation * T { 0.5 } / this->m_sdd) * T { 2.0 };
+            const auto heel_span_angle = std::atan(this->m_collimation * T { 0.5 } / this->m_sdd) * T { 2 };
             this->m_heelFilter = std::make_shared<HeelFilter<T>>(this->m_tube, heel_span_angle);
             m_heelFilterB = std::make_shared<HeelFilter<T>>(m_tubeB, heel_span_angle);
 
@@ -1025,7 +987,7 @@ public:
     Exposure<T> getExposure(std::uint64_t exposureIndex) const override
     {
         //calculating position
-        std::array<T, 3> pos = { 0, -this->m_sdd / T { 2.0 }, 0 };
+        std::array<T, 3> pos = { 0, -this->m_sdd / T { 2 }, 0 };
 
         constexpr T PI_2 = 2 * PI_VAL<T>();
 
@@ -1050,11 +1012,11 @@ public:
             pos[i] += this->m_position[i];
         }
         const std::array<T, 2> collimationAngles = {
-            std::atan(this->m_fov / this->m_sdd) * T { 2.0 },
-            std::atan(this->m_collimation / this->m_sdd) * T { 2.0 }
+            std::atan(this->m_fov / this->m_sdd) * T { 2 },
+            std::atan(this->m_collimation / this->m_sdd) * T { 2 }
         };
 
-        T weight { 1.0 };
+        T weight { 1 };
         if (this->m_aecFilter)
             weight *= this->m_aecFilter->sampleIntensityWeight(pos);
         if (this->m_useXCareFilter)
@@ -1444,8 +1406,9 @@ T CTSource<T>::ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar)
 
     sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
     std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
-    if (statCounter < 1)
+    if (statCounter < 1) {
         statCounter = 1;
+    }
 
     CTDIPhantom<T> world(sourceCopy.ctdiPhantomDiameter());
 
