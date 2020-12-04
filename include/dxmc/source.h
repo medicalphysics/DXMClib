@@ -631,10 +631,14 @@ private:
 //forward decl
 template <Floating T>
 class CTSpiralSource;
-
-//forward decl
 template <Floating T>
 class CTSpiralDualSource;
+template <Floating T>
+class CTAxialDualSource;
+template <Floating T>
+class CTAxialSource;
+
+
 
 template <Floating T = double>
 class CTSource : public Source<T> {
