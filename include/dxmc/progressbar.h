@@ -47,13 +47,15 @@ public:
         Z };
     ProgressBar() {};
     ProgressBar(std::uint64_t totalExposures) { setTotalExposures(totalExposures); }
-    void setTotalExposures(std::uint64_t totalExposures, const std::string& message = "")
+    void setTotalExposures(std::uint64_t totalExposures)
     {
         m_totalExposures = totalExposures;
         m_currentExposures = 0;
-        m_message = message;
         m_startTime = std::chrono::system_clock::now();
     } //not thread safe
+
+    void setPrefixMessage(const std::string& msg) { m_message = msg; } // not threadsafe
+
     void exposureCompleted() // threadsafe
     {
         m_currentExposures++;

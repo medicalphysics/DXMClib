@@ -35,21 +35,21 @@ namespace vectormath {
     concept Index = std::is_integral_v<T>&& std::is_same<bool, T>::value == false;
 
     template <Floating T>
-    inline T lenght_sqr(T vec[3])
+    inline T lenght_sqr(T vec[3]) noexcept 
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
         return lsqr;
     }
 
     template <Floating T>
-    inline T lenght(T vec[3])
+    inline T lenght(T vec[3]) noexcept 
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
         return std::sqrt(lsqr);
     }
 
     template <Floating T>
-    inline void normalize(T vec[3])
+    inline void normalize(T vec[3]) noexcept 
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
         constexpr T one { 1 };
@@ -60,20 +60,20 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline T dot(const T v1[3], const T v2[3])
+    inline T dot(const T v1[3], const T v2[3]) noexcept 
     {
         return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
     }
 
     template <Floating T>
-    inline void cross(const T v1[3], const T v2[3], T res[3])
+    inline void cross(const T v1[3], const T v2[3], T res[3]) noexcept 
     {
         res[0] = v1[1] * v2[2] - v1[2] * v2[1];
         res[1] = v1[2] * v2[0] - v1[0] * v2[2];
         res[2] = v1[0] * v2[1] - v1[1] * v2[0];
     }
     template <Floating T>
-    inline void cross(const T v1[6], T res[3])
+    inline void cross(const T v1[6], T res[3]) noexcept 
     {
         res[0] = v1[1] * v1[5] - v1[2] * v1[4];
         res[1] = v1[2] * v1[3] - v1[0] * v1[5];
@@ -81,7 +81,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void rotate(T vec[3], const T axis[3], const T angle)
+    inline void rotate(T vec[3], const T axis[3], const T angle) noexcept 
     {
         const T sang = std::sin(angle);
         const T cang = std::cos(angle);
@@ -99,7 +99,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void projectToPlane(T vec[3], const T planeNormal[3])
+    inline void projectToPlane(T vec[3], const T planeNormal[3]) noexcept 
     {
         const T d = dot(vec, planeNormal);
         for (std::size_t i = 0; i < 3; ++i)
@@ -107,7 +107,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline T angleBetween(const T vec1[3], const T vec2[3])
+    inline T angleBetween(const T vec1[3], const T vec2[3]) noexcept 
     {
         // Herons formula for numeric stable angle computation
         // Do not edit parenthesis and such
@@ -124,7 +124,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3])
+    inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3]) noexcept 
     {
         normalize(vec1);
         normalize(vec2);
@@ -136,7 +136,7 @@ namespace vectormath {
     }
 
     template <Index U, Floating T>
-    inline U argmin3(const T vec[3])
+    inline U argmin3(const T vec[3]) noexcept 
     {
         const T x = std::abs(vec[0]);
         const T y = std::abs(vec[1]);
@@ -145,7 +145,7 @@ namespace vectormath {
     }
 
     template <Index U, Floating T>
-    inline U argmax3(const T vec[3])
+    inline U argmax3(const T vec[3]) noexcept 
     {
         const T x = std::abs(vec[0]);
         const T y = std::abs(vec[1]);
@@ -154,14 +154,14 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3])
+    inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3]) noexcept 
     {
         newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
         newVector[1] = b1[1] * vector[0] + b2[1] * vector[1] + b3[1] * vector[2];
         newVector[2] = b1[2] * vector[0] + b2[2] * vector[1] + b3[2] * vector[2];
     }
     template <Floating T>
-    inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], T vector[3])
+    inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], T vector[3]) noexcept 
     {
         T newVector[3];
         newVector[0] = b1[0] * vector[0] + b2[0] * vector[1] + b3[0] * vector[2];
@@ -173,7 +173,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3])
+    inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3]) noexcept 
     {
         newVector[0] = b1[0] * vector[0] + b1[1] * vector[1] + b1[2] * vector[2];
         newVector[1] = b2[0] * vector[0] + b2[1] * vector[1] + b2[2] * vector[2];
@@ -181,7 +181,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], T vector[3])
+    inline void changeBasisInverse(const T b1[3], const T b2[3], const T b3[3], T vector[3]) noexcept 
     {
         T newVector[3];
         newVector[0] = b1[0] * vector[0] + b1[1] * vector[1] + b1[2] * vector[2];
@@ -193,7 +193,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void peturb(T vec[3], const T theta, const T phi)
+    inline void peturb(T vec[3], const T theta, const T phi) noexcept 
     {
         // rotates a unit vector theta degrees from its current direction
         // phi degrees about a arbitrary axis orthogonal to the direction vector

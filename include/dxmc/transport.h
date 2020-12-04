@@ -71,7 +71,7 @@ public:
         m_idx = m_intervals.begin();
     }
 
-    std::optional<std::uint64_t> getJob()
+    std::optional<std::uint64_t> getJob() noexcept 
     {
         std::lock_guard lock(m_mutex);
 
@@ -109,7 +109,7 @@ public:
     }
 
     void setNumberOfWorkers(std::uint64_t n) { this->m_nThreads = std::max(n, std::uint64_t { 1 }); }
-    std::size_t numberOfWorkers() { return m_nThreads; }
+    std::size_t numberOfWorkers() const { return m_nThreads; }
     void setLivermoreComptonModel(bool use) { m_useComptonLivermore = use; }
     bool livermoreComptonModel() const { return m_useComptonLivermore; }
     void setBindingEnergyCorrection(bool use) { m_useBindingEnergyCorrection = use; }
@@ -205,13 +205,13 @@ public:
 
 protected:
     template <typename U>
-    inline void safeValueAdd(U& value, const U addValue) const
+    inline void safeValueAdd(U& value, const U addValue) const noexcept
     {
         std::atomic_ref value_l(value);
         value_l.fetch_add(addValue);
     }
 
-    void rayleightScatterLivermore(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const
+    void rayleightScatterLivermore(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     {
         // theta is scattering angle
         // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -231,8 +231,9 @@ protected:
         const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
     }
+
     template <bool Livermore = true>
-    T comptonScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const
+    T comptonScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -271,19 +272,19 @@ protected:
         return E0 * (T { 1 } - e);
     }
 
-    inline bool particleInsideWorld(const World<T>& world, const std::array<T, 3>& pos) const
+    inline bool particleInsideWorld(const World<T>& world, const std::array<T, 3>& pos) const noexcept 
     {
         const auto& extent = world.matrixExtent();
         return (pos[0] > extent[0] && pos[0] < extent[1]) && (pos[1] > extent[2] && pos[1] < extent[3]) && (pos[2] > extent[4] && pos[2] < extent[5]);
     }
 
-    inline bool particleInsideWorld(const World<T>& world, const Particle<T>& particle) const
+    inline bool particleInsideWorld(const World<T>& world, const Particle<T>& particle) const noexcept 
     {
         const auto& extent = world.matrixExtent();
         return (particle.pos[0] > extent[0] && particle.pos[0] < extent[1]) && (particle.pos[1] > extent[2] && particle.pos[1] < extent[3]) && (particle.pos[2] > extent[4] && particle.pos[2] < extent[5]);
     }
 
-    inline std::array<std::size_t, 3> gridIndexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const
+    inline std::array<std::size_t, 3> gridIndexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const noexcept 
     {
         //assumes particle is inside world
         const auto& wpos = world.matrixExtent();
@@ -296,7 +297,7 @@ protected:
         return arraypos;
     }
 
-    inline std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const
+    inline std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const noexcept 
     {
         //assumes particle is inside world
         const auto& wdim = world.dimensions();
@@ -305,13 +306,13 @@ protected:
         return idx;
     }
 
-    inline std::size_t indexFromPosition(const Particle<T>& particle, const World<T>& world) const
+    inline std::size_t indexFromPosition(const Particle<T>& particle, const World<T>& world) const noexcept 
     {
         return indexFromPosition(particle.pos, world);
     }
 
     template <bool Livermore, bool bindingEnergyCorrection>
-    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
+    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept 
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
@@ -389,7 +390,7 @@ protected:
         return true;
     }
     template <bool Livermore, bool bindingEnergyCorrection>
-    bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const
+    bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept 
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
@@ -464,7 +465,7 @@ protected:
     }
 
     template <bool Livermore, bool bindingEnergyCorrection>
-    void siddonParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const
+    void siddonParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const noexcept 
     {
         const auto densBuffer = world.densityArray()->data();
         const auto matBuffer = world.materialIndexArray()->data();
@@ -576,7 +577,7 @@ protected:
     }
 
     template <bool Livermore, bool bindingEnergyCorrection>
-    void woodcockParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const
+    void woodcockParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const noexcept 
     {
         const auto densityBuffer = world.densityArray()->data();
         const auto materialBuffer = world.materialIndexArray()->data();
@@ -637,7 +638,7 @@ protected:
         }
     }
 
-    bool transportParticleToWorld(const World<T>& world, Particle<T>& particle) const
+    bool transportParticleToWorld(const World<T>& world, Particle<T>& particle) const noexcept 
     //returns false if particle do not intersect world
     {
         const bool isInside = particleInsideWorld(world, particle);
@@ -665,7 +666,7 @@ protected:
         return false;
     }
     template <bool Livermore, bool bindingEnergyCorrection, bool siddonTracking>
-    void transport(const World<T>& world, const Exposure<T>& exposure, RandomState& state, Result<T>& result) const
+    void transport(const World<T>& world, const Exposure<T>& exposure, RandomState& state, Result<T>& result) const noexcept 
     {
         const auto nHistories = exposure.numberOfHistories();
         for (std::size_t i = 0; i < nHistories; ++i) {
@@ -687,7 +688,7 @@ protected:
 
     template <bool Livermore, bool bindingEnergyCorrection, bool siddonTracking>
     void workerRun(const World<T>& w, const Source<T>* source, Result<T>& result,
-        EvenTaskPool& taskpool, ProgressBar<T>* progressbar) const
+        EvenTaskPool& taskpool, ProgressBar<T>* progressbar) const noexcept 
     {
         RandomState state;
         const auto& worldBasis = w.directionCosines();
@@ -720,7 +721,7 @@ protected:
             job.join();
     }
 
-    void computeResultVariance(Result<T>& res) const
+    void computeResultVariance(Result<T>& res) const noexcept 
     {
         //Computing variance by: Var[X] = E[X**2] - E[X]**2
         //and Var[A]+ Var[A] = 2Var[A]
@@ -739,7 +740,7 @@ protected:
         }
     }
 
-    void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1)
+    void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1) noexcept 
     {
         const auto& spacing = world.spacing();
         const auto voxelVolume = spacing[0] * spacing[1] * spacing[2] / T { 1000.0 }; // cm3

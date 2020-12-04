@@ -819,9 +819,69 @@ public:
 
 protected:
     template <typename U>
-    //requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value
-    static T ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar = nullptr);
+    requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar = nullptr)
+    {
+        T meanWeight = 0;
+        for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
+            auto dummy = sourceCopy.getExposure(i);
+            meanWeight += dummy.beamIntensityWeight();
+        }
+        meanWeight /= static_cast<T>(sourceCopy.totalExposures());
 
+        const std::array<T, 6> cosines({ -1, 0, 0, 0, 0, 1 });
+        sourceCopy.setDirectionCosines(cosines);
+        const std::array<T, 3> pos = { 0, 0, 0 };
+        sourceCopy.setPosition(pos);
+        sourceCopy.setScanLenght(sourceCopy.collimation());
+
+        sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
+        std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
+        if (statCounter < 1) {
+            statCounter = 1;
+        }
+
+        CTDIPhantom<T> world(sourceCopy.ctdiPhantomDiameter());
+
+        sourceCopy.updateFromWorld(world);
+
+        const auto histories = sourceCopy.historiesPerExposure();
+        sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
+        sourceCopy.validate();
+
+        if (progressBar) {
+            progressBar->setPlaneNormal(ProgressBar<T>::Axis::Z);
+            progressBar->setPrefixMessage("CTDI calibration ");
+        }
+
+        Transport<T> transport;
+        auto result = transport(world, &sourceCopy, progressBar, false);
+
+        typedef CTDIPhantom<T>::HolePosition holePosition;
+        std::array<CTDIPhantom<T>::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
+
+        std::array<T, 5> measureDose;
+        measureDose.fill(0.0);
+        for (std::size_t i = 0; i < 5; ++i) {
+            const auto& holeIndices = world.holeIndices(position[i]);
+            for (const auto& idx : holeIndices)
+                measureDose[i] += result.dose[idx];
+            measureDose[i] /= static_cast<T>(holeIndices.size());
+        }
+
+        std::array<std::uint32_t, 5> measureTally;
+        measureTally.fill(0);
+        for (std::size_t i = 0; i < 5; ++i) {
+            const auto& holeIndices = world.holeIndices(position[i]);
+            for (const auto& idx : holeIndices)
+                measureTally[i] += result.nEvents[idx];
+        }
+
+        const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4.0 };
+        const T ctdiCent = measureDose[0];
+        const T ctdiw = (ctdiCent + T { 2 } * ctdiPher) / T { 3 } / static_cast<T>(statCounter);
+        const T factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;
+        return factor;
+    }
     virtual void updateSpecterDistribution()
     {
         if (!m_specterValid) {
@@ -1385,71 +1445,4 @@ CTAxialDualSource<T>::CTAxialDualSource(const CTSpiralDualSource<T>& other)
     m_step = this->m_collimation;
     setScanLenght(other.scanLenght());
 }
-
-template <Floating T>
-template <typename U>
-//requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value
-T CTSource<T>::ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar)
-{
-    T meanWeight = 0;
-    for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
-        auto dummy = sourceCopy.getExposure(i);
-        meanWeight += dummy.beamIntensityWeight();
-    }
-    meanWeight /= static_cast<T>(sourceCopy.totalExposures());
-
-    const std::array<T, 6> cosines({ -1, 0, 0, 0, 0, 1 });
-    sourceCopy.setDirectionCosines(cosines);
-    const std::array<T, 3> pos = { 0, 0, 0 };
-    sourceCopy.setPosition(pos);
-    sourceCopy.setScanLenght(sourceCopy.collimation());
-
-    sourceCopy.setUseXCareFilter(false); // we need to disable organ aec for ctdi statistics, this should be ok
-    std::size_t statCounter = CTDIPhantom<T>::ctdiMinHistories() / (sourceCopy.exposuresPerRotatition() * sourceCopy.historiesPerExposure());
-    if (statCounter < 1) {
-        statCounter = 1;
-    }
-
-    CTDIPhantom<T> world(sourceCopy.ctdiPhantomDiameter());
-
-    sourceCopy.updateFromWorld(world);
-
-    const auto histories = sourceCopy.historiesPerExposure();
-    sourceCopy.setHistoriesPerExposure(histories * statCounter); // ensuring enough histories for ctdi measurement
-    sourceCopy.validate();
-
-    if (progressBar) {
-        progressBar->setPlaneNormal(ProgressBar<T>::Axis::Z);
-    }
-
-    Transport<T> transport;
-    auto result = transport(world, &sourceCopy, progressBar, false);
-
-    typedef CTDIPhantom<T>::HolePosition holePosition;
-    std::array<CTDIPhantom<T>::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
-
-    std::array<T, 5> measureDose;
-    measureDose.fill(0.0);
-    for (std::size_t i = 0; i < 5; ++i) {
-        const auto& holeIndices = world.holeIndices(position[i]);
-        for (const auto& idx : holeIndices)
-            measureDose[i] += result.dose[idx];
-        measureDose[i] /= static_cast<T>(holeIndices.size());
-    }
-
-    std::array<std::uint32_t, 5> measureTally;
-    measureTally.fill(0);
-    for (std::size_t i = 0; i < 5; ++i) {
-        const auto& holeIndices = world.holeIndices(position[i]);
-        for (const auto& idx : holeIndices)
-            measureTally[i] += result.nEvents[idx];
-    }
-
-    const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4.0 };
-    const T ctdiCent = measureDose[0];
-    const T ctdiw = (ctdiCent + T { 2 } * ctdiPher) / T { 3 } / static_cast<T>(statCounter);
-    const T factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;
-    return factor;
-}
-
 }

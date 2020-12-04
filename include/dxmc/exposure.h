@@ -265,7 +265,7 @@ public:
     void setNumberOfHistories(std::size_t nHistories) { m_nHistories = nHistories; }
     std::size_t numberOfHistories(void) const { return m_nHistories; }
 
-    void alignToDirectionCosines(const std::array<T, 6>& directionCosines)
+    void alignToDirectionCosines(const std::array<T, 6>& directionCosines) noexcept 
     {
         const T* b1 = directionCosines.data();
         const T* b2 = &b1[3];
@@ -277,7 +277,7 @@ public:
         vectormath::changeBasisInverse(b1, b2, b3, m_beamDirection.data());
     }
 
-    Particle<T> sampleParticle(RandomState& state) const // thread safe
+    Particle<T> sampleParticle(RandomState& state) const noexcept // thread safe
     {
         // particle direction
         const T theta = state.randomUniform(m_collimationAngles[0] , m_collimationAngles[1]);
