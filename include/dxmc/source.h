@@ -638,8 +638,6 @@ class CTAxialDualSource;
 template <Floating T>
 class CTAxialSource;
 
-
-
 template <Floating T = double>
 class CTSource : public Source<T> {
 public:
@@ -823,7 +821,7 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar = nullptr)
+        requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar = nullptr)
     {
         T meanWeight = 0;
         for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
