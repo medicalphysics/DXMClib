@@ -31,6 +31,14 @@ public:
     {
         m_myfile.close();
     }
+    void date()
+    {
+        auto now = std::chrono::system_clock::now();
+        auto in_time_t = std::chrono::system_clock::to_time_t(now);
+        std::stringstream ss;
+        ss << std::put_time(std::localtime(&in_time_t), "%c %Z");
+        m_myfile << "Time: " << ss.str() << std::endl;
+    }
     template <typename T>
     void operator()(const T& msg)
     {
@@ -50,10 +58,6 @@ public:
         std::cout << msg << "\r";
     }
 };
-
-void println(const std::string& msg, bool rewriteLine = false)
-{
-}
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -283,20 +287,6 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
     w.setDimensions(dim);
     w.setSpacing(spacing);
     w.setOrigin(origin);
-
-    /*for (std::size_t i = 1545; i < 1800;++i) {
-        const T pz = i;
-        std::array<T, 3> pos = { 0, 0, pz };
-        auto ind = indexFromPosition(pos, w);
-        std::cout << pz << ": " << static_cast<unsigned int>(idx->data()[ind]) << "\n";
-    }
-
-    for (int i = -390/2; i < 390/2; ++i) {
-        const T px = i;
-        std::array<T, 3> pos = { px, 0, 1550+100 };
-        auto ind = indexFromPosition(pos, w);
-        std::cout << px << ": " << static_cast<unsigned int>(idx->data()[ind]) << "\n";
-    }*/
 
     w.setDensityArray(dens);
     w.addMaterialToMap(air);
@@ -903,7 +893,7 @@ bool TG195Case42AbsorbedEnergy(
     print("TG195 Case 4.2:\n");
     if (forceInteractions)
         print("Forced interaction is ON\n");
-    else 
+    else
         print("Forced interaction is OFF\n");
     IsotropicSource<T> src;
     src.setHistoriesPerExposure(histPerExposure);
@@ -1069,13 +1059,18 @@ bool selectForcedInteractions(bool forced)
     return success;
 }
 
+void printStart()
+{
+    Print print;
+    print("TG195 validation cases\n");
+    print.date();
+}
+
 int main(int argc, char* argv[])
 {
-    //test120Specter();
-    //testAttenuation<float>();
+    printStart();
     auto success = selectForcedInteractions(true);
     success = success && selectForcedInteractions(false);
-    
 
     std::cout << "Press any key to exit";
     std::string dummy;
