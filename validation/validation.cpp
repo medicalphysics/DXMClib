@@ -15,7 +15,7 @@
 using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 2e5;
+constexpr std::size_t histPerExposure = 3e6;
 constexpr std::size_t nExposures = 100;
 
 class Print {
@@ -315,7 +315,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
     else
         print("Forced interaction is OFF\n");
     auto w = generateTG195Case2World<T>(forceInteractions);
-
+    print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
 
     if (specter) {
@@ -573,6 +573,7 @@ bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Number of histories: ", histPerExposure * nExposures, "\n");
     auto w = generateTG195Case3World<T>(forceInteractions);
 
     IsotropicSource<T> src;
@@ -797,6 +798,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
     src.setPosition(-600.0, 0., 0.);
     std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
@@ -895,6 +897,7 @@ bool TG195Case42AbsorbedEnergy(
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
     src.setHistoriesPerExposure(histPerExposure);
     src.setTotalExposures(nExposures);
@@ -1016,14 +1019,7 @@ bool testAttenuation()
     std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
     std::cout << "Monochromatic beam of " << energy << " kev. \n";
     std::cout << "RMS differense [%] from analytical attenuation; naive: " << rms_naive * 100.0 << ", forced: " << rms_force * 100.0 << "\n";
-    /*std::cout << "Data: Position (midtpoint) [mm], naive dose, force dose, naive rel. dose, force rel.dose, analytical rel. attenuation, # Events naive, # Events force\n";
-	for (int i = 0; i < dim[2]; ++i)
-	{
-		std::cout << i * spacing[2] + spacing[2] * .5 << ", " << res_naive.dose[i] << ", " << res_force.dose[i] << ", ";
-		std::cout << res_naive.dose[i]/naive_max << ", " << res_force.dose[i]/force_max << ", ";
-		std::cout << att[i] / att_max << ", " << res_naive.nEvents[i] << ", " << res_force.nEvents[i] << "\n";
-	}
-	*/
+   
     if (rms_naive * 100 < T { 0.2 } && rms_force * 100 < T { 0.2 }) {
         std::cout << "SUCCESS\n\n";
         return true;
