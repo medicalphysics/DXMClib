@@ -39,7 +39,9 @@
 /docs/sphinx/build*
 /docs/sphinx/api*
 /docs/sphinx/Doxyfile
-
+/validation/data/dens.bin
+/validation/data/mat.bin
+/validation/data/mat.txt
 
 # Editors
 /.vs*
