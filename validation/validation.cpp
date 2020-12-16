@@ -748,64 +748,6 @@ World<T> generateTG195Case4World1(bool forceInteractions = false)
 }
 
 template <typename T>
-World<T> generateTG195Case4World2(bool forceInteractions = false)
-{
-    const std::array<std::size_t, 3> dim = { 1201, 1201, 60 };
-    const std::array<T, 3> spacing = { 1, 1, 50 };
-    const auto size = std::accumulate(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
-
-    Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
-    air.setStandardDensity(0.001205);
-    Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689");
-    pmma.setStandardDensity(1.19);
-
-    auto mat = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-    auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
-    auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-    //generate cylindar
-    auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 320 } * T { 0.5 });
-    auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
-    auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
-    for (std::size_t z = 0; z < dim[2]; ++z) {
-        const T zpos = z * spacing[2] - (spacing[2] * dim[2]) / 2;
-        for (const auto i : circ_ind) {
-            const auto ind = z * dim[0] * dim[1] + i;
-            mat->data()[ind] = static_cast<std::uint8_t>(1);
-            dens->data()[ind] = pmma.standardDensity();
-        }
-        if (betw(zpos + spacing[2] / 2, -50, 50)) {
-            const auto offset = z * dim[0] * dim[1];
-            for (const auto i : pmma1_ind) {
-                mat->data()[offset + i] = static_cast<std::uint8_t>(2);
-            }
-            for (const auto i : pmma2_ind) {
-                mat->data()[offset + i] = static_cast<std::uint8_t>(3);
-            }
-        }
-    }
-
-    World<T> w;
-    w.setSpacing(spacing);
-    w.setDimensions(dim);
-    w.setDensityArray(dens);
-    w.setMaterialIndexArray(mat);
-    w.setMeasurementMapArray(meas);
-    w.addMaterialToMap(air);
-    w.addMaterialToMap(pmma);
-    for (int i = 0; i < 2; ++i)
-        w.addMaterialToMap(pmma);
-
-    if (forceInteractions) {
-        auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-        std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
-        w.setMeasurementMapArray(meas);
-    }
-
-    w.makeValid();
-    return w;
-}
-
-template <typename T>
 bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
     Print print;
@@ -883,6 +825,64 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
         print(i + 1, ", ", voi_ev[i], ", ", voi_nevent[i], ", ", sim_ev[i], ", ", voi_ev[i] - sim_ev[i], ", ", (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100, "\n");
     print("\n");
     return true;
+}
+
+template <typename T>
+World<T> generateTG195Case4World2(bool forceInteractions = false)
+{
+    const std::array<std::size_t, 3> dim = { 1201, 1201, 60 };
+    const std::array<T, 3> spacing = { 1, 1, 50 };
+    const auto size = std::accumulate(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+
+    Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
+    air.setStandardDensity(0.001205);
+    Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689");
+    pmma.setStandardDensity(1.19);
+
+    auto mat = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+    auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
+    auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+    //generate cylindar
+    auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 320 } * T { 0.5 });
+    auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
+    auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
+    for (std::size_t z = 0; z < dim[2]; ++z) {
+        const T zpos = z * spacing[2] - (spacing[2] * dim[2]) / 2;
+        for (const auto i : circ_ind) {
+            const auto ind = z * dim[0] * dim[1] + i;
+            mat->data()[ind] = static_cast<std::uint8_t>(1);
+            dens->data()[ind] = pmma.standardDensity();
+        }
+        if (betw(zpos + spacing[2] / 2, -50, 50)) {
+            const auto offset = z * dim[0] * dim[1];
+            for (const auto i : pmma1_ind) {
+                mat->data()[offset + i] = static_cast<std::uint8_t>(2);
+            }
+            for (const auto i : pmma2_ind) {
+                mat->data()[offset + i] = static_cast<std::uint8_t>(3);
+            }
+        }
+    }
+
+    World<T> w;
+    w.setSpacing(spacing);
+    w.setDimensions(dim);
+    w.setDensityArray(dens);
+    w.setMaterialIndexArray(mat);
+    w.setMeasurementMapArray(meas);
+    w.addMaterialToMap(air);
+    w.addMaterialToMap(pmma);
+    for (int i = 0; i < 2; ++i)
+        w.addMaterialToMap(pmma);
+
+    if (forceInteractions) {
+        auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+        std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
+        w.setMeasurementMapArray(meas);
+    }
+
+    w.makeValid();
+    return w;
 }
 
 template <typename T>
@@ -975,6 +975,120 @@ bool TG195Case42AbsorbedEnergy(
 }
 
 template <typename T>
+std::shared_ptr<std::vector<T>> readBinaryArray(const std::string& path, std::size_t array_size)
+{
+    std::ifstream ifs(path, std::ios::binary | std::ios::ate);
+    if (!ifs) {
+        return nullptr;
+    }
+
+    auto end = ifs.tellg();
+    ifs.seekg(0, std::ios::beg);
+    auto buffer_size = std::size_t(end - ifs.tellg());
+    auto dim_size = array_size * sizeof(T);
+    if (dim_size != buffer_size) {
+        return nullptr;
+    }
+
+    if (buffer_size == 0) { // avoid undefined behavior
+        return nullptr;
+    }
+
+    auto buffer = std::make_shared<std::vector<T>>(array_size);
+
+    if (!ifs.read(reinterpret_cast<char*>(buffer->data()), buffer_size)) {
+        return nullptr;
+    }
+    return buffer;
+}
+
+template <typename T>
+World<T> generateTG195Case5World(bool forceInteractions = false)
+{
+    const std::array<std::size_t, 3> dim = { 320, 500, 260 };
+    const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+    const std::array<T, 3> spacing = { 1, 1, 1 };
+
+    World<T> w;
+    w.setDimensions(dim);
+    w.setSpacing(spacing);
+
+    //Materials from case TG195 5 converted from mass density to number density
+    std::vector<Material> materials(20);
+    materials[0] = Material("C0.148924N1058.1304679999998O370.8496Ar51.231038", "Air");
+    materials[1] = Material("H7.878C777.047N117.684O305.6", "Cushion Foam");
+    materials[2] = Material("C1201.0", "Carbon fiber");
+    materials[3] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Soft tissue");
+    materials[4] = Material("H10.504000000000001C166.939N40.629O1148.8Na2.3000000000000003P6.196000000000001S6.414000000000001Cl7.0920000000000005K11.73", "Heart");
+    materials[5] = Material("H10.403C126.105N43.431O1198.4Na4.6000000000000005P6.196000000000001S9.621Cl10.638K7.82", "Lung");
+    materials[6] = Material("H10.302C166.939N42.03O1145.6Na4.6000000000000005P9.294S9.621Cl7.0920000000000005K11.73", "Liver");
+    materials[7] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Gallbladder");
+    materials[8] = Material("H10.403C135.713N44.832O1185.6Na2.3000000000000003P9.294S6.414000000000001Cl7.0920000000000005K11.73", "Spleen");
+    materials[9] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Stomach");
+    materials[10] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Large Intestine");
+    materials[11] = Material("H10.706C202.96899999999997N30.822000000000003O1110.4Na4.6000000000000005P6.196000000000001S3.2070000000000003Cl7.0920000000000005K7.82", "Pancreas");
+    materials[12] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Adrenal");
+    materials[13] = Material("H10.504000000000001C142.919N33.623999999999995O1192.0Na4.6000000000000005P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91I12.691", "Thyroid");
+    materials[14] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Thymus");
+    materials[15] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Small Intestine");
+    materials[16] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Esophagus");
+    materials[17] = Material("H10.1C245.004N58.842O1032.0Na4.6000000000000005P3.0980000000000003S6.414000000000001Cl10.638K3.91", "Skin");
+    materials[18] = Material("H11.312C743.419N23.817O401.6P0.7745000000000001S0.8017500000000001K0.9775Ca1.002", "Breast");
+    materials[19] = Material("H3.4339999999999997C186.155N58.842O696.0Na2.3000000000000003Mg4.864000000000001P319.09400000000005S9.621Ca901.8", "Cortical Bone");
+
+    materials[0].setStandardDensity(0.001205);
+    materials[1].setStandardDensity(0.075);
+    materials[2].setStandardDensity(1.2);
+    materials[3].setStandardDensity(1.03);
+    materials[4].setStandardDensity(1.05);
+    materials[5].setStandardDensity(0.26);
+    materials[6].setStandardDensity(1.06);
+    materials[7].setStandardDensity(1.03);
+    materials[8].setStandardDensity(1.06);
+    materials[9].setStandardDensity(1.03);
+    materials[10].setStandardDensity(1.03);
+    materials[11].setStandardDensity(1.04);
+    materials[12].setStandardDensity(1.03);
+    materials[13].setStandardDensity(1.05);
+    materials[14].setStandardDensity(1.03);
+    materials[15].setStandardDensity(1.03);
+    materials[16].setStandardDensity(1.03);
+    materials[17].setStandardDensity(1.09);
+    materials[18].setStandardDensity(0.93);
+    materials[19].setStandardDensity(1.92);
+
+    auto matArray = readBinaryArray<std::uint8_t>("data/mat.bin", size);
+    if (!matArray) {
+        return w;
+    }
+    auto densArray = std::make_shared<std::vector<T>>(size);
+    std::transform(std::execution::par_unseq, matArray->cbegin(), matArray->cend(), densArray->begin(), 
+        [&](auto m) -> T { return static_cast<T>(materials[m].standardDensity()); });
+
+    w.setMaterialIndexArray(matArray);
+    w.setDensityArray(densArray);
+    for (const auto& m : materials) {
+        w.addMaterialToMap(m);
+    }
+    w.makeValid();
+    return w;
+}
+
+template <typename T>
+bool TG195Case5AbsorbedEnergy(
+    bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+{
+    Print print;
+    print("TG195 Case 5:\n");
+    auto world = generateTG195Case5World<T>(forceInteractions);
+    if (!world.isValid()) {
+        print("ERROR reading voxel file. Exiting\n");
+        return false;
+    }
+    return true;
+}
+
+template <typename T>
 bool testAttenuation()
 {
 
@@ -1035,7 +1149,7 @@ bool testAttenuation()
     std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
     std::cout << "Monochromatic beam of " << energy << " kev. \n";
     std::cout << "RMS differense [%] from analytical attenuation; naive: " << rms_naive * 100.0 << ", forced: " << rms_force * 100.0 << "\n";
-   
+
     if (rms_naive * 100 < T { 0.2 } && rms_force * 100 < T { 0.2 }) {
         std::cout << "SUCCESS\n\n";
         return true;
@@ -1049,6 +1163,12 @@ bool selectForcedInteractions(bool forced)
     auto success = true;
 
     // call  by (use specter, wide collimation, force interactions)
+
+    success = success && TG195Case5AbsorbedEnergy<float>(false, false, forced);
+    success = success && TG195Case5AbsorbedEnergy<float>(false, true, forced);
+    success = success && TG195Case5AbsorbedEnergy<float>(true, false, forced);
+    success = success && TG195Case5AbsorbedEnergy<float>(true, true, forced);
+
     success = success && TG195Case2AbsorbedEnergy<float>(false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(false, true, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(true, false, forced);

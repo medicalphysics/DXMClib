@@ -48,3 +48,4 @@
 /.vscode
 
 /thirdparty/out*
+/validation/data/case5world.bin
