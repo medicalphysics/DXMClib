@@ -16,6 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2020 Erlend Andersen
 */
 
+#include "dxmc/constants.h"
 #include "dxmc/source.h"
 #include "dxmc/transport.h"
 #include "dxmc/tube.h"
@@ -31,8 +32,8 @@ Copyright 2020 Erlend Andersen
 using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 3e6;
-constexpr std::size_t nExposures = 100;
+constexpr std::size_t histPerExposure = 10e6;
+constexpr std::size_t nExposures = 64;
 
 class Print {
 private:
@@ -233,17 +234,23 @@ auto runDispatcher(Transport<T> transport, const World<T> world, Source<T>* src)
 }
 
 template <Floating T = double>
-std::vector<T> getEVperHistory(const Result<T>& res, std::shared_ptr<std::vector<T>> density, const std::array<T, 3>& spacing, std::uint64_t histories)
+std::vector<T> getEVperHistory(const std::vector<T>& dose, std::shared_ptr<std::vector<T>> density, const std::array<T, 3>& spacing, std::uint64_t histories)
 {
-    std::vector<T> ev(res.dose.size());
+    std::vector<T> ev(dose.size());
     const T voxelVolume = spacing[0] * spacing[1] * spacing[2] * T { 0.001 }; // mm->cm
     const T nHist = static_cast<T>(histories);
 
-    std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), ev.begin(), [=](auto e, auto d) -> T {
+    std::transform(std::execution::par_unseq, dose.cbegin(), dose.cend(), density->cbegin(), ev.begin(), [=](auto e, auto d) -> T {
         const T voxelMass = d * voxelVolume * T { 0.001 }; // kg
         return 1000 * e * voxelMass / nHist; // returns eV/hist
     });
     return ev;
+}
+
+template <Floating T = double>
+std::vector<T> getEVperHistory(const Result<T>& res, std::shared_ptr<std::vector<T>> density, const std::array<T, 3>& spacing, std::uint64_t histories)
+{
+    return getEVperHistory(res.dose, density, spacing, histories);
 }
 
 template <typename T>
@@ -975,6 +982,17 @@ bool TG195Case42AbsorbedEnergy(
 }
 
 template <typename T>
+void writeBinaryArray(const std::string& path, T* buffer, std::array<std::size_t, 3> dim)
+{
+    std::ofstream ofs(path, std::ios::binary | std::ios::trunc);
+    if (!ofs) {
+        return;
+    }
+    auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>()) * sizeof(T);
+    ofs.write(reinterpret_cast<char*>(buffer), size);
+}
+
+template <typename T>
 std::shared_ptr<std::vector<T>> readBinaryArray(const std::string& path, std::size_t array_size)
 {
     std::ifstream ifs(path, std::ios::binary | std::ios::ate);
@@ -1003,9 +1021,9 @@ std::shared_ptr<std::vector<T>> readBinaryArray(const std::string& path, std::si
 }
 
 template <typename T>
-World<T> generateTG195Case5World(bool forceInteractions = false)
+World<T> generateTG195Case5World()
 {
-    const std::array<std::size_t, 3> dim = { 320, 500, 260 };
+    const std::array<std::size_t, 3> dim = { 500, 320, 260 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
     const std::array<T, 3> spacing = { 1, 1, 1 };
 
@@ -1057,12 +1075,12 @@ World<T> generateTG195Case5World(bool forceInteractions = false)
     materials[18].setStandardDensity(0.93);
     materials[19].setStandardDensity(1.92);
 
-    auto matArray = readBinaryArray<std::uint8_t>("data/mat.bin", size);
+    auto matArray = readBinaryArray<std::uint8_t>("case5world.bin", size);
     if (!matArray) {
         return w;
     }
     auto densArray = std::make_shared<std::vector<T>>(size);
-    std::transform(std::execution::par_unseq, matArray->cbegin(), matArray->cend(), densArray->begin(), 
+    std::transform(std::execution::par_unseq, matArray->cbegin(), matArray->cend(), densArray->begin(),
         [&](auto m) -> T { return static_cast<T>(materials[m].standardDensity()); });
 
     w.setMaterialIndexArray(matArray);
@@ -1075,16 +1093,167 @@ World<T> generateTG195Case5World(bool forceInteractions = false)
 }
 
 template <typename T>
+struct OrganDose {
+    std::uint8_t ID = 0;
+    T dose_dxmc = 0;
+    T dose_TG = 0;
+};
+
+template <typename T>
 bool TG195Case5AbsorbedEnergy(
-    bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+    bool specter = false)
 {
     Print print;
     print("TG195 Case 5:\n");
-    auto world = generateTG195Case5World<T>(forceInteractions);
+    auto world = generateTG195Case5World<T>();
     if (!world.isValid()) {
         print("ERROR reading voxel file. Exiting\n");
         return false;
     }
+
+    print("Forced interaction is OFF\n");
+    print("Number of histories: ", histPerExposure * nExposures, "\n");
+    IsotropicSource<T> src;
+    src.setHistoriesPerExposure(histPerExposure);
+    src.setTotalExposures(nExposures);
+
+    if (specter) {
+        print("Specter of 120 kV W/Al\n");
+        const auto specter = TG195_120KV<T>();
+        src.setSpecter(specter.second, specter.first);
+    } else {
+        print("Monoenergetic specter of 56.4 kev\n");
+        std::vector<T> s(1, T { 1 }), e(1, T { 56.4 });
+        src.setSpecter(s, e);
+    }
+    print("Collimation: 10 mm:\n");
+    src.setCollimationAngles(std::atan(T { 250 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
+
+    Transport<T> transport;
+
+    std::array<std::string, 17> tg195_organ_names = { "Soft tissue",
+        "Heart",
+        "Lung",
+        "Liver",
+        "Gallbladder",
+        "Spleen",
+        "Stomach",
+        "Large Intestine",
+        "Pancreas",
+        "Adrenal",
+        "Thyroid",
+        "Thymus",
+        "Small Intestine",
+        "Esophagus",
+        "Skin",
+        "Breast",
+        "Cortical Bone" };
+    const std::array<std::uint8_t, tg195_organ_names.size()> tg195_organ_idx = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+
+    const std::array<T, 8> angles = { 0, 45, 90, 135, 180, 225, 270, 315 };
+
+    std::array<std::array<T, tg195_organ_names.size()>, angles.size()> tg195_doses;
+    tg195_doses[0] = { 11574.28, 3086.42, 1301.17, 679.47, 6.37, 17.57, 134.40, 16.73, 8.79, 0.15, 1.74, 44.22, 10.72, 36.90, 456.36, 21.68, 8761.23 };
+    tg195_doses[1] = { 11761.25, 1932.04, 1045.65, 683.63, 6.33, 9.91, 82.98, 9.22, 6.18, 0.13, 1.47, 36.39, 7.64, 33.46, 437.27, 17.97, 7669.28 };
+    tg195_doses[2] = { 9975.20, 786.73, 679.42, 495.34, 3.94, 6.27, 36.21, 3.15, 3.15, 0.10, 1.06, 16.90, 3.38, 23.03, 285.87, 6.80, 5611.52 };
+    tg195_doses[3] = { 9581.67, 765.35, 755.19, 421.94, 2.62, 18.05, 58.05, 5.07, 4.38, 0.15, 1.27, 12.03, 3.61, 26.36, 189.37, 2.07, 8510.07 };
+    tg195_doses[4] = { 9704.91, 1265.14, 1085.65, 411.34, 2.52, 33.79, 109.31, 10.18, 7.15, 0.18, 1.57, 11.22, 5.51, 32.11, 129.81, 2.82, 11003.75 };
+    tg195_doses[5] = { 9487.98, 1202.94, 721.26, 251.05, 1.52, 37.44, 117.36, 12.02, 7.31, 0.16, 1.38, 8.95, 5.48, 31.53, 195.79, 2.00, 8367.44 };
+    tg195_doses[6] = { 9970.40, 1625.79, 636.47, 168.17, 1.25, 33.40, 136.69, 17.88, 7.68, 0.12, 1.26, 11.26, 7.29, 24.39, 298.96, 7.18, 5876.97 };
+    tg195_doses[7] = { 11649.90, 2725.15, 916.40, 409.55, 3.99, 26.54, 155.30, 20.68, 9.13, 0.13, 1.55, 28.93, 10.49, 30.43, 455.47, 18.39, 7391.31 };
+
+    print("Discreet angles:\n");
+    for (std::size_t i = 0; i < angles.size(); ++i) {
+        const auto angle = angles[i];
+
+        std::array<T, 3> pos = { 0, -600, 0 };
+        std::array<T, 3> rot_axis = { 0, 0, 1 };
+        std::array<T, 6> cos = { -1, 0, 0, 0, 0, 1 };
+
+        print("Angle: ", angle, " degrees\n");
+        const auto rad = angle * dxmc::DEG_TO_RAD<T>();
+
+        dxmc::vectormath::rotate(pos.data(), rot_axis.data(), rad);
+        dxmc::vectormath::rotate(cos.data(), rot_axis.data(), rad);
+        dxmc::vectormath::rotate(&cos[3], rot_axis.data(), rad);
+
+        std::array<T, 3> beam_dir = { 0, 0, 0 };
+        dxmc::vectormath::cross(cos.data(), beam_dir.data());
+
+        src.setPosition(pos);
+        src.setDirectionCosines(cos);
+
+        auto res = runDispatcher(transport, world, &src);
+        const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
+
+        const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
+        print("Simulation time ", simtime, " seconds");
+        print(" with ", simtime / total_hist, " seconds*CPU core per history\n");
+        auto dose = getEVperHistory(res, world.densityArray(), world.spacing(), total_hist);
+
+        std::array<T, tg195_organ_names.size()> organ_doses;
+        print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], difference [eV/hist], difference [%]\n");
+        for (std::size_t j = 0; j < organ_doses.size(); ++j) {
+            const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), dose.cbegin(),
+                T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
+            organ_doses[j] = dose_sum;
+            print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
+            print(organ_doses[j], ", ", tg195_doses[i][j], ", ");
+            const auto diff = organ_doses[j] - tg195_doses[i][j];
+            const auto diff_p = 100 * diff / tg195_doses[i][j];
+            print(diff, ", ", diff_p, "\n");
+        }
+    }
+
+    print("Continuous Distribution of Projection Angle from 0 to 360 deg\n");
+    std::vector<T> dose_cont(world.materialIndexArray()->size(), 0);
+
+    const std::size_t angle_step = 36; //* 2;
+
+    src.setHistoriesPerExposure(histPerExposure / angle_step);
+    for (std::size_t i = 0; i < 360 / angle_step; ++i) {
+        const T angle = i * 360 / angle_step;
+        print("\rRunning angle ", angle, " of 360 in step of ", angle_step, "\r");
+        std::array<T, 3> pos = { 0, -600, 0 };
+        std::array<T, 3> rot_axis = { 0, 0, 1 };
+        std::array<T, 6> cos = { -1, 0, 0, 0, 0, 1 };
+
+        const auto rad = angle * dxmc::DEG_TO_RAD<T>();
+
+        dxmc::vectormath::rotate(pos.data(), rot_axis.data(), rad);
+        dxmc::vectormath::rotate(cos.data(), rot_axis.data(), rad);
+        dxmc::vectormath::rotate(&cos[3], rot_axis.data(), rad);
+
+        std::array<T, 3> beam_dir = { 0, 0, 0 };
+        dxmc::vectormath::cross(cos.data(), beam_dir.data());
+
+        src.setPosition(pos);
+        src.setDirectionCosines(cos);
+
+        auto res = transport(world, &src);
+
+        std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), dose_cont.cbegin(), dose_cont.begin(), std::plus<>());
+    }
+    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure()) * angle_step;
+    auto dose_cont_ev = getEVperHistory(dose_cont, world.densityArray(), world.spacing(), total_hist);
+    dose_cont.clear();
+
+    std::array<T, 17> tg195_organ_doses_cont = { 10410.69, 1670.94, 889.97, 438.66, 3.57, 22.80, 103.46, 11.89, 6.71, 0.14, 1.40, 21.02, 6.75, 29.55, 305.22, 9.88, 7854.65 };
+
+    print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], difference [eV/hist], difference [%]\n");
+    for (std::size_t j = 0; j < tg195_organ_doses_cont.size(); ++j) {
+        const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), dose_cont_ev.cbegin(),
+            T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
+
+        print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
+        print(dose_sum, ", ", tg195_organ_doses_cont[j], ", ");
+        const auto diff = dose_sum - tg195_organ_doses_cont[j];
+        const auto diff_p = 100 * diff / tg195_organ_doses_cont[j];
+        print(diff, ", ", diff_p, "\n");
+    }
+
+    //writeBinaryArray("dose.bin", dose.data(), world.dimensions());
+
     return true;
 }
 
@@ -1164,10 +1333,8 @@ bool selectForcedInteractions(bool forced)
 
     // call  by (use specter, wide collimation, force interactions)
 
-    success = success && TG195Case5AbsorbedEnergy<float>(false, false, forced);
-    success = success && TG195Case5AbsorbedEnergy<float>(false, true, forced);
-    success = success && TG195Case5AbsorbedEnergy<float>(true, false, forced);
-    success = success && TG195Case5AbsorbedEnergy<float>(true, true, forced);
+    success = success && TG195Case5AbsorbedEnergy<float>(true);
+    success = success && TG195Case5AbsorbedEnergy<float>(false);
 
     success = success && TG195Case2AbsorbedEnergy<float>(false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(false, true, forced);
