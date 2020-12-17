@@ -42,6 +42,7 @@ private:
     std::array<T, 6> m_directionCosines = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
     std::array<std::size_t, 3> m_dimensions = { 0L, 0L, 0L };
     std ::array<T, 6> m_matrixExtent { 0, 0, 0, 0, 0, 0 };
+    std ::array<T, 6> m_matrixExtentSafe { 0, 0, 0, 0, 0, 0 };
 
     // m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
     std::shared_ptr<std::vector<T>> m_density = nullptr;
@@ -59,8 +60,10 @@ protected:
             const T upper = m_origin[i] + halfDist;
             // Preventing rounding errors when using extent to determine if a
             // particle is inside the world
-            m_matrixExtent[i * 2] = std::nextafter(lower, upper);
-            m_matrixExtent[i * 2 + 1] = std::nextafter(upper, lower);
+            m_matrixExtentSafe[i * 2] = std::nextafter(lower, upper);
+            m_matrixExtentSafe[i * 2 + 1] = std::nextafter(upper, lower);
+            m_matrixExtent[i * 2] = lower;
+            m_matrixExtent[i * 2 + 1] = upper;
         }
     }
 
@@ -159,6 +162,7 @@ public:
         m_materialMap.clear();
     }
     const std::array<T, 6>& matrixExtent(void) const { return m_matrixExtent; }
+    const std::array<T, 6>& matrixExtentSafe(void) const { return m_matrixExtentSafe; }
 
     void makeValid(void)
     {

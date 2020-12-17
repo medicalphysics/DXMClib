@@ -18,9 +18,9 @@ Copyright 2019 Erlend Andersen
 
 #include "xraylib.h"
 
+#include "dxmc/material.h"
 #include "dxmc/source.h"
 #include "dxmc/transport.h"
-#include "dxmc/material.h"
 
 #include <array>
 #include <chrono>
@@ -243,18 +243,18 @@ bool testStepping()
     w.setSpacing(spacing);
 
     std::vector<Material> materials;
-    
+
     const auto air_material = 1;
     //materials.emplace_back(13);
     materials.emplace_back("H2O", "water");
     materials.back().setStandardDensity(1.0);
     materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
     materials.back().setStandardDensity(0.001205);
-    
+
     materials.emplace_back("Polymethyl Methacralate (Lucite, Perspex)");
     materials.emplace_back("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
     materials.back().setStandardDensity(1.19);
-    //materials.emplace_back(13);
+    materials.emplace_back(13);
 
     auto matInd = std::make_shared<std::vector<std::uint8_t>>(w.size());
     auto dens = std::make_shared<std::vector<T>>(w.size());
@@ -283,11 +283,10 @@ bool testStepping()
         const auto part = i * materials.size() / dim[2];
         //fBuf[i] = part == air_material ? 1 : 0;
     }
-
     w.makeValid();
 
     PencilSource<T> pen;
-    pen.setTotalExposures(40);
+    pen.setTotalExposures(4);
     pen.setHistoriesPerExposure(1000000);
     std::array<T, 3> pos = { 0, 0, -(dim[2] * spacing[2]) };
     std::array<T, 6> cos = { 1, 0, 0, 0, 1, 0 };
@@ -296,15 +295,15 @@ bool testStepping()
     pen.setPhotonEnergy(energy);
 
     std::cout << "Energy: " << energy << std::endl;
-    
-    
-    
+
     Transport<T> transport;
-    transport.setSiddonTracking(false);
+    transport.setBindingEnergyCorrection(true);
+    transport.setLivermoreComptonModel(false);
+
+    transport.setSiddonTracking(true);
     auto res_sidd = transport(w, &pen);
     std::cout << "Simulation time Siddon: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_sidd.simulationTime).count() << std::endl;
     transport.setSiddonTracking(false);
-    pen.setTotalExposures(pen.totalExposures()*100);
     auto res_wood = transport(w, &pen);
     std::cout << "Simulation time Woodcock: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_wood.simulationTime).count() << std::endl;
 
@@ -312,11 +311,11 @@ bool testStepping()
     auto maxAtt = att.maxMassTotalAttenuation(energy);
     std::vector<T> attm;
     for (const auto& m : materials) {
-        attm.push_back(m.getTotalAttenuation(energy)*m.standardDensity());
+        attm.push_back(m.getTotalAttenuation(energy) * m.standardDensity());
     }
 
     std::vector<T> ana(dim[2]);
-    
+
     ana[0] = 1;
     const auto step = spacing[2] / 10;
     for (std::size_t i = 1; i < dim[2]; ++i) {
@@ -331,7 +330,7 @@ bool testStepping()
     std::cout << "Position, kerma, sim_wood, sim_siddon,  nevents_wood, nevents_siddon, material\n";
     for (std::size_t i = 0; i < dim[2]; ++i) {
         std::cout << i * spacing[2] << ", ";
-        std::cout << kerma[i]/kerma[0] << ", ";
+        std::cout << kerma[i] / kerma[0] << ", ";
         std::cout << res_wood.dose[i] / res_wood.dose[0] << ", ";
         std::cout << res_sidd.dose[i] / res_sidd.dose[0] << ", ";
         std::cout << res_wood.nEvents[i] << ", ";

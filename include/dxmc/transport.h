@@ -280,7 +280,7 @@ protected:
 
     inline bool particleInsideWorld(const World<T>& world, const Particle<T>& particle) const noexcept
     {
-        const auto& extent = world.matrixExtent();
+        const auto& extent = world.matrixExtentSafe();
         return (particle.pos[0] > extent[0] && particle.pos[0] < extent[1]) && (particle.pos[1] > extent[2] && particle.pos[1] < extent[3]) && (particle.pos[2] > extent[4] && particle.pos[2] < extent[5]);
     }
 
@@ -461,6 +461,7 @@ protected:
         {
             rayleightScatterLivermore(p, matIdx, state);
         }
+
         return true;
     }
 
@@ -496,21 +497,18 @@ protected:
         }
 
         auto alpha_ind = vectormath::argmin3<std::size_t>(alpha.data());
-        T interactionLevel = state.randomUniform<T>();
-        T accumulator { 1 };
+
         auto continueSampling = true;
         auto energyChanged = false;
         do {
-            //update accumulator
             const auto arrIdx = index[0] + index[1] * dim[0] + index[2] * dim[0] * dim[1];
             const auto matIdx = matBuffer[arrIdx];
-            const auto attenuation = m_attenuationLut.totalAttenuation(matIdx, p.energy);
-            const auto attenuationStepProb = std::exp(-alpha[alpha_ind] * attenuation * densBuffer[arrIdx] / T { 10 }); // cm->mm
-            accumulator *= attenuationStepProb;
-
+            const auto attenuation = m_attenuationLut.totalAttenuation(matIdx, p.energy) * densBuffer[arrIdx] * T { 0.1 }; // cm->mm
+            const auto interactionProb = std::exp(-alpha[alpha_ind] * attenuation);
+            /* Denne virker ikke som den skal, to photo events kan potensielt skje.
             if (measBuffer[arrIdx]) {
                 const auto attPhoto = m_attenuationLut.photoelectricAttenuation(matIdx, p.energy);
-                const auto weightCorrection = (T { 1 } - attenuationStepProb) * attPhoto / attenuation;
+                const auto weightCorrection = (1 - interactionProb) * attPhoto * densBuffer[arrIdx] * T { 0.1 } / attenuation;
                 if constexpr (bindingEnergyCorrection) {
                     const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
                     const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
@@ -527,26 +525,20 @@ protected:
                 }
                 p.weight *= (T { 1 } - weightCorrection); // to prevent bias
             }
-            //calculate current pos
-            for (std::size_t i = 0; i < 3; ++i) {
-                p.pos[i] += p.dir[i] * alpha[alpha_ind];
-                alpha[i] -= alpha[alpha_ind];
-            }
+            */
 
-            if (accumulator < interactionLevel) //event
+            const auto r1 = state.randomUniform<T>();
+            if (r1 > interactionProb) //event
             {
-                //trackback particle position
-                const auto step = -std::log(interactionLevel - accumulator) / (m_attenuationLut.totalAttenuation(matBuffer[arrIdx], p.energy) * densBuffer[arrIdx]);
+                const auto step = -std::log(r1) / attenuation;
                 for (std::size_t i = 0; i < 3; ++i) {
-                    p.pos[i] -= p.dir[i] * step;
+                    p.pos[i] += p.dir[i] * step;
                 }
 
                 continueSampling = computeInteractions<Livermore, bindingEnergyCorrection>(p, matBuffer[arrIdx], result, arrIdx, state, energyChanged);
                 if (continueSampling) {
 
                     //new steplenght
-                    interactionLevel = state.randomUniform<T>();
-                    accumulator = 1;
                     direction = {
                         p.dir[0] < 0 ? -1 : 1,
                         p.dir[1] < 0 ? -1 : 1,
@@ -564,16 +556,26 @@ protected:
                     alpha_ind = vectormath::argmin3<std::size_t>(alpha.data());
                 }
             } else {
+                for (std::size_t i = 0; i < 3; ++i) {
+                    p.pos[i] += p.dir[i] * alpha[alpha_ind];
+                }
+                for (std::size_t i = 0; i < 3; ++i) {
+                    alpha[i] -= alpha[alpha_ind];
+                }
 
                 //update next voxel
                 index[alpha_ind] += direction[alpha_ind];
+                if (!(index[alpha_ind] < dim[alpha_ind])) {
+                    //we have reach the end of the world, note index is unsigned type and will overflow
+                    return;
+                }
+
                 //update next alpha
                 const auto nextBorder = direction[alpha_ind] < 0 ? index[alpha_ind] : index[alpha_ind] + 1;
                 alpha[alpha_ind] = (offset[alpha_ind] + nextBorder * spacing[alpha_ind] - p.pos[alpha_ind]) / p.dir[alpha_ind];
                 alpha_ind = vectormath::argmin3<std::size_t>(alpha.data());
             }
-
-        } while (particleInsideWorld(world, p) && continueSampling);
+        } while (continueSampling);
     }
 
     template <bool Livermore, bool bindingEnergyCorrection>
