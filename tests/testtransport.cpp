@@ -22,6 +22,8 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/source.h"
 #include "dxmc/transport.h"
 
+#include "testutils.h"
+
 #include <array>
 #include <chrono>
 #include <functional>
@@ -31,19 +33,6 @@ Copyright 2019 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr double ERRF = 1e-6;
-
-template <Floating T>
-bool isEqual(T f1, T f2)
-{
-    return std::abs(f1 - f2) < ERRF;
-}
-
-template <typename T>
-bool isEqual(T f1, T f2)
-{
-    return f1 == f2;
-}
 
 template <typename T>
 class Test : public Transport<T> {
@@ -52,12 +41,12 @@ public:
         : Transport<T>()
     {
     }
-    bool testCompton(T energy, std::size_t Z)
+    bool testCompton(const T energy, const Material& mat)
     {
 
         auto& att = this->attenuationLut();
         std::vector<Material> materials;
-        materials.emplace_back(Material(Z));
+        materials.emplace_back(mat);
         att.generate(materials, T { 1 }, T { 60 });
 
         std::array<T, 3> pos = { 0, 0, 0 };
@@ -78,13 +67,11 @@ public:
         RandomState state;
         std::size_t nSamp = 1e6;
         for (std::size_t i = 0; i < nSamp; ++i) {
-            p.energy = energy;
-            //comptonScatterLivermore(p, 0, state);
+            p.energy = energy;           
             this->comptonScatter<true>(p, 0, state);
             const T e = p.energy / energy;
             auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
             auto idx = std::distance(earr.cbegin(), it);
-
             ++res[idx - 1];
         }
 
@@ -102,6 +89,11 @@ public:
             const T gmax = 1 / emin + emin;
             const T p = (1 / e + e - sin2) / gmax;
 
+
+
+
+
+
             meas[i] = p;
 
             const auto q = att.momentumTransferFromCos(energy, cosAngle);
@@ -109,35 +101,23 @@ public:
             meas[i] *= scatterFactor;
         }
 
+
+
+
+
         const auto meas_sum = std::accumulate(meas.cbegin(), meas.cend(), T { 0 });
         const auto res_sum = std::accumulate(res.cbegin(), res.cend(), T { 0 });
         std::transform(meas.cbegin(), meas.cend(), meas.begin(), [=](auto v) { return v / meas_sum; });
         std::transform(res.cbegin(), res.cend(), res.begin(), [=](auto v) { return v / res_sum; });
 
         std::cout << "Compton differential scattering cross section\n";
-        std::cout << "with initial energy " << energy << " keV in material Z=" << Z << "\n";
+        std::cout << "with initial energy " << energy << " keV in " << mat.prettyName() << " material\n";
         std::cout << "Sampling " << nSamp << " interactions with RMS differential cross section deviation of\n";
         const auto ms = std::transform_reduce(res.cbegin(), res.cend(), meas.cbegin(), T { 0 }, std::plus<>(), [](auto m, auto e) { return (m - e) * (m - e); });
         const auto rmsd = std::sqrt(ms / res.size());
         std::cout << rmsd << "\n";
-        /*
-        std::cout << "e, DXMC, xraylib, scatterFactor dxmc, scatterFactor xraylib, momtrans dxmc, momtrans xraylib\n";
-        for (std::size_t i = 0; i < res.size(); ++i) {
-            const T e = emin + ((emax - emin) / res.size()) * i;
-            const auto t = (1 / e - 1) / k;
-            const auto sin2 = t * (2 - t);
-            const auto cosAngle = 1 - t;
-            const auto angle = std::acos(cosAngle) * RAD_TO_DEG<T>();
-
-            std::cout << e << ", " << res[i] << ", ";
-            std::cout << meas[i] << ", ";
-
-            const auto q = att.momentumTransferFromCos(p.energy, cosAngle);
-            const auto scatterFactor = att.comptonScatterFactor(0, q);
-            std::cout << scatterFactor << ", " << SF_Compt(13, q, nullptr);
-            std::cout << ", " << q << ", " << MomentTransf(p.energy, angle, nullptr) << "\n";
-        }
-        */
+        std::cout << 
+     
         if (rmsd < 0.001)
             return true;
         return false;
@@ -226,7 +206,8 @@ bool testTransport()
     Test<T> t;
 
     T energy = 54;
-    bool success = t.testCompton(energy, 13);
+    Material mat("H2O", "water");
+    bool success = t.testCompton(energy, mat);
     success = success && t.testSafeValueAdd();
     return success;
 }
@@ -344,7 +325,9 @@ bool testStepping()
 
 int main()
 {
+    bool success_f = testTransport<float>();
     bool success_t = testStepping<float>();
+
     /*bool success_d = testTransport<double>();
     bool success_f = testTransport<float>();
     if (success_d && success_f)
