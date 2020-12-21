@@ -77,7 +77,7 @@ const std::string& Material::prettyName(void) const
     return m_prettyName;
 }
 
-Material::Material(const std::string& xraylibMaterialNameOrCompound, const std::string& prettyName)
+Material::Material(const std::string& xraylibMaterialNameOrCompound, const std::string& prettyName, const double density)
 {
     setByMaterialName(xraylibMaterialNameOrCompound);
     if (!m_valid)
@@ -86,6 +86,7 @@ Material::Material(const std::string& xraylibMaterialNameOrCompound, const std::
         m_prettyName = prettyName;
     else
         m_prettyName = m_name;
+    setStandardDensity(density);
 }
 
 void Material::setStandardDensity(double density)

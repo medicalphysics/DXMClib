@@ -28,7 +28,7 @@ namespace dxmc {
 
 class Material {
 public:
-    Material(const std::string& xraylibMaterialNameOrCompound = "", const std::string& prettyName = "");
+    Material(const std::string& xraylibMaterialNameOrCompound = "", const std::string& prettyName = "", const double density=1.0);
     Material(int atomicNumber);
     bool isValid(void) const { return m_valid && m_hasDensity; }
     const std::string& name(void) const { return m_name; }

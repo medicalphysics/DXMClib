@@ -23,12 +23,11 @@ from skimage import io
 
 #Path to tiff file from report TG195 case 5 describing the phantom
 TIFF_FILE = r"./TG 195 Case 5 Voxelized Volume.tif"
-TIFF_FILE=r"C:\Users\erlend\OneDrive\OpenDXMCvalidering\RPT_195ElectronicResources\05-Case 5 Voxelized Volume\TG 195 Case 5 Voxelized Volume.tif"
+TIFF_FILE=r"./TG 195 Case 5 Voxelized Volume.tif"
 
 #Procedure to convert the tiff file to binary file that can be easily read by c++
 def convert_tiff(path):
-    im = io.imread(path)
-    # import pdb;pdb.set_trace()
+    im = io.imread(path)    
     flat = im.flatten().astype(np.uint8)
     flat.tofile("case5world.bin")
     return 
@@ -44,14 +43,17 @@ def readBinaryArray(path, dim, dtype=np.float32, reshape=True):
 def showArray():
     from itertools import permutations
     from matplotlib import pylab as plt
-    path_dose = r"C:\Users\erlend\source\repos\medicalphysics\DXMClib\out\build\x64-Debug\validation\dose.bin"    
-    path_mat= r"C:\Users\erlend\source\repos\medicalphysics\DXMClib\out\build\x64-Debug\validation\case5world.bin"    
-    
+    dir_dose = r"."    
+    path_mat= r"./case5world.bin"    
     dim = np.array([500, 320 , 260], dtype=np.int)
-    dose_flat = readBinaryArray(path_dose, dim, np.float32, False)
+    
     mat_flat =  readBinaryArray(path_mat, dim, np.uint8, False)
-    for shape in permutations(dim):
-        print(shape)
+    
+    angles = [0, 45, 90, 135, 180, 225, 270, 315]
+    for angle in angles:
+        path_dose = dir_dose + "/doseAngle_{}Mono.bin".format(angle)
+        dose_flat = readBinaryArray(path_dose, dim, np.float32, False)    
+        shape = (260, 320, 500)
         dose = dose_flat.reshape(shape)
         mat = mat_flat.reshape(shape)
         plt.subplot(3, 2, 1)
@@ -65,18 +67,9 @@ def showArray():
         plt.subplot(3, 2, 5)
         plt.imshow(dose[:,:,shape[2]//2], vmin=0, vmax = dose.max()*.01)
         plt.subplot(3, 2, 6)
-        plt.imshow(mat[:,:,shape[2]//2], vmin=0, vmax = 19)
-        
-        
-        plt.show()
-        
-    
-    print("shape", dose.shape)
-    print("min max", dose.min(), dose.max())
-    
-    
-    
+        plt.imshow(mat[:,:,shape[2]//2], vmin=0, vmax = 19)        
+        plt.show()       
     
 if __name__ == '__main__':
-    #convert_tiff(TIFF_FILE)
-    showArray()
+    convert_tiff(TIFF_FILE)
+    #showArray()

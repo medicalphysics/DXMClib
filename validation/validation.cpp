@@ -32,8 +32,8 @@ Copyright 2020 Erlend Andersen
 using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 10e6;
-constexpr std::size_t nExposures = 64;
+constexpr std::size_t histPerExposure = 1e6;
+constexpr std::size_t nExposures = 4;
 
 class Print {
 private:
@@ -75,6 +75,15 @@ public:
         std::cout << msg << "\r";
     }
 };
+
+template <typename T>
+void saveBinaryArray(const std::vector<T>& data, const std::string& name)
+{
+    auto myfile = std::fstream(name, std::ios::out | std::ios::binary);
+    const auto bytes = data.size() * sizeof(T);
+    myfile.write((char*)&data[0], bytes);
+    myfile.close();
+}
 
 // energy weighs pair for spectre
 /*RQR-8
@@ -458,11 +467,7 @@ std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const
 
 template <typename T>
 World<T> generateTG195Case3World(bool forceInteractions = false)
-{
-    //std::array<T, 3> spacing = { 1, 1, 1 };
-    //std::array<std::size_t, 3> dim = { 340, 300, 1320 };
-    //std::array<T, 3> spacing = { 2, 2, 2 };
-    //std::array<std::size_t, 3> dim = { 170, 150, 660};
+{    
     std::array<T, 3> spacing = { 1, 1, 2 };
     std::array<std::size_t, 3> dim = { 340, 300, 660 };
     World<T> w;
@@ -949,8 +954,7 @@ bool TG195Case42AbsorbedEnergy(
     print("Angle, center dxmc [eV/hist], nEvents, pher dxmc [eV/hist], nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
 
     //simulate 36 projections
-    for (std::size_t i = 0; i < 36; ++i) {
-        //std::cout << "Prosessing angle " << i * 10 << " [" << static_cast<int>(i / 36.0 * 100.0) << " %]";
+    for (std::size_t i = 0; i < 36; ++i) {        
         const auto nHistories = src.historiesPerExposure() * src.totalExposures();
         const T angle = (i * 10) * DEG_TO_RAD<T>();
         std::array<T, 3> rot_axis = { 0, 0, 1 };
@@ -1033,47 +1037,26 @@ World<T> generateTG195Case5World()
 
     //Materials from case TG195 5 converted from mass density to number density
     std::vector<Material> materials(20);
-    materials[0] = Material("C0.148924N1058.1304679999998O370.8496Ar51.231038", "Air");
-    materials[1] = Material("H7.878C777.047N117.684O305.6", "Cushion Foam");
-    materials[2] = Material("C1201.0", "Carbon fiber");
-    materials[3] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Soft tissue");
-    materials[4] = Material("H10.504000000000001C166.939N40.629O1148.8Na2.3000000000000003P6.196000000000001S6.414000000000001Cl7.0920000000000005K11.73", "Heart");
-    materials[5] = Material("H10.403C126.105N43.431O1198.4Na4.6000000000000005P6.196000000000001S9.621Cl10.638K7.82", "Lung");
-    materials[6] = Material("H10.302C166.939N42.03O1145.6Na4.6000000000000005P9.294S9.621Cl7.0920000000000005K11.73", "Liver");
-    materials[7] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Gallbladder");
-    materials[8] = Material("H10.403C135.713N44.832O1185.6Na2.3000000000000003P9.294S6.414000000000001Cl7.0920000000000005K11.73", "Spleen");
-    materials[9] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Stomach");
-    materials[10] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Large Intestine");
-    materials[11] = Material("H10.706C202.96899999999997N30.822000000000003O1110.4Na4.6000000000000005P6.196000000000001S3.2070000000000003Cl7.0920000000000005K7.82", "Pancreas");
-    materials[12] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Adrenal");
-    materials[13] = Material("H10.504000000000001C142.919N33.623999999999995O1192.0Na4.6000000000000005P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91I12.691", "Thyroid");
-    materials[14] = Material("H10.605C307.456N37.827000000000005O963.2Na2.3000000000000003P6.196000000000001S9.621Cl7.0920000000000005K7.82", "Thymus");
-    materials[15] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Small Intestine");
-    materials[16] = Material("H10.706C138.115N30.822000000000003O1201.6Na2.3000000000000003P3.0980000000000003S3.2070000000000003Cl7.0920000000000005K3.91", "Esophagus");
-    materials[17] = Material("H10.1C245.004N58.842O1032.0Na4.6000000000000005P3.0980000000000003S6.414000000000001Cl10.638K3.91", "Skin");
-    materials[18] = Material("H11.312C743.419N23.817O401.6P0.7745000000000001S0.8017500000000001K0.9775Ca1.002", "Breast");
-    materials[19] = Material("H3.4339999999999997C186.155N58.842O696.0Na2.3000000000000003Mg4.864000000000001P319.09400000000005S9.621Ca901.8", "Cortical Bone");
-
-    materials[0].setStandardDensity(0.001205);
-    materials[1].setStandardDensity(0.075);
-    materials[2].setStandardDensity(1.2);
-    materials[3].setStandardDensity(1.03);
-    materials[4].setStandardDensity(1.05);
-    materials[5].setStandardDensity(0.26);
-    materials[6].setStandardDensity(1.06);
-    materials[7].setStandardDensity(1.03);
-    materials[8].setStandardDensity(1.06);
-    materials[9].setStandardDensity(1.03);
-    materials[10].setStandardDensity(1.03);
-    materials[11].setStandardDensity(1.04);
-    materials[12].setStandardDensity(1.03);
-    materials[13].setStandardDensity(1.05);
-    materials[14].setStandardDensity(1.03);
-    materials[15].setStandardDensity(1.03);
-    materials[16].setStandardDensity(1.03);
-    materials[17].setStandardDensity(1.09);
-    materials[18].setStandardDensity(0.93);
-    materials[19].setStandardDensity(1.92);
+    materials[0] = Material("C0.015019N78.443071O21.074800Ar0.467110", "Air", 0.001205);
+    materials[1] = Material("H51.869709C36.108118N4.019974O8.002200", "Cushion Foam", 0.075);
+    materials[2] = Material("C100.000000", "Carbon fiber", 1.2);
+    materials[3] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Soft tissue", 1.03);
+    materials[4] = Material("H63.688796C7.143744N1.278063O27.701991Na0.026851P0.039859S0.038509Cl0.034823K0.047365", "Heart", 1.05);
+    materials[5] = Material("H63.731478C5.452396N1.380394O29.198156Na0.054259P0.040273S0.058363Cl0.052777K0.031904", "Lung", 0.26);
+    materials[6] = Material("H63.217465C7.229913N1.338082O27.958043Na0.054349P0.060510S0.058460Cl0.035243K0.047936", "Liver", 1.06);
+    materials[7] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Gallbladder", 1.03);
+    materials[8] = Material("H63.655092C5.860784N1.423215O28.851671Na0.027097P0.060337S0.038862Cl0.035143K0.047799", "Spleen", 1.06);
+    materials[9] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Stomach", 1.03);
+    materials[10] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Large Intestine", 1.03);
+    materials[11] = Material("H63.939187C8.555183N0.955012O26.374094Na0.052895P0.039261S0.018965Cl0.034300K0.031102", "Pancreas", 1.04);
+    materials[12] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Adrenal", 1.03);
+    materials[13] = Material("H63.845575C6.130922N1.060311O28.814466Na0.053834P0.019979S0.019302Cl0.034909K0.015827I0.004876", "Thyroid", 1.05);
+    materials[14] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Thymus", 1.03);
+    materials[15] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Small Intestine", 1.03);
+    materials[16] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Esophagus", 1.03);
+    materials[17] = Material("H62.083429C10.628873N1.876505O25.228547Na0.054442P0.020204S0.039039Cl0.052955K0.016006", "Skin", 1.09);
+    materials[18] = Material("H61.873627C28.698524N0.675867O8.736110P0.004495S0.004342K0.003561Ca0.003473", "Breast", 0.93);
+    materials[19] = Material("H39.229963C15.009010N3.487490O31.621690Na0.050590Mg0.095705P3.867606S0.108832Ca6.529115", "Cortical Bone", 1.92);
 
     auto matArray = readBinaryArray<std::uint8_t>("case5world.bin", size);
     if (!matArray) {
@@ -1091,13 +1074,6 @@ World<T> generateTG195Case5World()
     w.makeValid();
     return w;
 }
-
-template <typename T>
-struct OrganDose {
-    std::uint8_t ID = 0;
-    T dose_dxmc = 0;
-    T dose_TG = 0;
-};
 
 template <typename T>
 bool TG195Case5AbsorbedEnergy(
@@ -1153,15 +1129,25 @@ bool TG195Case5AbsorbedEnergy(
     const std::array<T, 8> angles = { 0, 45, 90, 135, 180, 225, 270, 315 };
 
     std::array<std::array<T, tg195_organ_names.size()>, angles.size()> tg195_doses;
-    tg195_doses[0] = { 11574.28, 3086.42, 1301.17, 679.47, 6.37, 17.57, 134.40, 16.73, 8.79, 0.15, 1.74, 44.22, 10.72, 36.90, 456.36, 21.68, 8761.23 };
-    tg195_doses[1] = { 11761.25, 1932.04, 1045.65, 683.63, 6.33, 9.91, 82.98, 9.22, 6.18, 0.13, 1.47, 36.39, 7.64, 33.46, 437.27, 17.97, 7669.28 };
-    tg195_doses[2] = { 9975.20, 786.73, 679.42, 495.34, 3.94, 6.27, 36.21, 3.15, 3.15, 0.10, 1.06, 16.90, 3.38, 23.03, 285.87, 6.80, 5611.52 };
-    tg195_doses[3] = { 9581.67, 765.35, 755.19, 421.94, 2.62, 18.05, 58.05, 5.07, 4.38, 0.15, 1.27, 12.03, 3.61, 26.36, 189.37, 2.07, 8510.07 };
-    tg195_doses[4] = { 9704.91, 1265.14, 1085.65, 411.34, 2.52, 33.79, 109.31, 10.18, 7.15, 0.18, 1.57, 11.22, 5.51, 32.11, 129.81, 2.82, 11003.75 };
-    tg195_doses[5] = { 9487.98, 1202.94, 721.26, 251.05, 1.52, 37.44, 117.36, 12.02, 7.31, 0.16, 1.38, 8.95, 5.48, 31.53, 195.79, 2.00, 8367.44 };
-    tg195_doses[6] = { 9970.40, 1625.79, 636.47, 168.17, 1.25, 33.40, 136.69, 17.88, 7.68, 0.12, 1.26, 11.26, 7.29, 24.39, 298.96, 7.18, 5876.97 };
-    tg195_doses[7] = { 11649.90, 2725.15, 916.40, 409.55, 3.99, 26.54, 155.30, 20.68, 9.13, 0.13, 1.55, 28.93, 10.49, 30.43, 455.47, 18.39, 7391.31 };
-
+    if (specter) {
+        tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };
+        tg195_doses[1] = { 12594.50, 1801.82, 1007.28, 612.42, 5.74, 9.97, 76.98, 8.73, 5.86, 0.13, 1.39, 33.38, 7.12, 30.52, 538.17, 17.76, 6631.55 };
+        tg195_doses[2] = { 10648.03, 737.54, 640.75, 447.05, 3.70, 6.58, 36.07, 3.29, 3.19, 0.10, 1.03, 15.51, 3.38, 21.38, 348.68, 6.82, 4814.57 };
+        tg195_doses[3] = { 10137.70, 730.79, 716.21, 389.11, 2.62, 17.39, 56.73, 5.20, 4.38, 0.14, 1.24, 11.31, 3.72, 24.87, 223.37, 2.19, 7437.66 };
+        tg195_doses[4] = { 10250.38, 1211.35, 1043.24, 385.78, 2.57, 31.09, 102.26, 9.74, 6.91, 0.18, 1.51, 10.66, 5.45, 30.25, 143.22, 2.96, 9718.55 };
+        tg195_doses[5] = { 10069.33, 1121.22, 687.39, 243.21, 1.62, 33.91, 107.84, 11.19, 6.92, 0.15, 1.33, 8.57, 5.34, 29.45, 232.17, 2.14, 7265.83 };
+        tg195_doses[6] = { 10666.10, 1503.58, 601.06, 164.33, 1.32, 30.15, 122.86, 16.10, 7.16, 0.12, 1.20, 10.51, 6.82, 22.47, 365.63, 7.18, 5072.79 };
+        tg195_doses[7] = { 12488.68, 2558.90, 877.00, 375.60, 3.76, 24.31, 138.64, 18.52, 8.43, 0.13, 1.49, 26.49, 9.60, 27.68, 562.67, 18.29, 6436.26 };
+    } else {
+        tg195_doses[0] = { 11574.28, 3086.42, 1301.17, 679.47, 6.37, 17.57, 134.40, 16.73, 8.79, 0.15, 1.74, 44.22, 10.72, 36.90, 456.36, 21.68, 8761.23 };
+        tg195_doses[1] = { 11761.25, 1932.04, 1045.65, 683.63, 6.33, 9.91, 82.98, 9.22, 6.18, 0.13, 1.47, 36.39, 7.64, 33.46, 437.27, 17.97, 7669.28 };
+        tg195_doses[2] = { 9975.20, 786.73, 679.42, 495.34, 3.94, 6.27, 36.21, 3.15, 3.15, 0.10, 1.06, 16.90, 3.38, 23.03, 285.87, 6.80, 5611.52 };
+        tg195_doses[3] = { 9581.67, 765.35, 755.19, 421.94, 2.62, 18.05, 58.05, 5.07, 4.38, 0.15, 1.27, 12.03, 3.61, 26.36, 189.37, 2.07, 8510.07 };
+        tg195_doses[4] = { 9704.91, 1265.14, 1085.65, 411.34, 2.52, 33.79, 109.31, 10.18, 7.15, 0.18, 1.57, 11.22, 5.51, 32.11, 129.81, 2.82, 11003.75 };
+        tg195_doses[5] = { 9487.98, 1202.94, 721.26, 251.05, 1.52, 37.44, 117.36, 12.02, 7.31, 0.16, 1.38, 8.95, 5.48, 31.53, 195.79, 2.00, 8367.44 };
+        tg195_doses[6] = { 9970.40, 1625.79, 636.47, 168.17, 1.25, 33.40, 136.69, 17.88, 7.68, 0.12, 1.26, 11.26, 7.29, 24.39, 298.96, 7.18, 5876.97 };
+        tg195_doses[7] = { 11649.90, 2725.15, 916.40, 409.55, 3.99, 26.54, 155.30, 20.68, 9.13, 0.13, 1.55, 28.93, 10.49, 30.43, 455.47, 18.39, 7391.31 };
+    }
     print("Discreet angles:\n");
     for (std::size_t i = 0; i < angles.size(); ++i) {
         const auto angle = angles[i];
@@ -1171,7 +1157,7 @@ bool TG195Case5AbsorbedEnergy(
         std::array<T, 6> cos = { -1, 0, 0, 0, 0, 1 };
 
         print("Angle: ", angle, " degrees\n");
-        const auto rad = angle * dxmc::DEG_TO_RAD<T>();
+        const auto rad = -angle * dxmc::DEG_TO_RAD<T>();
 
         dxmc::vectormath::rotate(pos.data(), rot_axis.data(), rad);
         dxmc::vectormath::rotate(cos.data(), rot_axis.data(), rad);
@@ -1192,33 +1178,39 @@ bool TG195Case5AbsorbedEnergy(
         auto dose = getEVperHistory(res, world.densityArray(), world.spacing(), total_hist);
 
         std::array<T, tg195_organ_names.size()> organ_doses;
-        print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], difference [eV/hist], difference [%]\n");
+        print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], nEvents, difference [eV/hist], difference [%]\n");
         for (std::size_t j = 0; j < organ_doses.size(); ++j) {
             const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), dose.cbegin(),
                 T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
             organ_doses[j] = dose_sum;
             print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
             print(organ_doses[j], ", ", tg195_doses[i][j], ", ");
+            const auto nevents_sum = std::transform_reduce(
+                std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.nEvents.cbegin(),
+                0, std::plus<>(), [&](auto m, auto d) -> auto { return m == tg195_organ_idx[j] ? d : 0; });
+            print(nevents_sum, ", ");
+
             const auto diff = organ_doses[j] - tg195_doses[i][j];
             const auto diff_p = 100 * diff / tg195_doses[i][j];
             print(diff, ", ", diff_p, "\n");
         }
     }
 
-    print("Continuous Distribution of Projection Angle from 0 to 360 deg\n");
+    print("Continuous distribution of projection angle from 0 to 360 deg\n");
     std::vector<T> dose_cont(world.materialIndexArray()->size(), 0);
+    std::vector<std::uint32_t> nEvents_cont(world.materialIndexArray()->size(), 0);
+    const std::size_t angle_step = 10; //* 2;
+    const std::size_t n_angle_steps = 360 / angle_step;
 
-    const std::size_t angle_step = 36; //* 2;
-
-    src.setHistoriesPerExposure(histPerExposure / angle_step);
-    for (std::size_t i = 0; i < 360 / angle_step; ++i) {
-        const T angle = i * 360 / angle_step;
-        print("\rRunning angle ", angle, " of 360 in step of ", angle_step, "\r");
+    src.setHistoriesPerExposure(histPerExposure / n_angle_steps);
+    for (std::size_t i = 0; i < 360; i += angle_step) {
+        const T angle = i;
+        std::cout << "Running angle " << angle << " of 360 in step of " << angle_step << "\r ";
         std::array<T, 3> pos = { 0, -600, 0 };
         std::array<T, 3> rot_axis = { 0, 0, 1 };
         std::array<T, 6> cos = { -1, 0, 0, 0, 0, 1 };
 
-        const auto rad = angle * dxmc::DEG_TO_RAD<T>();
+        const auto rad = -angle * dxmc::DEG_TO_RAD<T>();
 
         dxmc::vectormath::rotate(pos.data(), rot_axis.data(), rad);
         dxmc::vectormath::rotate(cos.data(), rot_axis.data(), rad);
@@ -1233,13 +1225,18 @@ bool TG195Case5AbsorbedEnergy(
         auto res = transport(world, &src);
 
         std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), dose_cont.cbegin(), dose_cont.begin(), std::plus<>());
+        std::transform(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), nEvents_cont.cbegin(), nEvents_cont.begin(), std::plus<>());
     }
-    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure()) * angle_step;
+    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure()) * n_angle_steps;
     auto dose_cont_ev = getEVperHistory(dose_cont, world.densityArray(), world.spacing(), total_hist);
     dose_cont.clear();
 
-    std::array<T, 17> tg195_organ_doses_cont = { 10410.69, 1670.94, 889.97, 438.66, 3.57, 22.80, 103.46, 11.89, 6.71, 0.14, 1.40, 21.02, 6.75, 29.55, 305.22, 9.88, 7854.65 };
-
+    std::array<T, 17> tg195_organ_doses_cont;
+    if (specter) {
+        tg195_organ_doses_cont = { 11090.33, 1567.72, 852.32, 401.38, 3.39, 21.10, 94.86, 10.96, 6.33, 0.14, 1.34, 19.45, 6.43, 27.27, 370.97, 9.85, 6840.76 };
+    } else {
+        tg195_organ_doses_cont = { 10410.69, 1670.94, 889.97, 438.66, 3.57, 22.80, 103.46, 11.89, 6.71, 0.14, 1.40, 21.02, 6.75, 29.55, 305.22, 9.88, 7854.65 };
+    }
     print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], difference [eV/hist], difference [%]\n");
     for (std::size_t j = 0; j < tg195_organ_doses_cont.size(); ++j) {
         const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), dose_cont_ev.cbegin(),
@@ -1247,84 +1244,16 @@ bool TG195Case5AbsorbedEnergy(
 
         print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
         print(dose_sum, ", ", tg195_organ_doses_cont[j], ", ");
+        const auto nevents_sum = std::transform_reduce(
+            std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), nEvents_cont.cbegin(),
+            0, std::plus<>(), [&](auto m, auto d) -> auto { return m == tg195_organ_idx[j] ? d : 0; });
+        print(nevents_sum, ", ");
         const auto diff = dose_sum - tg195_organ_doses_cont[j];
         const auto diff_p = 100 * diff / tg195_organ_doses_cont[j];
         print(diff, ", ", diff_p, "\n");
     }
 
-    //writeBinaryArray("dose.bin", dose.data(), world.dimensions());
-
     return true;
-}
-
-template <typename T>
-bool testAttenuation()
-{
-
-    Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689");
-    pmma.setStandardDensity(1.19);
-
-    T nist_att = 1.970E-01;
-    T dxmc_att = pmma.getTotalAttenuation(56.4);
-    auto diff = (dxmc_att - nist_att) / nist_att * 100;
-
-    const T energy = 56.4;
-    Material m("Tissue, Soft (ICRP)");
-    m.setStandardDensity(1.3);
-    std::array<T, 3> spacing = { .1, .1, 1 };
-    std::array<std::size_t, 3> dim = { 1, 1, 200 };
-    const auto size = std::accumulate(dim.cbegin(), dim.cend(), (std::size_t)1, std::multiplies<>());
-    const auto standardDensity = static_cast<T>(m.standardDensity());
-    auto dens = std::make_shared<std::vector<T>>(size, standardDensity);
-    auto mat = std::make_shared<std::vector<std::uint8_t>>(size, static_cast<std::uint8_t>(0));
-    auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-    World<T> w;
-    w.setDimensions(dim);
-    w.setSpacing(spacing);
-    w.setDensityArray(dens);
-    w.setMaterialIndexArray(mat);
-    w.setMeasurementMapArray(meas);
-    w.addMaterialToMap(m);
-
-    w.makeValid();
-
-    PencilSource<T> pen;
-    pen.setHistoriesPerExposure(histPerExposure);
-    pen.setPhotonEnergy(energy);
-    pen.setTotalExposures(nExposures);
-    std::array<T, 6> cos = { 1, 0, 0, 0, 1, 0 };
-    pen.setDirectionCosines(cos);
-    pen.setPosition(0, 0, -400);
-
-    const auto tot_hist = pen.historiesPerExposure() * pen.totalExposures();
-
-    Transport<T> transport;
-    auto res_naive = transport(w, &pen, nullptr, false);
-    std::fill(meas->begin(), meas->end(), 1);
-    w.makeValid();
-    auto res_force = transport(w, &pen, nullptr, false);
-
-    std::vector<T> att(res_naive.dose.size());
-    for (int i = 0; i < dim[2]; ++i)
-        att[i] = std::exp(-(i + 1) * spacing[2] * T { 0.1 } * m.standardDensity() * m.getTotalAttenuation(56.4));
-
-    const auto att_max = *std::max_element(att.cbegin(), att.cend());
-    const auto naive_max = *std::max_element(res_naive.dose.cbegin(), res_naive.dose.cend());
-    const auto force_max = *std::max_element(res_force.dose.cbegin(), res_force.dose.cend());
-
-    const T rms_naive = std::sqrt((1.0 / att.size()) * std::transform_reduce(res_naive.dose.cbegin(), res_naive.dose.cend(), att.cbegin(), T { 0.0 }, std::plus<>(), [=](auto e, auto a) -> T { return (e / naive_max - a / att_max) * (e / naive_max - a / att_max); }));
-    const T rms_force = std::sqrt((1.0 / att.size()) * std::transform_reduce(res_force.dose.cbegin(), res_force.dose.cend(), att.cbegin(), T { 0.0 }, std::plus<>(), [=](auto e, auto a) -> T { return (e / force_max - a / att_max) * (e / force_max - a / att_max); }));
-
-    std::cout << "Test attenuation for pencil beam in 1mm^2 tissue rod: \n";
-    std::cout << "Monochromatic beam of " << energy << " kev. \n";
-    std::cout << "RMS differense [%] from analytical attenuation; naive: " << rms_naive * 100.0 << ", forced: " << rms_force * 100.0 << "\n";
-
-    if (rms_naive * 100 < T { 0.2 } && rms_force * 100 < T { 0.2 }) {
-        std::cout << "SUCCESS\n\n";
-        return true;
-    }
-    std::cout << "FAILURE\n\n";
-    return false;
 }
 
 bool selectForcedInteractions(bool forced)
@@ -1332,10 +1261,6 @@ bool selectForcedInteractions(bool forced)
     auto success = true;
 
     // call  by (use specter, wide collimation, force interactions)
-
-    success = success && TG195Case5AbsorbedEnergy<float>(true);
-    success = success && TG195Case5AbsorbedEnergy<float>(false);
-
     success = success && TG195Case2AbsorbedEnergy<float>(false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(false, true, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(true, false, forced);
@@ -1355,6 +1280,11 @@ bool selectForcedInteractions(bool forced)
     success = success && TG195Case42AbsorbedEnergy<float>(false, true, forced);
     success = success && TG195Case42AbsorbedEnergy<float>(true, false, forced);
     success = success && TG195Case42AbsorbedEnergy<float>(true, true, forced);
+
+    // call  by (use specter)
+    success = success && TG195Case5AbsorbedEnergy<float>(true);
+    success = success && TG195Case5AbsorbedEnergy<float>(false);
+
     return success;
 }
 

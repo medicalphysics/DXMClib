@@ -33,7 +33,6 @@ Copyright 2019 Erlend Andersen
 
 using namespace dxmc;
 
-
 template <typename T>
 class Test : public Transport<T> {
 public:
@@ -65,9 +64,9 @@ public:
         }
 
         RandomState state;
-        std::size_t nSamp = 1e6;
+        std::size_t nSamp = 10e6;
         for (std::size_t i = 0; i < nSamp; ++i) {
-            p.energy = energy;           
+            p.energy = energy;
             this->comptonScatter<true>(p, 0, state);
             const T e = p.energy / energy;
             auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
@@ -88,22 +87,12 @@ public:
             const T cosAngle = 1 - t;
             const T gmax = 1 / emin + emin;
             const T p = (1 / e + e - sin2) / gmax;
-
-
-
-
-
-
             meas[i] = p;
 
             const auto q = att.momentumTransferFromCos(energy, cosAngle);
             const auto scatterFactor = att.comptonScatterFactor(0, q);
             meas[i] *= scatterFactor;
         }
-
-
-
-
 
         const auto meas_sum = std::accumulate(meas.cbegin(), meas.cend(), T { 0 });
         const auto res_sum = std::accumulate(res.cbegin(), res.cend(), T { 0 });
@@ -116,8 +105,12 @@ public:
         const auto ms = std::transform_reduce(res.cbegin(), res.cend(), meas.cbegin(), T { 0 }, std::plus<>(), [](auto m, auto e) { return (m - e) * (m - e); });
         const auto rmsd = std::sqrt(ms / res.size());
         std::cout << rmsd << "\n";
-        std::cout << 
-     
+        std::cout << "K2/K1, dxmclib, meas, diff, diff [%]\n";
+
+        for (std::size_t i = 0; i < meas.size(); ++i) {
+            std::cout << earr[i] <<", "<<res[i] << ", " << meas[i] << ", " << res[i] - meas[i] << ", " << (res[i] - meas[i]) / meas[i] *100<< "\n";
+        }
+
         if (rmsd < 0.001)
             return true;
         return false;
@@ -208,6 +201,9 @@ bool testTransport()
     T energy = 54;
     Material mat("H2O", "water");
     bool success = t.testCompton(energy, mat);
+    mat = Material("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
+    mat.setStandardDensity(1.19);
+    success =success && t.testCompton(energy, mat);
     success = success && t.testSafeValueAdd();
     return success;
 }
