@@ -80,13 +80,17 @@ const std::string& Material::prettyName(void) const
 Material::Material(const std::string& xraylibMaterialNameOrCompound, const std::string& prettyName, const double density)
 {
     setByMaterialName(xraylibMaterialNameOrCompound);
-    if (!m_valid)
+    if (!m_valid) {
         setByCompoundName(xraylibMaterialNameOrCompound);
-    if (prettyName.size() > 0)
+    }
+    if (prettyName.size() > 0) {
         m_prettyName = prettyName;
-    else
+    } else {
         m_prettyName = m_name;
-    setStandardDensity(density);
+    }
+    if (density > 0) {
+        setStandardDensity(density);
+    }
 }
 
 void Material::setStandardDensity(double density)
