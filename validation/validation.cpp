@@ -33,7 +33,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 32;
+constexpr std::size_t nExposures = 128;
 
 class Print {
 private:
@@ -338,7 +338,7 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
 }
 
 template <typename T>
-bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forceInteractions = false)
+bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     Print print;
     print("TG195 Case 2\n");
@@ -346,6 +346,9 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
+    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+
     auto w = generateTG195Case2World<T>(forceInteractions);
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
@@ -400,7 +403,6 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
 
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
-    Transport<T> transport;
     auto res = runDispatcher(transport, w, &src);
     auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
@@ -467,7 +469,7 @@ std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const
 
 template <typename T>
 World<T> generateTG195Case3World(bool forceInteractions = false)
-{    
+{
     std::array<T, 3> spacing = { 1, 1, 2 };
     std::array<std::size_t, 3> dim = { 340, 300, 660 };
     World<T> w;
@@ -593,7 +595,7 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
 }
 
 template <typename T>
-bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false, bool forceInteractions = false)
+bool TG195Case3AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     Print print;
     print("TG195 Case 3\n");
@@ -601,6 +603,9 @@ bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
+    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     auto w = generateTG195Case3World<T>(forceInteractions);
 
@@ -658,8 +663,6 @@ bool TG195Case3AbsorbedEnergy(bool specter = false, bool tomo = false, bool forc
     src.validate();
 
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
-
-    Transport<T> transport;
     auto res = runDispatcher(transport, w, &src);
     auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
@@ -760,7 +763,7 @@ World<T> generateTG195Case4World1(bool forceInteractions = false)
 }
 
 template <typename T>
-bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+bool TG195Case41AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
     Print print;
     print("TG195 Case 4.1:\n");
@@ -768,6 +771,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
+    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
     src.setPosition(-600.0, 0., 0.);
@@ -798,7 +803,6 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool wide_collimation = fal
 
     auto w = generateTG195Case4World1<T>(forceInteractions);
 
-    Transport<T> transport;
     auto res = runDispatcher(transport, w, &src);
     const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
@@ -898,8 +902,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
 }
 
 template <typename T>
-bool TG195Case42AbsorbedEnergy(
-    bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+bool TG195Case42AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
     std::array<T, 36> sim_ev_center, sim_ev_pher;
     if (specter) {
@@ -925,6 +928,9 @@ bool TG195Case42AbsorbedEnergy(
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
+    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
+    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
     src.setHistoriesPerExposure(histPerExposure);
@@ -949,12 +955,10 @@ bool TG195Case42AbsorbedEnergy(
 
     auto w = generateTG195Case4World2<T>(forceInteractions);
 
-    Transport<T> transport;
-
     print("Angle, center dxmc [eV/hist], nEvents, pher dxmc [eV/hist], nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
 
     //simulate 36 projections
-    for (std::size_t i = 0; i < 36; ++i) {        
+    for (std::size_t i = 0; i < 36; ++i) {
         const auto nHistories = src.historiesPerExposure() * src.totalExposures();
         const T angle = (i * 10) * DEG_TO_RAD<T>();
         std::array<T, 3> rot_axis = { 0, 0, 1 };
@@ -1076,8 +1080,7 @@ World<T> generateTG195Case5World()
 }
 
 template <typename T>
-bool TG195Case5AbsorbedEnergy(
-    bool specter = false)
+bool TG195Case5AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false)
 {
     Print print;
     print("TG195 Case 5:\n");
@@ -1088,6 +1091,9 @@ bool TG195Case5AbsorbedEnergy(
     }
 
     print("Forced interaction is OFF\n");
+    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
+    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
     src.setHistoriesPerExposure(histPerExposure);
@@ -1104,8 +1110,6 @@ bool TG195Case5AbsorbedEnergy(
     }
     print("Collimation: 10 mm:\n");
     src.setCollimationAngles(std::atan(T { 250 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
-
-    Transport<T> transport;
 
     std::array<std::string, 17> tg195_organ_names = { "Soft tissue",
         "Heart",
@@ -1252,38 +1256,65 @@ bool TG195Case5AbsorbedEnergy(
         const auto diff_p = 100 * diff / tg195_organ_doses_cont[j];
         print(diff, ", ", diff_p, "\n");
     }
-
+    print("\n");
     return true;
 }
 
-bool selectForcedInteractions(bool forced)
+bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
 {
     auto success = true;
 
     // call  by (use specter, wide collimation, force interactions)
-    success = success && TG195Case2AbsorbedEnergy<float>(false, false, forced);
-    success = success && TG195Case2AbsorbedEnergy<float>(false, true, forced);
-    success = success && TG195Case2AbsorbedEnergy<float>(true, false, forced);
-    success = success && TG195Case2AbsorbedEnergy<float>(true, true, forced);
+    success = success && TG195Case2AbsorbedEnergy<float>(transport, false, false, forced);
+    success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
+    success = success && TG195Case2AbsorbedEnergy<float>(transport, true, false, forced);
+    success = success && TG195Case2AbsorbedEnergy<float>(transport, true, true, forced);
 
-    success = success && TG195Case3AbsorbedEnergy<float>(false, false, forced);
-    success = success && TG195Case3AbsorbedEnergy<float>(false, true, forced);
-    success = success && TG195Case3AbsorbedEnergy<float>(true, false, forced);
-    success = success && TG195Case3AbsorbedEnergy<float>(true, true, forced);
+    success = success && TG195Case3AbsorbedEnergy<float>(transport, false, false, forced);
+    success = success && TG195Case3AbsorbedEnergy<float>(transport, false, true, forced);
+    success = success && TG195Case3AbsorbedEnergy<float>(transport, true, false, forced);
+    success = success && TG195Case3AbsorbedEnergy<float>(transport, true, true, forced);
 
-    success = success && TG195Case41AbsorbedEnergy<float>(false, false, forced);
-    success = success && TG195Case41AbsorbedEnergy<float>(false, true, forced);
-    success = success && TG195Case41AbsorbedEnergy<float>(true, false, forced);
-    success = success && TG195Case41AbsorbedEnergy<float>(true, true, forced);
+    success = success && TG195Case41AbsorbedEnergy<float>(transport, false, false, forced);
+    success = success && TG195Case41AbsorbedEnergy<float>(transport, false, true, forced);
+    success = success && TG195Case41AbsorbedEnergy<float>(transport, true, false, forced);
+    success = success && TG195Case41AbsorbedEnergy<float>(transport, true, true, forced);
 
-    success = success && TG195Case42AbsorbedEnergy<float>(false, false, forced);
-    success = success && TG195Case42AbsorbedEnergy<float>(false, true, forced);
-    success = success && TG195Case42AbsorbedEnergy<float>(true, false, forced);
-    success = success && TG195Case42AbsorbedEnergy<float>(true, true, forced);
+    success = success && TG195Case42AbsorbedEnergy<float>(transport, false, false, forced);
+    success = success && TG195Case42AbsorbedEnergy<float>(transport, false, true, forced);
+    success = success && TG195Case42AbsorbedEnergy<float>(transport, true, false, forced);
+    success = success && TG195Case42AbsorbedEnergy<float>(transport, true, true, forced);
 
-    // call  by (use specter)
-    success = success && TG195Case5AbsorbedEnergy<float>(true);
-    success = success && TG195Case5AbsorbedEnergy<float>(false);
+    return success;
+}
+
+bool selectOptions()
+{
+    dxmc::Transport<float> transport;
+
+    bool success = true;
+
+    transport.setLivermoreComptonModel(false);
+    transport.setBindingEnergyCorrection(false);
+    success = success && selectForcedInteractions(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
+
+    transport.setLivermoreComptonModel(true);
+    transport.setBindingEnergyCorrection(true);
+    success = success && selectForcedInteractions(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
+
+    return success;
+
+    transport.setLivermoreComptonModel(false);
+    transport.setBindingEnergyCorrection(false);
+    success = success && selectForcedInteractions(transport, true);
+
+    transport.setLivermoreComptonModel(true);
+    transport.setBindingEnergyCorrection(true);
+    success = success && selectForcedInteractions(transport, true);
 
     return success;
 }
@@ -1298,8 +1329,8 @@ void printStart()
 int main(int argc, char* argv[])
 {
     printStart();
-    auto success = selectForcedInteractions(true);
-    success = success && selectForcedInteractions(false);
+
+    auto success = selectOptions();
 
     std::cout << "Press any key to exit";
     std::string dummy;
