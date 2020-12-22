@@ -33,7 +33,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 128;
+constexpr std::size_t nExposures = 32;
 
 class Print {
 private:

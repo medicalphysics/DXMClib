@@ -208,12 +208,12 @@ std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vecto
 double calculateMeanBindingEnergy(int Z)
 {
     std::vector<double> probs, energy;
-    xrl_error* error = nullptr;
+    xrl_error* errorEdge = nullptr;
     int shell = 0;
-    while (!error) {
-        const double e = EdgeEnergy(Z, shell, &error);
-        if (!error) {
-            const double p = JumpFactor(Z, shell, nullptr);
+    while (!errorEdge) {
+        const double e = EdgeEnergy(Z, shell, &errorEdge);
+        if (!errorEdge) {
+            const double p = ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
             probs.push_back(p);
             energy.push_back(e);
         }
