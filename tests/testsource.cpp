@@ -7,12 +7,9 @@
 #include <thread>
 
 using namespace dxmc;
+constexpr double ERRF = 1e-4;
 
-constexpr double RAD2DEG = 180.0 / 3.14159265359;
-constexpr double DEG2RAD = 1.0 / RAD2DEG;
-constexpr double ERRF = 1e-3;
-
-template <typename T>
+template <Floating T>
 bool isEqual(T f1, T f2)
 {
     return std::abs(f1 - f2) < ERRF;
@@ -156,6 +153,10 @@ bool testCTCalibration()
     std::cout << "Failure\n";
     return false;
 }
+
+
+class TestIsotropic
+
 
 int main(int argc, char* argv[])
 {

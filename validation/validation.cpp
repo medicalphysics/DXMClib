@@ -863,7 +863,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
     auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
     auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
     for (std::size_t z = 0; z < dim[2]; ++z) {
-        const T zpos = z * spacing[2] - (spacing[2] * dim[2]) / 2;
+        const T zpos = z * spacing[2] ;
         for (const auto i : circ_ind) {
             const auto ind = z * dim[0] * dim[1] + i;
             mat->data()[ind] = static_cast<std::uint8_t>(1);
@@ -960,7 +960,7 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = 
     //simulate 36 projections
     for (std::size_t i = 0; i < 36; ++i) {
         const auto nHistories = src.historiesPerExposure() * src.totalExposures();
-        const T angle = (i * 10) * DEG_TO_RAD<T>();
+        const T angle = -((i * 10) * DEG_TO_RAD<T>());
         std::array<T, 3> rot_axis = { 0, 0, 1 };
         std::array<T, 3> pos { -600, 0, 0 };
         std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
@@ -1297,24 +1297,26 @@ bool selectOptions()
     transport.setLivermoreComptonModel(false);
     transport.setBindingEnergyCorrection(false);
     success = success && selectForcedInteractions(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+
+    transport.setLivermoreComptonModel(false);
+    transport.setBindingEnergyCorrection(true);
+    success = success && selectForcedInteractions(transport, false);    
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+
+    transport.setLivermoreComptonModel(true);
+    transport.setBindingEnergyCorrection(false);
+    success = success && selectForcedInteractions(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
 
     transport.setLivermoreComptonModel(true);
     transport.setBindingEnergyCorrection(true);
     success = success && selectForcedInteractions(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
-
-    return success;
-
-    transport.setLivermoreComptonModel(false);
-    transport.setBindingEnergyCorrection(false);
-    success = success && selectForcedInteractions(transport, true);
-
-    transport.setLivermoreComptonModel(true);
-    transport.setBindingEnergyCorrection(true);
-    success = success && selectForcedInteractions(transport, true);
+    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
 
     return success;
 }
