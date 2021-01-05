@@ -33,7 +33,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 128;
+constexpr std::size_t nExposures = 16;
 
 class Print {
 private:
@@ -131,7 +131,6 @@ std::pair<std::vector<T>, std::vector<T>> TG195_specter(const std::vector<double
 
     for (std::size_t i = 0; i < s.first.size(); ++i) {
         s.first[i] = raw[i * 2] - 0.25;
-        //s.first[i] = raw[i * 2];
         s.second[i] = raw[i * 2 + 1];
     }
     return s;
@@ -368,27 +367,35 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
 
     if (tomo) {
         std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
-        std::array<T, 3> rotaxis = { 1, 0, 0 };
+        std::array<T, 3> rotaxis = { -1, 0, 0 };
 
         //calculating angles to align beam
         const T angle = DEG_TO_RAD<T>() * T { 15 };
-        const T g = 1800;
-        const T s = g * std::tan(angle);
-        const T h2 = 390 / 2;
-        const T a1 = std::atan(s / g - h2 / g);
-        const T a2 = std::atan(s / g + h2 / g);
-        const T a = (a2 - a1) / 2 + a1;
-        const T angY = 2 * (a - a1);
+        const T d = 1800;
+        const T h = d * std::tan(angle);
+        const T s = T { 390 } / 2;
+        const T a1 = std::acos((h * (h - s) + d * d) / std::sqrt((h * h + d * d) * ((h - s) * (h - s) + d * d)));
+        const T a2 = std::acos((h * (h + s) + d * d) / std::sqrt((h * h + d * d) * ((h + s) * (h + s) + d * d)));
+        
 
-        const T angX = 2 * std::atan(h2 / g);
+        
+        
 
-        src.setCollimationAngles(angX, angY);
-        vectormath::rotate(cosines.data(), rotaxis.data(), -a);
-        vectormath::rotate(&cosines[3], rotaxis.data(), -a);
+        const T angX =  std::atan(s / d);
+
+        src.setCollimationAngles(-angX, angX, -a1, a2);
+        vectormath::rotate(cosines.data(), rotaxis.data(), angle);
+        vectormath::rotate(&cosines[3], rotaxis.data(), angle);
         src.setDirectionCosines(cosines);
 
-        src.setPosition(0, -s, 0);
+        src.setPosition(0, -h, 0);
+        
         auto exp = src.getExposure(0);
+        auto diry0 = exp.beamDirection();
+        auto diry1 = exp.beamDirection();
+        dxmc::vectormath::rotate(diry0.data(), &cosines[0], -a1);
+        dxmc::vectormath::rotate(diry1.data(), &cosines[0], a2);
+        
         print("Incident angle is 15 degrees\n");
     } else {
         src.setPosition(0, 0, 0);
@@ -863,7 +870,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
     auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
     auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
     for (std::size_t z = 0; z < dim[2]; ++z) {
-        const T zpos = z * spacing[2] ;
+        const T zpos = z * spacing[2];
         for (const auto i : circ_ind) {
             const auto ind = z * dim[0] * dim[1] + i;
             mat->data()[ind] = static_cast<std::uint8_t>(1);
@@ -1265,6 +1272,8 @@ bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
     auto success = true;
 
     // call  by (use specter, wide collimation, force interactions)
+    success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
+
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, true, false, forced);
@@ -1302,7 +1311,7 @@ bool selectOptions()
 
     transport.setLivermoreComptonModel(false);
     transport.setBindingEnergyCorrection(true);
-    success = success && selectForcedInteractions(transport, false);    
+    success = success && selectForcedInteractions(transport, false);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
 
