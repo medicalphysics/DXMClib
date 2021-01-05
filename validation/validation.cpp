@@ -1260,7 +1260,6 @@ bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
     auto success = true;
 
     // call  by (use specter, wide collimation/tilting, force interactions)
-    /*
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, true, false, forced);
@@ -1275,7 +1274,7 @@ bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
     success = success && TG195Case41AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case41AbsorbedEnergy<float>(transport, true, false, forced);
     success = success && TG195Case41AbsorbedEnergy<float>(transport, true, true, forced);
-    */
+    
     success = success && TG195Case42AbsorbedEnergy<float>(transport, false, false, forced);
     success = success && TG195Case42AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case42AbsorbedEnergy<float>(transport, true, false, forced);
