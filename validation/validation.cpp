@@ -374,14 +374,11 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
         const T d = 1800;
         const T h = d * std::tan(angle);
         const T s = T { 390 } / 2;
-        const T a1 = std::acos((h * (h - s) + d * d) / std::sqrt((h * h + d * d) * ((h - s) * (h - s) + d * d)));
-        const T a2 = std::acos((h * (h + s) + d * d) / std::sqrt((h * h + d * d) * ((h + s) * (h + s) + d * d)));
-        
 
-        
-        
+        const T a2 = std::acos((h * (h - s) + d * d) / std::sqrt((h * h + d * d) * ((h - s) * (h - s) + d * d)));
+        const T a1 = std::acos((h * (h + s) + d * d) / std::sqrt((h * h + d * d) * ((h + s) * (h + s) + d * d)));
 
-        const T angX =  std::atan(s / d);
+        const T angX = std::atan(s / d);
 
         src.setCollimationAngles(-angX, angX, -a1, a2);
         vectormath::rotate(cosines.data(), rotaxis.data(), angle);
@@ -389,13 +386,7 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
         src.setDirectionCosines(cosines);
 
         src.setPosition(0, -h, 0);
-        
-        auto exp = src.getExposure(0);
-        auto diry0 = exp.beamDirection();
-        auto diry1 = exp.beamDirection();
-        dxmc::vectormath::rotate(diry0.data(), &cosines[0], -a1);
-        dxmc::vectormath::rotate(diry1.data(), &cosines[0], a2);
-        
+
         print("Incident angle is 15 degrees\n");
     } else {
         src.setPosition(0, 0, 0);
@@ -1272,7 +1263,6 @@ bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
     auto success = true;
 
     // call  by (use specter, wide collimation, force interactions)
-    success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
 
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
