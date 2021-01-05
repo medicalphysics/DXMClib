@@ -120,7 +120,7 @@ namespace vectormath {
 
         const T nom = ((a - b) + c) * u;
         const T den = (a + (b + c)) * ((a - c) + b);
-        return T { 2.0 } * std::atan(std::sqrt(nom / den));
+        return T { 2 } * std::atan(std::sqrt(nom / den));
     }
 
     template <Floating T>

@@ -274,14 +274,13 @@ protected:
 
     inline bool particleInsideWorld(const World<T>& world, const std::array<T, 3>& pos) const noexcept
     {
-        const auto& extent = world.matrixExtent();
+        const auto& extent = world.matrixExtentSafe();
         return (pos[0] > extent[0] && pos[0] < extent[1]) && (pos[1] > extent[2] && pos[1] < extent[3]) && (pos[2] > extent[4] && pos[2] < extent[5]);
     }
 
     inline bool particleInsideWorld(const World<T>& world, const Particle<T>& particle) const noexcept
     {
-        const auto& extent = world.matrixExtentSafe();
-        return (particle.pos[0] > extent[0] && particle.pos[0] < extent[1]) && (particle.pos[1] > extent[2] && particle.pos[1] < extent[3]) && (particle.pos[2] > extent[4] && particle.pos[2] < extent[5]);
+        return particleInsideWorld(world, particle.pos);
     }
 
     inline std::array<std::size_t, 3> gridIndexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const noexcept
@@ -650,7 +649,7 @@ protected:
         auto amin = std::numeric_limits<T>::min();
         auto amax = std::numeric_limits<T>::max();
 
-        const auto& extent = world.matrixExtent();
+        const auto& extent = world.matrixExtentSafe();
         for (std::size_t i = 0; i < 3; i++) {
             if (std::abs(particle.dir[i]) > N_ERROR()) {
                 const auto a0 = (extent[i * 2] - particle.pos[i]) / particle.dir[i];

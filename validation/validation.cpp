@@ -374,19 +374,15 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
         const T d = 1800;
         const T h = d * std::tan(angle);
         const T s = T { 390 } / 2;
-
         const T a2 = std::acos((h * (h - s) + d * d) / std::sqrt((h * h + d * d) * ((h - s) * (h - s) + d * d)));
         const T a1 = std::acos((h * (h + s) + d * d) / std::sqrt((h * h + d * d) * ((h + s) * (h + s) + d * d)));
-
         const T angX = std::atan(s / d);
 
         src.setCollimationAngles(-angX, angX, -a1, a2);
         vectormath::rotate(cosines.data(), rotaxis.data(), angle);
         vectormath::rotate(&cosines[3], rotaxis.data(), angle);
         src.setDirectionCosines(cosines);
-
         src.setPosition(0, -h, 0);
-
         print("Incident angle is 15 degrees\n");
     } else {
         src.setPosition(0, 0, 0);
@@ -861,7 +857,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
     auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
     auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
     for (std::size_t z = 0; z < dim[2]; ++z) {
-        const T zpos = z * spacing[2];
+        const T zpos = z * spacing[2] - (dim[2] * spacing[2]) / 2;
         for (const auto i : circ_ind) {
             const auto ind = z * dim[0] * dim[1] + i;
             mat->data()[ind] = static_cast<std::uint8_t>(1);
@@ -885,9 +881,9 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
     w.setMaterialIndexArray(mat);
     w.setMeasurementMapArray(meas);
     w.addMaterialToMap(air);
-    w.addMaterialToMap(pmma);
-    for (int i = 0; i < 2; ++i)
+    for (int i = 0; i < 3; ++i) {
         w.addMaterialToMap(pmma);
+    }
 
     if (forceInteractions) {
         auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
@@ -973,6 +969,7 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = 
 
         const T simtime = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count();
         auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
+
         auto matBegin = w.materialIndexArray()->cbegin();
         auto dose_pher = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 3 ? d : 0; });
         auto dose_cent = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 2 ? d : 0; });
@@ -1262,8 +1259,8 @@ bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
 {
     auto success = true;
 
-    // call  by (use specter, wide collimation, force interactions)
-
+    // call  by (use specter, wide collimation/tilting, force interactions)
+    /*
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, false, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case2AbsorbedEnergy<float>(transport, true, false, forced);
@@ -1278,7 +1275,7 @@ bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
     success = success && TG195Case41AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case41AbsorbedEnergy<float>(transport, true, false, forced);
     success = success && TG195Case41AbsorbedEnergy<float>(transport, true, true, forced);
-
+    */
     success = success && TG195Case42AbsorbedEnergy<float>(transport, false, false, forced);
     success = success && TG195Case42AbsorbedEnergy<float>(transport, false, true, forced);
     success = success && TG195Case42AbsorbedEnergy<float>(transport, true, false, forced);
@@ -1293,7 +1290,7 @@ bool selectOptions()
 
     bool success = true;
 
-    transport.setLivermoreComptonModel(false);
+    /*transport.setLivermoreComptonModel(false);
     transport.setBindingEnergyCorrection(false);
     success = success && selectForcedInteractions(transport, false);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
@@ -1310,7 +1307,7 @@ bool selectOptions()
     success = success && selectForcedInteractions(transport, false);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
     success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
-
+    */
     transport.setLivermoreComptonModel(true);
     transport.setBindingEnergyCorrection(true);
     success = success && selectForcedInteractions(transport, false);
