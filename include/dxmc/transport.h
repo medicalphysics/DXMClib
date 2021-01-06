@@ -41,8 +41,10 @@ struct Result {
     std::vector<T> dose;
     std::vector<std::uint32_t> nEvents;
     std::vector<T> variance;
+    std::uint64_t numberOfHistories { 0 };
     std::chrono::duration<float> simulationTime { 0 };
     std::string_view dose_units = "";
+
     Result() {};
     Result(std::size_t size)
     {
@@ -135,6 +137,8 @@ public:
         if (!source->isValid())
             return result;
 
+        result.numberOfHistories = source->historiesPerExposure() * source->totalExposures();
+
         const auto maxEnergy = source->maxPhotonEnergyProduced();
         constexpr T minEnergy { 1 };
         const auto energyStep = std::min(maxEnergy / 100, T { 1 });
@@ -181,6 +185,7 @@ public:
                 std::fill(result.dose.begin(), result.dose.end(), T { 0.0 });
                 std::fill(result.nEvents.begin(), result.nEvents.end(), 0);
                 std::fill(result.variance.begin(), result.variance.end(), T { 0.0 });
+                result.numberOfHistories = 0;
                 return result;
             }
         }
@@ -726,7 +731,8 @@ protected:
     {
         //Computing variance by: Var[X] = E[X**2] - E[X]**2
         //and Var[A]+ Var[A] = 2Var[A]
-        auto eBeg = res.dose.cbegin();
+
+        /*auto eBeg = res.dose.cbegin();
         auto eEnd = res.dose.cend();
         auto tBeg = res.nEvents.cbegin();
         auto vBeg = res.variance.begin();
@@ -738,7 +744,14 @@ protected:
             ++eBeg;
             ++tBeg;
             ++vBeg;
-        }
+        }*/
+        const auto nh = res.numberOfHistories;
+        std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), res.variance.cbegin(), res.variance.begin(),
+            [=](const auto d, const auto dd) -> T {
+                //const auto sd = std::sqrt((dd / nh - (d / nh) * (d / nh)) / nh); // uncertenty per event
+                const auto sd = std::sqrt(dd - (d * d / nh)); // uncertenty for total dose in voxel
+                return sd / d * 100;
+            });
     }
 
     void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1) noexcept
