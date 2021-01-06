@@ -750,7 +750,7 @@ protected:
             [=](const auto d, const auto dd) -> T {
                 //const auto sd = std::sqrt((dd / nh - (d / nh) * (d / nh)) / nh); // uncertenty per event
                 const auto sd = std::sqrt(dd - (d * d / nh)); // uncertenty for total dose in voxel
-                return sd / d * 100;
+                return d > 0 ? sd / d * 100 : 0;
             });
     }
 
@@ -766,13 +766,14 @@ protected:
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
                 return de > T { 0.0 } ? calibrationValue * ei / voxelMass : T { 0.0 };
             });
-        std::transform(
+        /*std::transform(
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
             [=](auto var, auto de) -> auto {
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
                 const auto factor = calibrationValue * calibrationValue / (voxelMass * voxelMass);
                 return de > T { 0.0 } ? factor * var : T { 0.0 };
             });
+            */
     }
 
 private:
