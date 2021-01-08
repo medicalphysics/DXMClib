@@ -264,7 +264,6 @@ bool testStepping()
 
     PencilSource<T> pen;
     pen.setTotalExposures(4);
-    pen.setHistoriesPerExposure(1000000);
     std::array<T, 3> pos = { 0, 0, -(dim[2] * spacing[2]) };
     std::array<T, 6> cos = { 1, 0, 0, 0, 1, 0 };
     pen.setDirectionCosines(cos);
@@ -274,13 +273,16 @@ bool testStepping()
     std::cout << "Energy: " << energy << std::endl;
 
     Transport<T> transport;
+    transport.setOutputMode(Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
     transport.setBindingEnergyCorrection(true);
-    transport.setLivermoreComptonModel(false);
+    transport.setLivermoreComptonModel(true);
 
+    pen.setHistoriesPerExposure(100000);
     transport.setSiddonTracking(true);
     auto res_sidd = transport(w, &pen);
     std::cout << "Simulation time Siddon: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_sidd.simulationTime).count() << std::endl;
     transport.setSiddonTracking(false);
+    pen.setHistoriesPerExposure(100000);
     auto res_wood = transport(w, &pen);
     std::cout << "Simulation time Woodcock: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_wood.simulationTime).count() << std::endl;
 
@@ -304,14 +306,16 @@ bool testStepping()
         const std::size_t matIdx = mBuf[i];
         kerma[i] = ana[i] * energy * materials[matIdx].getMassEnergyAbsorbtion(energy);
     }
-    std::cout << "Position, kerma, sim_wood, sim_siddon,  nevents_wood, nevents_siddon, material\n";
+    std::cout << "Position, kerma, sim_wood, sim_siddon,  nevents_wood, nevents_siddon, stddev[%]_wood, stddev[%]_sidd, material\n";
     for (std::size_t i = 0; i < dim[2]; ++i) {
         std::cout << i * spacing[2] << ", ";
         std::cout << kerma[i] / kerma[0] << ", ";
-        std::cout << res_wood.dose[i] / res_wood.dose[0] << ", ";
-        std::cout << res_sidd.dose[i] / res_sidd.dose[0] << ", ";
+        std::cout << res_wood.dose[i] << ", ";
+        std::cout << res_sidd.dose[i] << ", ";
         std::cout << res_wood.nEvents[i] << ", ";
         std::cout << res_sidd.nEvents[i] << ", ";
+        std::cout << res_wood.variance[i] << ", ";
+        std::cout << res_sidd.variance[i] << ", ";
         const std::size_t matIdx = mBuf[i];
         std::cout << materials[matIdx].prettyName() << "\n";
     }
@@ -321,7 +325,7 @@ bool testStepping()
 
 int main()
 {
-    bool success_f = testTransport<float>();
+    //bool success_f = testTransport<float>();
     bool success_t = testStepping<float>();
 
     /*bool success_d = testTransport<double>();
