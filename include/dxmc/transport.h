@@ -52,6 +52,13 @@ struct Result {
         nEvents.resize(size, 0);
         variance.resize(size, 0);
     }
+    [[nodiscard]] std::vector<T> relativeError() const
+    {
+        std::vector<T> err(dose.size());
+        std::transform(std::execution::par_unseq, dose.cbegin(), dose.cend(), variance.cbegin(), err.begin(),
+            [=](const auto d, const auto v) { return d > 0 ? std::sqrt(v) / d : 0; });
+        return err;
+    }
 };
 
 class EvenTaskPool {
@@ -104,6 +111,8 @@ class CTSource;
 template <Floating T = double>
 class Transport {
 public:
+    enum class OUTPUTMODE { EV_PER_HISTORY,
+        DOSE };
     Transport()
     {
         std::uint64_t nthreads = std::thread::hardware_concurrency();
@@ -118,11 +127,13 @@ public:
     bool bindingEnergyCorrection() const { return m_useBindingEnergyCorrection; }
     void setSiddonTracking(bool use) { m_useSiddonTracking = use; }
     bool siddonTracking() const { return m_useSiddonTracking; }
+    void setOutputMode(Transport<T>::OUTPUTMODE mode) { m_outputmode = mode; }
+    Transport<T>::OUTPUTMODE outputMode() const { return m_outputmode; }
 
     template <typename U>
     requires std::is_base_of<World<T>, U>::value
         Result<T>
-        operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool calculateDose = true)
+        operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool useSourceDoseCalibration = true)
     {
         Result<T> result(world.size());
 
@@ -190,17 +201,19 @@ public:
             }
         }
 
-        //compute variance
-        computeResultVariance(result);
-
-        if (calculateDose) {
-            const T calibrationValue = source->getCalibrationValue(progressbar);
-            //energy imparted to dose
-            energyImpartedToDose(world, result, calibrationValue);
-            result.dose_units = "mGy";
+        normalizeScoring(result);
+        if (m_outputmode == OUTPUTMODE::DOSE) {
+            if (useSourceDoseCalibration) {
+                const T calibrationValue = source->getCalibrationValue(progressbar);
+                //energy imparted to dose
+                energyImpartedToDose(world, result, calibrationValue);
+                result.dose_units = "mGy";
+            } else {
+                energyImpartedToDose(world, result);
+                result.dose_units = "eV/kg/history";
+            }
         } else {
-            energyImpartedToDose(world, result);
-            result.dose_units = "keV/kg";
+            result.dose_units = "eV/history";
         }
         return result;
     }
@@ -519,13 +532,13 @@ protected:
 
                     safeValueAdd(result.dose[arrIdx], energyImparted);
                     safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[arrIdx], energyImparted * energyImparted);
+                    safeValueAdd(result.precision[arrIdx], energyImparted * energyImparted);
 
                 } else {
                     const auto energyImparted = p.energy * p.weight * weightCorrection;
                     safeValueAdd(result.dose[arrIdx], energyImparted);
                     safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[arrIdx], energyImparted * energyImparted);
+                    safeValueAdd(result.precision[arrIdx], energyImparted * energyImparted);
                 }
                 p.weight *= (T { 1 } - weightCorrection); // to prevent bias
             }
@@ -684,7 +697,6 @@ protected:
             if (isInWorld) {
                 if constexpr (siddonTracking) {
                     siddonParticleTracking<Livermore, bindingEnergyCorrection>(world, particle, state, result);
-
                 } else {
                     woodcockParticleTracking<Livermore, bindingEnergyCorrection>(world, particle, state, result);
                 }
@@ -727,31 +739,20 @@ protected:
             job.join();
     }
 
-    void computeResultVariance(Result<T>& res) const noexcept
+    void normalizeScoring(Result<T>& res) const noexcept
     {
-        //Computing variance by: Var[X] = E[X**2] - E[X]**2
+        //Here we normalize dose and precision to eV per history
+        //Computing precision by: Var[X] = E[X**2] - E[X]**2
         //and Var[A]+ Var[A] = 2Var[A]
 
-        /*auto eBeg = res.dose.cbegin();
-        auto eEnd = res.dose.cend();
-        auto tBeg = res.nEvents.cbegin();
-        auto vBeg = res.variance.begin();
-        while (eBeg != eEnd) {
-            if (*tBeg > 0) {
-                const auto nEv = *tBeg;
-                *vBeg = *vBeg / nEv - (*eBeg) * (*eBeg) / nEv / nEv;
-            }
-            ++eBeg;
-            ++tBeg;
-            ++vBeg;
-        }*/
-        const auto nh = res.numberOfHistories;
+        const auto h_inv = T { 1 } / (res.numberOfHistories - 1);
+        const auto h_d_inv = T { 1E3 } / res.numberOfHistories;
+        const auto h_v_inv = T { 1E6 } / res.numberOfHistories;
+        std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), res.nEvents.cbegin(), res.dose.begin(),
+            [=](const auto d, const auto n) { return d * h_d_inv; });
+
         std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), res.variance.cbegin(), res.variance.begin(),
-            [=](const auto d, const auto dd) -> T {
-                //const auto sd = std::sqrt((dd / nh - (d / nh) * (d / nh)) / nh); // uncertenty per event
-                const auto sd = std::sqrt(dd - (d * d / nh)); // uncertenty for total dose in voxel
-                return d > 0 ? sd / d * 100 : 0;
-            });
+            [=](const auto d, const auto dd) -> T { return (dd * h_v_inv - d * d) * h_inv; });
     }
 
     void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1) noexcept
@@ -764,16 +765,16 @@ protected:
             std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), res.dose.begin(),
             [=](auto ei, auto de) -> auto {
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
-                return de > T { 0.0 } ? calibrationValue * ei / voxelMass : T { 0.0 };
+                const auto factor = calibrationValue / voxelMass;
+                return de > T { 0.0 } ? ei * calibrationValue : T { 0.0 };
             });
-        /*std::transform(
+        std::transform(
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
             [=](auto var, auto de) -> auto {
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
-                const auto factor = calibrationValue * calibrationValue / (voxelMass * voxelMass);
-                return de > T { 0.0 } ? factor * var : T { 0.0 };
+                const auto factor = calibrationValue / voxelMass;
+                return de > T { 0.0 } ? var * factor * factor : T { 0.0 };
             });
-            */
     }
 
 private:
@@ -795,9 +796,10 @@ private:
     }
 
     AttenuationLut<T> m_attenuationLut;
+    std::uint64_t m_nThreads;
+    OUTPUTMODE m_outputmode = OUTPUTMODE::DOSE;
     bool m_useComptonLivermore = true;
     bool m_useBindingEnergyCorrection = true;
     bool m_useSiddonTracking = false;
-    std::uint64_t m_nThreads;
 };
 }
