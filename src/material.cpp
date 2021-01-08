@@ -205,7 +205,8 @@ std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vecto
     }
     return formFactor;
 }
-double calculateMeanBindingEnergy(int Z)
+
+double calculateBindingEnergy(int Z)
 {
     std::vector<double> probs, energy;
     xrl_error* errorEdge = nullptr;
@@ -224,6 +225,24 @@ double calculateMeanBindingEnergy(int Z)
     return mean_energy;
 }
 
+template <typename T>
+    requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value double calculateMeanBindingEnergy(T* compound)
+{
+    std::vector<int> elements(compound->Elements, compound->Elements + compound->nElements);
+    std::vector<double> massFractions(compound->massFractions, compound->massFractions + compound->nElements);
+    std::vector<double> numberFractions(elements.size());
+    std::transform(elements.cbegin(), elements.cend(), massFractions.cbegin(), numberFractions.begin(), [](const auto Z, const auto m) { return m / AtomicWeight(Z, nullptr); });
+    auto const numberNormalization = std::accumulate(numberFractions.cbegin(), numberFractions.cend(), 0.0);
+    std::transform(numberFractions.cbegin(), numberFractions.cend(), numberFractions.begin(), [=](const auto f) { return f / numberNormalization; });
+    
+    std::vector<double> bindingEnergy(elements.size());
+    std::transform(elements.cbegin(), elements.cend(), bindingEnergy.begin(), [](const auto Z) { return calculateBindingEnergy(Z); });
+
+    const auto meanBindingEnergy = std::transform_reduce(numberFractions.cbegin(), numberFractions.cend(), bindingEnergy.cbegin(), 0.0, std::plus<>(), std::multiplies<>());
+    
+    return meanBindingEnergy;
+}
+
 void Material::setByAtomicNumber(int atomicNumber)
 {
     char* raw_name = AtomicNumberToSymbol(atomicNumber, nullptr);
@@ -232,7 +251,7 @@ void Material::setByAtomicNumber(int atomicNumber)
         xrlFree(raw_name);
         raw_name = nullptr;
         m_density = ElementDensity(atomicNumber, nullptr);
-        m_meanBindingEnergy = calculateMeanBindingEnergy(atomicNumber);
+        m_meanBindingEnergy = calculateBindingEnergy(atomicNumber);
         m_hasDensity = true;
         m_valid = true;
     }
@@ -245,8 +264,9 @@ void Material::setByCompoundName(const std::string& name)
         m_name = name;
         m_valid = true;
         m_hasDensity = false;
-        const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
-        m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
+        //const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
+        //m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
+        m_meanBindingEnergy = calculateMeanBindingEnergy(m);
         FreeCompoundData(m);
         m = nullptr;
     }
@@ -261,8 +281,9 @@ void Material::setByMaterialName(const std::string& name)
         m_hasDensity = true;
         m_density = m->density;
 
-        const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
-        m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
+        //const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
+        //m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
+        m_meanBindingEnergy = calculateMeanBindingEnergy(m);
         FreeCompoundDataNIST(m);
         m = nullptr;
     }
