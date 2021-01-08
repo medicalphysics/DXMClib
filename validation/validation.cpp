@@ -32,8 +32,6 @@ Copyright 2020 Erlend Andersen
 using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
-constexpr std::size_t histPerExposure = 1e6;
-constexpr std::size_t nExposures = 64;
 
 class Print {
 private:
@@ -238,27 +236,28 @@ auto runDispatcher(Transport<T> transport, const World<T> world, Source<T>* src)
     }
     job.join();
     std::cout << std::string(message.length(), ' ') << "\r";
+
     return res;
 }
 
-template <Floating T = double>
-std::vector<T> getEVperHistory(const std::vector<T>& dose, std::shared_ptr<std::vector<T>> density, const std::array<T, 3>& spacing, std::uint64_t histories)
+template <typename T>
+T getRelativeError(const std::uint8_t materialIndex, const dxmc::World<T>& world, const dxmc::Result<T>& result, bool allAboveIndex = false)
 {
-    std::vector<T> ev(dose.size());
-    const T voxelVolume = spacing[0] * spacing[1] * spacing[2] * T { 0.001 }; // mm->cm
-    const T nHist = static_cast<T>(histories);
-
-    std::transform(std::execution::par_unseq, dose.cbegin(), dose.cend(), density->cbegin(), ev.begin(), [=](auto e, auto d) -> T {
-        const T voxelMass = d * voxelVolume * T { 0.001 }; // kg
-        return 1000 * e * voxelMass / nHist; // returns eV/hist
-    });
-    return ev;
-}
-
-template <Floating T = double>
-std::vector<T> getEVperHistory(const Result<T>& res, std::shared_ptr<std::vector<T>> density, const std::array<T, 3>& spacing, std::uint64_t histories)
-{
-    return getEVperHistory(res.dose, density, spacing, histories);
+    auto mIdx_begin = world.materialIndexArray()->cbegin();
+    auto mIdx_end = world.materialIndexArray()->cend();
+    if (allAboveIndex) {
+        const auto sum_d = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.dose.cbegin(), T { 0 }, std::plus<>(),
+            [=](const auto mind, const auto d) -> T { return mind >= materialIndex ? d : 0; });
+        const auto sum = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.variance.cbegin(), T { 0 }, std::plus<>(),
+            [=](const auto mind, const auto var) -> T { return mind >= materialIndex ? var : 0; });
+        return sum_d > 0 ? 100 * std::sqrt(sum) / sum_d : 0;
+    } else {
+        const auto sum_d = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.dose.cbegin(), T { 0 }, std::plus<>(),
+            [=](const auto mind, const auto d) -> T { return mind == materialIndex ? d : 0; });
+        const auto sum = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.variance.cbegin(), T { 0 }, std::plus<>(),
+            [=](const auto mind, const auto var) -> T { return mind == materialIndex ? var : 0; });
+        return sum_d > 0 ? 100 * std::sqrt(sum) / sum_d : 0;
+    }
 }
 
 template <typename T>
@@ -337,8 +336,11 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
 }
 
 template <typename T>
-bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
+bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
+    constexpr std::size_t histPerExposure = 1e6;
+    constexpr std::size_t nExposures = 500;
+
     Print print;
     print("TG195 Case 2\n");
     if (forceInteractions)
@@ -395,18 +397,19 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
 
     src.validate();
 
-    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
-
     auto res = runDispatcher(transport, w, &src);
-    auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
     std::array<T, 9> subvol_ev;
     std::array<std::uint64_t, 9> subvol_events;
-    auto total_ev = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m > 0 ? d : 0; });
-    auto total_events = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m > 0 ? d : 0; });
+    auto total_ev = std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(),
+        [=](auto d, auto m) -> T { return m > 0 ? d : 0; });
+    auto total_events = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(),
+        [=](auto d, auto m) { return m > 0 ? d : 0; });
     for (std::size_t i = 0; i < 9; ++i) {
-        subvol_ev[i] = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
-        subvol_events[i] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m == i + 2 ? d : 0; });
+        subvol_ev[i] = std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(),
+            [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
+        subvol_events[i] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(),
+            [=](auto d, auto m) { return m == i + 2 ? d : 0; });
     }
 
     T sim_ev;
@@ -431,12 +434,17 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
     }
     const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
     print("Simulation time ", simtime, " seconds");
-    print(" with ", simtime / total_hist, " seconds*CPU core per history\n");
-    print("VOI, dxmc, dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
+    print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
+    print("VOI, dxmc, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
 
-    print("Total body, ", total_ev, ", ", total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
-    for (std::size_t i = 0; i < subvol_ev.size(); ++i)
-        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+    const auto total_stdev = getRelativeError(1, w, res, true);
+    print("Total body, ", total_ev, ", ", total_stdev, ", ");
+    print(total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
+    for (std::size_t i = 0; i < subvol_ev.size(); ++i) {
+        const auto stddev = getRelativeError(i + 2, w, res);
+        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", stddev, ", ");
+        print(subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+    }
     print("\n");
     return true;
 }
@@ -444,10 +452,10 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
 template <typename T>
 std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const std::array<std::size_t, 3>& dim, const std::array<T, 3>& spacing, const T radii = 1.0)
 {
-    const T xo = dim[0] * spacing[0] / 2 + spacing[0] / 2;
-    const T yo = dim[1] * spacing[1] / 2 + spacing[1] / 2;
+    const T xo = (dim[0] * spacing[0]) / 2 + spacing[0] / 2;
+    const T yo = (dim[1] * spacing[1]) / 2 + spacing[1] / 2;
     std::vector<std::size_t> ind;
-    ind.reserve(dim[0] * dim[1]);
+
     const T radii2 = radii * radii;
     for (std::size_t yi = 0; yi < dim[1]; ++yi)
         for (std::size_t xi = 0; xi < dim[0]; ++xi) {
@@ -589,8 +597,11 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
 }
 
 template <typename T>
-bool TG195Case3AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
+bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
+    constexpr std::size_t histPerExposure = 1e6;
+    constexpr std::size_t nExposures = 200;
+
     Print print;
     print("TG195 Case 3\n");
     if (forceInteractions)
@@ -656,16 +667,14 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
 
     src.validate();
 
-    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
     auto res = runDispatcher(transport, w, &src);
-    auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
 
     std::array<T, 7> subvol_ev;
     std::array<std::uint64_t, 7> subvol_events;
-    auto total_ev = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m > 3 ? d : 0; });
+    auto total_ev = std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m > 3 ? d : 0; });
     auto total_events = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m > 3 ? d : 0; });
     for (std::size_t i = 5; i < 12; ++i) {
-        subvol_ev[i - 5] = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m == i ? d : 0; });
+        subvol_ev[i - 5] = std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->begin(), T { 0 }, std::plus<>(), [=](auto d, auto m) -> T { return m == i ? d : 0; });
         subvol_events[i - 5] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0, std::plus<>(), [=](auto d, auto m) { return m == i ? d : 0; });
     }
 
@@ -691,12 +700,14 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
     }
     const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
     print("Simulation time ", simtime, " seconds");
-    print(" with ", simtime / total_hist, " seconds*CPU core per history\n");
-    print("VOI, dxmc, dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
-
-    print("Total body, ", total_ev, ", ", total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
-    for (std::size_t i = 0; i < subvol_ev.size(); ++i)
-        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+    print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
+    print("VOI, dxmc, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
+    const auto total_error = getRelativeError(1, w, res);
+    print("Total body, ", total_ev, ", ", total_error, ", ", total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
+    for (std::size_t i = 0; i < subvol_ev.size(); ++i) {
+        const auto error = getRelativeError(i + 2, w, res);
+        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", error, ", ", subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+    }
     print("\n");
     return true;
 }
@@ -705,8 +716,8 @@ template <typename T>
 World<T> generateTG195Case4World1(bool forceInteractions = false)
 {
 
-    const std::array<std::size_t, 3> dim = { 300, 300, 600 };
-    const std::array<T, 3> spacing = { 4, 4, 5 };
+    const std::array<std::size_t, 3> dim = { 400, 400, 600 };
+    const std::array<T, 3> spacing = { 3, 3, 5 };
     const auto size = std::accumulate(dim.cbegin(), dim.cend(), (std::size_t)1, std::multiplies<std::size_t>());
 
     //Material air("Air, Dry (near sea level)");
@@ -757,8 +768,11 @@ World<T> generateTG195Case4World1(bool forceInteractions = false)
 }
 
 template <typename T>
-bool TG195Case41AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
+    constexpr std::size_t histPerExposure = 1e5;
+    constexpr std::size_t nExposures = 360;
+
     Print print;
     print("TG195 Case 4.1:\n");
     if (forceInteractions)
@@ -797,22 +811,22 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = 
 
     auto w = generateTG195Case4World1<T>(forceInteractions);
 
+    const auto volume_voi = 160 * 160 * PI_VAL<T>() * 10;
+    const auto voxel_volume = std::accumulate(w.spacing().cbegin(), w.spacing().cend(), T { 1 }, std::multiplies<>());
+    const auto volume_dxmc = voxel_volume * std::count(w.materialIndexArray()->cbegin(), w.materialIndexArray()->cend(), 2);
+    const auto correction = volume_voi / volume_dxmc;
+
     auto res = runDispatcher(transport, w, &src);
-    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
     const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
     print("Simulation time ", simtime, " seconds");
-    print(" with ", simtime / total_hist, " seconds*CPU core per history\n");
-    auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
+    print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
 
-    std::array<T, 4> voi_ev;
+    std::array<T, 4> voi_ev, voi_nevent, voi_error;
     for (std::size_t i = 0; i < 4; ++i) {
-        voi_ev[i] = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
-    }
-
-    std::array<std::uint64_t, 4> voi_nevent;
-    for (std::size_t i = 0; i < 4; ++i) {
+        voi_ev[i] = correction * std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
         voi_nevent[i] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](auto d, auto m) { return m == i + 2 ? d : 0; });
+        voi_error[i] = getRelativeError(i + 1, w, res);
     }
 
     std::array<T, 4> sim_ev;
@@ -830,9 +844,9 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = 
         }
     }
 
-    print("VOI, dxmc, dxmc #events, TG195, difference [ev/hist], difference [%]\n");
+    print("VOI, dxmc, dxmc error [%], dxmc #events, TG195, difference [ev/hist], difference [%]\n");
     for (std::size_t i = 0; i < voi_ev.size(); ++i)
-        print(i + 1, ", ", voi_ev[i], ", ", voi_nevent[i], ", ", sim_ev[i], ", ", voi_ev[i] - sim_ev[i], ", ", (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100, "\n");
+        print(i + 1, ", ", voi_ev[i], ", ", voi_error[i], ", ", voi_nevent[i], ", ", sim_ev[i], ", ", voi_ev[i] - sim_ev[i], ", ", (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100, "\n");
     print("\n");
     return true;
 }
@@ -840,7 +854,7 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = 
 template <typename T>
 World<T> generateTG195Case4World2(bool forceInteractions = false)
 {
-    const std::array<std::size_t, 3> dim = { 1201, 1201, 60 };
+    const std::array<std::size_t, 3> dim = { 1200, 1200, 60 };
     const std::array<T, 3> spacing = { 1, 1, 50 };
     const auto size = std::accumulate(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
 
@@ -884,36 +898,38 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
     for (int i = 0; i < 3; ++i) {
         w.addMaterialToMap(pmma);
     }
-
     if (forceInteractions) {
         auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
         std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
         w.setMeasurementMapArray(meas);
     }
-
     w.makeValid();
     return w;
 }
 
 template <typename T>
-bool TG195Case42AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
-    std::array<T, 36> sim_ev_center, sim_ev_pher;
+    constexpr std::size_t histPerExposure = 1e6;
+    constexpr std::size_t nExposures = 360;
+
+    std::array<T, 37> sim_ev_center, sim_ev_pher;
+
     if (specter) {
         if (wide_collimation) {
-            sim_ev_center = { 10.878025, 10.9243, 10.884625, 10.89795, 10.87265, 10.902675, 10.8994, 10.880875, 10.875475, 10.8862, 10.895975, 10.88105, 10.8996, 10.886225, 10.8934, 10.8942, 10.879025, 10.8855, 10.894125, 10.8898, 10.8916, 10.895875, 10.889525, 10.889775, 10.89365, 10.901875, 10.894475, 10.906975, 10.888025, 10.877475, 10.883325, 10.875925, 10.8881, 10.886775, 10.88975, 10.900075 };
-            sim_ev_pher = { 115.34325, 113.76275, 109.16925, 101.706, 91.562975, 78.39105, 61.388325, 40.08625, 22.471075, 11.781725, 6.14551, 3.42218, 2.05605, 1.35319, 0.96088275, 0.743808, 0.61922025, 0.55457575, 0.5309405, 0.55428325, 0.6219885, 0.74445025, 0.96480125, 1.3481875, 2.0611025, 3.4154, 6.15532, 11.7854, 22.461525, 40.13715, 61.42595, 78.328975, 91.481375, 101.61325, 109.10425, 113.8365 };
+            sim_ev_center = { 10.82, 10.878025, 10.9243, 10.884625, 10.89795, 10.87265, 10.902675, 10.8994, 10.880875, 10.875475, 10.8862, 10.895975, 10.88105, 10.8996, 10.886225, 10.8934, 10.8942, 10.879025, 10.8855, 10.894125, 10.8898, 10.8916, 10.895875, 10.889525, 10.889775, 10.89365, 10.901875, 10.894475, 10.906975, 10.888025, 10.877475, 10.883325, 10.875925, 10.8881, 10.886775, 10.88975, 10.900075 };
+            sim_ev_pher = { 38.87, 115.34325, 113.76275, 109.16925, 101.706, 91.562975, 78.39105, 61.388325, 40.08625, 22.471075, 11.781725, 6.14551, 3.42218, 2.05605, 1.35319, 0.96088275, 0.743808, 0.61922025, 0.55457575, 0.5309405, 0.55428325, 0.6219885, 0.74445025, 0.96480125, 1.3481875, 2.0611025, 3.4154, 6.15532, 11.7854, 22.461525, 40.13715, 61.42595, 78.328975, 91.481375, 101.61325, 109.10425, 113.8365 };
         } else {
-            sim_ev_center = { 11.35475, 11.399475, 11.38755, 11.402175, 11.400225, 11.370625, 11.402625, 11.37715, 11.385375, 11.4096, 11.399825, 11.376675, 11.3698, 11.3613, 11.38865, 11.377925, 11.3692, 11.371525, 11.3807, 11.36, 11.37645, 11.379075, 11.379975, 11.368975, 11.377675, 11.38375, 11.3871, 11.3844, 11.37395, 11.3821, 11.371825, 11.395575, 11.379075, 11.372125, 11.4001, 11.39895 };
-            sim_ev_pher = { 116.7915, 115.31075, 110.532, 103.1535, 92.9892, 79.7158, 62.57135, 40.92065, 22.966025, 12.169, 6.4216075, 3.5657225, 2.1609475, 1.418235, 1.014725, 0.780394, 0.64618, 0.5763575, 0.559597, 0.5776625, 0.648646, 0.7762825, 1.008508, 1.412125, 2.1584, 3.577945, 6.4296425, 12.1714, 23.039025, 40.926825, 62.451325, 79.759575, 93.074725, 103.269, 110.595, 115.27 };
+            sim_ev_center = { 11.14, 11.35475, 11.399475, 11.38755, 11.402175, 11.400225, 11.370625, 11.402625, 11.37715, 11.385375, 11.4096, 11.399825, 11.376675, 11.3698, 11.3613, 11.38865, 11.377925, 11.3692, 11.371525, 11.3807, 11.36, 11.37645, 11.379075, 11.379975, 11.368975, 11.377675, 11.38375, 11.3871, 11.3844, 11.37395, 11.3821, 11.371825, 11.395575, 11.379075, 11.372125, 11.4001, 11.39895 };
+            sim_ev_pher = { 39.36, 116.7915, 115.31075, 110.532, 103.1535, 92.9892, 79.7158, 62.57135, 40.92065, 22.966025, 12.169, 6.4216075, 3.5657225, 2.1609475, 1.418235, 1.014725, 0.780394, 0.64618, 0.5763575, 0.559597, 0.5776625, 0.648646, 0.7762825, 1.008508, 1.412125, 2.1584, 3.577945, 6.4296425, 12.1714, 23.039025, 40.926825, 62.451325, 79.759575, 93.074725, 103.269, 110.595, 115.27 };
         }
     } else {
         if (wide_collimation) {
-            sim_ev_center = { 11.630625, 11.632925, 11.617175, 11.624825, 11.633075, 11.600225, 11.61655, 11.6235, 11.592875, 11.6258, 11.612, 11.612775, 11.608675, 11.623975, 11.611325, 11.6174, 11.6234, 11.627975, 11.60745, 11.632875, 11.628275, 11.6239, 11.61645, 11.617375, 11.621775, 11.6178, 11.6444, 11.61515, 11.626375, 11.64605, 11.63335, 11.628425, 11.622, 11.6198, 11.59835, 11.609925 };
-            sim_ev_pher = { 99.665175, 98.300175, 94.509325, 88.48595, 80.1113, 69.261125, 55.124425, 37.2351, 21.754, 11.767, 6.269845, 3.460205, 2.073845, 1.3435025, 0.94542875, 0.71714775, 0.58643225, 0.52293525, 0.49996925, 0.5225535, 0.5875545, 0.719903, 0.94029425, 1.3461175, 2.07283, 3.4740625, 6.2371725, 11.79715, 21.73405, 37.28175, 55.1853, 69.2588, 80.036275, 88.397, 94.640025, 98.332825 };
+            sim_ev_center = { 11.38, 11.630625, 11.632925, 11.617175, 11.624825, 11.633075, 11.600225, 11.61655, 11.6235, 11.592875, 11.6258, 11.612, 11.612775, 11.608675, 11.623975, 11.611325, 11.6174, 11.6234, 11.627975, 11.60745, 11.632875, 11.628275, 11.6239, 11.61645, 11.617375, 11.621775, 11.6178, 11.6444, 11.61515, 11.626375, 11.64605, 11.63335, 11.628425, 11.622, 11.6198, 11.59835, 11.609925 };
+            sim_ev_pher = { 33.95, 99.665175, 98.300175, 94.509325, 88.48595, 80.1113, 69.261125, 55.124425, 37.2351, 21.754, 11.767, 6.269845, 3.460205, 2.073845, 1.3435025, 0.94542875, 0.71714775, 0.58643225, 0.52293525, 0.49996925, 0.5225535, 0.5875545, 0.719903, 0.94029425, 1.3461175, 2.07283, 3.4740625, 6.2371725, 11.79715, 21.73405, 37.28175, 55.1853, 69.2588, 80.036275, 88.397, 94.640025, 98.332825 };
         } else {
-            sim_ev_center = { 12.168675, 12.11255, 12.163, 12.1358, 12.0881, 12.10275, 12.135925, 12.12425, 12.14915, 12.149575, 12.1482, 12.15955, 12.130775, 12.148475, 12.153925, 12.1383, 12.13475, 12.148675, 12.1576, 12.1452, 12.15665, 12.16225, 12.156625, 12.156875, 12.13905, 12.1561, 12.159325, 12.137025, 12.149725, 12.09575, 12.1471, 12.1231, 12.1211, 12.1368, 12.134825, 12.13955 };
-            sim_ev_pher = { 101.29375, 99.802475, 96.108725, 89.966275, 81.369475, 70.5424, 56.2835, 38.1283, 22.348775, 12.166625, 6.515755, 3.643485, 2.180365, 1.41379, 0.984371, 0.7510235, 0.6165785, 0.54522075, 0.52163, 0.54515775, 0.61643625, 0.750186, 0.9914865, 1.4138375, 2.174915, 3.6299975, 6.5142425, 12.200725, 22.2865, 38.146275, 56.287325, 70.64165, 81.424625, 89.82015, 96.16995, 99.92435 };
+            sim_ev_center = { 12.11, 12.168675, 12.11255, 12.163, 12.1358, 12.0881, 12.10275, 12.135925, 12.12425, 12.14915, 12.149575, 12.1482, 12.15955, 12.130775, 12.148475, 12.153925, 12.1383, 12.13475, 12.148675, 12.1576, 12.1452, 12.15665, 12.16225, 12.156625, 12.156875, 12.13905, 12.1561, 12.159325, 12.137025, 12.149725, 12.09575, 12.1471, 12.1231, 12.1211, 12.1368, 12.134825, 12.13955 };
+            sim_ev_pher = { 34.70, 101.29375, 99.802475, 96.108725, 89.966275, 81.369475, 70.5424, 56.2835, 38.1283, 22.348775, 12.166625, 6.515755, 3.643485, 2.180365, 1.41379, 0.984371, 0.7510235, 0.6165785, 0.54522075, 0.52163, 0.54515775, 0.61643625, 0.750186, 0.9914865, 1.4138375, 2.174915, 3.6299975, 6.5142425, 12.200725, 22.2865, 38.146275, 56.287325, 70.64165, 81.424625, 89.82015, 96.16995, 99.92435 };
         }
     }
     Print print;
@@ -927,72 +943,86 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = 
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
+    IsotropicCTSource<T> srcCT;
     src.setHistoriesPerExposure(histPerExposure);
     src.setTotalExposures(nExposures);
+    srcCT.setHistoriesPerExposure(histPerExposure);
+    srcCT.setTotalExposures(nExposures);
 
     if (specter) {
         print("Specter of 120 kV W/Al\n");
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
+        srcCT.setSpecter(specter.second, specter.first);
     } else {
         print("Monoenergetic specter of 56.4 kev\n");
         std::vector<T> s(1, T { 1 }), e(1, T { 56.4 });
         src.setSpecter(s, e);
+        srcCT.setSpecter(s, e);
     }
     if (wide_collimation) {
         print("Collimation: 80 mm:\n");
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 40 } / 600) * 2);
+        srcCT.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 40 } / 600) * 2);
     } else {
         print("Collimation: 10 mm:\n");
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
+        srcCT.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
     }
 
     auto w = generateTG195Case4World2<T>(forceInteractions);
 
-    print("Angle, center dxmc [eV/hist], nEvents, pher dxmc [eV/hist], nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
+    print("Angle, center dxmc [eV/hist], center error [%], nEvents, pher dxmc [eV/hist], pher error [%], nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
 
     //simulate 36 projections
-    for (std::size_t i = 0; i < 36; ++i) {
-        const auto nHistories = src.historiesPerExposure() * src.totalExposures();
-        const T angle = -((i * 10) * DEG_TO_RAD<T>());
-        std::array<T, 3> rot_axis = { 0, 0, 1 };
-        std::array<T, 3> pos { -600, 0, 0 };
-        std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
-        vectormath::rotate(pos.data(), rot_axis.data(), angle);
-        src.setPosition(pos);
-        vectormath::rotate(cos.data(), rot_axis.data(), angle);
-        vectormath::rotate(&cos[3], rot_axis.data(), angle);
-        src.setDirectionCosines(cos);
+    for (std::size_t i = 0; i < sim_ev_center.size(); ++i) {
 
-        auto res = runDispatcher(transport, w, &src);
-        const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
+        Source<T>* s_ptr = nullptr;
+        if (i > 0) {
+            const T angle = -(((i - 1) * 10) * DEG_TO_RAD<T>());
+            std::array<T, 3> rot_axis = { 0, 0, 1 };
+            std::array<T, 3> pos { -600, 0, 0 };
+            std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
+            vectormath::rotate(pos.data(), rot_axis.data(), angle);
+            src.setPosition(pos);
+            vectormath::rotate(cos.data(), rot_axis.data(), angle);
+            vectormath::rotate(&cos[3], rot_axis.data(), angle);
+            src.setDirectionCosines(cos);
+            s_ptr = &src;
+        } else {
+            std::array<T, 3> pos { -600, 0, 0 };
+            std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
+            srcCT.setPosition(pos);
+            srcCT.setDirectionCosines(cos);
+            s_ptr = &srcCT;
+        }
+        auto res = runDispatcher(transport, w, s_ptr);
 
         const T simtime = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count();
-        auto dose = getEVperHistory(res, w.densityArray(), w.spacing(), total_hist);
+
+        //correction for voxelized tube, we assume a homogeneous dose distribution about the VOI
+        //for this correction
+        const auto voxel_volume = std::accumulate(w.spacing().cbegin(), w.spacing().cend(), T { 1 }, std::multiplies<>());
+        const auto n_voxels = std::count(w.materialIndexArray()->cbegin(), w.materialIndexArray()->cend(), 2);
+        const auto correction = PI_VAL<T>() * 5 * 5 * 100 / (voxel_volume * n_voxels);
 
         auto matBegin = w.materialIndexArray()->cbegin();
-        auto dose_pher = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 3 ? d : 0; });
-        auto dose_cent = std::transform_reduce(std::execution::par_unseq, dose.cbegin(), dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 2 ? d : 0; });
+        auto dose_pher = correction * std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 3 ? d : 0; });
+        auto dose_cent = correction * std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 2 ? d : 0; });
         auto nevents_pher = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), matBegin, 0, std::plus<>(), [](auto d, auto m) { return m == 3 ? d : 0; });
         auto nevents_cent = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), matBegin, 0, std::plus<>(), [](auto d, auto m) { return m == 2 ? d : 0; });
-
-        print(i * 10, ", ", dose_cent, ", ", nevents_cent, ", ", dose_pher, ", ", nevents_pher, ", ",
+        auto error_pher = getRelativeError(3, w, res);
+        auto error_cent = getRelativeError(2, w, res);
+        if (i > 0)
+            print((i - 1) * 10);
+        else
+            print("Continuous angle");
+        print(", ", dose_cent, ", ", error_cent, ", ", nevents_cent, ", ", dose_pher, ", ", error_pher, ", ", nevents_pher, ", ",
             sim_ev_center[i], ", ", sim_ev_pher[i], ", ", simtime / 1000, "s, ",
             (dose_cent - sim_ev_center[i]) / sim_ev_center[i] * 100, ", ", (dose_pher - sim_ev_pher[i]) / sim_ev_pher[i] * 100, "\n");
     }
     print("\n");
     return true;
-}
-
-template <typename T>
-void writeBinaryArray(const std::string& path, T* buffer, std::array<std::size_t, 3> dim)
-{
-    std::ofstream ofs(path, std::ios::binary | std::ios::trunc);
-    if (!ofs) {
-        return;
-    }
-    auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>()) * sizeof(T);
-    ofs.write(reinterpret_cast<char*>(buffer), size);
 }
 
 template <typename T>
@@ -1075,8 +1105,11 @@ World<T> generateTG195Case5World()
 }
 
 template <typename T>
-bool TG195Case5AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = false)
+bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false)
 {
+    constexpr std::size_t histPerExposure = 1e6;
+    constexpr std::size_t nExposures = 360;
+
     Print print;
     print("TG195 Case 5:\n");
     auto world = generateTG195Case5World<T>();
@@ -1091,20 +1124,26 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
+    IsotropicCTSource<T> srcCT;
     src.setHistoriesPerExposure(histPerExposure);
     src.setTotalExposures(nExposures);
+    srcCT.setHistoriesPerExposure(histPerExposure);
+    srcCT.setTotalExposures(nExposures);
 
     if (specter) {
         print("Specter of 120 kV W/Al\n");
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
+        srcCT.setSpecter(specter.second, specter.first);
     } else {
         print("Monoenergetic specter of 56.4 kev\n");
         std::vector<T> s(1, T { 1 }), e(1, T { 56.4 });
         src.setSpecter(s, e);
+        srcCT.setSpecter(s, e);
     }
     print("Collimation: 10 mm:\n");
     src.setCollimationAngles(std::atan(T { 250 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
+    srcCT.setCollimationAngles(std::atan(T { 250 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
 
     std::array<std::string, 17> tg195_organ_names = { "Soft tissue",
         "Heart",
@@ -1169,21 +1208,20 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
         src.setDirectionCosines(cos);
 
         auto res = runDispatcher(transport, world, &src);
-        const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure());
 
         const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
         print("Simulation time ", simtime, " seconds");
-        print(" with ", simtime / total_hist, " seconds*CPU core per history\n");
-        auto dose = getEVperHistory(res, world.densityArray(), world.spacing(), total_hist);
+        print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
 
-        std::array<T, tg195_organ_names.size()> organ_doses;
-        print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], nEvents, difference [eV/hist], difference [%]\n");
+        std::array<T, tg195_organ_names.size()> organ_doses, error;
+        print("Organ idx, Organ name, dxmc dose [eV/hist], dxmc error [%], TG195 dose [eV/hist], nEvents, difference [eV/hist], difference [%]\n");
         for (std::size_t j = 0; j < organ_doses.size(); ++j) {
-            const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), dose.cbegin(),
+            const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.dose.cbegin(),
                 T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
             organ_doses[j] = dose_sum;
+            error[j] = getRelativeError(tg195_organ_idx[j], world, res);
             print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
-            print(organ_doses[j], ", ", tg195_doses[i][j], ", ");
+            print(organ_doses[j], ", ", error[j], ", ", tg195_doses[i][j], ", ");
             const auto nevents_sum = std::transform_reduce(
                 std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.nEvents.cbegin(),
                 0, std::plus<>(), [&](auto m, auto d) -> auto { return m == tg195_organ_idx[j] ? d : 0; });
@@ -1196,39 +1234,12 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
     }
 
     print("Continuous distribution of projection angle from 0 to 360 deg\n");
-    std::vector<T> dose_cont(world.materialIndexArray()->size(), 0);
-    std::vector<std::uint32_t> nEvents_cont(world.materialIndexArray()->size(), 0);
-    const std::size_t angle_step = 10; //* 2;
-    const std::size_t n_angle_steps = 360 / angle_step;
 
-    src.setHistoriesPerExposure(histPerExposure / n_angle_steps);
-    for (std::size_t i = 0; i < 360; i += angle_step) {
-        const T angle = i;
-        std::cout << "Running angle " << angle << " of 360 in step of " << angle_step << "\r ";
-        std::array<T, 3> pos = { 0, -600, 0 };
-        std::array<T, 3> rot_axis = { 0, 0, 1 };
-        std::array<T, 6> cos = { -1, 0, 0, 0, 0, 1 };
-
-        const auto rad = -angle * dxmc::DEG_TO_RAD<T>();
-
-        dxmc::vectormath::rotate(pos.data(), rot_axis.data(), rad);
-        dxmc::vectormath::rotate(cos.data(), rot_axis.data(), rad);
-        dxmc::vectormath::rotate(&cos[3], rot_axis.data(), rad);
-
-        std::array<T, 3> beam_dir = { 0, 0, 0 };
-        dxmc::vectormath::cross(cos.data(), beam_dir.data());
-
-        src.setPosition(pos);
-        src.setDirectionCosines(cos);
-
-        auto res = transport(world, &src);
-
-        std::transform(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), dose_cont.cbegin(), dose_cont.begin(), std::plus<>());
-        std::transform(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), nEvents_cont.cbegin(), nEvents_cont.begin(), std::plus<>());
-    }
-    const auto total_hist = static_cast<T>(src.totalExposures() * src.historiesPerExposure()) * n_angle_steps;
-    auto dose_cont_ev = getEVperHistory(dose_cont, world.densityArray(), world.spacing(), total_hist);
-    dose_cont.clear();
+    std::array<T, 3> posCT = { 0, -600, 0 };
+    std::array<T, 6> cosCT = { -1, 0, 0, 0, 0, 1 };
+    srcCT.setDirectionCosines(cosCT);
+    srcCT.setPosition(posCT);
+    auto res = runDispatcher(transport, world, &srcCT);
 
     std::array<T, 17> tg195_organ_doses_cont;
     if (specter) {
@@ -1236,82 +1247,88 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<float> transport, bool specter = f
     } else {
         tg195_organ_doses_cont = { 10410.69, 1670.94, 889.97, 438.66, 3.57, 22.80, 103.46, 11.89, 6.71, 0.14, 1.40, 21.02, 6.75, 29.55, 305.22, 9.88, 7854.65 };
     }
-    print("Organ idx, Organ name, dxmc dose [eV/hist], TG195 dose [eV/hist], difference [eV/hist], difference [%]\n");
+    print("Organ idx, Organ name, dxmc dose [eV/hist], dxmc error [%], TG195 dose [eV/hist], nEvents, difference [eV/hist], difference [%]\n");
     for (std::size_t j = 0; j < tg195_organ_doses_cont.size(); ++j) {
-        const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), dose_cont_ev.cbegin(),
+        const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.dose.cbegin(),
             T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
 
+        const auto var_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.variance.cbegin(),
+            T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
+        const auto rel_error = dose_sum > 0 ? std::sqrt(var_sum) / dose_sum * 100 : 0;
+
         print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
-        print(dose_sum, ", ", tg195_organ_doses_cont[j], ", ");
+        print(dose_sum, ", ", rel_error, ", ", tg195_organ_doses_cont[j], ", ");
+
         const auto nevents_sum = std::transform_reduce(
-            std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), nEvents_cont.cbegin(),
+            std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.nEvents.cbegin(),
             0, std::plus<>(), [&](auto m, auto d) -> auto { return m == tg195_organ_idx[j] ? d : 0; });
         print(nevents_sum, ", ");
+
         const auto diff = dose_sum - tg195_organ_doses_cont[j];
         const auto diff_p = 100 * diff / tg195_organ_doses_cont[j];
         print(diff, ", ", diff_p, "\n");
     }
+
     print("\n");
     return true;
 }
 
-bool selectForcedInteractions(dxmc::Transport<float> transport, bool forced)
+template <typename T>
+bool runAll(dxmc::Transport<T> transport)
 {
     auto success = true;
 
     // call  by (use specter, wide collimation/tilting, force interactions)
-    success = success && TG195Case2AbsorbedEnergy<float>(transport, false, false, forced);
-    success = success && TG195Case2AbsorbedEnergy<float>(transport, false, true, forced);
-    success = success && TG195Case2AbsorbedEnergy<float>(transport, true, false, forced);
-    success = success && TG195Case2AbsorbedEnergy<float>(transport, true, true, forced);
+    success = success && TG195Case2AbsorbedEnergy<T>(transport, false, false, false);
+    success = success && TG195Case2AbsorbedEnergy<T>(transport, false, true, false);
+    success = success && TG195Case2AbsorbedEnergy<T>(transport, true, false, false);
+    success = success && TG195Case2AbsorbedEnergy<T>(transport, true, true, false);
 
-    success = success && TG195Case3AbsorbedEnergy<float>(transport, false, false, forced);
-    success = success && TG195Case3AbsorbedEnergy<float>(transport, false, true, forced);
-    success = success && TG195Case3AbsorbedEnergy<float>(transport, true, false, forced);
-    success = success && TG195Case3AbsorbedEnergy<float>(transport, true, true, forced);
+    success = success && TG195Case3AbsorbedEnergy<T>(transport, false, false, false);
+    success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
+    success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
+    success = success && TG195Case3AbsorbedEnergy<T>(transport, true, true, false);
 
-    success = success && TG195Case41AbsorbedEnergy<float>(transport, false, false, forced);
-    success = success && TG195Case41AbsorbedEnergy<float>(transport, false, true, forced);
-    success = success && TG195Case41AbsorbedEnergy<float>(transport, true, false, forced);
-    success = success && TG195Case41AbsorbedEnergy<float>(transport, true, true, forced);
-    
-    success = success && TG195Case42AbsorbedEnergy<float>(transport, false, false, forced);
-    success = success && TG195Case42AbsorbedEnergy<float>(transport, false, true, forced);
-    success = success && TG195Case42AbsorbedEnergy<float>(transport, true, false, forced);
-    success = success && TG195Case42AbsorbedEnergy<float>(transport, true, true, forced);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, false, false, false);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, false, true, false);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, true, false, false);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, true, true, false);
+
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, false, true);
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, true, true);
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, false, true);
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, true, true);
+
+    success = success && TG195Case5AbsorbedEnergy<T>(transport, false);
+    success = success && TG195Case5AbsorbedEnergy<T>(transport, true);
 
     return success;
 }
 
+template <typename T>
 bool selectOptions()
 {
-    dxmc::Transport<float> transport;
+    dxmc::Transport<T> transport;
+    transport.setOutputMode(dxmc::Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
 
     bool success = true;
 
     /*transport.setLivermoreComptonModel(false);
     transport.setBindingEnergyCorrection(false);
-    success = success && selectForcedInteractions(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+    success = success && runAll(transport);
+    
 
     transport.setLivermoreComptonModel(false);
     transport.setBindingEnergyCorrection(true);
-    success = success && selectForcedInteractions(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
-
+    success = success && runAll(transport);
+    
     transport.setLivermoreComptonModel(true);
     transport.setBindingEnergyCorrection(false);
-    success = success && selectForcedInteractions(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+    success = success && runAll(transport);
     */
     transport.setLivermoreComptonModel(true);
     transport.setBindingEnergyCorrection(true);
-    success = success && selectForcedInteractions(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, false);
-    success = success && TG195Case5AbsorbedEnergy<float>(transport, true);
+    success = success && runAll(transport);
 
     return success;
 }
@@ -1327,7 +1344,7 @@ int main(int argc, char* argv[])
 {
     printStart();
 
-    auto success = selectOptions();
+    auto success = selectOptions<float>();
 
     std::cout << "Press any key to exit";
     std::string dummy;
