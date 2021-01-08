@@ -57,6 +57,7 @@ public:
         CTDual,
         Pencil,
         Isotropic,
+        IsotropicCT,
         Other
     };
 
@@ -255,7 +256,7 @@ protected:
 };
 
 template <Floating T = double>
-class IsotropicSource final : public Source<T> {
+class IsotropicSource : public Source<T> {
 public:
     IsotropicSource()
         : Source<T>()
@@ -330,11 +331,41 @@ public:
     }
 
 protected:
-private:
     std::uint64_t m_totalExposures = 1;
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     SpecterDistribution<T> m_specterDistribution;
     T m_maxPhotonEnergy = 1.0;
+};
+template <Floating T = double>
+class IsotropicCTSource final : public IsotropicSource<T> {
+public:
+    IsotropicCTSource()
+        : IsotropicSource<T>()
+    {
+        this->m_type = Source<T>::Type::IsotropicCT;
+    }
+    Exposure<T> getExposure(std::uint64_t exposureNumber) const override
+    {
+        std::array<T, 3> rotAxis = { 0, 0, 1 };
+
+        const auto angle = (exposureNumber * 2 * PI_VAL<T>()) / this->m_totalExposures;
+        auto cosines = this->m_directionCosines;
+        auto pos = this->m_position;
+
+        vectormath::rotate(&pos[0], &rotAxis[0], angle);
+        vectormath::rotate(&cosines[0], &rotAxis[0], angle);
+        vectormath::rotate(&cosines[3], &rotAxis[0], angle);
+
+        constexpr T weight { 1 };
+        Exposure<T> exposure(pos,
+            cosines,
+            this->m_collimationAngles,
+            this->m_historiesPerExposure,
+            weight,
+            &(this->m_specterDistribution));
+
+        return exposure;
+    }
 };
 
 template <Floating T = double>
@@ -540,12 +571,11 @@ public:
         Material airMaterial("Air, Dry (near sea level)");
         std::transform(specter.begin(), specter.end(), massAbsorb.begin(), [&](const auto& el) -> T { return airMaterial.getMassEnergyAbsorbtion(el.first); });
 
-        T calcOutput = 0.0; // Air KERMA [keV/g] == [1000 keV/kg]
+        T calcOutput = 0.0; // Air KERMA [keV/g] == [eV/kg]
         for (std::size_t i = 0; i < specter.size(); ++i) {
             const auto& [keV, weight] = specter[i];
-            calcOutput += 1000 * keV * weight * massAbsorb[i];
+            calcOutput += keV * weight * massAbsorb[i];
         }
-        calcOutput *= (totalExposures() * this->historiesPerExposure());
 
         constexpr T mmsqTOcmsq { 0.01 };
 
