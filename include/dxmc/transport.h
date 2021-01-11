@@ -758,22 +758,22 @@ protected:
     void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1) noexcept
     {
         const auto& spacing = world.spacing();
-        const auto voxelVolume = spacing[0] * spacing[1] * spacing[2] / T { 1000.0 }; // cm3
+        const auto voxelVolume = spacing[0] * spacing[1] * spacing[2]; // mm3
         auto density = world.densityArray();
 
         std::transform(
             std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), res.dose.begin(),
             [=](auto ei, auto de) -> auto {
-                const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
+                const auto voxelMass = de * voxelVolume; //g/cm3 * mm3 = kg
                 const auto factor = calibrationValue / voxelMass;
-                return de > T { 0.0 } ? ei * calibrationValue : T { 0.0 };
+                return de > T { 0.0 } ? ei * factor : T { 0.0 };
             });
         std::transform(
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
             [=](auto var, auto de) -> auto {
-                const auto voxelMass = de * voxelVolume * T { 0.001 }; //kg
+                const auto voxelMass = de * voxelVolume; //g/cm3 * mm3 = kg
                 const auto factor = calibrationValue / voxelMass;
-                return de > T { 0.0 } ? var * factor * factor : T { 0.0 };
+                return de > T { 0.0 } ? var * factor * factor : T { 0.0 }; // for variance we must multiply by square
             });
     }
 
