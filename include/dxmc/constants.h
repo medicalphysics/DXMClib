@@ -32,7 +32,7 @@ constexpr T KEV_TO_ANGSTROM()
 template <Floating T>
 constexpr T ELECTRON_REST_MASS()
 {
-    return T { 510.9989461 };
+    return T { 510.9989461 }; // kev/c^2
 }
 
 template <Floating T>

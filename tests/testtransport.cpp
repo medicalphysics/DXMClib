@@ -56,18 +56,19 @@ public:
         const T emax = 1;
         const auto k = energy / ELECTRON_REST_MASS<T>();
 
-        std::array<T, 128> res;
+        std::array<T, 512> res;
         std::fill(res.begin(), res.end(), T { 0 });
         std::array<T, res.size()> earr;
         for (std::size_t i = 0; i < res.size(); ++i) {
-            earr[i] = emin + ((emax - emin) / res.size()) * i;
+            //earr[i] = emin + ((emax - emin) / res.size()) * i;
+            earr[i] = (emax / res.size()) * i;
         }
 
         RandomState state;
-        std::size_t nSamp = 10e6;
+        std::size_t nSamp = 5e6;
         for (std::size_t i = 0; i < nSamp; ++i) {
             p.energy = energy;
-            this->comptonScatter<true>(p, 0, state);
+            this->comptonScatter<2>(p, 0, state);
             const T e = p.energy / energy;
             auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
             auto idx = std::distance(earr.cbegin(), it);
@@ -79,19 +80,20 @@ public:
         for (std::size_t i = 0; i < meas.size(); ++i) {
             const auto estep = (earr[1] - earr[0]) / 2;
             const auto e = earr[i] + estep;
+            if (e > emin) {
+                const T a1 = std::log(1 + 2 * k);
+                const T a2 = (1 - emin * emin) / 2;
+                const T t = (1 - e) / (k * e);
+                const T sin2 = t * (2 - t);
+                const T cosAngle = 1 - t;
+                const T gmax = 1 / emin + emin;
+                const T p = (1 / e + e - sin2) / gmax;
+                meas[i] = p;
 
-            const T a1 = std::log(1 + 2 * k);
-            const T a2 = (1 - emin * emin) / 2;
-            const T t = (1 - e) / (k * e);
-            const T sin2 = t * (2 - t);
-            const T cosAngle = 1 - t;
-            const T gmax = 1 / emin + emin;
-            const T p = (1 / e + e - sin2) / gmax;
-            meas[i] = p;
-
-            const auto q = att.momentumTransferFromCos(energy, cosAngle);
-            const auto scatterFactor = att.comptonScatterFactor(0, q);
-            meas[i] *= scatterFactor;
+                const auto q = att.momentumTransferFromCos(energy, cosAngle);
+                const auto scatterFactor = att.comptonScatterFactor(0, q);
+                meas[i] *= scatterFactor;
+            }
         }
 
         const auto meas_sum = std::accumulate(meas.cbegin(), meas.cend(), T { 0 });
@@ -108,7 +110,7 @@ public:
         std::cout << "K2/K1, dxmclib, meas, diff, diff [%]\n";
 
         for (std::size_t i = 0; i < meas.size(); ++i) {
-            std::cout << earr[i] <<", "<<res[i] << ", " << meas[i] << ", " << res[i] - meas[i] << ", " << (res[i] - meas[i]) / meas[i] *100<< "\n";
+            std::cout << earr[i] << ", " << res[i] << ", " << meas[i] << ", " << res[i] - meas[i] << ", " << (res[i] - meas[i]) / meas[i] * 100 << "\n";
         }
 
         if (rmsd < 0.001)
@@ -198,12 +200,12 @@ bool testTransport()
 {
     Test<T> t;
 
-    T energy = 54;
-    Material mat("H2O", "water");
+    T energy = 50;
+    Material mat(13);
     bool success = t.testCompton(energy, mat);
     mat = Material("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
     mat.setStandardDensity(1.19);
-    success =success && t.testCompton(energy, mat);
+    success = success && t.testCompton(energy, mat);
     success = success && t.testSafeValueAdd();
     return success;
 }
@@ -274,8 +276,8 @@ bool testStepping()
 
     Transport<T> transport;
     transport.setOutputMode(Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
-    transport.setBindingEnergyCorrection(true);
-    transport.setLivermoreComptonModel(true);
+
+    transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::IA);
 
     pen.setHistoriesPerExposure(100000);
     transport.setSiddonTracking(true);
@@ -325,7 +327,7 @@ bool testStepping()
 
 int main()
 {
-    //bool success_f = testTransport<float>();
+    bool success_f = testTransport<float>();
     bool success_t = testStepping<float>();
 
     /*bool success_d = testTransport<double>();

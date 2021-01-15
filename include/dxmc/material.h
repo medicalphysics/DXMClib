@@ -21,14 +21,30 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/floating.h"
 
 #include <algorithm>
+#include <array>
 #include <string>
 #include <vector>
 
 namespace dxmc {
+template <Floating T>
+struct ElectronShellConfiguration {
+    T bindingEnergy = 0;
+    T numberElectrons = 0;
+    T hartreeFockOrbital_0 = 0;
+    template <Floating U>
+    ElectronShellConfiguration<U> cast() const
+    {
+        ElectronShellConfiguration<U> copy;
+        copy.bindingEnergy = static_cast<U>(this->bindingEnergy);
+        copy.numberElectrons = static_cast<U>(this->numberElectrons);
+        copy.hartreeFockOrbital_0 = static_cast<U>(this->hartreeFockOrbital_0);
+        return copy;
+    }
+};
 
 class Material {
 public:
-    Material(const std::string& xraylibMaterialNameOrCompound = "", const std::string& prettyName = "", const double density=-1.0);
+    Material(const std::string& xraylibMaterialNameOrCompound = "", const std::string& prettyName = "", const double density = -1.0);
     Material(int atomicNumber);
     bool isValid(void) const { return m_valid && m_hasDensity; }
     const std::string& name(void) const { return m_name; }
@@ -69,6 +85,19 @@ public:
     double getMeanBindingEnergy() const
     {
         return m_meanBindingEnergy;
+    }
+
+    std::array<ElectronShellConfiguration<double>, 12> getElectronConfiguration() const;
+
+    template <Floating T>
+    std::array<ElectronShellConfiguration<T>, 12> getElectronConfiguration() const
+    {
+        const auto conf_d = getElectronConfiguration();
+        std::array<ElectronShellConfiguration<T>, 12> conf;
+        for (std::size_t i = 0; i < conf.size(); ++i) {
+            conf[i] = conf_d[i].cast<T>();
+        }
+        return conf;
     }
 
     static double getAtomicWeight(int Z);

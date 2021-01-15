@@ -33,6 +33,8 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 
+constexpr bool SAMPLE_RUN = false; // run with reduced number of histories
+
 class Print {
 private:
     std::ofstream m_myfile;
@@ -339,7 +341,7 @@ template <typename T>
 bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = 500;
+    constexpr std::size_t nExposures = SAMPLE_RUN ? 5 : 500;
 
     Print print;
     print("TG195 Case 2\n");
@@ -347,8 +349,13 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
-    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
-    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+    print("Low energy correction model: ");
+    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+        print("None\n");
+    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+        print("Livermore\n");
+    else
+        print("Impulse approximation (IA)\n");
 
     auto w = generateTG195Case2World<T>(forceInteractions);
     print("Number of histories: ", histPerExposure * nExposures, "\n");
@@ -600,7 +607,7 @@ template <typename T>
 bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = 200;
+    constexpr std::size_t nExposures = SAMPLE_RUN ? 5 : 200;
 
     Print print;
     print("TG195 Case 3\n");
@@ -608,8 +615,13 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
-    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
-    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+    print("Low energy correction model: ");
+    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+        print("None\n");
+    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+        print("Livermore\n");
+    else
+        print("Impulse approximation (IA)\n");
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     auto w = generateTG195Case3World<T>(forceInteractions);
@@ -770,7 +782,7 @@ World<T> generateTG195Case4World1(bool forceInteractions = false)
 template <typename T>
 bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
-    constexpr std::size_t histPerExposure = 1e5;
+    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1e4 : 1e5;
     constexpr std::size_t nExposures = 360;
 
     Print print;
@@ -779,8 +791,14 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
-    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
-    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+    print("Low energy correction model: ");
+    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+        print("None\n");
+    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+        print("Livermore\n");
+    else
+        print("Impulse approximation (IA)\n");
+
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
     src.setPosition(-600.0, 0., 0.);
@@ -910,7 +928,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
 template <typename T>
 bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
-    constexpr std::size_t histPerExposure = 1e6;
+    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e6;
     constexpr std::size_t nExposures = 360;
 
     std::array<T, 37> sim_ev_center, sim_ev_pher;
@@ -938,8 +956,13 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         print("Forced interaction is ON\n");
     else
         print("Forced interaction is OFF\n");
-    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
-    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+    print("Low energy correction model: ");
+    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+        print("None\n");
+    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+        print("Livermore\n");
+    else
+        print("Impulse approximation (IA)\n");
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
@@ -1107,7 +1130,7 @@ World<T> generateTG195Case5World()
 template <typename T>
 bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false)
 {
-    constexpr std::size_t histPerExposure = 1e6;
+    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e6;
     constexpr std::size_t nExposures = 360;
 
     Print print;
@@ -1119,8 +1142,13 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     }
 
     print("Forced interaction is OFF\n");
-    print("Livermore correction is: ", transport.livermoreComptonModel() ? "ON\n" : "OFF\n");
-    print("Binding energy correction is: ", transport.bindingEnergyCorrection() ? "ON\n" : "OFF\n");
+    print("Low energy correction model: ");
+    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+        print("None\n");
+    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+        print("Livermore\n");
+    else
+        print("Impulse approximation (IA)\n");
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
@@ -1288,12 +1316,12 @@ bool runAll(dxmc::Transport<T> transport)
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, true, false);
-
+    
     success = success && TG195Case41AbsorbedEnergy<T>(transport, false, false, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, true, false, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, true, true, false);
-
+    
     success = success && TG195Case42AbsorbedEnergy<T>(transport, false, false, true);
     success = success && TG195Case42AbsorbedEnergy<T>(transport, false, true, true);
     success = success && TG195Case42AbsorbedEnergy<T>(transport, true, false, true);
@@ -1326,8 +1354,7 @@ bool selectOptions()
     transport.setBindingEnergyCorrection(false);
     success = success && runAll(transport);
     */
-    transport.setLivermoreComptonModel(true);
-    transport.setBindingEnergyCorrection(true);
+    transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE);
     success = success && runAll(transport);
 
     return success;

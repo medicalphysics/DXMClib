@@ -131,6 +131,12 @@ public:
         generateFFdata(materials);
         generateSFdata(materials);
 
+        //getting electron configurations
+        m_electronShellConfiguration.reserve(materials.size());
+        for (const auto m : materials) {
+            m_electronShellConfiguration.push_back(m.getElectronConfiguration<T>());
+        }
+
         // maxenergies
         std::vector<T> densArray;
         std::vector<std::uint8_t> matArray;
@@ -365,6 +371,17 @@ public:
     }
 
     /**
+   * @brief Electron shell configuration for material
+   *
+   * @param materialIdx material index   
+   * @return vector of ElectronShellConfiguration structs for each shell in material.
+   */
+    const std::array<ElectronShellConfiguration<T>, 12>& electronShellConfiguration(std::size_t materialIdx) const
+    {
+        return m_electronShellConfiguration[materialIdx];
+    }
+
+    /**
    * @brief Momentum transfer for photon
    *
    * @param energy Photon energy in keV
@@ -538,5 +555,6 @@ private:
     std::vector<T> m_comptonScatterFactor;
     std::vector<T> m_maxMassAtt;
     std::vector<T> m_meanBindingEnergy;
+    std::vector<std::array<ElectronShellConfiguration<T>, 12>> m_electronShellConfiguration;
 };
 }

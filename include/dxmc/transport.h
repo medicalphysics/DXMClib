@@ -111,8 +111,15 @@ class CTSource;
 template <Floating T = double>
 class Transport {
 public:
-    enum class OUTPUTMODE { EV_PER_HISTORY,
-        DOSE };
+    enum class OUTPUTMODE {
+        EV_PER_HISTORY,
+        DOSE
+    };
+    enum class LOWENERGYCORRECTION : int {
+        NONE = 0,
+        LIVERMORE = 1,
+        IA = 2
+    };
     Transport()
     {
         std::uint64_t nthreads = std::thread::hardware_concurrency();
@@ -121,10 +128,8 @@ public:
 
     void setNumberOfWorkers(std::uint64_t n) { this->m_nThreads = std::max(n, std::uint64_t { 1 }); }
     std::size_t numberOfWorkers() const { return m_nThreads; }
-    void setLivermoreComptonModel(bool use) { m_useComptonLivermore = use; }
-    bool livermoreComptonModel() const { return m_useComptonLivermore; }
-    void setBindingEnergyCorrection(bool use) { m_useBindingEnergyCorrection = use; }
-    bool bindingEnergyCorrection() const { return m_useBindingEnergyCorrection; }
+    void setLowEnergyCorrectionModel(Transport::LOWENERGYCORRECTION model) { m_lowenergyCorrection = model; }
+    Transport::LOWENERGYCORRECTION lowEnergyCorrectionModel() const { return m_lowenergyCorrection; }
     void setSiddonTracking(bool use) { m_useSiddonTracking = use; }
     bool siddonTracking() const { return m_useSiddonTracking; }
     void setOutputMode(Transport<T>::OUTPUTMODE mode) { m_outputmode = mode; }
@@ -163,30 +168,22 @@ public:
             progressbar->setDoseData(result.dose.data(), world.dimensions(), world.spacing());
         }
         const auto start = std::chrono::system_clock::now();
-        if (m_useComptonLivermore) {
-            if (m_useBindingEnergyCorrection) {
-                if (m_useSiddonTracking)
-                    parallellRun<true, true, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-                else
-                    parallellRun<true, true, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            } else {
-                if (m_useSiddonTracking)
-                    parallellRun<true, false, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-                else
-                    parallellRun<true, false, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            }
+        if (m_lowenergyCorrection == LOWENERGYCORRECTION::NONE) {
+            if (m_useSiddonTracking)
+                parallellRun<0, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            else
+                parallellRun<0, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
+
+        } else if (m_lowenergyCorrection == LOWENERGYCORRECTION::LIVERMORE) {
+            if (m_useSiddonTracking)
+                parallellRun<1, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            else
+                parallellRun<1, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
         } else {
-            if (m_useBindingEnergyCorrection) {
-                if (m_useSiddonTracking)
-                    parallellRun<false, true, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-                else
-                    parallellRun<false, true, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            } else {
-                if (m_useSiddonTracking)
-                    parallellRun<false, false, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-                else
-                    parallellRun<false, false, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            }
+            if (m_useSiddonTracking)
+                parallellRun<2, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            else
+                parallellRun<2, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
         }
         result.simulationTime = std::chrono::system_clock::now() - start;
 
@@ -229,6 +226,31 @@ protected:
         value_l.fetch_add(addValue);
     }
 
+    template <int Lowenergycorrection, bool Forced = false>
+    T photoAbsorption(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
+    {
+        const auto E = particle.energy;
+        if constexpr (!Forced) {
+            particle.energy = 0;
+        }
+        if constexpr (Lowenergycorrection == 0) {
+            return E;
+        } else if (Lowenergycorrection == 1) {
+            return E - m_attenuationLut.meanBindingEnergy(materialIdx);
+        } else {
+            //selecting shell
+            const auto& electronConfigurations = m_attenuationLut.electronShellConfiguration(materialIdx);
+            const auto r1 = state.randomUniform<T>();
+            T cumprob = electronConfigurations[0].numberElectrons;
+            std::uint8_t shellIdx = 0;
+            while ((cumprob < r1) && (shellIdx < 12)) {
+                shellIdx++;
+                cumprob += electronConfigurations[shellIdx].numberElectrons;
+            }
+            return E - electronConfigurations[shellIdx].bindingEnergy;
+        }
+    }
+
     void rayleightScatterLivermore(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     {
         // theta is scattering angle
@@ -250,7 +272,7 @@ protected:
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
     }
 
-    template <bool Livermore = true>
+    template <int Lowenergycorrection>
     T comptonScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
@@ -264,20 +286,107 @@ protected:
         do {
             const auto r1 = state.randomUniform<T>();
             e = r1 + (1 - r1) * emin;
-            const T t = (1 - e) / (k * e);
+            const auto t = (1 - e) / (k * e);
             const auto sinthetasqr = t * (2 - t);
-
             cosAngle = 1 - t;
 
-            const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
-            if constexpr (Livermore) {
+            if constexpr (Lowenergycorrection == 1) {
                 const auto q = m_attenuationLut.momentumTransferFromCos(particle.energy, cosAngle);
                 const auto scatterFactor = m_attenuationLut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
                 const auto r2 = state.randomUniform<T>();
+                const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
                 rejected = r2 > g * scatterFactor;
             } else {
+                const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
                 const auto r2 = state.randomUniform<T>();
                 rejected = r2 > g;
+            }
+            if constexpr (Lowenergycorrection == 2) {
+                rejected = rejected || (t == T { 0 });
+                // See penelope-2018__a_code_system_for_monte_carlo_simulation_of_electron_and_photon_transport
+                // for details
+                if (!rejected) {
+                    //selecting a electron shell by random, should be improved?
+                    bool acceptshell;
+                    T pz;
+                    //constexpr T mec = ELECTRON_REST_MASS<T>();
+                    const auto E = particle.energy;
+                    const auto EC = E * e;
+                    const auto cqc = std::sqrt(E * E + EC * EC - 2 * E * EC * cosAngle);
+                    const auto F_pz_part = cqc * (1 + EC * (EC - E * cosAngle) / (cqc * cqc)) / E;
+                    const auto F_zp_max = std::max(1 + F_pz_part * T { 0.2 }, 1 - F_pz_part * T { 0.2 });
+
+                    const auto& electronConfigurations = m_attenuationLut.electronShellConfiguration(materialIdx);
+                    std::array<T, 12> pz_max, n_pz_max, shell_probs;
+                    //calculating pz_max and n_pz_max for all shells
+                    for (std::size_t i = 0; i < pz_max.size(); ++i) {
+                        const auto U = electronConfigurations[i].bindingEnergy;
+                        const auto cq = std::sqrt(E * E + (E - U) * (E - U) - 2 * E * (E - U) * cosAngle);
+                        pz_max[i] = E * (E - U - EC) / (EC * cq) * ELECTRON_REST_MASS<T>();
+                        //equation 2.49
+                        constexpr T d2 = std::numbers::sqrt2_v<T>;
+                        constexpr T d1 = T { 1 } / d2;
+                        const auto J = electronConfigurations[i].hartreeFockOrbital_0;
+                        if (pz_max[i] < 0) {
+                            const auto nom = (d1 - d2 * J * pz_max[i]);
+                            n_pz_max[i] = T { 0.5 } * std::exp(d1 * d1 - nom * nom);
+                        } else {
+                            const auto nom = (d1 + d2 * J * pz_max[i]);
+                            n_pz_max[i] = 1 - T { 0.5 } * std::exp(d1 * d1 - nom * nom);
+                        }
+                    }
+                    // calculating shell probability
+                    std::transform(
+                        n_pz_max.cbegin(), n_pz_max.cend(), electronConfigurations.cbegin(), shell_probs.begin(),
+                        [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy ? n_pz * c.numberElectrons : 0; });
+                    const auto shell_probs_sum_inv = 1 / std::reduce(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend());
+
+                    do {
+                        //sampling electron shell
+                        std::uint8_t electronIdx = 0;
+                        auto shell_probs_cum = shell_probs[electronIdx] * shell_probs_sum_inv;
+                        const auto r3 = state.randomUniform<T>();
+                        while (shell_probs_cum < r3 && electronIdx < 11) {
+                            electronIdx++;
+                            shell_probs_cum += shell_probs[electronIdx] * shell_probs_sum_inv;
+                        }
+
+                        //sampling pz analytically
+                        const auto r4 = state.randomUniform<T>();
+                        const auto A = r4 * n_pz_max[electronIdx];
+                        // eq 2.59
+                        if (A < T { 0.5 }) {
+                            constexpr T ln2 = std::numbers::ln2_v<T>;
+                            constexpr T d2 = std::numbers::sqrt2_v<T>;
+                            constexpr T d1 = T { 1 } / d2;
+                            pz = (d1 - std::sqrt(d1 * d1 - ln2 * A)) / (d2 * electronConfigurations[electronIdx].hartreeFockOrbital_0);
+                        } else {
+                            constexpr T ln2 = std::numbers::ln2_v<T>;
+                            constexpr T d2 = std::numbers::sqrt2_v<T>;
+                            constexpr T d1 = T { 1 } / d2;
+                            pz = (std::sqrt(d1 * d1 - ln2 * (1 - A)) - d1) / (d2 * electronConfigurations[electronIdx].hartreeFockOrbital_0);
+                        }
+                        //normalizing pz to atomic units
+                        pz *= (1 / ELECTRON_REST_MASS<T>());
+
+                        //pz must be larger than  minus electron rest mass
+                        acceptshell = pz > -1;
+
+                        //Sampling
+                        const auto F_zp = 1 + F_pz_part * pz;
+                        const auto r5 = state.randomUniform<T>();
+                        acceptshell = acceptshell && r5 * F_zp_max > F_zp;
+
+                    } while (!acceptshell);
+                    // calculating doppler shifted e
+                    const auto t_s = pz * pz;
+                    const auto nom = (1 - t_s * e * cosAngle);
+                    if (pz > 0) {
+                        e = e / (1 - t_s * e * e) * (nom + std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
+                    } else {
+                        e = e / (1 - t_s * e * e) * (nom - std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
+                    }
+                }
             }
 
         } while (rejected);
@@ -287,7 +396,11 @@ protected:
         const auto E0 = particle.energy;
         particle.energy *= e;
 
-        return E0 * (T { 1 } - e);
+        if constexpr (Lowenergycorrection == 1) {
+            return E0 * (T { 1 } - e) - m_attenuationLut.meanBindingEnergy(materialIdx); // subtracting mean binding energy for Livermore model
+        } else {
+            return E0 * (T { 1 } - e);
+        }
     }
 
     inline bool particleInsideWorld(const World<T>& world, const std::array<T, 3>& pos) const noexcept
@@ -328,7 +441,7 @@ protected:
         return indexFromPosition(particle.pos, world);
     }
 
-    template <bool Livermore, bool bindingEnergyCorrection>
+    template <int Lowenergycorrection>
     bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
@@ -338,65 +451,35 @@ protected:
         const auto attenuationTotal = attPhoto + attCompt + attRayl;
 
         const auto weightCorrection = eventProbability * attPhoto / attenuationTotal;
-        if constexpr (bindingEnergyCorrection) {
-            const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-            const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
 
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-
-        } else {
-            const auto energyImparted = p.energy * p.weight * weightCorrection;
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-        }
+        const auto energyImparted = p.weight * weightCorrection * photoAbsorption<Lowenergycorrection, true>(p, matIdx, state);
+        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
         p.weight *= (1 - weightCorrection); // to prevent bias
 
         const auto r2 = state.randomUniform<T>();
         if (r2 < eventProbability) {
-
             const auto r3 = state.randomUniform(attCompt + attRayl);
-
             if (r3 <= attCompt) // Compton event
             {
-                const auto e = comptonScatter<Livermore>(p, matIdx, state);
+                const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                     [[unlikely]]
                     {
-                        if constexpr (bindingEnergyCorrection) {
-                            const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-                            const auto energyImparted = (e + p.energy - bindingEnergy) * p.weight;
-
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-
-                        } else {
-                            const auto energyImparted = (e + p.energy) * p.weight;
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                        }
+                        const auto energyImparted = (e + p.energy) * p.weight;
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                         return false;
                     }
                 else
                     [[likely]]
                     {
-                        if constexpr (bindingEnergyCorrection) {
-                            const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-                            const auto energyImparted = (e - bindingEnergy) * p.weight;
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-
-                        } else {
-                            const auto energyImparted = e * p.weight;
-                            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                        }
+                        const auto energyImparted = e * p.weight;
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                         updateMaxAttenuation = true;
                     }
             } else // Rayleigh scatter event
@@ -406,7 +489,7 @@ protected:
         }
         return true;
     }
-    template <bool Livermore, bool bindingEnergyCorrection>
+    template <int Lowenergycorrection>
     bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
@@ -417,61 +500,34 @@ protected:
         const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
         if (r3 <= attPhoto) // Photoelectric event
         {
-            if constexpr (bindingEnergyCorrection) {
-                const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-                const auto energyImparted = (p.energy - bindingEnergy) * p.weight;
 
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+            const auto energyImparted = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;
 
-            } else {
-                const auto energyImparted = p.energy * p.weight;
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-            }
-            p.energy = 0.0;
+            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+
             return false;
         } else if (r3 <= attPhoto + attCompt) // Compton event
         {
-            const auto e = comptonScatter<Livermore>(p, matIdx, state);
+            const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[unlikely]]
                 {
-                    if constexpr (bindingEnergyCorrection) {
-                        const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-                        const auto energyImparted = (e + p.energy - bindingEnergy) * p.weight;
-
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-
-                    } else {
-                        const auto energyImparted = (e + p.energy) * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    }
+                    const auto energyImparted = (e + p.energy) * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    p.energy = 0;
                     return false;
                 }
             else
                 [[likely]]
                 {
-                    if constexpr (bindingEnergyCorrection) {
-                        const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-                        const auto energyImparted = (e - bindingEnergy) * p.weight;
-
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-
-                    } else {
-                        const auto energyImparted = e * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    }
+                    const auto energyImparted = e * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     updateMaxAttenuation = true;
                 }
         } else // Rayleigh scatter event
@@ -482,7 +538,7 @@ protected:
         return true;
     }
 
-    template <bool Livermore, bool bindingEnergyCorrection>
+    template <int Lowenergycorrection>
     void siddonParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const noexcept
     {
         const auto densBuffer = world.densityArray()->data();
@@ -552,9 +608,8 @@ protected:
                     p.pos[i] += p.dir[i] * step;
                 }
 
-                continueSampling = computeInteractions<Livermore, bindingEnergyCorrection>(p, matBuffer[arrIdx], result, arrIdx, state, energyChanged);
+                continueSampling = computeInteractions<Lowenergycorrection>(p, matBuffer[arrIdx], result, arrIdx, state, energyChanged);
                 if (continueSampling) {
-
                     //new steplenght
                     direction = {
                         p.dir[0] < 0 ? -1 : 1,
@@ -595,7 +650,7 @@ protected:
         } while (continueSampling);
     }
 
-    template <bool Livermore, bool bindingEnergyCorrection>
+    template <int Lowenergycorrection>
     void woodcockParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const noexcept
     {
         const auto densityBuffer = world.densityArray()->data();
@@ -629,13 +684,13 @@ protected:
                         const auto r2 = state.randomUniform<T>();
                         if (r2 < eventProbability) // an event will happen
                         {
-                            continueSampling = computeInteractions<Livermore, bindingEnergyCorrection>(p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                            continueSampling = computeInteractions<Lowenergycorrection>(p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                         }
                     }
                 else
                     [[unlikely]] // forced photoelectric effect
                     {
-                        continueSampling = computeInteractionsForced<Livermore, bindingEnergyCorrection>(eventProbability, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                        continueSampling = computeInteractionsForced<Lowenergycorrection>(eventProbability, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
 
                 if (continueSampling) {
@@ -684,7 +739,7 @@ protected:
         }
         return false;
     }
-    template <bool Livermore, bool bindingEnergyCorrection, bool siddonTracking>
+    template <int Lowenergycorrection, bool siddonTracking>
     void transport(const World<T>& world, const Exposure<T>& exposure, RandomState& state, Result<T>& result) const noexcept
     {
         const auto nHistories = exposure.numberOfHistories();
@@ -696,15 +751,15 @@ protected:
             const bool isInWorld = transportParticleToWorld(world, particle);
             if (isInWorld) {
                 if constexpr (siddonTracking) {
-                    siddonParticleTracking<Livermore, bindingEnergyCorrection>(world, particle, state, result);
+                    siddonParticleTracking<Lowenergycorrection>(world, particle, state, result);
                 } else {
-                    woodcockParticleTracking<Livermore, bindingEnergyCorrection>(world, particle, state, result);
+                    woodcockParticleTracking<Lowenergycorrection>(world, particle, state, result);
                 }
             }
         }
     }
 
-    template <bool Livermore, bool bindingEnergyCorrection, bool siddonTracking>
+    template <int Lowenergycorrection, bool siddonTracking>
     void workerRun(const World<T>& w, const Source<T>* source, Result<T>& result,
         EvenTaskPool& taskpool, ProgressBar<T>* progressbar) const noexcept
     {
@@ -717,14 +772,14 @@ protected:
                     return;
             auto exposure = source->getExposure(job.value());
             exposure.alignToDirectionCosines(worldBasis);
-            transport<Livermore, bindingEnergyCorrection, siddonTracking>(w, exposure, state, result);
+            transport<Lowenergycorrection, siddonTracking>(w, exposure, state, result);
             if (progressbar)
                 progressbar->exposureCompleted();
             job = taskpool.getJob();
         }
     }
 
-    template <bool Livermore, bool bindingEnergyCorrection, bool siddonTracking = false>
+    template <int Lowenergycorrection, bool siddonTracking = false>
     void parallellRun(const World<T>& w, const Source<T>* source, Result<T>& result,
         const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
     {
@@ -732,9 +787,9 @@ protected:
         std::vector<std::thread> jobs;
         jobs.reserve(nJobs - 1);
         for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::workerRun<Livermore, bindingEnergyCorrection, siddonTracking>, this, std::cref(w), source, std::ref(result), std::ref(taskpool), progressbar);
+            jobs.emplace_back(&Transport<T>::workerRun<Lowenergycorrection, siddonTracking>, this, std::cref(w), source, std::ref(result), std::ref(taskpool), progressbar);
         }
-        workerRun<Livermore, bindingEnergyCorrection, siddonTracking>(w, source, result, taskpool, progressbar);
+        workerRun<Lowenergycorrection, siddonTracking>(w, source, result, taskpool, progressbar);
         for (auto& job : jobs)
             job.join();
     }
@@ -758,13 +813,13 @@ protected:
     void energyImpartedToDose(const World<T>& world, Result<T>& res, const T calibrationValue = 1) noexcept
     {
         const auto& spacing = world.spacing();
-        const auto voxelVolume = spacing[0] * spacing[1] * spacing[2] / T {1000}; // cm3
+        const auto voxelVolume = spacing[0] * spacing[1] * spacing[2] / T { 1000 }; // cm3
         auto density = world.densityArray();
 
         std::transform(
             std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), res.dose.begin(),
             [=](auto ei, auto de) -> auto {
-                const auto voxelMass = de * voxelVolume * T {0.001}; //g/cm3 * cm3 / 1000 = kg
+                const auto voxelMass = de * voxelVolume * T { 0.001 }; //g/cm3 * cm3 / 1000 = kg
                 const auto factor = calibrationValue / voxelMass;
                 return de > T { 0.0 } ? ei * factor : T { 0.0 };
             });
@@ -798,8 +853,7 @@ private:
     AttenuationLut<T> m_attenuationLut;
     std::uint64_t m_nThreads;
     OUTPUTMODE m_outputmode = OUTPUTMODE::DOSE;
-    bool m_useComptonLivermore = true;
-    bool m_useBindingEnergyCorrection = true;
+    LOWENERGYCORRECTION m_lowenergyCorrection = LOWENERGYCORRECTION::IA;
     bool m_useSiddonTracking = false;
 };
 }

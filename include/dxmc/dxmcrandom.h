@@ -20,6 +20,7 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/floating.h"
 
+#include <concepts>
 #include <limits>
 #include <numeric>
 #include <random>
@@ -110,6 +111,35 @@ public:
             return min + r;
         } else
             static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
+    }
+
+    /**
+     * @brief Generate random unsigned integer on interval 0 to max inclusive
+     * @param max 
+     * @return 
+    */
+    template <std::unsigned_integral T>
+    inline T randomInteger(const T max) noexcept
+    {
+        static_assert(sizeof(max) <= 4, "This prng only supports up to 32 bit random integers, for a capped to 32 bit random integer use randomInteger32BitCapped instead");
+        const T threshold = ((T)(-max)) % max;
+        for (;;) {
+            const auto r = pcg32();
+            if (r >= threshold)
+                return r % max;
+        }
+    }
+
+    template <std::unsigned_integral T>
+    inline T randomInteger32BitCapped(const T max) noexcept
+    {
+        static_assert(sizeof(max) > 4, "This function is intended for 64 bit values or greater, use randomInteger method instead");
+        const T threshold = ((T)(-max)) % max;
+        for (;;) {
+            const auto r = pcg32();
+            if (r >= threshold)
+                return r % max;
+        }
     }
 
     /**

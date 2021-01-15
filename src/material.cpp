@@ -167,6 +167,83 @@ std::vector<double> Material::getRayleightFormFactorSquared(const std::vector<do
     return formFactor;
 }
 
+template <typename T>
+    requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::array<ElectronShellConfiguration<double>, 12> electronConfiguration(T* compound)
+{
+    std::vector<ElectronShellConfiguration<double>> configs;
+    std::vector<int> elements(compound->Elements, compound->Elements + compound->nElements);
+    configs.reserve(elements.size());
+
+    std::vector<double> massFractions(compound->massFractions, compound->massFractions + compound->nElements);
+    std::vector<double> numberFractions(elements.size());
+    std::transform(elements.cbegin(), elements.cend(), massFractions.cbegin(), numberFractions.begin(), [](const auto Z, const auto m) { return m / AtomicWeight(Z, nullptr); });
+    auto const numberNormalization = std::accumulate(numberFractions.cbegin(), numberFractions.cend(), 0.0);
+    std::transform(numberFractions.cbegin(), numberFractions.cend(), numberFractions.begin(), [=](const auto f) { return f / numberNormalization; });
+
+    for (int i = 0; i < elements.size(); ++i) {
+        const int Z = elements[i];
+        const double numberFraction = numberFractions[i];
+
+        xrl_error* errorEdge = nullptr;
+        int shell = 0;
+        double sum_electrons = 0;
+        while (!errorEdge) {
+            const double e = EdgeEnergy(Z, shell, &errorEdge); // binding energy
+            if (!errorEdge) {
+                const double p = ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
+                const double HF_0 = ComptonProfile_Partial(Z, shell, 0.0, &errorEdge); // Hartree Fock orbital for electron momentum =0
+                if (HF_0 > 0) {
+                    configs.emplace_back(e, p * numberFraction, HF_0);
+                }
+            }
+            ++shell;
+        }
+    }
+
+    std::sort(configs.begin(), configs.end(), [](const auto& lh, const auto& rh) { return lh.bindingEnergy > rh.bindingEnergy; });
+
+    const auto electrons_sum = std::transform_reduce(configs.cbegin(), configs.cend(), 0.0, std::plus<>(), [](const auto c) { return c.numberElectrons; });
+    for (auto& c : configs) {
+        c.numberElectrons /= electrons_sum;
+    }
+
+    std::array<ElectronShellConfiguration<double>, 12> configs_a;
+    for (std::size_t i = 0; i < std::min(configs.size(), configs_a.size()); ++i) {
+        configs_a[i] = configs[i];
+    }
+
+    //collapsing remaining shells into one
+    if (configs.size() > configs_a.size()) {
+        auto& rest = configs_a.back();
+        rest.hartreeFockOrbital_0 = configs[configs_a.size()].hartreeFockOrbital_0;
+        for (std::size_t i = configs_a.size(); i < configs.size(); ++i) {
+            rest.numberElectrons += configs[i].numberElectrons;
+            rest.bindingEnergy += configs[i].bindingEnergy;
+        }
+        rest.bindingEnergy /= (configs.size() - configs_a.size());
+    }
+    return configs_a;
+}
+
+std::array<ElectronShellConfiguration<double>, 12> Material::getElectronConfiguration() const
+{
+    std::array<ElectronShellConfiguration<double>, 12> config;
+
+    struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
+    if (m) {
+        config = electronConfiguration(m);
+        FreeCompoundData(m);
+        m = nullptr;
+        return config;
+    }
+    struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
+    if (n) {
+        config = electronConfiguration(n);
+        FreeCompoundDataNIST(n);
+        n = nullptr;
+    }
+    return config;
+}
 std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const
 {
     std::vector<double> fraction;
@@ -234,12 +311,12 @@ template <typename T>
     std::transform(elements.cbegin(), elements.cend(), massFractions.cbegin(), numberFractions.begin(), [](const auto Z, const auto m) { return m / AtomicWeight(Z, nullptr); });
     auto const numberNormalization = std::accumulate(numberFractions.cbegin(), numberFractions.cend(), 0.0);
     std::transform(numberFractions.cbegin(), numberFractions.cend(), numberFractions.begin(), [=](const auto f) { return f / numberNormalization; });
-    
+
     std::vector<double> bindingEnergy(elements.size());
     std::transform(elements.cbegin(), elements.cend(), bindingEnergy.begin(), [](const auto Z) { return calculateBindingEnergy(Z); });
 
     const auto meanBindingEnergy = std::transform_reduce(numberFractions.cbegin(), numberFractions.cend(), bindingEnergy.cbegin(), 0.0, std::plus<>(), std::multiplies<>());
-    
+
     return meanBindingEnergy;
 }
 

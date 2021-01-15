@@ -84,6 +84,30 @@ void testUniformRange()
     std::cout << "PCG time: " << pcg_time.count() << std::endl;
 }
 
+void testrandomInteger(std::uint8_t max = 128)
+{
+    std::vector<std::size_t> vals(max, 0);
+    RandomState state;
+
+    std::size_t test = 4;
+    state.randomInteger32BitCapped(test);
+
+    for (std::size_t i = 0; i < max * 1e6; ++i) {
+        const auto ind = state.randomInteger(max);
+        vals[ind]++;
+    }
+    for (std::size_t i = 0; i < vals.size(); ++i) {
+        std::cout << i << ", " << vals[i] << "\n";
+    }
+    auto mean = std::accumulate(vals.cbegin(), vals.cend(), 0.0) / max;
+    auto var = std::transform_reduce(vals.cbegin(), vals.cend(), 0.0, std::plus<>(), [=](auto v) {
+        const auto vd = static_cast<double>(v);
+        const auto diff = vd - mean;
+        return diff * diff;
+    }) / (max - 1);
+    std::cout << mean << ", " << var << ", " << std::sqrt(var) << "\n";
+    assert(mean > var / 2);
+}
 void testUniformIndex()
 {
     constexpr std::size_t S = 1e8;
@@ -118,9 +142,9 @@ void testUniformIndex()
 
 int main(int argc, char* argv[])
 {
+    testrandomInteger();
     testUniform();
     testUniformRange();
     testUniformIndex();
-
     return 0;
 }

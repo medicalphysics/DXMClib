@@ -27,8 +27,11 @@ bool testMaterialParser()
 
     std::cout << "Test material parser\n";
 
-    for (auto& m : materials)
+    for (auto& m : materials) {
         std::cout << m.name() << " Valid: " << m.isValid() << "\n";
+        auto electron_config = m.getElectronConfiguration<float>();
+    }
+
     bool success = true;
     for (auto& m : materials)
         success = success && m.isValid();
