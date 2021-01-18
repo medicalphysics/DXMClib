@@ -22,3 +22,4 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/transport.h"
 #include "dxmc/vectormath.h"
 #include "dxmc/world.h"
+#include "dxmc/lowenergycorrectionmodel.h"
