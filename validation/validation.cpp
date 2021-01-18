@@ -1321,11 +1321,11 @@ bool runAll(dxmc::Transport<T> transport)
     success = success && TG195Case41AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, true, false, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, true, true, false);
-    
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, false, true);
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, true, true);
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, false, true);
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, true, true);
+
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, false, false);
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, true, false);
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, false, false);
+    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, true, false);
 
     success = success && TG195Case5AbsorbedEnergy<T>(transport, false);
     success = success && TG195Case5AbsorbedEnergy<T>(transport, true);
@@ -1338,25 +1338,10 @@ bool selectOptions()
 {
     dxmc::Transport<T> transport;
     transport.setOutputMode(dxmc::Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
-
-    bool success = true;
-
-    /*transport.setLivermoreComptonModel(false);
-    transport.setBindingEnergyCorrection(false);
-    success = success && runAll(transport);
-    
-
-    transport.setLivermoreComptonModel(false);
-    transport.setBindingEnergyCorrection(true);
-    success = success && runAll(transport);
-    
-    transport.setLivermoreComptonModel(true);
-    transport.setBindingEnergyCorrection(false);
-    success = success && runAll(transport);
-    */
     transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE);
-    success = success && runAll(transport);
+    //transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::IA);
 
+    auto success = runAll(transport);
     return success;
 }
 

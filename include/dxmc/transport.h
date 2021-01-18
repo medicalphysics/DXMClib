@@ -278,10 +278,11 @@ protected:
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
     {
-        const auto k = particle.energy / ELECTRON_REST_MASS<T>();
+        const auto E = particle.energy;
+        const auto k = E / ELECTRON_REST_MASS<T>();
         const auto emin = 1 / (1 + 2 * k);
         const auto gmax_inv = 1 / (1 / emin + emin);
-        T e, cosAngle;
+        T e, cosAngle, Ee;
         bool rejected;
         do {
             const auto r1 = state.randomUniform<T>();
@@ -310,7 +311,6 @@ protected:
                     bool acceptshell;
                     T pz;
                     //constexpr T mec = ELECTRON_REST_MASS<T>();
-                    const auto E = particle.energy;
                     const auto EC = E * e;
                     const auto cqc = std::sqrt(E * E + EC * EC - 2 * E * EC * cosAngle);
                     const auto F_pz_part = cqc * (1 + EC * (EC - E * cosAngle) / (cqc * cqc)) / E;
@@ -340,10 +340,11 @@ protected:
                         n_pz_max.cbegin(), n_pz_max.cend(), electronConfigurations.cbegin(), shell_probs.begin(),
                         [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy ? n_pz * c.numberElectrons : 0; });
                     const auto shell_probs_sum_inv = 1 / std::reduce(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend());
+                    std::uint8_t electronIdx;
 
                     do {
                         //sampling electron shell
-                        std::uint8_t electronIdx = 0;
+                        electronIdx = 0;
                         auto shell_probs_cum = shell_probs[electronIdx] * shell_probs_sum_inv;
                         const auto r3 = state.randomUniform<T>();
                         while (shell_probs_cum < r3 && electronIdx < 11) {
@@ -386,6 +387,7 @@ protected:
                     } else {
                         e = e / (1 - t_s * e * e) * (nom - std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
                     }
+                    Ee = E * (1 - e) - electronConfigurations[electronIdx].bindingEnergy;
                 }
             }
 
@@ -393,14 +395,16 @@ protected:
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
-        const auto E0 = particle.energy;
+
         particle.energy *= e;
 
         if constexpr (Lowenergycorrection == 1) {
-            return E0 * (T { 1 } - e) - m_attenuationLut.meanBindingEnergy(materialIdx); // subtracting mean binding energy for Livermore model
-        } else {
-            return E0 * (T { 1 } - e);
+            Ee = E * (1 - e) - m_attenuationLut.meanBindingEnergy(materialIdx); // subtracting mean binding energy for Livermore model
+        } else if (Lowenergycorrection == 0) {
+            Ee = E * (1 - e);
         }
+
+        return Ee;
     }
 
     inline bool particleInsideWorld(const World<T>& world, const std::array<T, 3>& pos) const noexcept
