@@ -578,9 +578,13 @@ public:
             calcOutput += keV * weight * massAbsorb[i];
         }
 
+        constexpr T kevTOev = 1000;
         constexpr T mmsqTOcmsq { 0.01 };
+        constexpr T GyTOmGY = 1000;
 
-        const T output = (m_dap * 1000) / (m_fieldSize[0] * m_fieldSize[1] * mmsqTOcmsq); // mGy // mm->cm
+        calcOutput *= kevTOev; //ev/kg
+
+        const T output = (m_dap * GyTOmGY) / (m_fieldSize[0] * m_fieldSize[1] * mmsqTOcmsq); // mGy // mm->cm
         const T factor = output / calcOutput;
         return factor;
     }
