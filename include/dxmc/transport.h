@@ -21,6 +21,7 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/attenuationlut.h"
 #include "dxmc/dxmcrandom.h"
 #include "dxmc/exposure.h"
+#include "dxmc/lowenergycorrectionmodel.h"
 #include "dxmc/particle.h"
 #include "dxmc/progressbar.h"
 #include "dxmc/vectormath.h"
@@ -115,11 +116,7 @@ public:
         EV_PER_HISTORY,
         DOSE
     };
-    enum class LOWENERGYCORRECTION : int {
-        NONE = 0,
-        LIVERMORE = 1,
-        IA = 2
-    };
+
     Transport()
     {
         std::uint64_t nthreads = std::thread::hardware_concurrency();
@@ -128,8 +125,8 @@ public:
 
     void setNumberOfWorkers(std::uint64_t n) { this->m_nThreads = std::max(n, std::uint64_t { 1 }); }
     std::size_t numberOfWorkers() const { return m_nThreads; }
-    void setLowEnergyCorrectionModel(Transport::LOWENERGYCORRECTION model) { m_lowenergyCorrection = model; }
-    Transport::LOWENERGYCORRECTION lowEnergyCorrectionModel() const { return m_lowenergyCorrection; }
+    void setLowEnergyCorrectionModel(LOWENERGYCORRECTION model) { m_lowenergyCorrection = model; }
+    LOWENERGYCORRECTION lowEnergyCorrectionModel() const { return m_lowenergyCorrection; }
     void setSiddonTracking(bool use) { m_useSiddonTracking = use; }
     bool siddonTracking() const { return m_useSiddonTracking; }
     void setOutputMode(Transport<T>::OUTPUTMODE mode) { m_outputmode = mode; }
@@ -201,7 +198,7 @@ public:
         normalizeScoring(result);
         if (m_outputmode == OUTPUTMODE::DOSE) {
             if (useSourceDoseCalibration) {
-                const T calibrationValue = source->getCalibrationValue(progressbar);
+                const T calibrationValue = source->getCalibrationValue(m_lowenergyCorrection, progressbar);
                 //energy imparted to dose
                 energyImpartedToDose(world, result, calibrationValue);
                 result.dose_units = "mGy";
@@ -310,7 +307,6 @@ protected:
                     //selecting a electron shell by random, should be improved?
                     bool acceptshell;
                     T pz;
-                    //constexpr T mec = ELECTRON_REST_MASS<T>();
                     const auto EC = E * e;
                     const auto cqc = std::sqrt(E * E + EC * EC - 2 * E * EC * cosAngle);
                     const auto F_pz_part = cqc * (1 + EC * (EC - E * cosAngle) / (cqc * cqc)) / E;
@@ -857,7 +853,7 @@ private:
     AttenuationLut<T> m_attenuationLut;
     std::uint64_t m_nThreads;
     OUTPUTMODE m_outputmode = OUTPUTMODE::DOSE;
-    LOWENERGYCORRECTION m_lowenergyCorrection = LOWENERGYCORRECTION::IA;
+    LOWENERGYCORRECTION m_lowenergyCorrection = LOWENERGYCORRECTION::LIVERMORE;
     bool m_useSiddonTracking = false;
 };
 }

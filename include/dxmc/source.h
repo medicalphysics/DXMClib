@@ -23,6 +23,7 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/dxmcrandom.h"
 #include "dxmc/exposure.h"
 #include "dxmc/floating.h"
+#include "dxmc/lowenergycorrectionmodel.h"
 #include "dxmc/progressbar.h"
 #include "dxmc/transport.h"
 #include "dxmc/tube.h"
@@ -186,7 +187,7 @@ public:
      * consuming. 
      * @return calibration value such as dose = calibrationvalue * relative dose
     */
-    virtual T getCalibrationValue(ProgressBar<T>* progress = nullptr) const = 0;
+    virtual T getCalibrationValue(LOWENERGYCORRECTION model = LOWENERGYCORRECTION::NONE, ProgressBar<T>* progress = nullptr) const = 0;
 
     virtual bool isValid(void) const = 0;
     virtual bool validate(void) = 0;
@@ -237,7 +238,7 @@ public:
     }
     T airDose(void) const { return m_airDose; } // Gycm2
 
-    T getCalibrationValue(ProgressBar<T>* = nullptr) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const override
     {
         Material airMaterial("Air, Dry (near sea level)");
         const T nHistories = totalExposures() * this->historiesPerExposure();
@@ -294,7 +295,7 @@ public:
         return m_totalExposures;
     };
 
-    T getCalibrationValue(ProgressBar<T>* progress = nullptr) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const override
     {
         return T { 1 };
     };
@@ -564,7 +565,7 @@ public:
     }
     T dap(void) const { return m_dap; } // Gycm2
 
-    T getCalibrationValue(ProgressBar<T>* = nullptr) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const override
     {
         auto specter = tube().getSpecter(true);
         std::vector<T> massAbsorb(specter.size(), T { 0 });
@@ -822,7 +823,7 @@ public:
     }
     std::uint64_t ctdiPhantomDiameter(void) const { return m_ctdiPhantomDiameter; }
 
-    virtual T getCalibrationValue(ProgressBar<T>* = nullptr) const = 0;
+    virtual T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const = 0;
 
     virtual std::uint64_t exposuresPerRotatition() const
     {
@@ -851,7 +852,7 @@ public:
 
 protected:
     template <typename U>
-        requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, ProgressBar<T>* progressBar = nullptr)
+        requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
     {
         T meanWeight = 0;
         for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
@@ -886,6 +887,7 @@ protected:
         }
 
         Transport<T> transport;
+        transport.setLowEnergyCorrectionModel(model);
         auto result = transport(world, &sourceCopy, progressBar, false);
 
         typedef CTDIPhantom<T>::HolePosition holePosition;
@@ -1147,10 +1149,10 @@ public:
         return anglesPerRotation * rotationNumbers;
     }
 
-    T getCalibrationValue(ProgressBar<T>* progressBar) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
     {
         auto copy = *this;
-        return CTSource<T>::ctCalibration(copy, progressBar);
+        return CTSource<T>::ctCalibration(copy, model, progressBar);
     }
 
 private:
@@ -1227,11 +1229,11 @@ public:
         return static_cast<std::uint64_t>(this->m_scanLenght * PI_2 / (this->m_collimation * m_pitch * this->m_exposureAngleStep));
     }
 
-    T getCalibrationValue(ProgressBar<T>* progressBar = nullptr) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
     {
         CTAxialSource<T> copy = *this;
 
-        return this->ctCalibration(copy, progressBar) * m_pitch;
+        return this->ctCalibration(copy, model, progressBar) * m_pitch;
     }
 
 private:
@@ -1344,10 +1346,10 @@ public:
         return anglesPerRotation * rotationNumbers * 2;
     }
 
-    T getCalibrationValue(ProgressBar<T>* progressBar) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
     {
         auto copy = *this;
-        return this->ctCalibration(copy, progressBar);
+        return this->ctCalibration(copy, model, progressBar);
     }
 
 private:
@@ -1439,11 +1441,11 @@ public:
         return singleSourceExposure * 2;
     }
 
-    T getCalibrationValue(ProgressBar<T>* progressBar = nullptr) const override
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
     {
         CTAxialDualSource<T> copy = *this;
 
-        return CTSource<T>::ctCalibration(copy, progressBar) * m_pitch;
+        return CTSource<T>::ctCalibration(copy, model, progressBar) * m_pitch;
     }
 
     T pitch(void) const { return m_pitch; }

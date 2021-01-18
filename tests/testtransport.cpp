@@ -277,7 +277,7 @@ bool testStepping()
     Transport<T> transport;
     transport.setOutputMode(Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
 
-    transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::IA);
+    transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::IA);
 
     pen.setHistoriesPerExposure(100000);
     transport.setSiddonTracking(true);

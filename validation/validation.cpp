@@ -350,9 +350,9 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     else
         print("Forced interaction is OFF\n");
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
         print("Livermore\n");
     else
         print("Impulse approximation (IA)\n");
@@ -616,9 +616,9 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     else
         print("Forced interaction is OFF\n");
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
         print("Livermore\n");
     else
         print("Impulse approximation (IA)\n");
@@ -792,9 +792,9 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
     else
         print("Forced interaction is OFF\n");
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
         print("Livermore\n");
     else
         print("Impulse approximation (IA)\n");
@@ -957,9 +957,9 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
     else
         print("Forced interaction is OFF\n");
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
         print("Livermore\n");
     else
         print("Impulse approximation (IA)\n");
@@ -1143,9 +1143,9 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 
     print("Forced interaction is OFF\n");
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE)
+    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
         print("Livermore\n");
     else
         print("Impulse approximation (IA)\n");
@@ -1316,7 +1316,7 @@ bool runAll(dxmc::Transport<T> transport)
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, true, false);
-    
+
     success = success && TG195Case41AbsorbedEnergy<T>(transport, false, false, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case41AbsorbedEnergy<T>(transport, true, false, false);
@@ -1338,8 +1338,8 @@ bool selectOptions()
 {
     dxmc::Transport<T> transport;
     transport.setOutputMode(dxmc::Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
-    transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::LIVERMORE);
-    //transport.setLowEnergyCorrectionModel(dxmc::Transport<T>::LOWENERGYCORRECTION::IA);
+    transport.setLowEnergyCorrectionModel(dxmc::LOWENERGYCORRECTION::LIVERMORE);
+    //transport.setLowEnergyCorrectionModel(dxmc::LOWENERGYCORRECTION::IA);
 
     auto success = runAll(transport);
     return success;

@@ -49,6 +49,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/lowenergycorrectionmodel.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc.h"
     
     )
