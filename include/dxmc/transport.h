@@ -247,26 +247,41 @@ protected:
             return E - electronConfigurations[shellIdx].bindingEnergy;
         }
     }
-
-    void rayleightScatterLivermore(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
+    template <int Lowenergycorrection>
+    void rayleightScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     {
-        // theta is scattering angle
-        // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
+        if constexpr (Lowenergycorrection == 0) {
+            bool reject = true;
+            T theta;
+            while (reject) {
+                constexpr T extreme = (4 * std::numbers::sqrt2_v<T>) / (3 * std::numbers::sqrt3_v<T>);
+                const auto r1 = state.randomUniform<T>(T { 0 }, extreme);
+                theta = state.randomUniform(T { 0 }, PI_VAL<T>());
+                const auto sinang = std::sin(theta);
+                reject = r1 > ((2 - sinang * sinang) * sinang);
+            }
+            // calc angle and add randomly 90 degrees since dist i symetrical
+            const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
+            vectormath::peturb<T>(particle.dir.data(), theta, phi);
+        } else {
+            // theta is scattering angle
+            // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
 
-        //finding qmax
-        const auto qmax = m_attenuationLut.momentumTransferMax(particle.energy);
-        const auto amax = m_attenuationLut.cumFormFactorSquared(materialIdx, qmax);
-        T cosAngle;
-        do {
-            const auto r1 = state.randomUniform<T>();
-            const auto aatq = amax * r1;
-            const auto q = m_attenuationLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
-            cosAngle = m_attenuationLut.cosAngle(particle.energy, q);
-        } while ((T { 0.5 } + cosAngle * cosAngle * T { 0.5 }) < state.randomUniform<T>());
+            //finding qmax
+            const auto qmax = m_attenuationLut.momentumTransferMax(particle.energy);
+            const auto amax = m_attenuationLut.cumFormFactorSquared(materialIdx, qmax);
+            T cosAngle;
+            do {
+                const auto r1 = state.randomUniform<T>();
+                const auto aatq = amax * r1;
+                const auto q = m_attenuationLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
+                cosAngle = m_attenuationLut.cosAngle(particle.energy, q);
+            } while ((T { 0.5 } + cosAngle * cosAngle * T { 0.5 }) < state.randomUniform<T>());
 
-        const auto theta = std::acos(cosAngle);
-        const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
-        vectormath::peturb<T>(particle.dir.data(), theta, phi);
+            const auto theta = std::acos(cosAngle);
+            const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
+            vectormath::peturb<T>(particle.dir.data(), theta, phi);
+        }
     }
 
     template <int Lowenergycorrection>
@@ -484,7 +499,7 @@ protected:
                     }
             } else // Rayleigh scatter event
             {
-                rayleightScatterLivermore(p, matIdx, state);
+                rayleightScatter<Lowenergycorrection>(p, matIdx, state);
             }
         }
         return true;
@@ -532,7 +547,7 @@ protected:
                 }
         } else // Rayleigh scatter event
         {
-            rayleightScatterLivermore(p, matIdx, state);
+            rayleightScatter<Lowenergycorrection>(p, matIdx, state);
         }
 
         return true;
