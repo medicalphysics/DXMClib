@@ -34,6 +34,8 @@ using namespace dxmc;
 constexpr double ERRF = 1e-4;
 
 constexpr bool SAMPLE_RUN = false; // run with reduced number of histories
+//constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::LIVERMORE;
+constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::IA;
 
 class Print {
 private:
@@ -243,7 +245,7 @@ auto runDispatcher(Transport<T> transport, const World<T> world, Source<T>* src)
 }
 
 template <typename T>
-T getRelativeError(const std::uint8_t materialIndex, const dxmc::World<T>& world, const dxmc::Result<T>& result, bool allAboveIndex = false)
+std::pair<T, T> getError(const std::uint8_t materialIndex, const dxmc::World<T>& world, const dxmc::Result<T>& result, bool allAboveIndex = false)
 {
     auto mIdx_begin = world.materialIndexArray()->cbegin();
     auto mIdx_end = world.materialIndexArray()->cend();
@@ -252,13 +254,17 @@ T getRelativeError(const std::uint8_t materialIndex, const dxmc::World<T>& world
             [=](const auto mind, const auto d) -> T { return mind >= materialIndex ? d : 0; });
         const auto sum = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.variance.cbegin(), T { 0 }, std::plus<>(),
             [=](const auto mind, const auto var) -> T { return mind >= materialIndex ? var : 0; });
-        return sum_d > 0 ? 100 * std::sqrt(sum) / sum_d : 0;
+        const T stddev = std::sqrt(sum);
+        const T stddev_rel = sum_d > 0 ? stddev / sum_d * 100 : 0;
+        return std::make_pair(stddev, stddev_rel);
     } else {
         const auto sum_d = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.dose.cbegin(), T { 0 }, std::plus<>(),
             [=](const auto mind, const auto d) -> T { return mind == materialIndex ? d : 0; });
         const auto sum = std::transform_reduce(std::execution::par_unseq, mIdx_begin, mIdx_end, result.variance.cbegin(), T { 0 }, std::plus<>(),
             [=](const auto mind, const auto var) -> T { return mind == materialIndex ? var : 0; });
-        return sum_d > 0 ? 100 * std::sqrt(sum) / sum_d : 0;
+        const T stddev = std::sqrt(sum);
+        const T stddev_rel = sum_d > 0 ? stddev / sum_d * 100 : 0;
+        return std::make_pair(stddev, stddev_rel);
     }
 }
 
@@ -272,49 +278,53 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
     soft.setStandardDensity(1.03);
 
     std::array<T, 3> spacing = { 5, 5, 5 }; // mm
-    std::array<std::size_t, 3> dim = { 78, 78, 360 };
+    std::array<std::size_t, 3> dim = { 80, 200, 360 };
     const auto size = dim[0] * dim[1] * dim[2];
     auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     auto idx = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-    // fill first slice with soft tissue
-    for (std::size_t z = 0; z < dim[2]; ++z)
-        for (std::size_t y = 0; y < dim[1]; ++y)
-            for (std::size_t x = 0; x < dim[0]; ++x) {
-                const T zc = z * spacing[2] + spacing[2] / 2;
-                if (betw(zc, 1550, 1550 + 200)) {
-                    const T xc = x * spacing[0] + spacing[0] / 2;
-                    const T yc = y * spacing[1] + spacing[1] / 2;
 
-                    const auto i = x + y * dim[0] + z * dim[0] * dim[1];
-                    dens->data()[i] = static_cast<T>(soft.standardDensity());
-                    idx->data()[i] = static_cast<std::uint8_t>(1);
+    std::array<T, 6> extent;
+    for (std::size_t i = 0; i < 3; ++i) {
+        extent[2 * i] = -(dim[i] * spacing[i]) / 2;
+        extent[2 * i + 1] = extent[2 * i] + dim[i] * spacing[i];
+    }
+    extent[4] = 0;
+    extent[5] = dim[2] * spacing[2];
 
-                    //center boxes
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 4, 1550 + 25 + 30 * 5))
-                        idx->data()[i] = static_cast<std::uint8_t>(9 + 1);
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 3, 1550 + 25 + 30 * 4))
-                        idx->data()[i] = static_cast<std::uint8_t>(8 + 1);
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<std::uint8_t>(3 + 1);
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 1, 1550 + 25 + 30 * 2))
-                        idx->data()[i] = static_cast<std::uint8_t>(7 + 1);
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 0, 1550 + 25 + 30 * 1))
-                        idx->data()[i] = static_cast<std::uint8_t>(6 + 1);
+    std::vector<std::pair<int, std::array<T, 6>>> volumes;
+    volumes.emplace_back(std::make_pair(1, std::array<T, 6> { -390 / 2, 390 / 2, -390 / 2, 390 / 2, 1550, 1550 + 200 })); //soft volume
+    //center
+    volumes.emplace_back(std::make_pair(7, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 0, 1550 + 25 + 30 * 1 })); //6
+    volumes.emplace_back(std::make_pair(8, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 1, 1550 + 25 + 30 * 2 })); //7
+    volumes.emplace_back(std::make_pair(4, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //3
+    volumes.emplace_back(std::make_pair(9, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 3, 1550 + 25 + 30 * 4 })); //8
+    volumes.emplace_back(std::make_pair(10, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 4, 1550 + 25 + 30 * 5 })); //9
+    //pher
+    volumes.emplace_back(std::make_pair(2, std::array<T, 6> { -15, 15, -150 - 15, -150 + 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //1
+    volumes.emplace_back(std::make_pair(6, std::array<T, 6> { -15, 15, +150 - 15, +150 + 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //5
+    volumes.emplace_back(std::make_pair(3, std::array<T, 6> { -150 - 15, -150 + 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //2
+    volumes.emplace_back(std::make_pair(5, std::array<T, 6> { +150 - 15, +150 + 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //4
 
-                    //periphery y, x
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 30, 30 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<std::uint8_t>(1 + 1);
-                    if (betw(xc, 180, 180 + 30) && betw(yc, 330, 330 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<std::uint8_t>(5 + 1);
-                    if (betw(xc, 30, 30 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<std::uint8_t>(2 + 1);
-                    if (betw(xc, 330, 330 + 30) && betw(yc, 180, 180 + 30) && betw(zc, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3))
-                        idx->data()[i] = static_cast<std::uint8_t>(4 + 1);
+    auto idx_buffer = idx->data();
+    auto dens_buffer = dens->data();
+    for (const auto& [vol_idx, ext] : volumes) {
+        for (std::size_t z = 0; z < dim[2]; ++z) {
+            const auto zp = spacing[2] * (z + T { .5 }) + extent[4];
+            for (std::size_t y = 0; y < dim[1]; ++y) {
+                const auto yp = spacing[1] * (y + T { .5 }) + extent[2];
+                for (std::size_t x = 0; x < dim[0]; ++x) {
+                    const auto xp = spacing[0] * (x + T { .5 }) + extent[0];
+                    if ((xp > ext[0]) && (xp < ext[1]) && (yp > ext[2]) && (yp < ext[3]) && (zp > ext[4]) && (zp < ext[5])) {
+                        // voxel in current volume
+                        const auto i = z * dim[0] * dim[1] + y * dim[0] + x;
+                        idx_buffer[i] = vol_idx;
+                        dens_buffer[i] = soft.standardDensity();
+                    }
                 }
             }
-
+        }
+    }
     std::array<T, 3> origin = { 0, 0, 900 };
-
     World<T> w;
     w.setDimensions(dim);
     w.setSpacing(spacing);
@@ -341,7 +351,7 @@ template <typename T>
 bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = SAMPLE_RUN ? 5 : 500;
+    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 500;
 
     Print print;
     print("TG195 Case 2\n");
@@ -442,14 +452,14 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
     print("Simulation time ", simtime, " seconds");
     print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
-    print("VOI, dxmc, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
+    print("VOI, dxmc, dxmc error, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
 
-    const auto total_stdev = getRelativeError(1, w, res, true);
-    print("Total body, ", total_ev, ", ", total_stdev, ", ");
+    const auto [stddev, stddev_rel] = getError(1, w, res, true);
+    print("Total body, ", total_ev, ", ", stddev, ", ", stddev_rel, ", ");
     print(total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
     for (std::size_t i = 0; i < subvol_ev.size(); ++i) {
-        const auto stddev = getRelativeError(i + 2, w, res);
-        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", stddev, ", ");
+        const auto [stddev, stddev_rel] = getError(i + 2, w, res);
+        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", stddev, ", ", stddev_rel, ", ");
         print(subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
     }
     print("\n");
@@ -479,8 +489,8 @@ std::vector<std::size_t> circleIndices(const T center_x, const T center_y, const
 template <typename T>
 World<T> generateTG195Case3World(bool forceInteractions = false)
 {
-    std::array<T, 3> spacing = { 1, 1, 2 };
-    std::array<std::size_t, 3> dim = { 340, 300, 660 };
+    std::array<T, 3> spacing = { 1, 1, 1 };
+    std::array<std::size_t, 3> dim = { 342, 342, 770 };
     World<T> w;
     w.setSpacing(spacing);
     w.setDimensions(dim);
@@ -498,7 +508,7 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
     Material water("H66.6220373399527O33.3779626600473", "water");
     water.setStandardDensity(1.0);
 
-    std::vector<Material> materials({ air, water, pmma, breastSkin, breast });
+    //std::vector<Material> materials({ air, water, pmma, breastSkin, breast });
 
     //arrays
     auto densArr = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
@@ -506,83 +516,93 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
     auto dens = densArr->data();
     auto mat = matArr->data();
 
+    //boxes with center in breast body center
+    std::vector<std::pair<std::uint8_t, std::array<T, 6>>> boxes;
+    boxes.emplace_back(std::make_pair(1, std::array<T, 6> { -170, 0, -150, 150, -150, 150 })); // body
+    boxes.emplace_back(std::make_pair(2, std::array<T, 6> { 0, 140, -130, 130, 25, 25 + 2 })); // upper plate
+    boxes.emplace_back(std::make_pair(2, std::array<T, 6> { 0, 140, -130, 130, -25 - 2, -25 })); // lower plate
+    //skin is 3
+    //breast tissue is 4
+    //vois
+    boxes.emplace_back(std::make_pair(4 + 3, std::array<T, 6> { 50 - 10, 50 + 10, -10, 10, -5, 5 })); // voi3
+    boxes.emplace_back(std::make_pair(4 + 2, std::array<T, 6> { 50 - 30 - 10, 50 - 30 + 10, -10, 10, -5, 5 })); // voi2
+    boxes.emplace_back(std::make_pair(4 + 4, std::array<T, 6> { 50 + 30 - 10, 50 + 30 + 10, -10, 10, -5, 5 })); // voi4
+    boxes.emplace_back(std::make_pair(4 + 5, std::array<T, 6> { 50 - 10, 50 + 10, +30 - 10, +30 + 10, -5, 5 })); // voi5
+    boxes.emplace_back(std::make_pair(4 + 1, std::array<T, 6> { 50 - 10, 50 + 10, -30 - 10, -30 + 10, -5, 5 })); // voi1
+    boxes.emplace_back(std::make_pair(4 + 7, std::array<T, 6> { 50 - 10, 50 + 10, -10, 10, +15 - 5, +15 + 5 })); // voi7
+    boxes.emplace_back(std::make_pair(4 + 6, std::array<T, 6> { 50 - 10, 50 + 10, -10, 10, -15 - 5, -15 + 5 })); // voi6
+
+    std::array<T, 6> extent;
+    for (std::size_t i = 0; i < 2; ++i) {
+        extent[2 * i] = -(dim[i] * spacing[i]) / 2;
+        extent[2 * i + 1] = extent[2 * i] + dim[i] * spacing[i];
+    }
+    extent[5] = 660;
+    extent[4] = extent[5] - dim[2] * spacing[2];
+
+    //shifting all z values
+    const T brest_center_pos = 40;
+    for (auto& [matIdx, voi] : boxes) {
+        voi[4] += brest_center_pos;
+        voi[5] += brest_center_pos;
+    }
+    std::array<T, 3> world_origin = { 0, 0, (extent[4] + extent[5]) / 2 }; // center world on z pos of scoring plane
+
+    w.setOrigin(world_origin);
     //making volume
     for (std::size_t z = 0; z < dim[2]; ++z) {
-        const T zpos = z * spacing[2] + spacing[2] / 2 - dim[2] * spacing[2] / 2;
-        for (std::size_t y = 0; y < dim[1]; ++y) {
-            const T ypos = y * spacing[1] + spacing[1] / 2 - dim[1] * spacing[1] / 2;
-            for (std::size_t x = 0; x < dim[0]; ++x) {
-                const T xpos = x * spacing[0] + spacing[0] / 2 - dim[0] * spacing[0] / 2;
-                const auto idx = x + y * dim[0] + z * dim[0] * dim[1];
+        const T zp = extent[4] + (z + T { 0.5 }) * spacing[2];
+        if (zp < 301) {
+            for (std::size_t y = 0; y < dim[1]; ++y) {
+                const T yp = extent[2] + (y + T { 0.5 }) * spacing[1];
+                for (std::size_t x = 0; x < dim[0]; ++x) {
+                    const T xp = extent[0] + (x + T { 0.5 }) * spacing[0];
+                    const auto idx = x + y * dim[0] + z * dim[0] * dim[1];
 
-                //body
-                if (betw(zpos, -110, 190) && betw(xpos, -170, 0) && betw(ypos, -150, 150)) {
-                    dens[idx] = water.standardDensity();
-                    mat[idx] = 1;
-                }
-                //pmma plates
-                if (betw(zpos, 13, 15) || betw(zpos, 65, 67)) {
-                    if (betw(xpos, 0, 140) && betw(ypos, -130, 130)) {
-                        dens[idx] = pmma.standardDensity();
-                        mat[idx] = 2;
+                    //filling breast skin
+                    if ((zp > brest_center_pos - 25) && (zp < brest_center_pos + 25)) {
+                        //filling breast skin
+                        if ((xp > 0) && (xp * xp + yp * yp < 100 * 100)) {
+                            //inside semicircle
+                            //adding skin
+                            mat[idx] = 3;
+                        }
                     }
-                }
-
-                //breast skin
-                if (betw(zpos, 15, 65) && betw(xpos, 0, 100) && betw(ypos, -100, 100)) {
-                    constexpr T radius_skin_sqr = T { 100 } * T { 100 };
-                    const T skin_dist_sqr = xpos * xpos + ypos * ypos;
-                    if (skin_dist_sqr < radius_skin_sqr) {
-                        dens[idx] = breastSkin.standardDensity();
-                        mat[idx] = 3;
-                    }
-
-                    //breast tissue
-                    if (betw(zpos, 17, 63)) {
-                        constexpr T radius_tissue_sqr = T { 98 } * T { 98 };
-                        const T tissue_dist_sqr = xpos * xpos + ypos * ypos;
-                        if (tissue_dist_sqr < radius_tissue_sqr) {
-                            dens[idx] = breast.standardDensity();
+                    //filling breast tissue
+                    if ((zp > brest_center_pos - 23) && (zp < brest_center_pos + 23)) {
+                        //filling breast
+                        if ((xp > 0) && (xp * xp + yp * yp < 98 * 98)) {
+                            //inside semicircle
+                            //adding skin
                             mat[idx] = 4;
                         }
+                    }
 
-                        //making measurements VOIS, index start at 5
-                        if (betw(zpos, 35, 45)) {
-                            //central vois
-                            //voi 1
-                            if (betw(xpos, 40, 60) && betw(ypos, -60, -40)) {
-                                mat[idx] = 4 + 1;
-                            }
-                            //voi 2
-                            if (betw(xpos, 10, 30) && betw(ypos, -10, 10)) {
-                                mat[idx] = 4 + 2;
-                            }
-                            //voi 3
-                            if (betw(xpos, 40, 60) && betw(ypos, -10, 10)) {
-                                mat[idx] = 4 + 3;
-                            }
-                            //voi 4
-                            if (betw(xpos, 70, 90) && betw(ypos, -10, 10)) {
-                                mat[idx] = 4 + 4;
-                            }
-                            //voi 5
-                            if (betw(xpos, 40, 60) && betw(ypos, 40, 60)) {
-                                mat[idx] = 4 + 5;
-                            }
-                        }
-                        //voi 6
-                        if (betw(zpos, 20, 30) && betw(xpos, 40, 60) && betw(ypos, -10, 10)) {
-                            mat[idx] = 4 + 6;
-                        }
-                        //voi 7
-                        if (betw(zpos, 50, 60) && betw(xpos, 40, 60) && betw(ypos, -10, 10)) {
-                            mat[idx] = 4 + 7;
+                    for (const auto& [voi_id, voi_ex] : boxes) {
+                        if ((xp > voi_ex[0]) && (xp < voi_ex[1]) && (yp > voi_ex[2]) && (yp < voi_ex[3]) && (zp > voi_ex[4]) && (zp < voi_ex[5])) {
+                            //inside voi
+                            mat[idx] = voi_id;
                         }
                     }
                 }
             }
         }
     }
+
+    //setting densities
+    std::transform(std::execution::par_unseq, matArr->cbegin(), matArr->cend(), densArr->begin(), [&](const auto matIdx) -> T {
+        if (matIdx == 0)
+            return air.standardDensity();
+        else if (matIdx == 1)
+            return water.standardDensity();
+        else if (matIdx == 2)
+            return pmma.standardDensity();
+        else if (matIdx == 3)
+            return breastSkin.standardDensity();
+        else
+            return breast.standardDensity();
+    });
+
     w.setDensityArray(densArr);
     w.setMaterialIndexArray(matArr);
     if (forceInteractions) {
@@ -607,7 +627,7 @@ template <typename T>
 bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = SAMPLE_RUN ? 5 : 200;
+    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 200;
 
     Print print;
     print("TG195 Case 3\n");
@@ -713,12 +733,12 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     const T simtime = std::chrono::duration_cast<std::chrono::seconds>(res.simulationTime).count();
     print("Simulation time ", simtime, " seconds");
     print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
-    print("VOI, dxmc, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
-    const auto total_error = getRelativeError(1, w, res);
-    print("Total body, ", total_ev, ", ", total_error, ", ", total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
+    print("VOI, dxmc, dxmc error, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
+    const auto [total_error, total_error_rel] = getError(4, w, res, true);
+    print("Total body, ", total_ev, ", ", total_error, ", ", total_error_rel, ", ", total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
     for (std::size_t i = 0; i < subvol_ev.size(); ++i) {
-        const auto error = getRelativeError(i + 2, w, res);
-        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", error, ", ", subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+        const auto [error, error_rel] = getError(i + 4, w, res);
+        print("VOI ", i + 1, ", ", subvol_ev[i], ", ", error, ", ", error_rel, ", ", subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
     }
     print("\n");
     return true;
@@ -727,12 +747,10 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 template <typename T>
 World<T> generateTG195Case4World1(bool forceInteractions = false)
 {
-
     const std::array<std::size_t, 3> dim = { 400, 400, 600 };
     const std::array<T, 3> spacing = { 3, 3, 5 };
     const auto size = std::accumulate(dim.cbegin(), dim.cend(), (std::size_t)1, std::multiplies<std::size_t>());
 
-    //Material air("Air, Dry (near sea level)");
     Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
     air.setStandardDensity(0.001205);
     Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689");
@@ -840,11 +858,13 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
     print("Simulation time ", simtime, " seconds");
     print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
 
-    std::array<T, 4> voi_ev, voi_nevent, voi_error;
+    std::array<T, 4> voi_ev, voi_nevent, voi_error, voi_error_rel;
     for (std::size_t i = 0; i < 4; ++i) {
         voi_ev[i] = correction * std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](auto d, auto m) -> T { return m == i + 2 ? d : 0; });
         voi_nevent[i] = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), w.materialIndexArray()->begin(), 0.0, std::plus<>(), [=](auto d, auto m) { return m == i + 2 ? d : 0; });
-        voi_error[i] = getRelativeError(i + 1, w, res);
+        const auto [error, error_rel] = getError(i + 1, w, res);
+        voi_error[i] = error;
+        voi_error_rel[i] = error_rel;
     }
 
     std::array<T, 4> sim_ev;
@@ -862,9 +882,12 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         }
     }
 
-    print("VOI, dxmc, dxmc error [%], dxmc #events, TG195, difference [ev/hist], difference [%]\n");
-    for (std::size_t i = 0; i < voi_ev.size(); ++i)
-        print(i + 1, ", ", voi_ev[i], ", ", voi_error[i], ", ", voi_nevent[i], ", ", sim_ev[i], ", ", voi_ev[i] - sim_ev[i], ", ", (voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100, "\n");
+    print("VOI, dxmc, dxmc error, dxmc error [%], dxmc #events, TG195, difference [ev/hist], difference [%]\n");
+    for (std::size_t i = 0; i < voi_ev.size(); ++i) {
+        print(i + 1, ", ", voi_ev[i], ", ", voi_error[i], ", ", voi_error_rel[i], ", ");
+        print(voi_nevent[i], ", ", sim_ev[i], ", ", voi_ev[i] - sim_ev[i], ", ");
+        print((voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100, "\n");
+    }
     print("\n");
     return true;
 }
@@ -995,7 +1018,7 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
 
     auto w = generateTG195Case4World2<T>(forceInteractions);
 
-    print("Angle, center dxmc [eV/hist], center error [%], nEvents, pher dxmc [eV/hist], pher error [%], nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
+    print("Angle, center dxmc [eV/hist], center error, nEvents, pher dxmc [eV/hist], pher error, nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
 
     //simulate 36 projections
     for (std::size_t i = 0; i < sim_ev_center.size(); ++i) {
@@ -1034,8 +1057,8 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         auto dose_cent = correction * std::transform_reduce(std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), matBegin, T { 0 }, std::plus<>(), [](auto d, auto m) -> T { return m == 2 ? d : 0; });
         auto nevents_pher = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), matBegin, 0, std::plus<>(), [](auto d, auto m) { return m == 3 ? d : 0; });
         auto nevents_cent = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), matBegin, 0, std::plus<>(), [](auto d, auto m) { return m == 2 ? d : 0; });
-        auto error_pher = getRelativeError(3, w, res);
-        auto error_cent = getRelativeError(2, w, res);
+        const auto [error_pher, error_pher_rel] = getError(3, w, res);
+        const auto [error_cent, error_cent_rel] = getError(2, w, res);
         if (i > 0)
             print((i - 1) * 10);
         else
@@ -1242,12 +1265,13 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         print(" with ", simtime / res.numberOfHistories, " seconds*CPU core per history\n");
 
         std::array<T, tg195_organ_names.size()> organ_doses, error;
-        print("Organ idx, Organ name, dxmc dose [eV/hist], dxmc error [%], TG195 dose [eV/hist], nEvents, difference [eV/hist], difference [%]\n");
+        print("Organ idx, Organ name, dxmc dose [eV/hist], dxmc error, TG195 dose [eV/hist], nEvents, difference [eV/hist], difference [%]\n");
         for (std::size_t j = 0; j < organ_doses.size(); ++j) {
             const auto dose_sum = std::transform_reduce(std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.dose.cbegin(),
                 T { 0 }, std::plus<>(), [&](auto m, auto d) -> T { return m == tg195_organ_idx[j] ? d : T { 0 }; });
             organ_doses[j] = dose_sum;
-            error[j] = getRelativeError(tg195_organ_idx[j], world, res);
+            const auto [stddev, stddev_rel] = getError(tg195_organ_idx[j], world, res);
+            error[j] = stddev;
             print(static_cast<int>(tg195_organ_idx[j]), ", ", tg195_organ_names[j], ", ");
             print(organ_doses[j], ", ", error[j], ", ", tg195_doses[i][j], ", ");
             const auto nevents_sum = std::transform_reduce(
@@ -1311,7 +1335,7 @@ bool runAll(dxmc::Transport<T> transport)
     success = success && TG195Case2AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case2AbsorbedEnergy<T>(transport, true, false, false);
     success = success && TG195Case2AbsorbedEnergy<T>(transport, true, true, false);
-
+    
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, false, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
@@ -1338,8 +1362,7 @@ bool selectOptions()
 {
     dxmc::Transport<T> transport;
     transport.setOutputMode(dxmc::Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
-    transport.setLowEnergyCorrectionModel(dxmc::LOWENERGYCORRECTION::LIVERMORE);
-    //transport.setLowEnergyCorrectionModel(dxmc::LOWENERGYCORRECTION::IA);
+    transport.setLowEnergyCorrectionModel(CORRECTION);
 
     auto success = runAll(transport);
     return success;

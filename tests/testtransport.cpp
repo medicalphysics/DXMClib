@@ -40,13 +40,43 @@ public:
         : Transport<T>()
     {
     }
+    /*bool testRayleigh(const T energy, const Material& mat)
+    {
+        std::vector<Material> materials;
+        materials.emplace_back(mat);
+        auto& att = this->attenuationLut();
+        att.generate(materials, T { 1 }, energy);
+
+        std::vector<T> angles(100);
+        for (std::size_t i = 0; i < angles.size(); ++i) {
+            angles[i] = (i * std::numbers::pi_v<T>) / angles.size();
+        }
+        std::vector<std::uint64_t> hist(angles.size(), 0);
+
+        std::array<T, 3> pos = { 0, 0, 0 };
+        std::array<T, 3> dir = { 1, 0, 0 };
+        RandomState state;
+        Particle<T> p { .pos = pos, .dir = dir };
+        for (std::uint64_t i = 0; i < 5e6; ++i) {
+            const auto angle =this->rayleightScatter(p, 0, state);
+            const T e = p.energy / energy;
+
+            auto it = std::upper_bound(angles.cbegin(), angles.cend(), angle);
+            auto idx = std::distance(angles.cbegin(), it);
+            ++hist[idx - 1];
+        }
+        for (std::size_t i = 0; i < angles.size(); ++i) {
+            std::cout << angles[i] << ", " << hist[i] << "\n";
+        }
+        return false;
+    }*/
     bool testCompton(const T energy, const Material& mat)
     {
 
         auto& att = this->attenuationLut();
         std::vector<Material> materials;
         materials.emplace_back(mat);
-        att.generate(materials, T { 1 }, T { 60 });
+        att.generate(materials, T { 1 }, energy);
 
         std::array<T, 3> pos = { 0, 0, 0 };
         std::array<T, 3> dir = { 1, 0, 0 };
@@ -202,6 +232,7 @@ bool testTransport()
 
     T energy = 50;
     Material mat(13);
+    //bool s1 = t.testRayleigh(energy, mat);
     bool success = t.testCompton(energy, mat);
     mat = Material("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
     mat.setStandardDensity(1.19);
