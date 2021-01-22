@@ -20,7 +20,9 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/floating.h"
 
 #include <algorithm>
+#include <execution>
 #include <iterator>
+#include <numeric>
 #include <type_traits>
 #include <vector>
 
@@ -69,4 +71,73 @@ std::vector<T> trapz(const std::vector<T>& f,
     return integ;
 }
 
+template <Floating T>
+constexpr T gaussIntegration(const T start, const T stop, std::array<T, 20> gaussPoints)
+{
+    constexpr std::array<T, 20> weights = {
+        1.5275338713072585E-01,
+        1.4917298647260375E-01,
+        1.4209610931838205E-01,
+        1.3168863844917663E-01,
+        1.1819453196151842E-01,
+        1.0193011981724044E-01,
+        8.3276741576704749E-02,
+        6.2672048334109064E-02,
+        4.0601429800386941E-02,
+        1.7614007139152118E-02,
+        1.5275338713072585E-01,
+        1.4917298647260375E-01,
+        1.4209610931838205E-01,
+        1.3168863844917663E-01,
+        1.1819453196151842E-01,
+        1.0193011981724044E-01,
+        8.3276741576704749E-02,
+        6.2672048334109064E-02,
+        4.0601429800386941E-02,
+        1.7614007139152118E-02
+    };
+    const T interval_half = (stop - start) * T { 0.5 };
+    const T value = std::transform_reduce(std::execution::unseq, weights.cbegin(), weights.cend(), gaussPoints.cbegin(), T { 0 }, std::plus<>(), std::multiplies<>());
+    return value * interval_half;
+}
+template <Floating T>
+constexpr std::array<T, 20> gaussIntegrationPoints(const T start, const T stop)
+{
+    constexpr std::array<T, 20> x_val = {
+        7.6526521133497334E-02,
+        2.2778585114164508E-01,
+        3.7370608871541956E-01,
+        5.1086700195082710E-01,
+        6.3605368072651503E-01,
+        7.4633190646015079E-01,
+        8.3911697182221882E-01,
+        9.1223442825132591E-01,
+        9.6397192727791379E-01,
+        9.9312859918509492E-01,
+        -7.6526521133497334E-02,
+        -2.2778585114164508E-01,
+        -3.7370608871541956E-01,
+        -5.1086700195082710E-01,
+        -6.3605368072651503E-01,
+        -7.4633190646015079E-01,
+        -8.3911697182221882E-01,
+        -9.1223442825132591E-01,
+        -9.6397192727791379E-01,
+        -9.9312859918509492E-01
+    };
+    std::array<T, 20> function_points;
+    const T xi = (stop - start) * T { 0.5 };
+    const T xii = (stop + start) * T { 0.5 };
+    std::transform(std::execution::unseq, x_val.cbegin(), x_val.cend(), function_points.begin(), [=](const auto x) { return x * xi + xii; });
+    return function_points;
+};
+
+template <Floating T, std::regular_invocable<T> F>
+constexpr T gaussIntegration(const T start, const T stop, const F function)
+{
+    auto function_points = gaussIntegrationPoints(start, stop);
+    std::array<T, 20> function_values;
+    std::transform(std::execution::unseq, function_points.cbegin(), function_points.cend(), function_values.begin(), [&](const auto x) { return function(x); });
+    return gaussIntegration(start, stop, function_values);
+}
 }
