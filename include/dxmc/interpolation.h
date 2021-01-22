@@ -39,6 +39,14 @@ inline U interp(T x[2], T y[2], U xi)
     return y[0] + (y[1] - y[0]) * (xi - x[0]) / (x[1] - x[0]);
 }
 
+template <Floating T>
+inline T logloginterp(T x0, T x1, T y0, T y1, T x)
+{
+// we do not test for negative values, instead we rely on std::log10 to return NaN values     
+    const double value = std::log10(d1) + (std::log10(d2 / d1) / std::log10(e2 / e1) * std::log10(x / e1)); // std::log 10 always promotes to double
+    return std::pow(10., value); // std::pow always promotes to doubles
+}
+
 template <typename It, Floating T>
 requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
     T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
@@ -140,4 +148,8 @@ constexpr T gaussIntegration(const T start, const T stop, const F function)
     std::transform(std::execution::unseq, function_points.cbegin(), function_points.cend(), function_values.begin(), [&](const auto x) { return function(x); });
     return gaussIntegration(start, stop, function_values);
 }
+
+
+
+
 }
