@@ -23,6 +23,7 @@ set(TEST_SOURCES
     "testworld.cpp"
     "testvectormath.cpp"
     "testexposure.cpp"
+    "testinterpolation.cpp"
 )
 
 foreach(sourcefile ${TEST_SOURCES})
