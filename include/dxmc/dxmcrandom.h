@@ -324,4 +324,124 @@ public:
 private:
     std::vector<T> m_energies;
 };
+
+//class for numerical inverse transform of analytical probability density functions (pdfs)
+template <Floating T, int N = 20>
+class RITA {
+private:
+    std::array<T, N> m_x;
+    std::array<T, N> m_e;
+    std::array<T, N> m_b;
+    std::array<T, N> m_a;
+
+protected:
+    template <typename F>
+    static T simpson_integral(const T start, const T stop, F pdf)
+    {
+        const T h = (stop - start) / 50;
+        T result = pdf(start) + pdf(stop);
+        for (std::size_t i = 1; i < 50; ++i) {
+            const T prod = 1 % 2 == 0 ? 2 : 4; // prod is 2 when i is even else 4
+            result += prod * pdf(start + h * i);
+        }
+        return h * result / 3;
+    }
+
+    T integral_p_bar(std::size_t index) const
+    {
+
+        const T bi = m_b[index];
+        const T ai = m_a[index];
+        const T xi = m_x[index];
+        const T xii = m_x[index + 1];
+
+        auto p = [=](const T x) -> T {
+            T n;
+            if (x == xi) {
+                n = 0;
+            } else if (x == xii) {
+                n = 1;
+            } else {
+                const T t = (x - xi) / (xii - xi);
+                const T f = (1 + ai + bi - ai * t) / (2 * bi * t);
+                const T nom = 1 + ai + bi - ai * t;
+                const T l = 1 - std::sqrt(1 - (4 * bi * t * t) / (nom * nom));
+                n = f * l;
+            }
+            const T upper = (1 + ai * n * bi * n * n);
+            const T lower = (1 + ai + bi) * (1 - bi * n * n);
+            const T res = upper * (m_e[index + 1] - m_e[index]) / (lower * (xii - xi));
+            return res;
+        };
+        return simpson_integral(xi, xii, p);
+    }
+
+public:
+    template <std::regular_invocable<T> F>
+    requires std::is_same<std::invoke_result_t<F, T>, T>::value
+    RITA(const T min, const T max, F pdf)
+    {
+        m_x[0] = min;
+        m_x[N - 1] = max;
+        m_e[0] = 0;
+        m_e[N - 1] = 1;
+
+        //uniform x grid
+        for (std::size_t i = 1; i < N; ++i) {
+            m_x[i] = min + ((max - min) * i) / (N - 1);
+        }
+
+        //calculating e
+        for (std::size_t i = 1; i < N; ++i) {
+            m_e[i] = m_e[i - 1] + simpson_integral(m_x[i - 1], m_x[i], pdf);
+        }
+        std::transform(m_e.cbegin(), m_e.cend(), m_e.begin(), [=](const auto e) { return e / m_e[N - 1]; });
+        for (std::size_t i = 0; i < N - 1; ++i) {
+            const T pi = pdf(m_x[i]);
+            const T pii = pdf(m_x[i + 1]);
+            if (pi > 0 && pii > 0) {
+                const T frac = (m_e[i + 1] - m_e[i]) / (m_x[i + 1] - m_x[i]);
+                m_b[i] = 1 - frac * frac / (pi * pii);
+                m_a[i] = frac / pi - m_b[i] - 1;
+            } else {
+                m_b[i] = 0;
+                m_a[i] = 0;
+            }
+        }
+        m_b[N - 1] = 0;
+        m_a[N - 1] = 0;
+    }
+
+    T operator()(RandomState& state) const
+    {
+        const auto r1 = state.randomUniform<T>();
+        auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
+        const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
+        if (index == 0)
+            return m_x[0];
+
+        const auto v = r1 - m_e[index - 1];
+        const auto d = m_e[index] - m_e[index - 1];
+        return m_x[index - 1] + (1 + m_a[index - 1] + m_b[index - 1]) * d * v / (d * d + m_a[index - 1] * d * v + m_b[index - 1] * v * v) * (m_x[index] - m_x[index - 1]);
+    }
+
+    T operator()(RandomState& state, const T maxValue) const
+    {
+        //finding xmax
+        auto upper_bound_value = std::lower_bound(m_x.cbegin(), m_x.cend(), maxValue);
+        const std::size_t max_value_index = std::distance(m_x.cbegin(), upper_bound_value);
+        const T modifier = upper_bound_value != m_x.cend() ? m_e[max_value_index] : 1;
+
+        const auto r1 = state.randomUniform<T>(modifier);
+        auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
+        const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
+        if (index == 0)
+            return m_x[0];
+
+        const auto v = r1 - m_e[index - 1];
+        const auto d = m_e[index] - m_e[index - 1];
+        return m_x[index - 1] + (1 + m_a[index - 1] + m_b[index - 1]) * d * v / (d * d + m_a[index - 1] * d * v + m_b[index - 1] * v * v) * (m_x[index] - m_x[index - 1]);
+    }
+};
+
 }

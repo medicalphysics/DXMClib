@@ -19,6 +19,7 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.h"
 
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -152,116 +153,5 @@ requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussInt
     return gaussIntegration(start, stop, function_values);
 }
 
-//class for numerical inverse transform of analytical probability density functions (pdfs)
-template <Floating T, int N = 20>
-class RITA {
-private:
-    std::array<T, N> m_x;
-    std::array<T, N> m_e;
-    std::array<T, N> m_a;
-    std::array<T, N> m_b;
-
-protected:
-    template <typename F>
-    static T simpson_integral(const T start, const T stop, F pdf)
-    {
-        const T h = (stop - start) / 50;
-        T result = pdf(start) + pdf(stop);
-        for (std::size_t i = 1; i < 50; ++i) {
-            const T prod = 1 % 2 == 0 ? 2 : 4; // prod is 2 when i is even else 4
-            result += prod * pdf(start + h * i);
-        }
-        return h * result / 3;
-    }
-    static void insert_elements(std::array<T, N>& array, std::size_t index, T value)
-    {
-        for (std::size_t i = N - 1; i > index; --i) {
-            array[i] = array[i - 1];
-        }
-        array[index + 1] = value;
-    }
-    T integral_p_bar(std::size_t index) const
-    {
-        const T ai = m_a[index];
-        const T bi = m_b[index];
-        const T xi = m_x[index];
-        const T xii = m_x[index + 1];
-
-        auto p = [=](const T x) -> T {
-            T n;
-            if (x == xi) {
-                n = 0;
-            } else if (x == xii) {
-                n = 1;
-            } else {
-                const T t = (x - xi) / (xii - xi);
-                const T f = (1 + ai + bi - ai * t) / (2 * bi * t);
-                const T nom = 1 + ai + bi - ai * t;
-                const T l = 1 - std::sqrt(1 - (4 * bi * t * t) / (nom * nom));
-                n = f * l;
-            }
-            const T upper = (1 + ai * n * bi * n * n);
-            const T lower = (1 + ai + bi) * (1 - bi * n * n);
-            const T res = upper * (m_e[index + 1] - m_e[index]) / (lower * (xii - xi));
-            return res;
-        };
-        return simpson_integral(xi, xii, p);
-    }
-
-public:
-    template <std::regular_invocable<T> F>
-    requires std::is_same<std::invoke_result_t<F, T>, T>::value
-    RITA(const T min, const T max, F pdf)
-    {
-        m_x[0] = min;
-        while (pdf(m_x[0]) <= 0) {
-            m_x[0] += (max - min) / (N*10);
-        }
-        m_x[1] = (max - min) / 2;
-        m_x[2] = max;
-        m_e.fill(1);
-        m_e[0] = 0;
-
-        std::array<T, N> error;
-        error.fill(0);
-
-        std::size_t current_point = 2;
-        while (current_point < N ) {
-
-            for (std::size_t i = 1; i <= current_point; ++i) {
-                m_e[i] = simpson_integral(m_x[i - 1], m_x[i], pdf) + m_e[i - 1];
-            }
-
-            for (std::size_t i = 0; i < current_point; ++i) {
-                const T frac = (m_e[i + 1] - m_e[i]) / (m_x[i + 1] - m_x[i]);
-
-                m_b[i] = 1 - frac * frac / (pdf(m_x[i + 1]) * pdf(m_x[i]));
-                m_a[i] = frac / pdf(m_x[i]) - m_b[i] - 1;
-
-                error[i] = std::abs(simpson_integral(m_x[i], m_x[i + 1], pdf) - integral_p_bar(i));
-            }
-            const auto it_max = std::max_element(error.cbegin(), error.cbegin() + current_point);
-            const std::size_t error_index = std::distance(error.cbegin(), it_max);
-            T new_value=(m_x[error_index] + m_x[error_index + 1]) / 2;
-
-            insert_elements(m_x, error_index, new_value);
-            current_point++;
-        }
-        
-        std::transform(m_e.cbegin(), m_e.cend(), m_e.begin(), [=](const auto e) { return e/ m_e[N - 1]; });
-    }
-
-    T operator()(const T random) const
-    {
-        auto upper_bound = std::upper_bound(m_e.cbegin(), m_e.cend(), random);
-        const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
-        if (index == 0)
-            return m_x[0];
-
-        const auto v = random - m_e[index - 1];
-        const auto d = m_e[index] - m_e[index - 1];
-        return m_x[index - 1] + (1 + m_a[index - 1] + m_b[index - 1]) * d * v / (d * d + m_a[index - 1] * d * v + m_b[index - 1] * v * v) * (m_x[index + 1] - m_x[index]);
-    }
-};
 
 }
