@@ -19,7 +19,6 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.h"
 
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -69,6 +68,71 @@ requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
 
     return interp(*lower, *upper, *lowery, *uppery, xvalue);
 }
+
+template <Floating T>
+class CubicSplineInterpolator {
+private:
+    std::vector<T> m_coefficients;
+    std::vector<T> m_x;
+
+protected:
+    static std::vector<T> gaussSplineElimination(const std::vector<T>& h, const std::vector<T>& D)
+    {
+        std::size_t N = h.size() - 1;
+        auto A = [&](int i, int j) -> T {
+            if (i == j)
+                return 2 * (h[i] + h[i + 1]);
+            else if (j - i == 1)
+                return h[i];
+            else if (j - i == -1)
+                return h[j];
+            else if (j == N)
+                return D[j + 1];
+            return 0;
+        };
+
+        //to find the elements of diagonal matrix
+        for (int j = 0; j < N; ++j) {
+            for (int i = 0; i < N; ++i) {
+                if (i != j) {
+                    if (A(i, j) != 0) {
+                        const T b = A(i, j) / A(j, j);
+                        for (int k = 0; k < N + 1; ++k) {
+                            A(i, k) = A(i, k) - b * A(j, k);
+                        }
+                    }
+                }
+            }
+        }
+        std::vector<T> sigma(N);
+        cout << "\nThe solution is:\n";
+        for (i = 0; i < N; ++i) {
+            sigma[i] = A(i, N) / A(i, i);
+        }
+        return sigma;
+    }
+
+public:
+    CubicSplineInterpolator(const std::vector<T>& x, const std::vector<T>& y)
+    {
+        if (x.size() != y.size())
+            return;
+
+        if (x.size() < 3)
+            return;
+
+        m_coefficients.resize(4 * (x.size() - 1));
+        m_x = x; // copy array
+
+        std::vector<T> h(m_x.size() - 1);
+        std::vector<T> rho(m_x.size() - 1);
+        std::vector<T> delta(m_x.size() - 1);
+        for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
+            h[i] = m_x[i + 1] - m_x[i];
+            delta[i] = (y[i + 1] - y[i]) / h[i];
+        }
+    }
+};
 
 template <Floating T>
 std::vector<T> trapz(const std::vector<T>& f,
@@ -152,6 +216,5 @@ requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussInt
     std::transform(std::execution::unseq, function_points.cbegin(), function_points.cend(), function_values.begin(), [&](const auto x) { return function(x); });
     return gaussIntegration(start, stop, function_values);
 }
-
 
 }

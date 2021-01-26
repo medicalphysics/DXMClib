@@ -19,10 +19,12 @@ Copyright 2019 Erlend Andersen
 #pragma once
 
 #include "dxmc/constants.h"
+#include "dxmc/dxmcrandom.h"
 #include "dxmc/floating.h"
 #include "dxmc/interpolation.h"
 #include "dxmc/material.h"
 #include "dxmc/world.h"
+
 #include <array>
 #include <vector>
 namespace dxmc {
@@ -45,6 +47,10 @@ public:
    *
    */
     AttenuationLut() {};
+    AttenuationLut(const World<T>& world, T minEnergy = 1.0, T maxEnergy = 150, T energyStep = 1.0)
+    {
+        generate(world, minEnergy, maxEnergy, energyStep);
+    }
 
     /**
    * @brief Energy resolution of the lookup table
