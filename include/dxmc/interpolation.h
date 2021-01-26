@@ -78,36 +78,56 @@ private:
 protected:
     static std::vector<T> gaussSplineElimination(const std::vector<T>& h, const std::vector<T>& D)
     {
-        std::size_t N = h.size() - 1;
-        auto A = [&](int i, int j) -> T {
-            if (i == j)
-                return 2 * (h[i] + h[i + 1]);
-            else if (j - i == 1)
-                return h[i];
-            else if (j - i == -1)
-                return h[j];
-            else if (j == N)
-                return D[j + 1];
-            return 0;
-        };
+        const std::size_t m = h.size() - 1; // rows
+        const std::size_t n = m + 1; // columns
 
-        //to find the elements of diagonal matrix
-        for (int j = 0; j < N; ++j) {
-            for (int i = 0; i < N; ++i) {
-                if (i != j) {
-                    if (A(i, j) != 0) {
-                        const T b = A(i, j) / A(j, j);
-                        for (int k = 0; k < N + 1; ++k) {
-                            A(i, k) = A(i, k) - b * A(j, k);
-                        }
+        auto idx = [=](int i, int j) -> int { return j + i * m; }; //(row, column)
+        //construct matrix
+        std::vector<T> A(n * m, 0);
+        for (int j = 0; j < m; ++j) {
+            for (int i = 0; i < n; ++i) {
+                const auto index = idx(i, j);
+                if (i == j)
+                    A[index] = 2 * (h[i] + h[i + 1]);
+                else if (j - i == 1)
+                    A[index] = h[i];
+                else if (j - i == -1)
+                    A[index] = h[i];
+                else if (j == n)
+                    A[index] = D[j + 1];
+            }
+        }
+
+        for (int i = 0; i < m - 1; i++) {
+            //Partial Pivoting
+            for (int k = i + 1; k < m; k++) {
+                //If diagonal element(absolute vallue) is smaller than any of the terms below it
+                if (std::abs(A[idx(i, i)]) < std::abs(A[idx(k, i)])) {
+                    //Swap the rows
+                    for (int j = 0; j < n; j++) {
+                        const auto temp = A[idx(i, j)];
+                        A[idx(i, j)] = A[idx(k, j)];
+                        A[idx(k, j)] = temp;
                     }
                 }
             }
+            //Begin Gauss Elimination
+            for (int k = i + 1; k < m; k++) {
+                const auto term = A[idx(k, i)] / A[idx(i, i)];
+                for (int j = 0; j < n; j++) {
+                    A[idx(k, j)] = A[idx(k, j)] - term * A[idx(i, j)];
+                }
+            }
         }
-        std::vector<T> sigma(N);
-        cout << "\nThe solution is:\n";
-        for (i = 0; i < N; ++i) {
-            sigma[i] = A(i, N) / A(i, i);
+        std::vector<T> sigma(h.size()+1, 0);
+
+        //Begin Back-substitution
+        for (int i = m - 1; i >= 0; i--) {
+            sigma[i + 1] = A[idx(i, n - 1)];
+            for (int j = i + 1; j < n - 1; j++) {
+                sigma[i + 1] = sigma[i + 1] - A[idx(i, j)] * sigma[j + 1];
+            }
+            sigma[i + 1] = sigma[i + 1] / A[idx(i, i)];
         }
         return sigma;
     }
@@ -131,6 +151,37 @@ public:
             h[i] = m_x[i + 1] - m_x[i];
             delta[i] = (y[i + 1] - y[i]) / h[i];
         }
+
+        const T sigma0 = 1;
+        const T sigmaN = 1;
+        std::vector<T> D(m_x.size() - 1);
+        for (std::size_t i = 1; i < D.size(); ++i) {
+            D[i] = 6*(delta[i] - delta[i - 1]);
+        }
+        D[0] = 0;
+        D[1] += -h[1] * sigma0;
+        D[m_x.size() - 2] += -h[m_x.size() - 2] * sigmaN;
+
+        auto sigma1N = gaussSplineElimination(h, D);
+        sigma1N[0] = sigma0;
+        sigma1N[m_x.size() - 1] = sigmaN;
+
+        for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
+            m_coefficients[i * 4 + 0] = (sigma1N[i] * x[i + 1] * x[i + 1] * x[i + 1] - sigma1N[i + 1] * x[i] * x[i] * x[i] + 6 * (y[i] *x[i + 1] - y[i + 1] * x[i])) / (h[i] * 6);
+            m_coefficients[i * 4 + 0] += h[i] * (sigma1N[i + 1] * x[i] - sigma1N[i] * x[i + 1]) / 6;
+
+            m_coefficients[i * 4 + 1] = (sigma1N[i + 1] * x[i] * x[i] - sigma1N[i] * x[i + 1] * x[i + 1] + 2 * (y[i + 1] - y[i])) / (h[i] * 2) + h[i] * (sigma1N[i] - sigma1N[i + 1]) / 6;
+            m_coefficients[i * 4 + 2] = (sigma1N[i] * x[i + 1] - sigma1N[i + 1] * x[i]) / (2 * h[i]);
+            m_coefficients[i * 4 + 3] = (sigma1N[i + 1] - sigma1N[i]) / (6 * h[i]);
+        }
+    }
+    T operator()(const T x) const
+    {
+        auto upper_iter = std::upper_bound(m_x.cbegin(), m_x.cend(), x);
+        if (upper_iter == m_x.cend() || upper_iter == m_x.cbegin())
+            return 0;
+        const std::size_t i = std::distance(m_x.cbegin(), upper_iter) - 1;
+        return m_coefficients[i * 4] + m_coefficients[i * 4 + 1] * x + m_coefficients[i * 4 + 2] * x * x + m_coefficients[i * 4 + 3] * x * x * x;
     }
 };
 
