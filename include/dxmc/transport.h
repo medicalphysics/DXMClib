@@ -470,6 +470,8 @@ protected:
     template <int Lowenergycorrection>
     bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
+
+        FIX THIS PHOTO ABSOBTION HAS CHANGED
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
         const auto attCompt = atts[1];
