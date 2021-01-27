@@ -49,6 +49,18 @@ inline T logloginterp(T x0, T x1, T y0, T y1, T x)
     return std::pow(10., value); // std::pow always promotes to doubles
 }
 
+template <Floating T, Floating U>
+inline T logloginterp(T x[2], T y[2], U xi)
+{
+    const T x0 = x[0];
+    const T x1 = x[1];
+    const T y0 = y[0];
+    const T y1 = y[1];
+    // we do not test for negative values, instead we rely on std::log10 to return NaN values
+    const double value = std::log10(y0) + (std::log10(y1 / y0) / std::log10(x1 / x0) * std::log10(xi / x0)); // std::log 10 always promotes to double
+    return std::pow(10., value); // std::pow always promotes to doubles
+}
+
 template <typename It, Floating T>
 requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
     T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
@@ -119,7 +131,7 @@ protected:
                 }
             }
         }
-        std::vector<T> sigma(h.size()+1, 0);
+        std::vector<T> sigma(h.size() + 1, 0);
 
         //Begin Back-substitution
         for (int i = m - 1; i >= 0; i--) {
@@ -156,7 +168,7 @@ public:
         const T sigmaN = 1;
         std::vector<T> D(m_x.size() - 1);
         for (std::size_t i = 1; i < D.size(); ++i) {
-            D[i] = 6*(delta[i] - delta[i - 1]);
+            D[i] = 6 * (delta[i] - delta[i - 1]);
         }
         D[0] = 0;
         D[1] += -h[1] * sigma0;
@@ -167,7 +179,7 @@ public:
         sigma1N[m_x.size() - 1] = sigmaN;
 
         for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
-            m_coefficients[i * 4 + 0] = (sigma1N[i] * x[i + 1] * x[i + 1] * x[i + 1] - sigma1N[i + 1] * x[i] * x[i] * x[i] + 6 * (y[i] *x[i + 1] - y[i + 1] * x[i])) / (h[i] * 6);
+            m_coefficients[i * 4 + 0] = (sigma1N[i] * x[i + 1] * x[i + 1] * x[i + 1] - sigma1N[i + 1] * x[i] * x[i] * x[i] + 6 * (y[i] * x[i + 1] - y[i + 1] * x[i])) / (h[i] * 6);
             m_coefficients[i * 4 + 0] += h[i] * (sigma1N[i + 1] * x[i] - sigma1N[i] * x[i + 1]) / 6;
 
             m_coefficients[i * 4 + 1] = (sigma1N[i + 1] * x[i] * x[i] - sigma1N[i] * x[i + 1] * x[i + 1] + 2 * (y[i + 1] - y[i])) / (h[i] * 2) + h[i] * (sigma1N[i] - sigma1N[i + 1]) / 6;

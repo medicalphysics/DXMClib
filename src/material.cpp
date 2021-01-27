@@ -192,8 +192,9 @@ template <typename T>
             if (!errorEdge) {
                 const double p = ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
                 const double HF_0 = ComptonProfile_Partial(Z, shell, 0.0, &errorEdge); // Hartree Fock orbital for electron momentum =0
+                const double yield = FluorYield(Z, shell, nullptr);
                 if (HF_0 > 0) {
-                    configs.emplace_back(e, p * numberFraction, HF_0);
+                    configs.emplace_back(e, p * numberFraction, HF_0, yield);
                 }
             }
             ++shell;
@@ -219,8 +220,10 @@ template <typename T>
         for (std::size_t i = configs_a.size(); i < configs.size(); ++i) {
             rest.numberElectrons += configs[i].numberElectrons;
             rest.bindingEnergy += configs[i].bindingEnergy;
+            rest.fluorYield += configs[i].fluorYield;
         }
         rest.bindingEnergy /= (configs.size() - configs_a.size());
+        rest.fluorYield /= (configs.size() - configs_a.size());
     }
     return configs_a;
 }

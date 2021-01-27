@@ -29,7 +29,8 @@ set(TEST_SOURCES
 foreach(sourcefile ${TEST_SOURCES})
     get_filename_component(filename ${sourcefile} NAME_WLE)
     add_executable(${filename} ${sourcefile})
-    target_link_libraries(${filename} libdxmc)
+    target_include_directories(${filename} PRIVATE ${XRAYLIB_INCLUDES})
+    target_link_libraries(${filename} libdxmc  ${XRAYLIB})
     add_test(${filename} ${filename})
     set_tests_properties(${filename}
         PROPERTIES

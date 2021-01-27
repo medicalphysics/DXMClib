@@ -31,6 +31,7 @@ struct ElectronShellConfiguration {
     T bindingEnergy = 0;
     T numberElectrons = 0;
     T hartreeFockOrbital_0 = 0;
+    T fluorYield = 0;
     template <Floating U>
     ElectronShellConfiguration<U> cast() const
     {
@@ -38,6 +39,7 @@ struct ElectronShellConfiguration {
         copy.bindingEnergy = static_cast<U>(this->bindingEnergy);
         copy.numberElectrons = static_cast<U>(this->numberElectrons);
         copy.hartreeFockOrbital_0 = static_cast<U>(this->hartreeFockOrbital_0);
+        copy.fluorYield = statuc_cast<U>(this->fluorYield)
         return copy;
     }
 };

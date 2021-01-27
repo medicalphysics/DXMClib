@@ -4,7 +4,7 @@
 #include "dxmc/dxmcrandom.h"
 #include "dxmc/interpolation.h"
 #include <iostream>
-
+#include <assert.h>
 bool testSpline()
 {
 
@@ -15,18 +15,24 @@ bool testSpline()
         y[i] = std::sin(x[i]);
     }
     dxmc::CubicSplineInterpolator S(x, y);
-    for (int i = 0; i < x.size()-1; ++i) {
+    float diff = 0;
+    for (int i = 0; i < x.size() - 1; ++i) {
         std::cout << x[i] << ", ";
         std::cout << y[i] << ", ";
-        std::cout << (x[i] + x[i+1])/2 << ", ";
-        std::cout << S((x[i] + x[i + 1]) / 2) << "\n";
+        std::cout << (x[i] + x[i + 1]) / 2 << ", ";
+        std::cout << S((x[i] + x[i + 1]) / 2) << ", ";
+        std::cout << std::sin((x[i] + x[i + 1]) / 2) << "\n";
+        const auto d = S((x[i] + x[i + 1]) / 2) - std::sin((x[i] + x[i + 1]) / 2);
+        diff += d * d;
     }
-    
-return true;
+
+    const auto rms = std::sqrt(diff) / x.size();
+    return rms < 0.001;
 }
 
 int main()
 {
-
-    testSpline();
+    bool splinetest = testSpline();
+    assert(splinetest);
+    return splinetest;
 }

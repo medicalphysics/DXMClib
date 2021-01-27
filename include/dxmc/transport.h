@@ -231,9 +231,11 @@ protected:
             particle.energy = 0;
         }
         if constexpr (Lowenergycorrection == 0) {
+            p.energy = 0;
             return E;
         } else if (Lowenergycorrection == 1) {
-            return E - m_attenuationLut.meanBindingEnergy(materialIdx);
+            p.energy = 0;
+            return E; // -bindingenergy?
         } else {
             //selecting shell
             const auto& electronConfigurations = m_attenuationLut.electronShellConfiguration(materialIdx);
@@ -244,7 +246,17 @@ protected:
                 shellIdx++;
                 cumprob += electronConfigurations[shellIdx].numberElectrons;
             }
-            return E - electronConfigurations[shellIdx].bindingEnergy;
+
+            const auto r2 = state.randomUniform<T>();
+            if (r2 < electronConfigurations[shellIdx].flouroYield) {
+                // emission of characteristic radiation
+                p.energy = electronConfigurations[shellIdx].bindingEnergy;
+                const auto theta = state.randomUniform<T>(PI_VAL<T>());
+                const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
+                vectormath::peturb<T>(particle.dir.data(), theta, phi);
+                return E - p.energy;
+            }                        
+            return E;
         }
     }
     template <int Lowenergycorrection>
@@ -398,7 +410,7 @@ protected:
                     } else {
                         e = e / (1 - t_s * e * e) * (nom - std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
                     }
-                    Ee = E * (1 - e) - electronConfigurations[electronIdx].bindingEnergy;
+                    Ee = E * (1 - e); //-electronConfigurations[electronIdx].bindingEnergy;
                 }
             }
 
@@ -410,11 +422,10 @@ protected:
         particle.energy *= e;
 
         if constexpr (Lowenergycorrection == 1) {
-            Ee = E * (1 - e) - m_attenuationLut.meanBindingEnergy(materialIdx); // subtracting mean binding energy for Livermore model
+            Ee = E * (1 - e); //- m_attenuationLut.meanBindingEnergy(materialIdx); // subtracting mean binding energy for Livermore model
         } else if (Lowenergycorrection == 0) {
             Ee = E * (1 - e);
         }
-
         return Ee;
     }
 
@@ -516,13 +527,31 @@ protected:
         if (r3 <= attPhoto) // Photoelectric event
         {
 
-            const auto energyImparted = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;
+            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;
 
             safeValueAdd(result.dose[resultBufferIdx], energyImparted);
             safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
             safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-
-            return false;
+            if (p.energy < ENERGY_CUTOFF_THRESHOLD())
+                [[likely]]
+                {
+                    const auto energyImparted = (e + p.energy) * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    p.energy = 0;
+                    return false;
+                }
+            else
+                [[unlikely]]
+                {
+                    const auto energyImparted = e * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    updateMaxAttenuation = true;
+                }
+            
         } else if (r3 <= attPhoto + attCompt) // Compton event
         {
             const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
