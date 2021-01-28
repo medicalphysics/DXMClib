@@ -167,6 +167,10 @@ std::vector<double> Material::getRayleightFormFactorSquared(const std::vector<do
     return formFactor;
 }
 
+
+
+
+
 template <typename T>
     requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::array<ElectronShellConfiguration<double>, 12> electronConfiguration(T* compound)
 {
@@ -193,11 +197,14 @@ template <typename T>
                 const double p = ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
                 const double HF_0 = ComptonProfile_Partial(Z, shell, 0.0, &errorEdge); // Hartree Fock orbital for electron momentum =0
                 const double yield = FluorYield(Z, shell, nullptr);
+                
+                
                 if (HF_0 > 0) {
                     configs.emplace_back(e, p * numberFraction, HF_0, yield);
                 }
             }
             ++shell;
+            
         }
     }
 

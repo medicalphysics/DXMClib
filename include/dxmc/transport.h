@@ -231,31 +231,14 @@ protected:
             particle.energy = 0;
         }
         if constexpr (Lowenergycorrection == 0) {
-            p.energy = 0;
+            particle.energy = 0;
             return E;
         } else if (Lowenergycorrection == 1) {
-            p.energy = 0;
-            return E; // -bindingenergy?
+            particle.energy = 0;
+            return E; 
         } else {
-            //selecting shell
-            const auto& electronConfigurations = m_attenuationLut.electronShellConfiguration(materialIdx);
-            const auto r1 = state.randomUniform<T>();
-            T cumprob = electronConfigurations[0].numberElectrons;
-            std::uint8_t shellIdx = 0;
-            while ((cumprob < r1) && (shellIdx < 12)) {
-                shellIdx++;
-                cumprob += electronConfigurations[shellIdx].numberElectrons;
-            }
-
-            const auto r2 = state.randomUniform<T>();
-            if (r2 < electronConfigurations[shellIdx].flouroYield) {
-                // emission of characteristic radiation
-                p.energy = electronConfigurations[shellIdx].bindingEnergy;
-                const auto theta = state.randomUniform<T>(PI_VAL<T>());
-                const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
-                vectormath::peturb<T>(particle.dir.data(), theta, phi);
-                return E - p.energy;
-            }                        
+            // todo fluor
+            particle.energy = 0;         
             return E;
         }
     }
@@ -410,7 +393,7 @@ protected:
                     } else {
                         e = e / (1 - t_s * e * e) * (nom - std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
                     }
-                    Ee = E * (1 - e); //-electronConfigurations[electronIdx].bindingEnergy;
+                    Ee = E * (1 - e); 
                 }
             }
 
@@ -422,7 +405,7 @@ protected:
         particle.energy *= e;
 
         if constexpr (Lowenergycorrection == 1) {
-            Ee = E * (1 - e); //- m_attenuationLut.meanBindingEnergy(materialIdx); // subtracting mean binding energy for Livermore model
+            Ee = E * (1 - e); 
         } else if (Lowenergycorrection == 0) {
             Ee = E * (1 - e);
         }
@@ -470,8 +453,6 @@ protected:
     template <int Lowenergycorrection>
     bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
-
-        FIX THIS PHOTO ABSOBTION HAS CHANGED
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
         const auto attCompt = atts[1];
@@ -528,12 +509,7 @@ protected:
         const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
         if (r3 <= attPhoto) // Photoelectric event
         {
-
-            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;
-
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;           
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[likely]]
                 {

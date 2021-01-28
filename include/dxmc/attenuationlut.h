@@ -253,7 +253,7 @@ public:
             }
         } else {
             for (std::size_t i = 0; i < 3; ++i) {
-                att[i] = interp(&m_attData[idx],
+                att[i] = logloginterp(&m_attData[idx],
                     &m_attData[offset + m_energyResolution * i + idx], energy);
             }
         }
@@ -277,6 +277,7 @@ public:
         return m_attData.begin() + m_energyResolution;
     }
 
+    
     /**
    * @brief Iterator to the first element of total attenuation data for
    * specified material
@@ -544,7 +545,7 @@ protected:
         if (idx >= m_energyResolution - 1)
             return m_attData[m_energyResolution - 1 + offset];
 
-        return interp(&m_attData[idx], &m_attData[idx + offset], energy);
+        return logloginterp(&m_attData[idx], &m_attData[idx + offset], energy);
     }
 
 private:

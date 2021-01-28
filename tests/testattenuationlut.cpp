@@ -31,14 +31,15 @@ bool testInterpolation(const Material& mat)
         e += (energies[1] - energies[0]) / 2;
     }
 
-    std::cout << "Energy, Photo, Incoher, Coher, Photo dxmc, Incoher dxmc, Coher dxmc\n";
+    std::cout << "Energy, Total, Photo, Incoher, Coher, Total, Photo dxmc, Incoher dxmc, Coher dxmc\n";
 
     for (const auto e : energies) {
         std::cout << e << ", ";
-
+        std::cout << CS_Total_CP(mat.name().c_str(), e, nullptr) << ", ";
         std::cout << CS_Photo_CP(mat.name().c_str(), e, nullptr) << ", ";
         std::cout << CS_Compt_CP(mat.name().c_str(), e, nullptr) << ", ";
         std::cout << CS_Rayl_CP(mat.name().c_str(), e, nullptr) << ", ";
+        std::cout << lut.totalAttenuation(0, e) << ", ";
         const auto abc = lut.photoComptRayAttenuation(0, e);
         for (const auto a : abc) {
             std::cout << a << ", ";
