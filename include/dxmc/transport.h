@@ -237,7 +237,7 @@ protected:
             particle.energy = 0;
             return E; 
         } else {
-            // todo fluor
+            // todo select shell py method of egsnrc vj has been calculated
             particle.energy = 0;         
             return E;
         }

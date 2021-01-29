@@ -31,12 +31,10 @@ struct ElectronShellConfiguration {
     T bindingEnergy = 0;
     T numberElectrons = 0;
     T hartreeFockOrbital_0 = 0;
-    T fluorYield = 0;
-    T photoShellCrossSectionIntegral=0
-
-    std::array<T, 3> lineEnergies; 
-
-
+    T photoIonizationProbability = 1;
+    T fluorescenceYield = 0;
+    std::array<T, 3> fluorLineProbabilities;
+    std::array<T, 3> fluorLineEnergies;
 
     template <Floating U>
     ElectronShellConfiguration<U> cast() const
@@ -45,13 +43,15 @@ struct ElectronShellConfiguration {
         copy.bindingEnergy = static_cast<U>(this->bindingEnergy);
         copy.numberElectrons = static_cast<U>(this->numberElectrons);
         copy.hartreeFockOrbital_0 = static_cast<U>(this->hartreeFockOrbital_0);
-        copy.fluorYield = static_cast<U>(this->fluorYield);
+        copy.fluorescenceYield = static_cast<U>(this->fluorescenceYield);
+        copy.photoIonizationProbability = static_cast<T>(this->photoIonizationProbability);
+        for (std::size_t i = 0; i < 3; ++i) {
+            copy.fluorLineProbabilities[i] = fluorLineProbabilities[i];
+            copy.fluorLineEnergies[i] = fluorLineEnergies[i];
+        }
         return copy;
     }
-    
 };
-
-
 
 class Material {
 public:

@@ -17,6 +17,8 @@ Copyright 2019 Erlend Andersen
 */
 
 #include "dxmc/material.h"
+#include "dxmc/interpolation.h"
+#include "dxmc/vectormath.h"
 #include "xraylib.h"
 
 #include <algorithm>
@@ -167,9 +169,25 @@ std::vector<double> Material::getRayleightFormFactorSquared(const std::vector<do
     return formFactor;
 }
 
+double photoIonizationProbability(int Z, int shell)
+{
+    std::vector<double> energy(400);
+    std::iota(energy.begin(), energy.end(), 0.5);
 
+    const auto c_prob = std::transform_reduce(std::execution::par_unseq, energy.cbegin(), energy.cend(), 0.0, std::plus<>(), [=](const auto e) { return CS_Photo_Partial(Z, shell, e); });
 
+    double tot = c_prob;
+    xrl_error* errorEdge = nullptr;
+    int cshell = shell + 1;
 
+    for (int cshell = shell; cshell <= L3_SHELL; ++cshell) {
+        EdgeEnergy(Z, cshell, &errorEdge);
+        if (!errorEdge) {
+            tot += std::transform_reduce(std::execution::par_unseq, energy.cbegin(), energy.cend(), 0.0, std::plus<>(), [=](const auto e) { return CS_Photo_Partial(Z, cshell, e); });
+        }
+    }
+    return c_prob / tot;
+}
 
 template <typename T>
     requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::array<ElectronShellConfiguration<double>, 12> electronConfiguration(T* compound)
@@ -190,29 +208,63 @@ template <typename T>
         // we group obitals together, i.e the K shell is one orbital, L1,L2,L3 is grouped into a <L> shell, all the way up to including N shells
         xrl_error* errorEdge = nullptr;
         int shell = 0;
-        auto shellGroup = [](int shell) -> int { return std::sqrt((shell + 1) * (shell + 1)) - 1; };
 
-        group by shellgroup
-        double sum_electrons = 0;
         while (!errorEdge) {
-            const double e = EdgeEnergy(Z, shell, &errorEdge); // binding energy
+            const double bindingEnergy = EdgeEnergy(Z, shell, &errorEdge); // binding energy
             if (!errorEdge && e > 1) {
-                const double p = ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
-                const double HF_0 = ComptonProfile_Partial(Z, shell, 0.0, &errorEdge); // Hartree Fock orbital for electron momentum =0
-                const double yield = FluorYield(Z, shell, nullptr);
-                
-                std::array<T, 3> flouroTransitionCrossSection;
-                for (std::size_t crIdx = 0; crIdx < flouroTransitionCrossSection.size(); ++crIdx) {
-                    const int test = KL1_LINE; 
-                    K_SHELL
+                const double totalElectrons = numberFraction * ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
+                const double CProfile = ComptonProfile_Partial(Z, shell, 0.0, &errorEdge); // Hartree Fock orbital for electron momentum =0
+                const double photoionizationProb = photoIonizationProbability(Z, shell);
+
+                std::array<double, 3> fluroProbabilities = { 0, 0, 0 };
+                std::array<double, 3> fluroEnergy = { 0, 0, 0 };
+                std::array<int, 3> lines { 0, 0, 0 };
+
+                int line_start = 0;
+                int line_stop = 0;
+                double yield = 0;
+                if (shell == 0) {
+                    line_start = -1;
+                    line_stop = -29;
+                    yield = FluorYield(Z, K_SHELL, nullptr)
+                } else if (shell == 1) {
+                    line_start = -30;
+                    line_stop = -58;
+                    yield = FluorYield(Z, L1_SHELL, nullptr) + FluorYield(Z, L2_SHELL, nullptr) * CosKronTransProb(Z, FL12_TRANS, nullptr);
+                    yield += (CosKronTransProb(Z, FL13_TRANS, nullptr) + CosKronTransProb(Z, FL12_TRANS, nullptr) * CosKronTransProb(Z, FL23_TRANS, nullptr)) * FluorYield(Z, L3_SHELL, nullptr);
+                } else if (shell == 2) {
+                    line_start = -59;
+                    line_stop = -85;
+                    yield = FluorYield(Z, L2_SHELL, nullptr) + FluorYield(Z, L3_SHELL, nullptr) * CosKronTransProb(Z, FL23_TRANS, nullptr);
+                } else if (shell == 3) {
+                    line_start = -86;
+                    line_stop = -113;
+                    yield = FluorYield(Z, L3_SHELL, nullptr);
                 }
-                
-                if (HF_0 > 0) {
-                    configs.emplace_back(e, p * numberFraction, HF_0, yield);
+                for (int line = line_start; line >= line_stop; --line) {
+                    const auto amin = vectormath::argmin3<int, double>(fluroProbabilities.data());
+                    const double prob = RadRate(Z, line);
+                    if (prob > fluroProbabilities[amin]) {
+                        fluroProbabilities[amin] = prob;
+                        fluroEnergy[amin] = LineEnergy(Z, line);
+                    }
                 }
+                const auto fluroLineprobs = std::reduce(fluroProbabilities.cbegin(), fluroProbabilities.cend(), 0.0);
+                if (fluroLineprobs > 0) {
+                    std::transform(fluroProbabilities.cbegin(), fluroProbabilities.cend(), [=](auto p) { return p / fluroLineprobs; });
+                }
+
+                configs.emplace_back((
+                    bindingEnergy,
+                    totalElectrons,
+                    CProfile,
+                    photoionizationProb,
+                    yield,
+                    fluroProbabilities,
+                    fluroEnergy));
             }
+
             ++shell;
-            
         }
     }
 
