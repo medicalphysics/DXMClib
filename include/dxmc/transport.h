@@ -233,13 +233,51 @@ protected:
         if constexpr (Lowenergycorrection == 0) {
             particle.energy = 0;
             return E;
-        } else if (Lowenergycorrection == 1) {
-            particle.energy = 0;
-            return E; 
         } else {
-            // todo select shell py method of egsnrc vj has been calculated
-            particle.energy = 0;         
-            return E;
+            // select shells where binding energy is greater than photon energy
+            const auto& elConf = m_attenuationLut.electronShellConfiguration(materialIdx);
+            std::size_t idx = 0;
+            while (elConf[idx].bindingEnergy > E && idx < 12) {
+                idx++;
+            }
+            if (idx == 12) {
+                // no suitable shell, all energy is deposited locally
+                particle.energy = 0;
+                return E;
+            }
+
+            //select shell based on partial photoionization crossection
+            auto r1 = state.randomUniform<T>();
+            while (r1 >= elConf[idx].photoIonizationProbability && idx < 12) {
+                r1 = (1 - r1) / (1 - elConf[idx].photoIonizationProbability);
+                ++idx;
+            }
+            if (idx >= 12) {
+                particle.energy = 0;
+                return E;
+            }
+
+            //Determine randomly if a fluorscence photon is emitted from corrected yield
+            const auto r2 = state.randomUniform<T>();
+            if (r2 <= elConf[idx].fluorescenceYield) {
+                // select line transition from the three most probable lines
+                std::size_t lineIdx = 0;
+                auto r3 = state.randomUniform<T>() - elConf[idx].fluorLineProbabilities[lineIdx];
+                while (r3 > 0) {
+                    ++lineIdx;
+                    r3 -= elConf[idx].fluorLineProbabilities[lineIdx];
+                }
+                // give the "new" particle the line energy and an random isotropic direction
+                particle.energy = elConf[idx].fluorLineEnergies[lineIdx];
+                const auto theta = state.randomUniform<T>(PI_VAL<T>());
+                const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
+                vectormath::peturb(particle.dir.data(), theta, phi);
+                //return energy imparted locally
+                return E - particle.energy;
+            } else {
+                particle.energy = 0;
+                return E;
+            }
         }
     }
     template <int Lowenergycorrection>
@@ -393,7 +431,7 @@ protected:
                     } else {
                         e = e / (1 - t_s * e * e) * (nom - std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
                     }
-                    Ee = E * (1 - e); 
+                    Ee = E * (1 - e);
                 }
             }
 
@@ -405,7 +443,7 @@ protected:
         particle.energy *= e;
 
         if constexpr (Lowenergycorrection == 1) {
-            Ee = E * (1 - e); 
+            Ee = E * (1 - e);
         } else if (Lowenergycorrection == 0) {
             Ee = E * (1 - e);
         }
@@ -509,7 +547,7 @@ protected:
         const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
         if (r3 <= attPhoto) // Photoelectric event
         {
-            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;           
+            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[likely]]
                 {
@@ -529,7 +567,7 @@ protected:
                     safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     updateMaxAttenuation = true;
                 }
-            
+
         } else if (r3 <= attPhoto + attCompt) // Compton event
         {
             const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);

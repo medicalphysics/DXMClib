@@ -33,9 +33,11 @@ struct ElectronShellConfiguration {
     T hartreeFockOrbital_0 = 0;
     T photoIonizationProbability = 1;
     T fluorescenceYield = 0;
-    std::array<T, 3> fluorLineProbabilities;
-    std::array<T, 3> fluorLineEnergies;
-
+    std::array<T, 3> fluorLineProbabilities = { 1, 1, 1 };
+    std::array<T, 3> fluorLineEnergies = { 0, 0, 0 };
+    int Z = 0;
+    int shell = 0;
+   
     template <Floating U>
     ElectronShellConfiguration<U> cast() const
     {
@@ -49,6 +51,8 @@ struct ElectronShellConfiguration {
             copy.fluorLineProbabilities[i] = fluorLineProbabilities[i];
             copy.fluorLineEnergies[i] = fluorLineEnergies[i];
         }
+        copy.Z = Z;
+        copy.shell = shell;
         return copy;
     }
 };
