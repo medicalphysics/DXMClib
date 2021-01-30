@@ -171,7 +171,7 @@ public:
 
         if (idx >= m_energyResolution - 1)
             return m_maxMassAtt[m_energyResolution - 1];
-        return interp(m_attData[idx], m_attData[idx + 1], m_maxMassAtt[idx], m_maxMassAtt[idx + 1], energy);
+        return logloginterp(m_attData[idx], m_attData[idx + 1], m_maxMassAtt[idx], m_maxMassAtt[idx + 1], energy);
     }
 
     T meanBindingEnergy(std::size_t materialIdx) const
@@ -277,7 +277,6 @@ public:
         return m_attData.begin() + m_energyResolution;
     }
 
-    
     /**
    * @brief Iterator to the first element of total attenuation data for
    * specified material

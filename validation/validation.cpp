@@ -33,7 +33,7 @@ using namespace dxmc;
 
 constexpr double ERRF = 1e-4;
 
-constexpr bool SAMPLE_RUN = false; // run with reduced number of histories
+constexpr bool SAMPLE_RUN = true; // run with reduced number of histories
 //constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::LIVERMORE;
 constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::IA;
 

@@ -174,7 +174,6 @@ template <typename T>
 {
     std::vector<ElectronShellConfiguration<double>> configs;
     std::vector<int> elements(compound->Elements, compound->Elements + compound->nElements);
-    configs.reserve(elements.size());
 
     std::vector<double> massFractions(compound->massFractions, compound->massFractions + compound->nElements);
     std::vector<double> numberFractions(elements.size());
@@ -191,7 +190,7 @@ template <typename T>
 
         while (!errorEdge) {
             const double bindingEnergy = EdgeEnergy(Z, shell, &errorEdge); // binding energy
-            if (!errorEdge && bindingEnergy > 1) {
+            if (!errorEdge) {
                 const double totalElectrons = numberFraction * ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
                 const double CProfile = ComptonProfile_Partial(Z, shell, 0.0, &errorEdge); // Hartree Fock orbital for electron momentum =0
 
@@ -222,8 +221,9 @@ template <typename T>
                 }
                 for (int line = line_start; line >= line_stop; --line) {
                     const auto amin = vectormath::argmin3<int, double>(fluroProbabilities.data());
-                    const double prob = RadRate(Z, line, nullptr);
-                    if (prob > fluroProbabilities[amin]) {
+                    xrl_error* errorLine = nullptr;
+                    const double prob = RadRate(Z, line, &errorLine);
+                    if (prob > fluroProbabilities[amin] && !errorLine) {
                         fluroProbabilities[amin] = prob;
                         fluroEnergy[amin] = LineEnergy(Z, line, nullptr);
                     }
@@ -244,6 +244,7 @@ template <typename T>
                     fluroEnergy,
                     Z,
                     shell);
+                configs.push_back(new_config);
             }
             ++shell;
         }
@@ -251,15 +252,17 @@ template <typename T>
 
     std::sort(configs.begin(), configs.end(), [](const auto& lh, const auto& rh) { return lh.bindingEnergy > rh.bindingEnergy; });
 
-    const auto electrons_sum = std::transform_reduce(configs.cbegin(), configs.cend(), 0.0, std::plus<>(), [](const auto c) { return c.numberElectrons; });
-    for (auto& c : configs) {
-        c.numberElectrons /= electrons_sum;
-    }
-
+    
     std::array<ElectronShellConfiguration<double>, 12> configs_a;
     for (std::size_t i = 0; i < std::min(configs.size(), configs_a.size()); ++i) {
         configs_a[i] = configs[i];
     }
+
+    const auto electrons_sum = std::transform_reduce(configs_a.cbegin(), configs_a.cend(), 0.0, std::plus<>(), [](const auto c) { return c.numberElectrons; });
+    for (auto& c : configs_a) {
+        c.numberElectrons /= electrons_sum;
+    }
+
 
     //calculating shell probabilities;
     std::vector<double> energy(400);

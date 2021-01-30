@@ -223,24 +223,22 @@ protected:
         value_l.fetch_add(addValue);
     }
 
-    template <int Lowenergycorrection, bool Forced = false>
+    template <int Lowenergycorrection>
     T photoAbsorption(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     {
         const auto E = particle.energy;
-        if constexpr (!Forced) {
-            particle.energy = 0;
-        }
-        if constexpr (Lowenergycorrection == 0) {
+
+        if constexpr (Lowenergycorrection < 2) {
             particle.energy = 0;
             return E;
         } else {
             // select shells where binding energy is greater than photon energy
             const auto& elConf = m_attenuationLut.electronShellConfiguration(materialIdx);
             std::size_t idx = 0;
-            while (elConf[idx].bindingEnergy > E && idx < 12) {
+            while (elConf[idx].bindingEnergy > E && idx < 11) {
                 idx++;
             }
-            if (idx == 12) {
+            if (elConf[idx].bindingEnergy > E || elConf[idx].bindingEnergy > ENERGY_CUTOFF_THRESHOLD()) {
                 // no suitable shell, all energy is deposited locally
                 particle.energy = 0;
                 return E;
@@ -248,11 +246,11 @@ protected:
 
             //select shell based on partial photoionization crossection
             auto r1 = state.randomUniform<T>();
-            while (r1 >= elConf[idx].photoIonizationProbability && idx < 12) {
+            while (r1 >= elConf[idx].photoIonizationProbability && idx < 11) {
                 r1 = (1 - r1) / (1 - elConf[idx].photoIonizationProbability);
                 ++idx;
             }
-            if (idx >= 12) {
+            if (r1 >= elConf[idx].photoIonizationProbability) {
                 particle.energy = 0;
                 return E;
             }
@@ -294,7 +292,7 @@ protected:
                 reject = r1 > ((2 - sinang * sinang) * sinang);
             }
             // calc angle and add randomly 90 degrees since dist i symetrical
-            const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
+            const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
             vectormath::peturb<T>(particle.dir.data(), theta, phi);
         } else {
             // theta is scattering angle
@@ -309,10 +307,10 @@ protected:
                 const auto aatq = amax * r1;
                 const auto q = m_attenuationLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
                 cosAngle = m_attenuationLut.cosAngle(particle.energy, q);
-            } while ((T { 0.5 } + cosAngle * cosAngle * T { 0.5 }) < state.randomUniform<T>());
+            } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
             const auto theta = std::acos(cosAngle);
-            const auto phi = state.randomUniform<T>(PI_VAL<T>() * PI_VAL<T>());
+            const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
             vectormath::peturb<T>(particle.dir.data(), theta, phi);
         }
     }
@@ -337,6 +335,7 @@ protected:
             cosAngle = 1 - t;
 
             if constexpr (Lowenergycorrection == 1) {
+                //simple correction with scatterfactor to supress forward scattering due to binding energy
                 const auto q = m_attenuationLut.momentumTransferFromCos(particle.energy, cosAngle);
                 const auto scatterFactor = m_attenuationLut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
                 const auto r2 = state.randomUniform<T>();
@@ -380,7 +379,7 @@ protected:
                         }
                     }
                     // calculating shell probability
-                    std::transform(
+                    std::transform(std::execution::unseq,
                         n_pz_max.cbegin(), n_pz_max.cend(), electronConfigurations.cbegin(), shell_probs.begin(),
                         [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy ? n_pz * c.numberElectrons : 0; });
                     const auto shell_probs_sum_inv = 1 / std::reduce(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend());
@@ -489,7 +488,7 @@ protected:
     }
 
     template <int Lowenergycorrection>
-    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
+    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
@@ -498,17 +497,36 @@ protected:
         const auto attenuationTotal = attPhoto + attCompt + attRayl;
 
         const auto weightCorrection = eventProbability * attPhoto / attenuationTotal;
-
-        const auto energyImparted = p.weight * weightCorrection * photoAbsorption<Lowenergycorrection, true>(p, matIdx, state);
-        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-        p.weight *= (1 - weightCorrection); // to prevent bias
+        //copy of particle for forced event
 
         const auto r2 = state.randomUniform<T>();
         if (r2 < eventProbability) {
-            const auto r3 = state.randomUniform(attCompt + attRayl);
-            if (r3 <= attCompt) // Compton event
+            //A real event happend
+            const auto r3 = state.randomUniform(attenuationTotal);
+            if (r3 <= attPhoto) // Photoelectric event
+            {
+                const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
+                if (p.energy < ENERGY_CUTOFF_THRESHOLD())
+                    [[likely]]
+                    {
+                        const auto energyImparted = (e + p.energy) * p.weight;
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                        p.energy = 0;
+                        return false;
+                    }
+                else
+                    [[unlikely]]
+                    {
+                        const auto energyImparted = e * p.weight;
+                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                        updateMaxAttenuation = true;
+                    }
+
+            } else if (r3 <= attPhoto + attCompt) // Compton event
             {
                 const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
@@ -518,6 +536,7 @@ protected:
                         safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                         safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                         safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                        p.energy = 0;
                         return false;
                     }
                 else
@@ -533,11 +552,33 @@ protected:
             {
                 rayleightScatter<Lowenergycorrection>(p, matIdx, state);
             }
+
+        } else {
+            // virtual event, we ignore characteristic radiation in case of forced events (this may slightly overestimate dose in high Z materials)
+            auto p_forced = p; // make a copyin case of characteristic x-ray
+            p.weight *= (1 - weightCorrection); // to prevent bias (weightcorrection is the real probability of a photelectric event)
+            const auto e = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
+            if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
+                [[likely]]
+                {
+                    const auto energyImparted = (e + p_forced.energy) * p_forced.weight * weightCorrection;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                }
+            else
+                [[unlikely]]
+                {
+                    const auto energyImparted = e * p_forced.weight * weightCorrection;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                }
         }
         return true;
     }
     template <int Lowenergycorrection>
-    bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
+    bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
         const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
         const auto attPhoto = atts[0];
@@ -547,7 +588,7 @@ protected:
         const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
         if (r3 <= attPhoto) // Photoelectric event
         {
-            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state) * p.weight;
+            const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[likely]]
                 {
@@ -720,7 +761,6 @@ protected:
         T maxAttenuationInv;
         bool updateMaxAttenuation = true;
         bool continueSampling = true;
-        bool ruletteCandidate = true;
         while (continueSampling) {
             if (updateMaxAttenuation) {
                 maxAttenuationInv = T { 1 } / m_attenuationLut.maxMassTotalAttenuation(p.energy);
@@ -754,8 +794,7 @@ protected:
                     }
 
                 if (continueSampling) {
-                    if ((p.energy < RUSSIAN_RULETTE_ENERGY_THRESHOLD()) && ruletteCandidate) {
-                        ruletteCandidate = false;
+                    if ((p.energy * p.weight < RUSSIAN_RULETTE_ENERGY_THRESHOLD())) {
                         const auto r4 = state.randomUniform<T>();
                         if (r4 < RUSSIAN_RULETTE_PROBABILITY()) {
                             continueSampling = false;

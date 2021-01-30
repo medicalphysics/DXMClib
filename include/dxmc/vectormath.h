@@ -141,7 +141,7 @@ namespace vectormath {
         const T x = std::abs(vec[0]);
         const T y = std::abs(vec[1]);
         const T z = std::abs(vec[2]);
-        return x < y ? x < z ? 0 : 2 : y < z ? 1 : 2;
+        return x <= y ? x <= z ? 0 : 2 : y <= z ? 1 : 2;
     }
 
     template <Index U, Floating T>
@@ -150,7 +150,7 @@ namespace vectormath {
         const T x = std::abs(vec[0]);
         const T y = std::abs(vec[1]);
         const T z = std::abs(vec[2]);
-        return x > y ? x > z ? 0 : 2 : y > z ? 1 : 2;
+        return x >= y ? x >= z ? 0 : 2 : y >= z ? 1 : 2;
     }
 
     template <Floating T>
