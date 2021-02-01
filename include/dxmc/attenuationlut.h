@@ -107,8 +107,7 @@ public:
 
         m_nMaterials = materials.size();
 
-        m_attData.resize(m_energyResolution * m_nMaterials * 4 + m_energyResolution);
-        m_meanBindingEnergy.resize(m_nMaterials);
+        m_attData.resize(m_energyResolution * m_nMaterials * 4 + m_energyResolution);        
         // generating energy table
         for (std::size_t i = 0; i < m_energyResolution; ++i)
             m_attData[i] = m_minEnergy + i * m_energyStep;
@@ -130,8 +129,7 @@ public:
             for (std::size_t i = 0; i < m_energyResolution; ++i)
                 m_attData[i + offset] = materials[m].getRayleightAttenuation(m_attData[i]);
 
-            //getting mean binding energy
-            m_meanBindingEnergy[m] = static_cast<T>(materials[m].getMeanBindingEnergy());
+            
         }
 
         generateFFdata(materials);
@@ -174,10 +172,7 @@ public:
         return logloginterp(m_attData[idx], m_attData[idx + 1], m_maxMassAtt[idx], m_maxMassAtt[idx + 1], energy);
     }
 
-    T meanBindingEnergy(std::size_t materialIdx) const
-    {
-        return m_meanBindingEnergy[materialIdx];
-    }
+   
 
     /**
    * @brief Total mass attenuation for a material at specified photon energy
@@ -560,7 +555,6 @@ private:
     std::vector<T> m_rayleighFormFactorSqr; // qsquared, array-> A(qsquared)
     std::vector<T> m_comptonScatterFactor;
     std::vector<T> m_maxMassAtt;
-    std::vector<T> m_meanBindingEnergy;
     std::vector<std::array<ElectronShellConfiguration<T>, 12>> m_electronShellConfiguration;
 };
 }

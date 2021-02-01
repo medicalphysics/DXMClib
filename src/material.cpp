@@ -252,7 +252,6 @@ template <typename T>
 
     std::sort(configs.begin(), configs.end(), [](const auto& lh, const auto& rh) { return lh.bindingEnergy > rh.bindingEnergy; });
 
-    
     std::array<ElectronShellConfiguration<double>, 12> configs_a;
     for (std::size_t i = 0; i < std::min(configs.size(), configs_a.size()); ++i) {
         configs_a[i] = configs[i];
@@ -262,7 +261,6 @@ template <typename T>
     for (auto& c : configs_a) {
         c.numberElectrons /= electrons_sum;
     }
-
 
     //calculating shell probabilities;
     std::vector<double> energy(400);
@@ -342,41 +340,43 @@ std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vecto
     return formFactor;
 }
 
-double calculateBindingEnergy(int Z)
-{
-    std::vector<double> probs, energy;
-    xrl_error* errorEdge = nullptr;
-    int shell = 0;
-    while (!errorEdge) {
-        const double e = EdgeEnergy(Z, shell, &errorEdge);
-        if (!errorEdge) {
-            const double p = ElectronConfig(Z, shell, nullptr); // number of electrons in each shell
-            probs.push_back(p);
-            energy.push_back(e);
-        }
-        ++shell;
-    }
-    const double sum_probs = std::reduce(probs.cbegin(), probs.cend(), 0.0);
-    const double mean_energy = std::transform_reduce(probs.cbegin(), probs.cend(), energy.cbegin(), 0.0, std::plus<>(), [=](auto p, auto e) { return e * p / sum_probs; });
-    return mean_energy;
-}
-
 template <typename T>
-    requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value double calculateMeanBindingEnergy(T* compound)
+    requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::vector<double> calculateBindingEnergies(T* compound, const double minEnergy)
 {
     std::vector<int> elements(compound->Elements, compound->Elements + compound->nElements);
-    std::vector<double> massFractions(compound->massFractions, compound->massFractions + compound->nElements);
-    std::vector<double> numberFractions(elements.size());
-    std::transform(elements.cbegin(), elements.cend(), massFractions.cbegin(), numberFractions.begin(), [](const auto Z, const auto m) { return m / AtomicWeight(Z, nullptr); });
-    auto const numberNormalization = std::accumulate(numberFractions.cbegin(), numberFractions.cend(), 0.0);
-    std::transform(numberFractions.cbegin(), numberFractions.cend(), numberFractions.begin(), [=](const auto f) { return f / numberNormalization; });
+    std::vector<double> edges;
 
-    std::vector<double> bindingEnergy(elements.size());
-    std::transform(elements.cbegin(), elements.cend(), bindingEnergy.begin(), [](const auto Z) { return calculateBindingEnergy(Z); });
+    for (const int Z : elements) {
+        int shell = 0;
+        xrl_error* errorEdge = nullptr;
+        while (!errorEdge) {
+            const double edge = EdgeEnergy(Z, shell, &errorEdge);
+            if (!errorEdge && edge > minEnergy) {
+                edges.push_back(edge);
+            }
+            ++shell;
+        }
+    }
+    std::sort(edges.begin(), edges.end(), std::greater<double>());
+    return edges;
+}
 
-    const auto meanBindingEnergy = std::transform_reduce(numberFractions.cbegin(), numberFractions.cend(), bindingEnergy.cbegin(), 0.0, std::plus<>(), std::multiplies<>());
-
-    return meanBindingEnergy;
+std::vector<double> Material::getBindingEnergies(const double minValue) const
+{
+    std::vector<double> edges;
+    struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
+    if (m) {
+        edges = calculateBindingEnergies(m, minValue);
+        FreeCompoundData(m);
+        m = nullptr;
+    }
+    struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
+    if (n) {
+        edges = calculateBindingEnergies(n, minValue);
+        FreeCompoundDataNIST(n);
+        n = nullptr;
+    }
+    return edges;
 }
 
 void Material::setByAtomicNumber(int atomicNumber)
@@ -386,8 +386,7 @@ void Material::setByAtomicNumber(int atomicNumber)
         m_name = raw_name;
         xrlFree(raw_name);
         raw_name = nullptr;
-        m_density = ElementDensity(atomicNumber, nullptr);
-        m_meanBindingEnergy = calculateBindingEnergy(atomicNumber);
+        m_density = ElementDensity(atomicNumber, nullptr);        
         m_hasDensity = true;
         m_valid = true;
     }
@@ -399,10 +398,7 @@ void Material::setByCompoundName(const std::string& name)
     if (m) {
         m_name = name;
         m_valid = true;
-        m_hasDensity = false;
-        //const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
-        //m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
-        m_meanBindingEnergy = calculateMeanBindingEnergy(m);
+        m_hasDensity = false;        
         FreeCompoundData(m);
         m = nullptr;
     }
@@ -417,9 +413,8 @@ void Material::setByMaterialName(const std::string& name)
         m_hasDensity = true;
         m_density = m->density;
 
-        //const double total_mass = std::reduce(m->massFractions, m->massFractions + m->nElements);
-        //m_meanBindingEnergy = std::transform_reduce(m->massFractions, m->massFractions + m->nElements, m->Elements, 0.0, std::plus<>(), [=](double n, int z) -> double { return n * calculateMeanBindingEnergy(z) / total_mass; });
-        m_meanBindingEnergy = calculateMeanBindingEnergy(m);
+        
+        
         FreeCompoundDataNIST(m);
         m = nullptr;
     }

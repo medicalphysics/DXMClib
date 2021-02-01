@@ -83,11 +83,10 @@ requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
 
 template <Floating T>
 class CubicSplineInterpolator {
-private:
+protected:
     std::vector<T> m_coefficients;
     std::vector<T> m_x;
 
-protected:
     static std::vector<T> gaussSplineElimination(const std::vector<T>& h, const std::vector<T>& D)
     {
         const std::size_t m = h.size() - 1; // rows

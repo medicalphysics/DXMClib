@@ -34,6 +34,7 @@ IF(UNIX AND NOT APPLE)
 ENDIF()
 
 set(HEADER_LIST 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationinterpolator.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationlut.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beamfilters.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.h"
@@ -50,8 +51,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/lowenergycorrectionmodel.h"
-    "${dxmclib_SOURCE_DIR}/include/dxmc.h"
-    
+    "${dxmclib_SOURCE_DIR}/include/dxmc.h"    
     )
 
 add_library(libdxmc 

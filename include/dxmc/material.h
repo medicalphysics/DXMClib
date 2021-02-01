@@ -37,7 +37,7 @@ struct ElectronShellConfiguration {
     std::array<T, 3> fluorLineEnergies = { 0, 0, 0 };
     int Z = 0;
     int shell = 0;
-   
+
     template <Floating U>
     ElectronShellConfiguration<U> cast() const
     {
@@ -97,9 +97,16 @@ public:
     double getTotalAttenuation(double energy) const;
     double getMassEnergyAbsorbtion(double energy) const;
 
-    double getMeanBindingEnergy() const
+    std::vector<double> getBindingEnergies(const double minValue = 1) const;
+
+    template <Floating T>
+    std::vector<T> getBindingEnergies(const T minValue = 1) const
     {
-        return m_meanBindingEnergy;
+        const double dminValue = minValue;
+        const auto vals = getBindingEnergies(dminValue);
+        std::vector<T> res(vals.size());
+        std::transform(vals.cbegin(), vals.cend(), res.begin(), [](const double e) -> T { return static_cast<T>(e); });
+        return res;
     }
 
     std::array<ElectronShellConfiguration<double>, 12> getElectronConfiguration() const;
@@ -133,7 +140,6 @@ private:
     std::string m_name;
     std::string m_prettyName;
     double m_density = -1.0;
-    double m_meanBindingEnergy = 0; // binding energy in keV
     bool m_valid = false;
     bool m_hasDensity = false;
 };
