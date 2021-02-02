@@ -22,157 +22,132 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/material.h"
 
 #include <array>
+#include <cmath>
 #include <vector>
 
 namespace dxmc {
 template <Floating T>
 class AttenuationLutInterpolator {
 private:
-    std::vector<double> m_x;
-    std::vector<double> m_coefficients;
-    double m_shell_offset = 0.0001;
+    constexpr T shell_offset()
+    {
+        return T { 0.0001 };
+    }
+    std::vector<T> m_x;
+    std::vector<T> m_coefficients;
+
     std::size_t m_resolution = 40;
-    T maxBindingEnergy = 0;
+    std::size_t m_linearIndex = 0;
+    T m_linearStep = 0;
+    T m_linearEnergy = 0;
 
 protected:
-    static std::vector<double> gaussSplineElimination(const std::vector<double>& h, const std::vector<double>& D)
-    {
-        const std::size_t m = h.size() - 1; // rows
-        const std::size_t n = m + 1; // columns
-
-        auto idx = [=](int i, int j) -> int { return j + i * m; }; //(row, column)
-        //construct matrix
-        std::vector<double> A(n * m, 0);
-        for (int j = 0; j < m; ++j) {
-            for (int i = 0; i < n; ++i) {
-                const auto index = idx(i, j);
-                if (i == j)
-                    A[index] = 2 * (h[i] + h[i + 1]);
-                else if (j - i == 1)
-                    A[index] = h[i];
-                else if (j - i == -1)
-                    A[index] = h[i];
-                else if (j == n)
-                    A[index] = D[j + 1];
-            }
-        }
-
-        for (int i = 0; i < m - 1; i++) {
-            //Partial Pivoting
-            for (int k = i + 1; k < m; k++) {
-                //If diagonal element(absolute vallue) is smaller than any of the terms below it
-                if (std::abs(A[idx(i, i)]) < std::abs(A[idx(k, i)])) {
-                    //Swap the rows
-                    for (int j = 0; j < n; j++) {
-                        const auto temp = A[idx(i, j)];
-                        A[idx(i, j)] = A[idx(k, j)];
-                        A[idx(k, j)] = temp;
-                    }
-                }
-            }
-            //Begin Gauss Elimination
-            for (int k = i + 1; k < m; k++) {
-                const auto term = A[idx(k, i)] / A[idx(i, i)];
-                for (int j = 0; j < n; j++) {
-                    A[idx(k, j)] = A[idx(k, j)] - term * A[idx(i, j)];
-                }
-            }
-        }
-        std::vector<double> sigma(h.size() + 1, 0);
-
-        //Begin Back-substitution
-        for (int i = m - 1; i >= 0; i--) {
-            sigma[i + 1] = A[idx(i, n - 1)];
-            for (int j = i + 1; j < n - 1; j++) {
-                sigma[i + 1] = sigma[i + 1] - A[idx(i, j)] * sigma[j + 1];
-            }
-            sigma[i + 1] = sigma[i + 1] / A[idx(i, i)];
-        }
-        return sigma;
-    }
-
 public:
     AttenuationLutInterpolator(const std::vector<Material>& materials, const T minEnergy, const T maxEnergy, std::size_t resolution = 40)
     {
+        m_resolution = std::max(static_cast<std::size_t>(maxEnergy - minEnergy), std::size_t { 50 });
+        const T logMinEnergy = std::log10(minEnergy);
+        const T logMaxEnergy = std::log10(maxEnergy);
+        //https://en.wikiversity.org/wiki/Cubic_Spline_Interpolation
         // get Shell edge energies
         m_x.clear();
+        std::vector<T> binding_energies;
         for (const auto& mat : materials) {
             const auto minEnergyD = static_cast<double>(minEnergy);
             const auto bindingEnergies = mat.getBindingEnergies(minEnergyD);
             for (const auto e : bindingEnergies) {
-                m_x.push_back(std::log10(e - m_shell_offset));
-                m_x.push_back(std::log10(e));
+                const T bindingE = static_cast<T>(e);
+                binding_energies.push_back(std::log10(bindingE - shell_offset()));
+                binding_energies.push_back(std::log10(bindingE));
             }
         }
+        std::sort(binding_energies.begin(), binding_energies.end());
+        //remove duplicates
+        binding_energies.erase(std::unique(binding_energies.begin(), binding_energies.end()), binding_energies.end());
 
-        const double logMinEnergy = std::log10(minEnergy);
-        const double logMaxEnergy = std::log10(maxEnergy);
+        m_x.reserve(m_resolution + 1 + binding_energies.size());
+
         for (std::size_t i = 0; i <= m_resolution; ++i) {
             const T e = logMinEnergy + (i * (logMaxEnergy - logMinEnergy)) / (m_resolution - 1);
             m_x.push_back(e);
         }
-        std::sort(m_x.begin(), m_x.end());
+        // adding binding energies
+        for (const auto e : binding_energies) {
+            m_x.push_back(e);
+        }
 
-        m_coefficients.resize(4 * materials.size() * (m_x.size() - 1) * 3);
+        std::sort(m_x.begin(), m_x.end());
+        //erasing duplicates
+        m_x.erase(std::unique(m_x.begin(), m_x.end()), m_x.end());
+
+        m_coefficients.resize(materials.size() * (m_x.size() - 1) * 2 * 3);
+        std::fill(m_coefficients.begin(), m_coefficients.end(), T { 0 });
 
         for (std::size_t matIdx = 0; matIdx < materials.size(); ++matIdx) {
-            const auto offset = 4 * 3 * (m_x.size() - 1) * matIdx;
             for (std::size_t typeIdx = 0; typeIdx < 3; ++typeIdx) {
-                std::vector<double> y(m_x.size());
+                std::vector<T> y(m_x.size());
                 if (typeIdx == 0)
-                    std::transform(m_x.cbegin(), m_x.cend(), y.begin(), [&](const double le) { return materials[matIdx].getPhotoelectricAttenuation(std::pow(10, le)); });
+                    std::transform(m_x.cbegin(), m_x.cend(), y.begin(), [&](const auto le) -> T { return std::log10(materials[matIdx].getPhotoelectricAttenuation(std::pow(T { 10 }, le))); });
                 else if (typeIdx == 1) {
-                    std::transform(m_x.cbegin(), m_x.cend(), y.begin(), [&](const double le) { return materials[matIdx].getComptonAttenuation(std::pow(10, le)); });
+                    std::transform(m_x.cbegin(), m_x.cend(), y.begin(), [&](const auto le) -> T { return std::log10(materials[matIdx].getComptonAttenuation(std::pow(T { 10 }, le))); });
                 } else {
-                    std::transform(m_x.cbegin(), m_x.cend(), y.begin(), [&](const double le) { return materials[matIdx].getRayleightAttenuation(std::pow(10, le)); });
+                    std::transform(m_x.cbegin(), m_x.cend(), y.begin(), [&](const auto le) -> T { return std::log10(materials[matIdx].getRayleightAttenuation(std::pow(T { 10 }, le))); });
                 }
-                std::vector<double> h(m_x.size() - 1);
-                std::vector<double> rho(m_x.size() - 1);
-                std::vector<double> delta(m_x.size() - 1);
-                for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
-                    h[i] = m_x[i + 1] - m_x[i];
-                    delta[i] = (y[i + 1] - y[i]) / h[i];
-                }
-
-                const double sigma0 = 1;
-                const double sigmaN = 1;
-                std::vector<double> D(m_x.size() - 1);
-                for (std::size_t i = 1; i < D.size(); ++i) {
-                    D[i] = 6 * (delta[i] - delta[i - 1]);
-                }
-                D[0] = 0;
-                D[1] += -h[1] * sigma0;
-                D[m_x.size() - 2] += -h[m_x.size() - 2] * sigmaN;
-
-                auto sigma1N = gaussSplineElimination(h, D);
-                sigma1N[0] = sigma0;
-                sigma1N[m_x.size() - 1] = sigmaN;
 
                 for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
-                    m_coefficients[offset + i * 4 * typeIdx + 0] = (sigma1N[i] * m_x[i + 1] * m_x[i + 1] * m_x[i + 1] - sigma1N[i + 1] * m_x[i] * m_x[i] * m_x[i] + 6 * (y[i] * m_x[i + 1] - y[i + 1] * m_x[i])) / (h[i] * 6);
-                    m_coefficients[offset + i * 4 * typeIdx + 0] += h[i] * (sigma1N[i + 1] * m_x[i] - sigma1N[i] * m_x[i + 1]) / 6;
-
-                    m_coefficients[offset + i * 4 * typeIdx + 1] = (sigma1N[i + 1] * m_x[i] * m_x[i] - sigma1N[i] * m_x[i + 1] * m_x[i + 1] + 2 * (y[i + 1] - y[i])) / (h[i] * 2) + h[i] * (sigma1N[i] - sigma1N[i + 1]) / 6;
-                    m_coefficients[offset + i * 4 * typeIdx + 2] = (sigma1N[i] * m_x[i + 1] - sigma1N[i + 1] * m_x[i]) / (2 * h[i]);
-                    m_coefficients[offset + i * 4 * typeIdx + 3] = (sigma1N[i + 1] - sigma1N[i]) / (6 * h[i]);
+                    const auto offset = matIdx * (m_x.size() - 1) * 6 + typeIdx * 2 + i * 6;
+                    const T w = (y[i + 1] - y[i]) / (m_x[i + 1] - m_x[i]);
+                    const T a = w;
+                    const T b = y[i] - m_x[i] * w;
+                    m_coefficients[offset] = b;
+                    m_coefficients[offset + 1] = a;
                 }
             }
         }
+        m_x.erase(m_x.begin());
+        if (binding_energies.size() > 0) {
+            const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), binding_energies.back());
+            if (pos == m_x.end()) {
+                m_linearIndex = m_x.size();
+                m_linearStep = m_x[m_x.size() - 1] - m_x[m_x.size() - 2];
+                m_linearEnergy = m_x.back();
+            } else {
+                m_linearIndex = std::distance(m_x.cbegin(), pos);
+                m_linearStep = m_x[m_linearIndex + 1] - m_x[m_linearIndex];
+                m_linearEnergy = m_x[m_linearIndex];
+            }
+        } else {
+            m_linearIndex = 0;
+            m_linearStep = m_x[1] - m_x[0];
+            m_linearEnergy = m_x.front();
+        }
+        m_resolution = m_x.size();
     }
 
-    std::array<T, 3> getAttenuation(const std::size_t materialIdx, const T energy) const
+    std::array<T, 3> operator()(const std::size_t materialIdx, const T energy) const
     {
-        const auto logEnergy = std::log10(energy);
-        auto upper_iter = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
-        if (upper_iter == m_x.cend() || upper_iter == m_x.cbegin())
-            return 0;
-        const std::size_t i = std::distance(m_x.cbegin(), upper_iter) - 1;
-        const auto offset = 4 * 3 * materialIdx * m_x.size() + 4 * 3 * i;
         std::array<T, 3> res;
-        const auto logEnergy2 = logEnergy * logEnergy;
-        for (std::size_t t = 0; t < 3; ++t) {
-            res[t] = m_coefficients[offset] + m_coefficients[offset + 1] * logEnergy + m_coefficients[offset + 2] * logEnergy2 + m_coefficients[offset + 3] * logEnergy * logEnergy2;
-        }
+        const T logEnergy = std::log10(energy);
+        if (logEnergy > m_linearEnergy)
+            [[likely]]
+            {
+                const auto index = static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex;
+                const auto offset = materialIdx * m_resolution * 6 + index * 6;
+                for (std::size_t i = 0; i < 3; ++i) {
+                    res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
+                }
+            }
+        else
+            [[unlikly]]
+            {
+                const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
+                const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
+                const auto offset = materialIdx * m_resolution * 6 + index * 6;
+                for (std::size_t i = 0; i < 3; ++i) {
+                    res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
+                }
+            }
+
         return res;
     }
 };

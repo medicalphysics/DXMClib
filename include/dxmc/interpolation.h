@@ -83,64 +83,37 @@ requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
 
 template <Floating T>
 class CubicSplineInterpolator {
-protected:
+private:
     std::vector<T> m_coefficients;
     std::vector<T> m_x;
 
-    static std::vector<T> gaussSplineElimination(const std::vector<T>& h, const std::vector<T>& D)
+protected:
+    static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
     {
-        const std::size_t m = h.size() - 1; // rows
-        const std::size_t n = m + 1; // columns
+        //Thomas algorithm for gaussian elimination for a trigonal system of equations
+        /*
+        |b0 c0  0 0  ..  | x0 |   |d0|
+        |a1 b1 c1 0  ... | x1 | = |d1|
+        |0  a2 b2 c2  ...| x2 |   |d2|
+        |0  0  a3 b3 c3  | .. |   |..|
+               
+        */
+        std::vector<T> h = h_p;
+        std::vector<T> H = H_p;
+        std::vector<T> d = d_p;
 
-        auto idx = [=](int i, int j) -> int { return j + i * m; }; //(row, column)
-        //construct matrix
-        std::vector<T> A(n * m, 0);
-        for (int j = 0; j < m; ++j) {
-            for (int i = 0; i < n; ++i) {
-                const auto index = idx(i, j);
-                if (i == j)
-                    A[index] = 2 * (h[i] + h[i + 1]);
-                else if (j - i == 1)
-                    A[index] = h[i];
-                else if (j - i == -1)
-                    A[index] = h[i];
-                else if (j == n)
-                    A[index] = D[j + 1];
-            }
+        std::vector<T> b(d.size(), T { 2 });
+        for (std::size_t i = 1; i < d.size(); ++i) {
+            const T w = h[i - 1] / H[i - 1];
+            H[i] -= w * h[i - 1];
+            d[i] -= w * d[i - 1];
         }
-
-        for (int i = 0; i < m - 1; i++) {
-            //Partial Pivoting
-            for (int k = i + 1; k < m; k++) {
-                //If diagonal element(absolute vallue) is smaller than any of the terms below it
-                if (std::abs(A[idx(i, i)]) < std::abs(A[idx(k, i)])) {
-                    //Swap the rows
-                    for (int j = 0; j < n; j++) {
-                        const auto temp = A[idx(i, j)];
-                        A[idx(i, j)] = A[idx(k, j)];
-                        A[idx(k, j)] = temp;
-                    }
-                }
-            }
-            //Begin Gauss Elimination
-            for (int k = i + 1; k < m; k++) {
-                const auto term = A[idx(k, i)] / A[idx(i, i)];
-                for (int j = 0; j < n; j++) {
-                    A[idx(k, j)] = A[idx(k, j)] - term * A[idx(i, j)];
-                }
-            }
+        std::vector<T> x(d.size());
+        x[d.size() - 1] = d[d.size() - 1] / H[d.size() - 1];
+        for (int i = d.size() - 2; i >= 0; --i) {
+            x[i] = (d[i] - h[i] * x[i + 1]) / H[i];
         }
-        std::vector<T> sigma(h.size() + 1, 0);
-
-        //Begin Back-substitution
-        for (int i = m - 1; i >= 0; i--) {
-            sigma[i + 1] = A[idx(i, n - 1)];
-            for (int j = i + 1; j < n - 1; j++) {
-                sigma[i + 1] = sigma[i + 1] - A[idx(i, j)] * sigma[j + 1];
-            }
-            sigma[i + 1] = sigma[i + 1] / A[idx(i, i)];
-        }
-        return sigma;
+        return x;
     }
 
 public:
@@ -152,46 +125,59 @@ public:
         if (x.size() < 3)
             return;
 
-        m_coefficients.resize(4 * (x.size() - 1));
+        m_coefficients.resize(4 * x.size());
         m_x = x; // copy array
 
-        std::vector<T> h(m_x.size() - 1);
-        std::vector<T> rho(m_x.size() - 1);
-        std::vector<T> delta(m_x.size() - 1);
+        std::vector<T> h(m_x.size());
         for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
             h[i] = m_x[i + 1] - m_x[i];
+        }
+
+        std::vector<T> delta(m_x.size(), T { 1 });
+        for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
             delta[i] = (y[i + 1] - y[i]) / h[i];
         }
-
-        const T sigma0 = 1;
-        const T sigmaN = 1;
-        std::vector<T> D(m_x.size() - 1);
-        for (std::size_t i = 1; i < D.size(); ++i) {
-            D[i] = 6 * (delta[i] - delta[i - 1]);
+        std::vector<T> H(m_x.size());
+        for (std::size_t i = 1; i < m_x.size(); ++i) {
+            H[i] = 2 * (h[i - 1] + h[i]);
         }
-        D[0] = 0;
-        D[1] += -h[1] * sigma0;
-        D[m_x.size() - 2] += -h[m_x.size() - 2] * sigmaN;
+        H[0] = H[1];
 
-        auto sigma1N = gaussSplineElimination(h, D);
-        sigma1N[0] = sigma0;
-        sigma1N[m_x.size() - 1] = sigmaN;
+        std::vector<T> d(m_x.size());
+        d[0] = 6 * delta[0];
+        for (std::size_t i = 1; i < m_x.size(); ++i) {
+            d[i] = 6 * (delta[i] - delta[i - 1]);
+        }
+
+        auto s = thomasPenSplineElimination(h, H, d);
 
         for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
-            m_coefficients[i * 4 + 0] = (sigma1N[i] * x[i + 1] * x[i + 1] * x[i + 1] - sigma1N[i + 1] * x[i] * x[i] * x[i] + 6 * (y[i] * x[i + 1] - y[i + 1] * x[i])) / (h[i] * 6);
-            m_coefficients[i * 4 + 0] += h[i] * (sigma1N[i + 1] * x[i] - sigma1N[i] * x[i + 1]) / 6;
+            const auto offset = i * 4;
 
-            m_coefficients[i * 4 + 1] = (sigma1N[i + 1] * x[i] * x[i] - sigma1N[i] * x[i + 1] * x[i + 1] + 2 * (y[i + 1] - y[i])) / (h[i] * 2) + h[i] * (sigma1N[i] - sigma1N[i + 1]) / 6;
-            m_coefficients[i * 4 + 2] = (sigma1N[i] * x[i + 1] - sigma1N[i + 1] * x[i]) / (2 * h[i]);
-            m_coefficients[i * 4 + 3] = (sigma1N[i + 1] - sigma1N[i]) / (6 * h[i]);
+            m_coefficients[offset + 0] = (s[i] * m_x[i + 1] * m_x[i + 1] * m_x[i + 1] - s[i + 1] * m_x[i] * m_x[i] * m_x[i] + 6 * (y[i] * m_x[i + 1] - y[i + 1] * m_x[i])) / (6 * h[i]);
+            m_coefficients[offset + 0] += h[i] * (s[i + 1] * m_x[i] - s[i] * m_x[i + 1]) / 6;
+            m_coefficients[offset + 1] = (s[i + 1] * m_x[i] * m_x[i] - s[i] * m_x[i + 1] * m_x[i + 1] + 2 * (y[i + 1] - y[i])) / (2 * h[i]) + h[i] * (s[i] - s[i + 1]) / 6;
+            m_coefficients[offset + 2] = (s[i] * m_x[i + 1] - s[i + 1] * m_x[i]) / (2 * h[i]);
+            m_coefficients[offset + 3] = (s[i + 1] - s[i]) / (6 * h[i]);
+
+            /*
+            m_coefficients[offset + 0] = (M[i - 1] * m_x[i] * m_x[i] * m_x[i] - M[i] * m_x[i - 1] * m_x[i - 1] * m_x[i - 1]) / (6 * h[i]);
+            m_coefficients[offset + 0] += (y[i - 1] * m_x[i] - y[i] * m_x[i - 1]) / h[i];
+            m_coefficients[offset + 0] += (M[i] * h[i] * m_x[i - 1] - M[i - 1] * h[i] * m_x[i]) / 6;
+
+            m_coefficients[offset + 1] = (M[i] * m_x[i - 1] * m_x[i - 1] - M[i - 1] * m_x[i] * m_x[i]) / (2 * h[i]);
+            m_coefficients[offset + 1] += (y[i] - y[i - 1]) / h[i] + (M[i - 1] - M[i]) / 6;
+
+            m_coefficients[offset + 2] = (M[i - 1] * m_x[i] - M[i] * m_x[i - 1]) / (2 * h[i]);
+            m_coefficients[offset + 3] = (M[i] - M[i - 1]) / (6 * h[i]);
+            */
         }
     }
     T operator()(const T x) const
     {
-        auto upper_iter = std::upper_bound(m_x.cbegin(), m_x.cend(), x);
-        if (upper_iter == m_x.cend() || upper_iter == m_x.cbegin())
-            return 0;
-        const std::size_t i = std::distance(m_x.cbegin(), upper_iter) - 1;
+        auto upper_iter = std::lower_bound(m_x.cbegin() + 1, m_x.cend(), x);
+
+        const std::size_t i = upper_iter != m_x.cend() ? std::distance(m_x.cbegin(), upper_iter) - 1 : m_x.size() - 2;
         return m_coefficients[i * 4] + m_coefficients[i * 4 + 1] * x + m_coefficients[i * 4 + 2] * x * x + m_coefficients[i * 4 + 3] * x * x * x;
     }
 };
