@@ -129,44 +129,14 @@ std::string Material::getSymbolFromAtomicNumber(int Z)
     return st;
 }
 
-std::vector<double> Material::getRayleightFormFactorSquared(const std::vector<double>& momentumTransfer) const
+double Material::getRayleightFormFactorSquared(const double momentumTransfer) const
 {
-    std::vector<double> fraction;
-    std::vector<int> elements;
 
-    struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
-    if (m) {
-        fraction.resize(m->nElements);
-        elements.resize(m->nElements);
-        for (int i = 0; i < m->nElements; i++) {
-            elements[i] = m->Elements[i];
-            fraction[i] = m->nAtoms[i] / (m->nAtomsAll);
-        }
-        FreeCompoundData(m);
-        m = nullptr;
-    }
-    struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
-    if (n) {
-        fraction.resize(n->nElements);
-        elements.resize(n->nElements);
-        for (int i = 0; i < n->nElements; i++) {
-            elements[i] = n->Elements[i];
-            fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
-        }
-        const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
-        std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) { return w / weight; });
-        FreeCompoundDataNIST(n);
-        n = nullptr;
-    }
-
-    std::vector<double> formFactor(momentumTransfer.size(), 0.0);
-    for (std::size_t i = 0; i < formFactor.size(); ++i) {
-        for (std::size_t j = 0; j < fraction.size(); ++j) {
-            formFactor[i] += fraction[j] * FF_Rayl(elements[j], momentumTransfer[i], nullptr);
-        }
-        formFactor[i] = formFactor[i] * formFactor[i];
-    }
-    return formFactor;
+    const auto sum = std::transform_reduce(std::execution::par_unseq, m_elements.cbegin(), m_elements.cend(), 0.0, std::plus<>(), [=](const auto Z) {
+        const auto f = FF_Rayl(Z, momentumTransfer, nullptr);
+        return f * f;
+    });
+    return sum;
 }
 
 template <typename T>
@@ -301,42 +271,14 @@ std::array<ElectronShellConfiguration<double>, 12> Material::getElectronConfigur
     }
     return config;
 }
-std::vector<double> Material::getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const
+double Material::getComptonNormalizedScatterFactor(const double momentumTransfer) const
 {
-    std::vector<double> fraction;
-    std::vector<int> elements;
 
-    struct compoundData* m = CompoundParser(m_name.c_str(), nullptr);
-    if (m) {
-        fraction.resize(m->nElements);
-        elements.resize(m->nElements);
-        for (int i = 0; i < m->nElements; i++) {
-            elements[i] = m->Elements[i];
-            fraction[i] = m->nAtoms[i] / (m->nAtomsAll);
-        }
-        FreeCompoundData(m);
-        m = nullptr;
-    }
-    struct compoundDataNIST* n = GetCompoundDataNISTByName(m_name.c_str(), nullptr);
-    if (n) {
-        fraction.resize(n->nElements);
-        elements.resize(n->nElements);
-        for (int i = 0; i < n->nElements; i++) {
-            elements[i] = n->Elements[i];
-            fraction[i] = n->massFractions[i] / AtomicWeight(elements[i], nullptr);
-        }
-        const double weight = std::accumulate(fraction.cbegin(), fraction.cend(), 0.0);
-        std::transform(fraction.cbegin(), fraction.cend(), fraction.begin(), [=](double w) { return w / weight; });
-        FreeCompoundDataNIST(n);
-        n = nullptr;
-    }
+    const auto formFactor = std::transform_reduce(m_elements.cbegin(), m_elements.cend(), m_elementNumberFraction.cbegin(), 0.0, std::plus<>(), [=](const auto Z, const auto f) {
+        const auto sf = f * SF_Compt(Z, momentumTransfer, nullptr) / Z;
+        return sf;
+    });
 
-    std::vector<double> formFactor(momentumTransfer.size(), 0.0);
-    for (std::size_t i = 0; i < formFactor.size(); ++i) {
-        for (std::size_t j = 0; j < fraction.size(); ++j) {
-            formFactor[i] += fraction[j] * SF_Compt(elements[j], momentumTransfer[i], nullptr) / elements[j];
-        }
-    }
     return formFactor;
 }
 
@@ -386,9 +328,12 @@ void Material::setByAtomicNumber(int atomicNumber)
         m_name = raw_name;
         xrlFree(raw_name);
         raw_name = nullptr;
-        m_density = ElementDensity(atomicNumber, nullptr);        
+        m_density = ElementDensity(atomicNumber, nullptr);
         m_hasDensity = true;
         m_valid = true;
+        m_elements.resize(1);
+        m_elements[0] = atomicNumber;
+        m_elementNumberFraction = std::vector<double>(1, 1.0);
     }
 }
 
@@ -398,7 +343,14 @@ void Material::setByCompoundName(const std::string& name)
     if (m) {
         m_name = name;
         m_valid = true;
-        m_hasDensity = false;        
+        m_hasDensity = false;
+        m_elements = std::vector<int>(m->Elements, m->Elements + m->nElements);
+        m_elementNumberFraction.resize(m->nElements);
+        for (std::size_t i = 0; i < m->nElements; i++) {
+            m_elementNumberFraction[i] = m->massFractions[i] / AtomicWeight(m_elements[i], nullptr);
+        }
+        const auto numberSum = std::reduce(m_elementNumberFraction.cbegin(), m_elementNumberFraction.cend());
+        std::transform(m_elementNumberFraction.cbegin(), m_elementNumberFraction.cend(), m_elementNumberFraction.begin(), [=](const auto f) { return f / numberSum; });
         FreeCompoundData(m);
         m = nullptr;
     }
@@ -412,9 +364,13 @@ void Material::setByMaterialName(const std::string& name)
         m_valid = true;
         m_hasDensity = true;
         m_density = m->density;
-
-        
-        
+        m_elements = std::vector<int>(m->Elements, m->Elements + m->nElements);
+        m_elementNumberFraction.resize(m->nElements);
+        for (std::size_t i = 0; i < m->nElements; i++) {
+            m_elementNumberFraction[i] = m->massFractions[i] / AtomicWeight(m_elements[i], nullptr);
+        }
+        const auto numberSum = std::reduce(m_elementNumberFraction.cbegin(), m_elementNumberFraction.cend());
+        std::transform(m_elementNumberFraction.cbegin(), m_elementNumberFraction.cend(), m_elementNumberFraction.begin(), [=](const auto f) { return f / numberSum; });
         FreeCompoundDataNIST(m);
         m = nullptr;
     }

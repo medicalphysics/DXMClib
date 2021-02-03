@@ -81,11 +81,14 @@ requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
     return interp(*lower, *upper, *lowery, *uppery, xvalue);
 }
 
-template <Floating T>
+template <Floating T, int N = 30>
 class CubicSplineInterpolator {
 private:
-    std::vector<T> m_coefficients;
-    std::vector<T> m_x;
+    std::array<T, (N - 1) * 4> m_coefficients;
+    std::array<T, N> m_x;
+    T m_step = 0;
+    T m_start = 0;
+    T m_stop = 0;
 
 protected:
     static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
@@ -117,16 +120,18 @@ protected:
     }
 
 public:
-    CubicSplineInterpolator(const std::vector<T>& x, const std::vector<T>& y)
+    template <std::regular_invocable<T> F>
+    requires std::is_same<std::invoke_result_t<F, T>, T>::value
+    CubicSplineInterpolator(const T start, const T stop, F function)
     {
-        if (x.size() != y.size())
-            return;
-
-        if (x.size() < 3)
-            return;
-
-        m_coefficients.resize(4 * x.size());
-        m_x = x; // copy array
+        std::vector<T> y(N);
+        m_start = start;
+        m_step = (stop - start) / (N - 2);
+        for (int i = 0; i < N; ++i) {
+            m_x[i] = m_start + m_step * i;
+            y[i] = function(m_x[i]);
+        }
+        m_stop = m_x.back();
 
         std::vector<T> h(m_x.size());
         for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
@@ -144,11 +149,11 @@ public:
         H[0] = H[1];
 
         std::vector<T> d(m_x.size());
-        d[0] = 6 * delta[0];
         for (std::size_t i = 1; i < m_x.size(); ++i) {
             d[i] = 6 * (delta[i] - delta[i - 1]);
         }
-
+        d[m_x.size() - 1] = 0;
+        d[0] = 0;
         auto s = thomasPenSplineElimination(h, H, d);
 
         for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
@@ -159,26 +164,15 @@ public:
             m_coefficients[offset + 1] = (s[i + 1] * m_x[i] * m_x[i] - s[i] * m_x[i + 1] * m_x[i + 1] + 2 * (y[i + 1] - y[i])) / (2 * h[i]) + h[i] * (s[i] - s[i + 1]) / 6;
             m_coefficients[offset + 2] = (s[i] * m_x[i + 1] - s[i + 1] * m_x[i]) / (2 * h[i]);
             m_coefficients[offset + 3] = (s[i + 1] - s[i]) / (6 * h[i]);
-
-            /*
-            m_coefficients[offset + 0] = (M[i - 1] * m_x[i] * m_x[i] * m_x[i] - M[i] * m_x[i - 1] * m_x[i - 1] * m_x[i - 1]) / (6 * h[i]);
-            m_coefficients[offset + 0] += (y[i - 1] * m_x[i] - y[i] * m_x[i - 1]) / h[i];
-            m_coefficients[offset + 0] += (M[i] * h[i] * m_x[i - 1] - M[i - 1] * h[i] * m_x[i]) / 6;
-
-            m_coefficients[offset + 1] = (M[i] * m_x[i - 1] * m_x[i - 1] - M[i - 1] * m_x[i] * m_x[i]) / (2 * h[i]);
-            m_coefficients[offset + 1] += (y[i] - y[i - 1]) / h[i] + (M[i - 1] - M[i]) / 6;
-
-            m_coefficients[offset + 2] = (M[i - 1] * m_x[i] - M[i] * m_x[i - 1]) / (2 * h[i]);
-            m_coefficients[offset + 3] = (M[i] - M[i - 1]) / (6 * h[i]);
-            */
         }
     }
-    T operator()(const T x) const
+    T operator()(const T x_val) const
     {
-        auto upper_iter = std::lower_bound(m_x.cbegin() + 1, m_x.cend(), x);
+        const T x = std::clamp(x_val, m_start, m_stop);
 
-        const std::size_t i = upper_iter != m_x.cend() ? std::distance(m_x.cbegin(), upper_iter) - 1 : m_x.size() - 2;
-        return m_coefficients[i * 4] + m_coefficients[i * 4 + 1] * x + m_coefficients[i * 4 + 2] * x * x + m_coefficients[i * 4 + 3] * x * x * x;
+        const std::size_t index = x > m_start ? (x - m_start) / m_step : 0;
+        const std::size_t offset = index < N - 1 ? index * 4 : (N - 2) * 4;
+        return m_coefficients[offset] + m_coefficients[offset + 1] * x + m_coefficients[offset + 2] * x * x + m_coefficients[offset + 3] * x * x * x;
     }
 };
 

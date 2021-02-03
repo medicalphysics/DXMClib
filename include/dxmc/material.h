@@ -69,26 +69,18 @@ public:
     double standardDensity(void) const { return m_density; }
     void setStandardDensity(double density); // g/cm3
 
-    std::vector<double> getRayleightFormFactorSquared(const std::vector<double>& momentumTransfer) const;
-    std::vector<double> getComptonNormalizedScatterFactor(const std::vector<double>& momentumTransfer) const;
+    double getRayleightFormFactorSquared(const double momentumTransfer) const;
+    double getComptonNormalizedScatterFactor(const double momentumTransfer) const;
 
     template <Floating T>
-    std::vector<T> getRayleightFormFactorSquared(const std::vector<T>& momentumTransfer) const
+    T getRayleightFormFactorSquared(const T momentumTransfer) const
     {
-        std::vector<double> in(momentumTransfer.cbegin(), momentumTransfer.cend());
-        auto vec = getRayleightFormFactorSquared(in);
-        std::vector<T> out(in.size());
-        std::transform(vec.cbegin(), vec.cend(), out.begin(), [](double e) -> T { return static_cast<T>(e); });
-        return out;
+        return static_cast<T>(getRayleightFormFactorSquared(static_cast<double>(momentumTransfer)));
     }
     template <Floating T>
-    std::vector<T> getComptonNormalizedScatterFactor(const std::vector<T>& momentumTransfer) const
+    T getComptonNormalizedScatterFactor(const T momentumTransfer) const
     {
-        std::vector<double> in(momentumTransfer.cbegin(), momentumTransfer.cend());
-        auto vec = getComptonNormalizedScatterFactor(in);
-        std::vector<T> out(in.size());
-        std::transform(vec.cbegin(), vec.cend(), out.begin(), [](double e) -> T { return static_cast<T>(e); });
-        return out;
+        return static_cast<T>(getComptonNormalizedScatterFactor(static_cast<double>(momentumTransfer)));
     }
 
     double getPhotoelectricAttenuation(double energy) const;
@@ -139,6 +131,8 @@ protected:
 private:
     std::string m_name;
     std::string m_prettyName;
+    std::vector<int> m_elements;
+    std::vector<double> m_elementNumberFraction;
     double m_density = -1.0;
     bool m_valid = false;
     bool m_hasDensity = false;

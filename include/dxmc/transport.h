@@ -324,8 +324,8 @@ protected:
 
             if constexpr (Lowenergycorrection == 1) {
                 //simple correction with scatterfactor to supress forward scattering due to binding energy
-                const auto q = m_attenuationLut.momentumTransferFromCos(particle.energy, cosAngle);
-                const auto scatterFactor = m_attenuationLut.comptonScatterFactor(static_cast<std::size_t>(materialIdx), q);
+                const auto q = m_attenuationLut.momentumTransferFromCos(E, cosAngle);
+                const auto scatterFactor = m_attenuationLut.comptonScatterFactor(materialIdx, q);
                 const auto r2 = state.randomUniform<T>();
                 const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
                 rejected = r2 > g * scatterFactor;
