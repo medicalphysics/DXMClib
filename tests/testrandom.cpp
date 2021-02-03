@@ -169,7 +169,7 @@ void testRita()
         const T ana = i * i / (T { steps } * steps * steps) * 3;
         std::cout << i << ", " << hist[i] / nsamp << ", " << ana << std::endl;
         if (i > 0 && i < steps - 2) {
-            const T diff = hist[i] / nsamp - ana ;
+            const T diff = hist[i] / nsamp - ana;
             rms += diff * diff;
         }
     }
@@ -177,7 +177,6 @@ void testRita()
     rms = std::sqrt(rms);
     std::cout << "RMS: " << rms << std::endl;
     assert(rms < 0.001);
-
 }
 
 int main(int argc, char* argv[])
