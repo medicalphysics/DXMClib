@@ -95,7 +95,12 @@ bool testSplineAttenuation()
     materials[0] = mat;
     materials[1] = lead;
 
-    dxmc::AttenuationLutInterpolator<T> attLut(materials, T { 1 }, T { 150 });
+    std::vector<T> dens;
+    std::transform(materials.cbegin(), materials.cend(), std::back_inserter(dens), [](const auto& m) { return m.standardDensity(); });
+    std::vector<std::uint8_t> mats(dens.size());
+    std::iota(mats.begin(), mats.end(), 0);
+
+    dxmc::AttenuationLutInterpolator<T> attLut(materials, dens.cbegin(), dens.cend(), mats.cbegin(), T { 1 }, T { 150 });
 
     //printing
     std::cout.precision(std::numeric_limits<T>::digits10 + 1);

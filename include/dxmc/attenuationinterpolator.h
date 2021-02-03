@@ -20,6 +20,7 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/floating.h"
 #include "dxmc/material.h"
+#include "dxmc/world.h"
 
 #include <array>
 #include <cmath>
@@ -35,20 +36,69 @@ private:
     }
     std::vector<T> m_x;
     std::vector<T> m_coefficients;
+    std::vector<T> m_maxCoefficients;
 
     std::size_t m_resolution = 40;
     std::size_t m_linearIndex = 0;
     T m_linearStep = 0;
     T m_linearEnergy = 0;
+    T m_removedEnergy = 0;
 
 protected:
-public:
-    AttenuationLutInterpolator(const std::vector<Material>& materials, const T minEnergy, const T maxEnergy, std::size_t resolution = 40)
+    template <typename DensIter, typename MatIter>
+    void generateMaxAttenuationLut(const std::vector<Material>& materials, const DensIter densBegin, const DensIter densEnd, const MatIter matBegin, const T firstEnergy)
     {
-        m_resolution = std::max(static_cast<std::size_t>(maxEnergy - minEnergy), std::size_t { 50 });
+        std::vector<T> maxDens(materials.size());
+        for (std::size_t matIdx = 0; matIdx < maxDens.size(); ++matIdx) {
+            maxDens[matIdx] = std::transform_reduce(
+                std::execution::par_unseq,
+                densBegin, densEnd, matBegin, T { 0 }, [](const auto l, const auto r) { return std::max(r, l); },
+                [=](const auto d, const auto mIdx) -> T {
+                    return mIdx == matIdx ? d : T { 0 };
+                });
+        }
+
+        auto x = m_x;
+        x.insert(x.cbegin(), firstEnergy);
+        std::vector<T> y(x.size());
+
+        for (std::size_t xIdx = 0; xIdx < x.size(); ++xIdx) {
+            T maxVal = 0;
+            for (std::size_t matIdx = 0; matIdx < maxDens.size(); ++matIdx) {
+                const auto vals = this->operator()(matIdx, std::pow(T { 10 }, x[xIdx]));
+                const auto val = maxDens[matIdx] * std::reduce(vals.cbegin(), vals.cend());
+                maxVal = std::max(maxVal, val);
+            }
+            y[xIdx] = std::log10(1 / maxVal);
+        }
+
+        m_maxCoefficients.resize(m_x.size() * 2);
+        for (std::size_t i = 0; i < x.size() - 1; ++i) {
+            const auto offset = i * 2;
+            const T w = (y[i + 1] - y[i]) / (x[i + 1] - x[i]);
+            const T a = w;
+            const T b = y[i] - x[i] * w;
+            m_maxCoefficients[offset] = b;
+            m_maxCoefficients[offset + 1] = a;
+        }
+    }
+
+public:
+    AttenuationLutInterpolator(const World<T>& world, const T minEnergy, const T maxEnergy)
+    {
+        const auto& materials = world.materialMap();
+        auto densBegin = world.densityArray()->cbegin();
+        auto densEnd = world.densityArray()->cend();
+        auto matBegin = world.materialIndexArray->cbegin();
+        AttenuationLutInterpolator(materials, densBegin, densEnd, matBegin, minEnergy, maxEnergy);
+    }
+    template <typename DensIter, typename MatIter>
+    AttenuationLutInterpolator(const std::vector<Material>& materials, const DensIter densBegin, const DensIter densEnd, const MatIter matBegin, const T minEnergy, const T maxEnergy)
+    {
+        m_resolution = std::max(static_cast<std::size_t>(maxEnergy - minEnergy), std::size_t { 10 });
         const T logMinEnergy = std::log10(minEnergy);
         const T logMaxEnergy = std::log10(maxEnergy);
-        //https://en.wikiversity.org/wiki/Cubic_Spline_Interpolation
+
         // get Shell edge energies
         m_x.clear();
         std::vector<T> binding_energies;
@@ -104,7 +154,10 @@ public:
                 }
             }
         }
+
+        const T missingEnergy = m_x.front();
         m_x.erase(m_x.begin());
+
         if (binding_energies.size() > 0) {
             const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), binding_energies.back());
             if (pos == m_x.end()) {
@@ -122,6 +175,8 @@ public:
             m_linearEnergy = m_x.front();
         }
         m_resolution = m_x.size();
+
+        generateMaxAttenuationLut(materials, densBegin, densEnd, matBegin, missingEnergy);
     }
 
     std::array<T, 3> operator()(const std::size_t materialIdx, const T energy) const
@@ -149,6 +204,28 @@ public:
             }
 
         return res;
+    }
+
+    T maxAttenuationInverse(const T energy) const
+    {
+        const T logEnergy = std::log10(energy);
+        if (logEnergy > m_linearEnergy)
+            [[likely]]
+            {
+                const auto index = static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex;
+                const auto offset = index + index;
+                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
+                return res;
+            }
+        else
+            [[unlikly]]
+            {
+                const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
+                const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
+                const auto offset = index + index;
+                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
+                return res;
+            }
     }
 };
 }

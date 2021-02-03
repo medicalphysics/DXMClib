@@ -19,6 +19,7 @@ Copyright 2019 Erlend Andersen
 #pragma once
 
 #include "dxmc/constants.h"
+#include "dxmc/attenuationinterpolator.h"
 #include "dxmc/dxmcrandom.h"
 #include "dxmc/floating.h"
 #include "dxmc/interpolation.h"

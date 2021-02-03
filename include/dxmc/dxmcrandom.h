@@ -341,7 +341,7 @@ protected:
         const T h = (stop - start) / 50;
         T result = pdf(start) + pdf(stop);
         for (std::size_t i = 1; i < 50; ++i) {
-            const T prod = 1 % 2 == 0 ? 2 : 4; // prod is 2 when i is even else 4
+            const T prod = i % 2 == 0 ? 2 : 4; // prod is 2 when i is even else 4
             result += prod * pdf(start + h * i);
         }
         return h * result / 3;

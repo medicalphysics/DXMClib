@@ -140,11 +140,52 @@ void testUniformIndex()
     std::cout << "PCG time: " << pcg_time.count() << std::endl;
 }
 
+template <typename T>
+void testRita()
+{
+
+    auto pdf = [](const T e) -> T { return e * e; };
+
+    T min = 0;
+    T max = 50;
+    constexpr std::size_t steps = 150;
+    std::vector<T> vals;
+    for (std::size_t i = 0; i < steps; ++i) {
+        vals.push_back(min + (max - min) * i / (steps - 1));
+    }
+
+    RITA<T, steps * 2> r(min, max, pdf);
+    RandomState state;
+    std::vector<T> hist(steps, 0);
+    std::size_t nsamp = 1E7;
+    for (std::size_t i = 0; i < nsamp; ++i) {
+        const T v = r(state);
+        const auto ind = (v - min) * (steps - 1) / (max - min);
+        ++hist[static_cast<std::size_t>(ind)];
+    }
+    T rms = 0;
+    std::cout << "RITA test, RITA, ANA" << std::endl;
+    for (int i = 0; i < steps; ++i) {
+        const T ana = i * i / (T { steps } * steps * steps) * 3;
+        std::cout << i << ", " << hist[i] / nsamp << ", " << ana << std::endl;
+        if (i > 0 && i < steps - 2) {
+            const T diff = hist[i] / nsamp - ana ;
+            rms += diff * diff;
+        }
+    }
+    rms /= steps - 2;
+    rms = std::sqrt(rms);
+    std::cout << "RMS: " << rms << std::endl;
+    assert(rms < 0.001);
+
+}
+
 int main(int argc, char* argv[])
 {
     testrandomInteger();
     testUniform();
     testUniformRange();
     testUniformIndex();
+    testRita<float>();
     return 0;
 }

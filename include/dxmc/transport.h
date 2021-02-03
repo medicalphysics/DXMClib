@@ -127,8 +127,6 @@ public:
     std::size_t numberOfWorkers() const { return m_nThreads; }
     void setLowEnergyCorrectionModel(LOWENERGYCORRECTION model) { m_lowenergyCorrection = model; }
     LOWENERGYCORRECTION lowEnergyCorrectionModel() const { return m_lowenergyCorrection; }
-    void setSiddonTracking(bool use) { m_useSiddonTracking = use; }
-    bool siddonTracking() const { return m_useSiddonTracking; }
     void setOutputMode(Transport<T>::OUTPUTMODE mode) { m_outputmode = mode; }
     Transport<T>::OUTPUTMODE outputMode() const { return m_outputmode; }
 
@@ -166,21 +164,11 @@ public:
         }
         const auto start = std::chrono::system_clock::now();
         if (m_lowenergyCorrection == LOWENERGYCORRECTION::NONE) {
-            if (m_useSiddonTracking)
-                parallellRun<0, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            else
-                parallellRun<0, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
-
+            parallellRun<0>(world, source, result, 0, totalExposures, nJobs, progressbar);
         } else if (m_lowenergyCorrection == LOWENERGYCORRECTION::LIVERMORE) {
-            if (m_useSiddonTracking)
-                parallellRun<1, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            else
-                parallellRun<1, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            parallellRun<1>(world, source, result, 0, totalExposures, nJobs, progressbar);
         } else {
-            if (m_useSiddonTracking)
-                parallellRun<2, true>(world, source, result, 0, totalExposures, nJobs, progressbar);
-            else
-                parallellRun<2, false>(world, source, result, 0, totalExposures, nJobs, progressbar);
+            parallellRun<2>(world, source, result, 0, totalExposures, nJobs, progressbar);
         }
         result.simulationTime = std::chrono::system_clock::now() - start;
 
@@ -640,118 +628,6 @@ protected:
     }
 
     template <int Lowenergycorrection>
-    void siddonParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const noexcept
-    {
-        const auto densBuffer = world.densityArray()->data();
-        const auto matBuffer = world.materialIndexArray()->data();
-        const auto measBuffer = world.measurementMapArray()->data();
-
-        //parameterized path: pos1 = pos0 + alpha*dir
-
-        const auto& extent = world.matrixExtent();
-        const auto& spacing = world.spacing();
-        const auto& dim = world.dimensions();
-        const std::array<T, 3> offset = { extent[0], extent[2], extent[4] };
-        auto index = gridIndexFromPosition(p.pos, world);
-
-        std::array<int, 3> direction = {
-            p.dir[0] < 0 ? -1 : 1,
-            p.dir[1] < 0 ? -1 : 1,
-            p.dir[2] < 0 ? -1 : 1
-        };
-
-        std::array<T, 3> alpha = { 0, 0, 0 };
-        for (std::size_t i = 0; i < 3; ++i) {
-            if (std::abs(p.dir[i]) > N_ERROR()) {
-                const auto nextBorder = direction[i] < 0 ? index[i] : index[i] + 1;
-                alpha[i] = (offset[i] + nextBorder * spacing[i] - p.pos[i]) / p.dir[i];
-            } else {
-                alpha[i] = std::numeric_limits<T>::max();
-            }
-        }
-
-        auto alpha_ind = vectormath::argmin3<std::size_t>(alpha.data());
-
-        auto continueSampling = true;
-        auto energyChanged = false;
-        do {
-            const auto arrIdx = index[0] + index[1] * dim[0] + index[2] * dim[0] * dim[1];
-            const auto matIdx = matBuffer[arrIdx];
-            const auto attenuation = m_attenuationLut.totalAttenuation(matIdx, p.energy) * densBuffer[arrIdx] * T { 0.1 }; // cm->mm
-            const auto interactionProb = std::exp(-alpha[alpha_ind] * attenuation);
-            /* Denne virker ikke som den skal, to photo events kan potensielt skje.
-            if (measBuffer[arrIdx]) {
-                const auto attPhoto = m_attenuationLut.photoelectricAttenuation(matIdx, p.energy);
-                const auto weightCorrection = (1 - interactionProb) * attPhoto * densBuffer[arrIdx] * T { 0.1 } / attenuation;
-                if constexpr (bindingEnergyCorrection) {
-                    const auto bindingEnergy = m_attenuationLut.meanBindingEnergy(matIdx);
-                    const auto energyImparted = (p.energy - bindingEnergy) * p.weight * weightCorrection;
-
-                    safeValueAdd(result.dose[arrIdx], energyImparted);
-                    safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.precision[arrIdx], energyImparted * energyImparted);
-
-                } else {
-                    const auto energyImparted = p.energy * p.weight * weightCorrection;
-                    safeValueAdd(result.dose[arrIdx], energyImparted);
-                    safeValueAdd(result.nEvents[arrIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.precision[arrIdx], energyImparted * energyImparted);
-                }
-                p.weight *= (T { 1 } - weightCorrection); // to prevent bias
-            }
-            */
-
-            const auto r1 = state.randomUniform<T>();
-            if (r1 > interactionProb) //event
-            {
-                const auto step = -std::log(r1) / attenuation;
-                for (std::size_t i = 0; i < 3; ++i) {
-                    p.pos[i] += p.dir[i] * step;
-                }
-
-                continueSampling = computeInteractions<Lowenergycorrection>(p, matBuffer[arrIdx], result, arrIdx, state, energyChanged);
-                if (continueSampling) {
-                    //new steplenght
-                    direction = {
-                        p.dir[0] < 0 ? -1 : 1,
-                        p.dir[1] < 0 ? -1 : 1,
-                        p.dir[2] < 0 ? -1 : 1
-                    };
-
-                    for (std::size_t i = 0; i < 3; ++i) {
-                        if (std::abs(p.dir[i]) > N_ERROR()) {
-                            const auto nextBorder = direction[i] < 0 ? index[i] : index[i] + 1;
-                            alpha[i] = (offset[i] + nextBorder * spacing[i] - p.pos[i]) / p.dir[i];
-                        } else {
-                            alpha[i] = std::numeric_limits<T>::max();
-                        }
-                    }
-                    alpha_ind = vectormath::argmin3<std::size_t>(alpha.data());
-                }
-            } else {
-                for (std::size_t i = 0; i < 3; ++i) {
-                    p.pos[i] += p.dir[i] * alpha[alpha_ind];
-                }
-                for (std::size_t i = 0; i < 3; ++i) {
-                    alpha[i] -= alpha[alpha_ind];
-                }
-
-                //update next voxel
-                index[alpha_ind] += direction[alpha_ind];
-                if (!(index[alpha_ind] < dim[alpha_ind])) {
-                    //we have reach the end of the world, note index is unsigned type and will overflow
-                    return;
-                }
-
-                //update next alpha
-                const auto nextBorder = direction[alpha_ind] < 0 ? index[alpha_ind] : index[alpha_ind] + 1;
-                alpha[alpha_ind] = (offset[alpha_ind] + nextBorder * spacing[alpha_ind] - p.pos[alpha_ind]) / p.dir[alpha_ind];
-                alpha_ind = vectormath::argmin3<std::size_t>(alpha.data());
-            }
-        } while (continueSampling);
-    }
-
-    template <int Lowenergycorrection>
     void woodcockParticleTracking(const World<T>& world, Particle<T>& p, RandomState& state, Result<T>& result) const noexcept
     {
         const auto densityBuffer = world.densityArray()->data();
@@ -838,7 +714,7 @@ protected:
         }
         return false;
     }
-    template <int Lowenergycorrection, bool siddonTracking>
+    template <int Lowenergycorrection>
     void transport(const World<T>& world, const Exposure<T>& exposure, RandomState& state, Result<T>& result) const noexcept
     {
         const auto nHistories = exposure.numberOfHistories();
@@ -849,16 +725,12 @@ protected:
             // Is particle intersecting with world
             const bool isInWorld = transportParticleToWorld(world, particle);
             if (isInWorld) {
-                if constexpr (siddonTracking) {
-                    siddonParticleTracking<Lowenergycorrection>(world, particle, state, result);
-                } else {
-                    woodcockParticleTracking<Lowenergycorrection>(world, particle, state, result);
-                }
+                woodcockParticleTracking<Lowenergycorrection>(world, particle, state, result);
             }
         }
     }
 
-    template <int Lowenergycorrection, bool siddonTracking>
+    template <int Lowenergycorrection>
     void workerRun(const World<T>& w, const Source<T>* source, Result<T>& result,
         EvenTaskPool& taskpool, ProgressBar<T>* progressbar) const noexcept
     {
@@ -871,14 +743,14 @@ protected:
                     return;
             auto exposure = source->getExposure(job.value());
             exposure.alignToDirectionCosines(worldBasis);
-            transport<Lowenergycorrection, siddonTracking>(w, exposure, state, result);
+            transport<Lowenergycorrection>(w, exposure, state, result);
             if (progressbar)
                 progressbar->exposureCompleted();
             job = taskpool.getJob();
         }
     }
 
-    template <int Lowenergycorrection, bool siddonTracking = false>
+    template <int Lowenergycorrection>
     void parallellRun(const World<T>& w, const Source<T>* source, Result<T>& result,
         const std::uint64_t expBeg, const std::uint64_t expEnd, std::uint64_t nJobs, ProgressBar<T>* progressbar) const
     {
@@ -886,9 +758,9 @@ protected:
         std::vector<std::thread> jobs;
         jobs.reserve(nJobs - 1);
         for (std::size_t i = 0; i < nJobs - 1; ++i) {
-            jobs.emplace_back(&Transport<T>::workerRun<Lowenergycorrection, siddonTracking>, this, std::cref(w), source, std::ref(result), std::ref(taskpool), progressbar);
+            jobs.emplace_back(&Transport<T>::workerRun<Lowenergycorrection>, this, std::cref(w), source, std::ref(result), std::ref(taskpool), progressbar);
         }
-        workerRun<Lowenergycorrection, siddonTracking>(w, source, result, taskpool, progressbar);
+        workerRun<Lowenergycorrection>(w, source, result, taskpool, progressbar);
         for (auto& job : jobs)
             job.join();
     }
@@ -953,6 +825,5 @@ private:
     std::uint64_t m_nThreads;
     OUTPUTMODE m_outputmode = OUTPUTMODE::DOSE;
     LOWENERGYCORRECTION m_lowenergyCorrection = LOWENERGYCORRECTION::LIVERMORE;
-    bool m_useSiddonTracking = false;
 };
 }
