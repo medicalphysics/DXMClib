@@ -20,7 +20,9 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/floating.h"
 
+#include <assert.h>
 #include <concepts>
+#include <execution>
 #include <limits>
 #include <numeric>
 #include <random>
@@ -381,35 +383,85 @@ public:
     requires std::is_same<std::invoke_result_t<F, T>, T>::value
     RITA(const T min, const T max, F pdf)
     {
-        m_x[0] = min;
-        m_x[N - 1] = max;
-        m_e[0] = 0;
-        m_e[N - 1] = 1;
 
-        //uniform x grid
-        for (std::size_t i = 1; i < N; ++i) {
-            m_x[i] = min + ((max - min) * i) / (N - 1);
-        }
+        struct param {
+            T x, e, a, b, error;
+        };
 
-        //calculating e
-        for (std::size_t i = 1; i < N; ++i) {
-            m_e[i] = m_e[i - 1] + simpson_integral(m_x[i - 1], m_x[i], pdf);
+        std::size_t n = 10;
+        std::vector<param> v(n);
+        v.reserve(N);
+        for (std::size_t i = 0; i < n; ++i) {
+            const T x = min + i * (max - min) / (n - 1);
+            v[i].x = x;
+            v[i].e = 0;
+            v[i].error = -1;
         }
-        std::transform(m_e.cbegin(), m_e.cend(), m_e.begin(), [=](const auto e) { return e / m_e[N - 1]; });
-        for (std::size_t i = 0; i < N - 1; ++i) {
-            const T pi = pdf(m_x[i]);
-            const T pii = pdf(m_x[i + 1]);
-            if (pi > 0 && pii > 0) {
-                const T frac = (m_e[i + 1] - m_e[i]) / (m_x[i + 1] - m_x[i]);
-                m_b[i] = 1 - frac * frac / (pi * pii);
-                m_a[i] = frac / pi - m_b[i] - 1;
-            } else {
-                m_b[i] = 0;
-                m_a[i] = 0;
+        //finding e
+        for (std::size_t j = 1; j < n; ++j) {
+            v[j].e = v[j - 1].e + simpson_integral(v[j - 1].x, v[j].x, pdf);
+        }
+        for (std::size_t j = 1; j < n; ++j) {
+            v[j].e = v[j].e / v[n - 1].e;
+        }
+        while (n != N) {
+            for (std::size_t i = 0; i < n - 1; ++i) {
+                if (v[i].error < 0) {
+                    // finding a and b
+                    const T temp = (v[i + 1].e - v[i].e) / (v[i + 1].x - v[i].x);
+                    const T px0 = pdf(v[i].x);
+                    const T px1 = pdf(v[i + 1].x);
+                    if (px0 > 0 && px1 > 0) {
+                        v[i].b = 1 - temp * temp / (px0 * px1);
+                    } else {
+                        v[i].b = 0;
+                    }
+                    if (px0 > 0) {
+                        v[i].a = temp / px0 - v[i].b - 1;
+                    } else {
+                        v[i].a = 0;
+                    }
+
+                    //calculate erroe
+                    v[i].error = 0;
+                    for (std::size_t j = 1; j < 50; ++j) {
+                        const T x = v[i].x + j * (v[i + 1].x - v[i].x) / 50;
+
+                        const auto t = (x - v[i].x) / (v[i + 1].x - v[i].x);
+                        const auto a = v[i].a;
+                        const auto b = v[i].b;
+                        const auto f = (1 + a + b - a * t);
+                        const auto n = f * (1 - std::sqrt(1 - 4 * b * t * t / (f * f))) / (2 * b * t);
+                        const auto p1 = (1 + a * n + b * n * n);
+                        const auto p = p1 * p1 * (v[i + 1].e - v[i].e) / ((1 + a + b) * (1 - b * n * n) * (v[i + 1].x - v[i].x));
+                        const auto res = std::abs(p - pdf(x));
+
+                        v[i].error += res * (v[i + 1].x - v[i].x) / 50;
+                    }
+                }
+            }
+
+            auto max_iter = std::max_element(v.begin(), v.end(), [](const auto& lh, const auto& rh) { return lh.error < rh.error; });
+            const T x0 = max_iter->x;
+            max_iter->error = -1;
+            ++max_iter;
+            const T x1 = max_iter->x;
+            param new_val = { x0 + (x1 - x0) / 2, 0, 0, 0, -1 };
+            v.insert(max_iter, new_val);
+            ++n;
+            //finding e
+            for (std::size_t j = 1; j < n; ++j) {
+                v[j].e = v[j - 1].e + simpson_integral(v[j - 1].x, v[j].x, pdf);
+            }
+            for (std::size_t j = 1; j < n; ++j) {
+                v[j].e = v[j].e / v[n - 1].e;
             }
         }
-        m_b[N - 1] = 0;
-        m_a[N - 1] = 0;
+
+        std::transform(v.cbegin(), v.cend(), m_x.begin(), [](const auto& p) { return p.x; });
+        std::transform(v.cbegin(), v.cend(), m_e.begin(), [](const auto& p) { return p.e; });
+        std::transform(v.cbegin(), v.cend(), m_a.begin(), [](const auto& p) { return p.a; });
+        std::transform(v.cbegin(), v.cend(), m_b.begin(), [](const auto& p) { return p.b; });
     }
 
     T operator()(RandomState& state) const
@@ -431,17 +483,20 @@ public:
         auto upper_bound_value = std::lower_bound(m_x.cbegin(), m_x.cend(), maxValue);
         const std::size_t max_value_index = std::distance(m_x.cbegin(), upper_bound_value);
         const T modifier = upper_bound_value != m_x.cend() ? m_e[max_value_index] : 1;
+        T res;
+        do {
 
-        const auto r1 = state.randomUniform<T>(modifier);
-        auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
-        const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
-        if (index == 0)
-            return m_x[0];
+            const auto r1 = state.randomUniform<T>(modifier);
+            auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
+            const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
+            if (index == 0)
+                return m_x[0];
 
-        const auto v = r1 - m_e[index - 1];
-        const auto d = m_e[index] - m_e[index - 1];
-        return m_x[index - 1] + (1 + m_a[index - 1] + m_b[index - 1]) * d * v / (d * d + m_a[index - 1] * d * v + m_b[index - 1] * v * v) * (m_x[index] - m_x[index - 1]);
+            const auto v = r1 - m_e[index - 1];
+            const auto d = m_e[index] - m_e[index - 1];
+            res = m_x[index - 1] + (1 + m_a[index - 1] + m_b[index - 1]) * d * v / (d * d + m_a[index - 1] * d * v + m_b[index - 1] * v * v) * (m_x[index] - m_x[index - 1]);
+        } while (res > maxValue);
+        return res;
     }
 };
-
 }

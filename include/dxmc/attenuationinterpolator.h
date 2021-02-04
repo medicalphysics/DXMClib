@@ -32,7 +32,7 @@ class AttenuationLutInterpolator {
 private:
     constexpr T shell_offset()
     {
-        return T { 0.0001 };
+        return T { 0.001 };
     }
     std::vector<T> m_x;
     std::vector<T> m_coefficients;
@@ -84,16 +84,41 @@ protected:
     }
 
 public:
-    AttenuationLutInterpolator(const World<T>& world, const T minEnergy, const T maxEnergy)
+    AttenuationLutInterpolator() { }
+    AttenuationLutInterpolator(const World<T>& world, T minEnergy, T maxEnergy)
     {
+        minEnergy = std::max(T { 0.1 }, minEnergy);
+        maxEnergy = std::min(maxEnergy, T { 50 });
         const auto& materials = world.materialMap();
         auto densBegin = world.densityArray()->cbegin();
         auto densEnd = world.densityArray()->cend();
         auto matBegin = world.materialIndexArray->cbegin();
-        AttenuationLutInterpolator(materials, densBegin, densEnd, matBegin, minEnergy, maxEnergy);
+        generate(materials, densBegin, densEnd, matBegin, minEnergy, maxEnergy);
+    }
+    AttenuationLutInterpolator(const std::vector<Material>& materials, T minEnergy,  T maxEnergy)
+    {
+        minEnergy = std::max(T { 0.1 }, minEnergy);
+        maxEnergy = std::min(maxEnergy, T { 50 });
+        std::vector<T> dens(materials.size());
+        std::transform(materials.cbegin(), materials.cend(), dens.begin(), [](const auto& m) { return static_cast<T>(m.standardDensity()); });
+        std::vector<std::uint8_t> materialIndex(materials.size());
+        std::iota(materialIndex.begin(), materialIndex.end(), 0);
+        auto densBegin = dens.cbegin();
+        auto densEnd = dens.cend();
+        auto matBegin = materialIndex.cbegin();
+        generate(materials, densBegin, densEnd, matBegin, minEnergy, maxEnergy);
     }
     template <typename DensIter, typename MatIter>
-    AttenuationLutInterpolator(const std::vector<Material>& materials, const DensIter densBegin, const DensIter densEnd, const MatIter matBegin, const T minEnergy, const T maxEnergy)
+    AttenuationLutInterpolator(const std::vector<Material>& materials, const DensIter densBegin, const DensIter densEnd, const MatIter matBegin, T minEnergy, T maxEnergy)
+    {
+        minEnergy = std::max(T { 0.1 }, minEnergy);
+        maxEnergy = std::min(maxEnergy, T { 50 });
+        generate(materials, densBegin, densEnd, matBegin, minEnergy, maxEnergy);
+    }
+
+    template <typename DensIter, typename MatIter>
+    void generate(const std::vector<Material>& materials, const DensIter densBegin, const DensIter densEnd, const MatIter matBegin, const T minEnergy, const T maxEnergy)
+
     {
         m_resolution = std::max(static_cast<std::size_t>(maxEnergy - minEnergy), std::size_t { 10 });
         const T logMinEnergy = std::log10(minEnergy);
@@ -186,7 +211,7 @@ public:
         if (logEnergy > m_linearEnergy)
             [[likely]]
             {
-                const auto index = static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex;
+                const auto index = std::min(static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex, m_resolution-1);
                 const auto offset = materialIdx * m_resolution * 6 + index * 6;
                 for (std::size_t i = 0; i < 3; ++i) {
                     res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);

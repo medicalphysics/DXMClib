@@ -288,12 +288,11 @@ protected:
 
             //finding qmax
             const auto qmax = m_attenuationLut.momentumTransferMax(particle.energy);
-            const auto amax = m_attenuationLut.cumFormFactorSquared(materialIdx, qmax);
+
             T cosAngle;
             do {
-                const auto r1 = state.randomUniform<T>();
-                const auto aatq = amax * r1;
-                const auto q = m_attenuationLut.momentumTransfer(static_cast<size_t>(materialIdx), aatq);
+
+                const auto q = m_attenuationLut.momentumTransferFromFormFactor(materialIdx, qmax, state);
                 cosAngle = m_attenuationLut.cosAngle(particle.energy, q);
             } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
@@ -369,7 +368,7 @@ protected:
                     // calculating shell probability
                     std::transform(std::execution::unseq,
                         n_pz_max.cbegin(), n_pz_max.cend(), electronConfigurations.cbegin(), shell_probs.begin(),
-                        [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy ? n_pz * c.numberElectrons : 0; });
+                        [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy && c.hartreeFockOrbital_0 > T { 0 } ? n_pz * c.numberElectrons : 0; });
                     const auto shell_probs_sum_inv = 1 / std::reduce(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend());
                     std::uint8_t electronIdx;
 

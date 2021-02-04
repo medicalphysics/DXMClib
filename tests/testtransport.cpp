@@ -34,103 +34,75 @@ Copyright 2019 Erlend Andersen
 using namespace dxmc;
 
 template <typename T>
+void normalize(std::vector<T>& v)
+{
+    const T sum = std::reduce(v.cbegin(), v.cend());
+
+    std::transform(v.cbegin(), v.cend(), v.begin(), [=](auto val) { return val / sum; });
+}
+
+template <typename T>
 class Test : public Transport<T> {
 public:
     Test()
         : Transport<T>()
     {
     }
-    /*bool testRayleigh(const T energy, const Material& mat)
-    {
-        std::vector<Material> materials;
-        materials.emplace_back(mat);
-        auto& att = this->attenuationLut();
-        att.generate(materials, T { 1 }, energy);
 
-        std::vector<T> angles(100);
-        for (std::size_t i = 0; i < angles.size(); ++i) {
-            angles[i] = (i * std::numbers::pi_v<T>) / angles.size();
-        }
-        std::vector<std::uint64_t> hist(angles.size(), 0);
-
-        std::array<T, 3> pos = { 0, 0, 0 };
-        std::array<T, 3> dir = { 1, 0, 0 };
-        RandomState state;
-        Particle<T> p { .pos = pos, .dir = dir };
-        for (std::uint64_t i = 0; i < 5e6; ++i) {
-            const auto angle =this->rayleightScatter(p, 0, state);
-            const T e = p.energy / energy;
-
-            auto it = std::upper_bound(angles.cbegin(), angles.cend(), angle);
-            auto idx = std::distance(angles.cbegin(), it);
-            ++hist[idx - 1];
-        }
-        for (std::size_t i = 0; i < angles.size(); ++i) {
-            std::cout << angles[i] << ", " << hist[i] << "\n";
-        }
-        return false;
-    }*/
+    template <int Correction = 0>
     bool testCompton(const T energy, const Material& mat)
     {
-
         auto& att = this->attenuationLut();
-        std::vector<Material> materials;
-        materials.emplace_back(mat);
-        att.generate(materials, T { 1 }, energy);
+        std::vector<Material> mats;
+        mats.push_back(mat);
+        att.generate(mats, T { 1 }, energy);
 
         std::array<T, 3> pos = { 0, 0, 0 };
         std::array<T, 3> dir = { 1, 0, 0 };
         Particle<T> p { .pos = pos, .dir = dir };
+        p.energy = energy;
+        const T emin = std::max(T { 1 } / (1 + 2 * energy / ELECTRON_REST_MASS<T>()) - T { 0.1 }, T { 0 });
 
-        const T emin = T { 1 } / (1 + 2 * energy / ELECTRON_REST_MASS<T>());
         const T emax = 1;
         const auto k = energy / ELECTRON_REST_MASS<T>();
 
-        std::array<T, 512> res;
-        std::fill(res.begin(), res.end(), T { 0 });
-        std::array<T, res.size()> earr;
-        for (std::size_t i = 0; i < res.size(); ++i) {
-            //earr[i] = emin + ((emax - emin) / res.size()) * i;
-            earr[i] = (emax / res.size()) * i;
+        std::vector<T> earr(180, 0);
+
+        for (std::size_t i = 0; i < earr.size(); ++i) {
+
+            earr[i] = emin + (emax - emin) / (earr.size()) * i;
         }
 
+        std::vector<T> res(earr.size(), 0);
         RandomState state;
-        std::size_t nSamp = 5e6;
+        std::size_t nSamp = 3e6;
         for (std::size_t i = 0; i < nSamp; ++i) {
-            p.energy = energy;
-            this->comptonScatter<2>(p, 0, state);
-            const T e = p.energy / energy;
+            auto psamp = p;
+            this->comptonScatter<Correction>(psamp, 0, state);
+            const T e = psamp.energy / p.energy;
             auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
             auto idx = std::distance(earr.cbegin(), it);
             ++res[idx - 1];
         }
 
-        std::array<T, res.size()> meas;
-        std::fill(meas.begin(), meas.end(), T { 0 });
-        for (std::size_t i = 0; i < meas.size(); ++i) {
-            const auto estep = (earr[1] - earr[0]) / 2;
-            const auto e = earr[i] + estep;
-            if (e > emin) {
-                const T a1 = std::log(1 + 2 * k);
-                const T a2 = (1 - emin * emin) / 2;
-                const T t = (1 - e) / (k * e);
-                const T sin2 = t * (2 - t);
-                const T cosAngle = 1 - t;
-                const T gmax = 1 / emin + emin;
-                const T p = (1 / e + e - sin2) / gmax;
-                meas[i] = p;
+        const auto estep = (earr[1] - earr[0]) / 2;
+        std::transform(earr.cbegin(), earr.cend(), earr.begin(), [=](auto e) { return e + estep; });
 
-                const auto q = att.momentumTransferFromCos(energy, cosAngle);
-                const auto scatterFactor = att.comptonScatterFactor(0, q);
-                meas[i] *= scatterFactor;
+        std::vector<T> meas(earr.size(), 0);
+
+        for (std::size_t i = 0; i < meas.size(); ++i) {
+            const auto e = earr[i];
+            if (e > emin) {
+                const auto angle = std::acos(1.0 + 1.0 / k - 1.0 / (e * k));
+                xrl_error* error = nullptr;
+                const auto val = DCS_Compt_CP(mat.name().c_str(), e * p.energy, angle, &error);
+                if (val > 0)
+                    meas[i] = val;
             }
         }
 
-        const auto meas_sum = std::accumulate(meas.cbegin(), meas.cend(), T { 0 });
-        const auto res_sum = std::accumulate(res.cbegin(), res.cend(), T { 0 });
-        std::transform(meas.cbegin(), meas.cend(), meas.begin(), [=](auto v) { return v / meas_sum; });
-        std::transform(res.cbegin(), res.cend(), res.begin(), [=](auto v) { return v / res_sum; });
-
+        normalize(meas);
+        normalize(res);
         std::cout << "Compton differential scattering cross section\n";
         std::cout << "with initial energy " << energy << " keV in " << mat.prettyName() << " material\n";
         std::cout << "Sampling " << nSamp << " interactions with RMS differential cross section deviation of\n";
@@ -141,6 +113,68 @@ public:
 
         for (std::size_t i = 0; i < meas.size(); ++i) {
             std::cout << earr[i] << ", " << res[i] << ", " << meas[i] << ", " << res[i] - meas[i] << ", " << (res[i] - meas[i]) / meas[i] * 100 << "\n";
+        }
+
+        if (rmsd < 0.001)
+            return true;
+        return false;
+    }
+    template <int Correction = 0>
+    bool testRayleight(const T energy, const Material& mat)
+    {
+        auto& att = this->attenuationLut();
+        std::vector<Material> mats;
+        mats.push_back(mat);
+        att.generate(mats, T { 1 }, energy);
+
+        std::array<T, 3> pos = { 0, 0, 0 };
+        std::array<T, 3> dir = { 1, 0, 0 };
+        Particle<T> p { .pos = pos, .dir = dir };
+        p.energy = energy;
+
+        std::vector<T> cosAng(50, 0);
+
+        for (std::size_t i = 0; i < cosAng.size(); ++i) {
+            cosAng[i] = -1 + T { 2 } / (cosAng.size()) * i;
+        }
+
+        std::vector<T> res(cosAng.size(), 0);
+        RandomState state;
+        std::size_t nSamp = 3e6;
+        for (std::size_t i = 0; i < nSamp; ++i) {
+            auto psamp = p;
+            this->rayleightScatter<Correction>(psamp, 0, state);
+            const auto cos = vectormath::dot(p.dir.data(), psamp.dir.data());
+            auto it = std::upper_bound(cosAng.cbegin(), cosAng.cend(), cos);
+            auto idx = std::distance(cosAng.cbegin(), it);
+            ++res[idx - 1];
+        }
+
+        const auto step = (cosAng[1] - cosAng[0]) / 2;
+        std::transform(cosAng.cbegin(), cosAng.cend(), cosAng.begin(), [=](auto e) { return e + step; });
+
+        std::vector<T> meas(cosAng.size(), 0);
+
+        for (std::size_t i = 0; i < meas.size(); ++i) {
+            const auto angle = std::acos(cosAng[i]);
+            xrl_error* error = nullptr;
+            const auto val = DCS_Rayl_CP(mat.name().c_str(), p.energy, angle, &error);
+            if (val > 0)
+                meas[i] = val;
+        }
+
+        normalize(meas);
+        normalize(res);
+        std::cout << "Rayleight differential scattering cross section\n";
+        std::cout << "with initial energy " << energy << " keV in " << mat.prettyName() << " material\n";
+        std::cout << "Sampling " << nSamp << " interactions with RMS differential cross section deviation of\n";
+        const auto ms = std::transform_reduce(res.cbegin(), res.cend(), meas.cbegin(), T { 0 }, std::plus<>(), [](auto m, auto e) { return (m - e) * (m - e); });
+        const auto rmsd = std::sqrt(ms / res.size());
+        std::cout << rmsd << "\n";
+        std::cout << "angle, dxmclib, meas, diff, diff [%]\n";
+
+        for (std::size_t i = 0; i < meas.size(); ++i) {
+            std::cout << std::acos(cosAng[i]) << ", " << res[i] << ", " << meas[i] << ", " << res[i] - meas[i] << ", " << (res[i] - meas[i]) / meas[i] * 100 << "\n";
         }
 
         if (rmsd < 0.001)
@@ -226,140 +260,26 @@ public:
 };
 
 template <typename T>
-bool testTransport()
+void testTransport()
 {
+    std::vector<Material> mats;
+    mats.emplace_back((6));
+    mats.emplace_back((8));
+    mats.emplace_back((13));
+    mats.emplace_back((82));
+    mats.emplace_back(("H2O"));
+    mats.back().setStandardDensity(1.0);
+
+    const T energy = 1.2;
+
     Test<T> t;
-
-    T energy = 50;
-    Material mat(13);
-    //bool s1 = t.testRayleigh(energy, mat);
-    bool success = t.testCompton(energy, mat);
-    mat = Material("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
-    mat.setStandardDensity(1.19);
-    success = success && t.testCompton(energy, mat);
-    success = success && t.testSafeValueAdd();
-    return success;
-}
-
-template <typename T>
-bool testStepping()
-{
-    const T energy = 56.4;
-    std::array<std::size_t, 3> dim = { 1, 1, 100 };
-    std::array<T, 3> spacing = { .01, .01, .1 };
-    //generate world
-    World<T> w;
-    w.setDimensions(dim);
-    w.setSpacing(spacing);
-
-    std::vector<Material> materials;
-
-    const auto air_material = 1;
-    //materials.emplace_back(13);
-    materials.emplace_back("H2O", "water");
-    materials.back().setStandardDensity(1.0);
-    materials.emplace_back("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
-    materials.back().setStandardDensity(0.001205);
-
-    materials.emplace_back("Polymethyl Methacralate (Lucite, Perspex)");
-    materials.emplace_back("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
-    materials.back().setStandardDensity(1.19);
-    materials.emplace_back(13);
-
-    auto matInd = std::make_shared<std::vector<std::uint8_t>>(w.size());
-    auto dens = std::make_shared<std::vector<T>>(w.size());
-    auto meas = std::make_shared<std::vector<std::uint8_t>>(w.size(), 0);
-    w.setDensityArray(dens);
-    w.setMaterialIndexArray(matInd);
-    for (const auto& m : materials) {
-        w.addMaterialToMap(m);
-    }
-    w.setMeasurementMapArray(meas);
-
-    auto mBuf = matInd->data();
-    auto dBuf = dens->data();
-    auto fBuf = meas->data();
-
-    //populating arrays
-    for (std::size_t i = 0; i < dim[2]; ++i) {
-        const auto part = i * materials.size() / dim[2];
-        mBuf[i] = static_cast<std::uint8_t>(part);
-    }
-    for (std::size_t i = 0; i < dim[2]; ++i) {
-        const auto part = i * materials.size() / dim[2];
-        dBuf[i] = static_cast<T>(materials[part].standardDensity());
-    }
-    for (std::size_t i = 0; i < dim[2]; ++i) {
-        const auto part = i * materials.size() / dim[2];
-        //fBuf[i] = part == air_material ? 1 : 0;
-    }
-    w.makeValid();
-
-    PencilSource<T> pen;
-    pen.setTotalExposures(4);
-    std::array<T, 3> pos = { 0, 0, -(dim[2] * spacing[2]) };
-    std::array<T, 6> cos = { 1, 0, 0, 0, 1, 0 };
-    pen.setDirectionCosines(cos);
-    pen.setPosition(pos);
-    pen.setPhotonEnergy(energy);
-
-    std::cout << "Energy: " << energy << std::endl;
-
-    Transport<T> transport;
-    transport.setOutputMode(Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
-
-    transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::IA);
-
-    pen.setHistoriesPerExposure(100000);
-    transport.setSiddonTracking(true);
-    auto res_sidd = transport(w, &pen);
-    std::cout << "Simulation time Siddon: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_sidd.simulationTime).count() << std::endl;
-    transport.setSiddonTracking(false);
-    pen.setHistoriesPerExposure(100000);
-    auto res_wood = transport(w, &pen);
-    std::cout << "Simulation time Woodcock: " << std::chrono::duration_cast<std::chrono::milliseconds>(res_wood.simulationTime).count() << std::endl;
-
-    const auto& att = transport.attenuationLut();
-    auto maxAtt = att.maxMassTotalAttenuation(energy);
-    std::vector<T> attm;
-    for (const auto& m : materials) {
-        attm.push_back(m.getTotalAttenuation(energy) * m.standardDensity());
-    }
-
-    std::vector<T> ana(dim[2]);
-
-    ana[0] = 1;
-    const auto step = spacing[2] / 10;
-    for (std::size_t i = 1; i < dim[2]; ++i) {
-        const auto u = att.totalAttenuation(mBuf[i], energy) * dBuf[i];
-        ana[i] = ana[i - 1] * std::exp(-u * step);
-    }
-    std::vector<T> kerma(dim[2]);
-    for (std::size_t i = 0; i < dim[2]; ++i) {
-        const std::size_t matIdx = mBuf[i];
-        kerma[i] = ana[i] * energy * materials[matIdx].getMassEnergyAbsorbtion(energy);
-    }
-    std::cout << "Position, kerma, sim_wood, sim_siddon,  nevents_wood, nevents_siddon, stddev[%]_wood, stddev[%]_sidd, material\n";
-    for (std::size_t i = 0; i < dim[2]; ++i) {
-        std::cout << i * spacing[2] << ", ";
-        std::cout << kerma[i] / kerma[0] << ", ";
-        std::cout << res_wood.dose[i] << ", ";
-        std::cout << res_sidd.dose[i] << ", ";
-        std::cout << res_wood.nEvents[i] << ", ";
-        std::cout << res_sidd.nEvents[i] << ", ";
-        std::cout << res_wood.variance[i] << ", ";
-        std::cout << res_sidd.variance[i] << ", ";
-        const std::size_t matIdx = mBuf[i];
-        std::cout << materials[matIdx].prettyName() << "\n";
-    }
-
-    return true;
+    t.testRayleight<1>(energy, mats[2]);
+    //t.testCompton<2>(energy, mats[3]);
 }
 
 int main()
 {
-    bool success_f = testTransport<float>();
-    bool success_t = testStepping<float>();
+    testTransport<float>();
 
     /*bool success_d = testTransport<double>();
     bool success_f = testTransport<float>();

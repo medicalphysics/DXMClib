@@ -18,7 +18,7 @@ bool isEqual(T a, T b)
     return std::abs(a - b) < ERRF;
 }
 
-template <typename T, typename U=float>
+template <typename T, typename U = float>
 std::vector<U> normalize(const std::vector<T>& v)
 {
     const U sum = std::reduce(v.cbegin(), v.cend());
@@ -30,7 +30,7 @@ std::vector<U> normalize(const std::vector<T>& v)
 template <typename T>
 void testComptonScatterFactor(const std::vector<Material>& mats, const T minEnergy = 1, const T maxEnergy = 150)
 {
-
+    // compare scatter factor
     AttenuationLut<T> lut;
     lut.generate(mats, minEnergy, maxEnergy);
 
@@ -59,7 +59,7 @@ void testComptonScatterFactor(const std::vector<Material>& mats, const T minEner
 template <typename T>
 void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, const T maxEnergy = 30)
 {
-
+    // compare form factor
     AttenuationLut<T> lut;
     lut.generate(mats, minEnergy, maxEnergy);
 
@@ -70,7 +70,7 @@ void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, co
     for (std::size_t i = 0; i < q.size(); ++i) {
         q[i] = min + (max - min) / (q.size() - 1) * i;
     }
-    std::cout << "Compton scatter factor test\n";
+    std::cout << "Rayleight form factor test\n";
     std::cout << "q ";
     for (const auto& mat : mats) {
         std::cout << ", " << mat.prettyName() << " xraylib, " << mat.prettyName() << " dxmc";
@@ -83,7 +83,10 @@ void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, co
         for (std::size_t i = 0; i < 1E6; ++i) {
             const T q_val = lut.momentumTransferFromFormFactor(j, maxEnergy, state);
             const std::size_t idx = (q_val - min) * (q.size() - 1) / (max - min);
-            ++hist[idx];
+            if (idx >= hist.size())
+                ++hist[idx - 1];
+            else
+                ++hist[idx];
         }
         auto hist_n = normalize<std::size_t, float>(hist);
 
@@ -104,10 +107,72 @@ void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, co
         std::cout << std::endl;
     }
 }
+
+template <typename T, int N = 3>
+void testPhotoAttenuation(const std::vector<Material>& mats, const T minEnergy = 1, const T maxEnergy = 150)
+{
+    //Compare attenuation values
+    std::vector<T> energy(139);
+
+    for (std::size_t i = 0; i < energy.size(); ++i) {
+        energy[i] = minEnergy + (maxEnergy - minEnergy) / (energy.size() - 1) * i;
+    }
+
+    AttenuationLut<T> lut;
+    lut.generate(mats, minEnergy, maxEnergy, true);
+
+    std::cout << "Attenuation test ";
+    if (N == 0)
+        std::cout << "Photoelectric\n";
+    if (N == 1)
+        std::cout << "Compton\n";
+    if (N == 2)
+        std::cout << "Rayleight\n";
+    if (N > 2)
+        std::cout << "Total\n";
+    std::cout << "Energy";
+    for (const auto& mat : mats) {
+        std::cout << ", " << mat.prettyName() << " xraylib, " << mat.prettyName() << " dxmc";
+    }
+
+    std::cout << std::endl;
+    for (const auto e : energy) {
+        std::cout << e;
+        std::size_t mIdx = 0;
+        for (const auto& m : mats) {
+            const T p = CS_Photo_CP(m.name().c_str(), e, nullptr);
+            const T c = CS_Compt_CP(m.name().c_str(), e, nullptr);
+            const T r = CS_Rayl_CP(m.name().c_str(), e, nullptr);
+            const auto a = lut.photoComptRayAttenuation(mIdx, e);
+
+            T v, mc;
+
+            if (N == 0) {
+                v = p;
+            }
+            if (N == 1) {
+                v = c;
+            }
+            if (N == 2) {
+                v = r;
+            }
+            if (N > 2) {
+                v = c + p + r;
+                mc = std::reduce(a.cbegin(), a.cend(), T { 0 });
+            } else {
+                mc = a[N];
+            }
+            std::cout << ", " << v;
+            std::cout << ", " << mc;
+            ++mIdx;
+        }
+        std::cout << std::endl;
+    }
+}
+
 template <typename T>
 void testAttenuation()
 {
-
     std::vector<Material> mats;
     mats.emplace_back((6));
     mats.emplace_back((8));
@@ -115,77 +180,12 @@ void testAttenuation()
     mats.emplace_back((82));
     mats.emplace_back(("H2O"));
     mats.back().setStandardDensity(1.0);
-
-    //testComptonScatterFactor<T>(mats);
+    testPhotoAttenuation<T, 0>(mats);
+    testPhotoAttenuation<T, 1>(mats);
+    testPhotoAttenuation<T, 2>(mats);
+    testPhotoAttenuation<T, 3>(mats);
+    testComptonScatterFactor<T>(mats);
     testFormFactor<T>(mats);
-}
-
-template <Floating T>
-bool testInterpolation()
-{
-    const T minEnergy = 1;
-    const T maxEnergy = 150;
-
-    std::vector<Material> materials;
-    materials.emplace_back(("H2O"));
-    materials.emplace_back(("H2O"));
-    // materials.emplace_back((13));
-    //materials.emplace_back((82));
-
-    materials[0].setStandardDensity(1.0);
-    materials[1].setStandardDensity(2.0);
-
-    std::vector<T> dens;
-    std::transform(materials.cbegin(), materials.cend(), std::back_inserter(dens), [](const auto& m) { return static_cast<T>(m.standardDensity()); });
-    std::vector<std::uint8_t> mats(dens.size());
-    std::iota(mats.begin(), mats.end(), 0);
-
-    AttenuationLutInterpolator<T> attLut(materials, dens.cbegin(), dens.cend(), mats.cbegin(), T { 1 }, T { 150 });
-
-    std::vector<T> energies;
-    const std::size_t resolution = maxEnergy - minEnergy;
-    for (std::size_t i = 0; i < resolution; ++i) {
-        const T e = minEnergy + (i * (maxEnergy - minEnergy)) / (resolution - 1);
-        energies.push_back(e);
-    }
-
-    for (const auto& mat : materials) {
-        auto binding = mat.getBindingEnergies(minEnergy);
-        for (const auto e : binding) {
-            energies.push_back(e);
-        }
-    }
-    std::sort(energies.begin(), energies.end());
-
-    const auto material = 0;
-    std::cout << "Energy, Total, Photo, Incoher, Coher, Total dxmc, Photo dxmc, Incoher dxmc, Coher dxmc, max total inv, " << materials[material].standardDensity() << "\n ";
-    for (const auto e : energies) {
-        std::cout << e << ", ";
-        std::array<T, 3> xlib {
-            static_cast<T>(CS_Photo_CP(materials[material].name().c_str(), e, nullptr)),
-            static_cast<T>(CS_Compt_CP(materials[material].name().c_str(), e, nullptr)),
-            static_cast<T>(CS_Rayl_CP(materials[material].name().c_str(), e, nullptr))
-        };
-        std::cout << std::reduce(xlib.cbegin(), xlib.cend()) << ", ";
-        for (auto t : xlib) {
-            std::cout << t << ", ";
-        }
-        const auto dx = attLut(material, e);
-        const auto d_tot = std::reduce(dx.cbegin(), dx.cend());
-        std::cout << d_tot << ", ";
-        for (auto t : dx) {
-            std::cout << t << ", ";
-        }
-        for (int i = 0; i < 3; ++i) {
-            const auto valid = (dx[i] - xlib[i]) / xlib[i] * 1000;
-            if (valid > 0.6)
-                return false;
-        }
-        std::cout << attLut.maxAttenuationInverse(e) << ", ";
-        std::cout << "\n";
-    }
-
-    return true;
 }
 
 int main(int argc, char* argv[])
