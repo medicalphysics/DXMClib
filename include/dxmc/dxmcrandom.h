@@ -383,7 +383,6 @@ public:
     requires std::is_same<std::invoke_result_t<F, T>, T>::value
     RITA(const T min, const T max, F pdf)
     {
-
         struct param {
             T x, e, a, b, error;
         };
@@ -485,16 +484,13 @@ public:
         const T modifier = upper_bound_value != m_x.cend() ? m_e[max_value_index] : 1;
         T res;
         do {
-
             const auto r1 = state.randomUniform<T>(modifier);
             auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
-            const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
-            if (index == 0)
-                return m_x[0];
+            const std::size_t index = std::distance(m_e.cbegin(), upper_bound) - 1;
 
-            const auto v = r1 - m_e[index - 1];
-            const auto d = m_e[index] - m_e[index - 1];
-            res = m_x[index - 1] + (1 + m_a[index - 1] + m_b[index - 1]) * d * v / (d * d + m_a[index - 1] * d * v + m_b[index - 1] * v * v) * (m_x[index] - m_x[index - 1]);
+            const auto v = r1 - m_e[index];
+            const auto d = m_e[index + 1] - m_e[index];
+            res = m_x[index] + (1 + m_a[index] + m_b[index]) * d * v / (d * d + m_a[index] * d * v + m_b[index] * v * v) * (m_x[index + 1] - m_x[index]);
         } while (res > maxValue);
         return res;
     }
