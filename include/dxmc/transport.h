@@ -151,9 +151,8 @@ public:
         result.numberOfHistories = source->historiesPerExposure() * source->totalExposures();
 
         const auto maxEnergy = source->maxPhotonEnergyProduced();
-        constexpr T minEnergy { 1 };
-        const auto energyStep = std::min(maxEnergy / 100, T { 1 });
-        m_attenuationLut.generate(world, minEnergy, maxEnergy, energyStep);
+
+        m_attenuationLut.generate(world, maxEnergy);
 
         const std::uint64_t totalExposures = source->totalExposures();
 
@@ -288,12 +287,12 @@ protected:
 
             //finding qmax
             const auto qmax = m_attenuationLut.momentumTransferMax(particle.energy);
+            const auto qmax_squared = qmax * qmax;
 
             T cosAngle;
             do {
-
-                const auto q = m_attenuationLut.momentumTransferFromFormFactor(materialIdx, qmax, state);
-                cosAngle = m_attenuationLut.cosAngle(particle.energy, q);
+                const auto q_squared = m_attenuationLut.momentumTransferFromFormFactor(materialIdx, qmax_squared, state);
+                cosAngle = m_attenuationLut.cosAngle(particle.energy, q_squared);
             } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
             const auto theta = std::acos(cosAngle);
@@ -475,12 +474,11 @@ protected:
     }
 
     template <int Lowenergycorrection>
-    bool computeInteractionsForced(const T eventProbability, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
+    bool computeInteractionsForced(const T eventProbability, const std::array<T, 3>& attenuation, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
-        const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
-        const auto attPhoto = atts[0];
-        const auto attCompt = atts[1];
-        const auto attRayl = atts[2];
+        const auto attPhoto = attenuation[0];
+        const auto attCompt = attenuation[1];
+        const auto attRayl = attenuation[2];
         const auto attenuationTotal = attPhoto + attCompt + attRayl;
 
         const auto weightCorrection = eventProbability * attPhoto / attenuationTotal;
@@ -565,12 +563,11 @@ protected:
         return true;
     }
     template <int Lowenergycorrection>
-    bool computeInteractions(Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
+    bool computeInteractions(const std::array<T, 3>& attenuation, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
-        const auto atts = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
-        const auto attPhoto = atts[0];
-        const auto attCompt = atts[1];
-        const auto attRayl = atts[2];
+        const auto attPhoto = attenuation[0];
+        const auto attCompt = attenuation[1];
+        const auto attRayl = attenuation[2];
 
         const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
         if (r3 <= attPhoto) // Photoelectric event
@@ -638,7 +635,7 @@ protected:
         bool continueSampling = true;
         while (continueSampling) {
             if (updateMaxAttenuation) {
-                maxAttenuationInv = T { 1 } / m_attenuationLut.maxMassTotalAttenuation(p.energy);
+                maxAttenuationInv = m_attenuationLut.maxTotalAttenuationInverse(p.energy);                
                 updateMaxAttenuation = false;
             }
             const auto r1 = state.randomUniform<T>();
@@ -650,7 +647,9 @@ protected:
                 const std::size_t bufferIdx = indexFromPosition(p, world);
                 const auto matIdx = materialBuffer[bufferIdx];
                 const auto density = densityBuffer[bufferIdx];
-                const auto attenuationTotal = m_attenuationLut.totalAttenuation(matIdx, p.energy) * density;
+
+                const auto attenuation = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
+                const auto attenuationTotal = std::reduce(std::execution::unseq, attenuation.cbegin(), attenuation.cend(), T { 0 }) * density;
                 const auto eventProbability = attenuationTotal * maxAttenuationInv;
 
                 if (measurementBuffer[bufferIdx] == 0)
@@ -659,13 +658,13 @@ protected:
                         const auto r2 = state.randomUniform<T>();
                         if (r2 < eventProbability) // an event will happen
                         {
-                            continueSampling = computeInteractions<Lowenergycorrection>(p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                            continueSampling = computeInteractions<Lowenergycorrection>(attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                         }
                     }
                 else
                     [[unlikely]] // forced photoelectric effect
                     {
-                        continueSampling = computeInteractionsForced<Lowenergycorrection>(eventProbability, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                        continueSampling = computeInteractionsForced<Lowenergycorrection>(eventProbability, attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
 
                 if (continueSampling) {

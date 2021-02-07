@@ -61,17 +61,17 @@ void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, co
 {
     // compare form factor
     AttenuationLut<T> lut;
-    lut.generate(mats, minEnergy, maxEnergy);
+    lut.generate(mats, minEnergy, maxEnergy * 2);
 
     const T min = 0;
-    const T max = maxEnergy / 12.4;
+    const T max = lut.momentumTransferMax(maxEnergy) * lut.momentumTransferMax(maxEnergy);
 
-    std::vector<T> q(50);
+    std::vector<T> q(180);
     for (std::size_t i = 0; i < q.size(); ++i) {
         q[i] = min + (max - min) / (q.size() - 1) * i;
     }
-    std::cout << "Rayleight form factor test\n";
-    std::cout << "q ";
+    std::cout << "Rayleight form factor squared test\n";
+    std::cout << "q squared ";
     for (const auto& mat : mats) {
         std::cout << ", " << mat.prettyName() << " xraylib, " << mat.prettyName() << " dxmc";
     }
@@ -79,21 +79,25 @@ void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, co
     std::vector<std::vector<T>> res;
     RandomState state;
     for (std::size_t j = 0; j < mats.size(); ++j) {
-        std::vector<std::size_t> hist(q.size(), 0);
+        std::vector<T> hist(q.size(), 0);
         for (std::size_t i = 0; i < 1E6; ++i) {
-            const T q_val = lut.momentumTransferFromFormFactor(j, maxEnergy, state);
+            const auto qmax = lut.momentumTransferMax(maxEnergy);
+            const T q_val = lut.momentumTransferFromFormFactor(j, qmax * qmax, state);
             const std::size_t idx = (q_val - min) * (q.size() - 1) / (max - min);
-            if (idx >= hist.size())
-                ++hist[idx - 1];
-            else
+            if (idx >= hist.size()) { // ++hist[idx - 1];
+            } else {
                 ++hist[idx];
+            }
         }
-        auto hist_n = normalize<std::size_t, float>(hist);
+        std::vector<T> hist_n(hist.size());
+        for (std::size_t i = 0; i < hist.size(); ++i) {
+            hist_n[i] = hist[i] / T { 1E6 };
+        }
+        //auto hist_n = normalize<std::size_t, float>(hist);
 
         std::vector<T> hist_a(q.size(), 0);
         for (std::size_t i = 0; i < q.size(); ++i) {
-
-            hist_a[i] = mats[j].getRayleightFormFactorSquared(q[i]);
+            hist_a[i] = mats[j].getRayleightFormFactorSquared(std::sqrt(q[i]));
         }
         auto hist_an = normalize<float, float>(hist_a);
         res.push_back(hist_an);

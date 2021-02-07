@@ -400,6 +400,8 @@ public:
         for (std::size_t j = 1; j < n; ++j) {
             v[j].e = v[j - 1].e + simpson_integral(v[j - 1].x, v[j].x, pdf);
         }
+        const T pdf_max_value = v[n - 1].e;        
+
         for (std::size_t j = 1; j < n; ++j) {
             v[j].e = v[j].e / v[n - 1].e;
         }
@@ -408,8 +410,8 @@ public:
                 if (v[i].error < 0) {
                     // finding a and b
                     const T temp = (v[i + 1].e - v[i].e) / (v[i + 1].x - v[i].x);
-                    const T px0 = pdf(v[i].x);
-                    const T px1 = pdf(v[i + 1].x);
+                    const T px0 = pdf(v[i].x)/pdf_max_value;
+                    const T px1 = pdf(v[i + 1].x) / pdf_max_value;
                     if (px0 > 0 && px1 > 0) {
                         v[i].b = 1 - temp * temp / (px0 * px1);
                     } else {

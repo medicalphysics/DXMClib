@@ -125,14 +125,14 @@ public:
         auto& att = this->attenuationLut();
         std::vector<Material> mats;
         mats.push_back(mat);
-        att.generate(mats, T { 1 }, energy);
+        att.generate(mats, T { 1 }, energy * 2);
 
         std::array<T, 3> pos = { 0, 0, 0 };
         std::array<T, 3> dir = { 1, 0, 0 };
         Particle<T> p { .pos = pos, .dir = dir };
         p.energy = energy;
 
-        std::vector<T> cosAng(50, 0);
+        std::vector<T> cosAng(180, 0);
 
         for (std::size_t i = 0; i < cosAng.size(); ++i) {
             cosAng[i] = -1 + T { 2 } / (cosAng.size()) * i;
@@ -270,21 +270,16 @@ void testTransport()
     mats.emplace_back(("H2O"));
     mats.back().setStandardDensity(1.0);
 
-    const T energy = 1.2;
-
+    const T Rayenergy = 10;
+    const T Comenergy = 50;
     Test<T> t;
-    t.testRayleight<1>(energy, mats[2]);
-    //t.testCompton<2>(energy, mats[3]);
+    t.testRayleight<1>(Rayenergy, mats[4]);
+    t.testCompton<1>(Comenergy, mats[2]);
 }
 
 int main()
 {
     testTransport<float>();
 
-    /*bool success_d = testTransport<double>();
-    bool success_f = testTransport<float>();
-    if (success_d && success_f)
-        return 1;
-        */
     return 0;
 }

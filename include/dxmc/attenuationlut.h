@@ -43,14 +43,15 @@ template <Floating T = double>
 class AttenuationLut {
 public:
     static constexpr T MAX_PHOTON_ENERGY() { return 2 * ELECTRON_REST_MASS<T>(); }
+    static constexpr T MIN_PHOTON_ENERGY() { return T { 0.5 }; }
     /**
    * @brief Construct a new Attenuation Lut object
    *
    */
     AttenuationLut() {};
-    AttenuationLut(const World<T>& world, T minEnergy = 1.0, T maxEnergy = 150)
+    AttenuationLut(const World<T>& world, T maxEnergy = 150, T minEnergy = 1)
     {
-        generate(world, minEnergy, maxEnergy);
+        generate(world, maxEnergy, minEnergy);
     }
 
     /**
@@ -60,11 +61,11 @@ public:
    * @param minEnergy Minimum energy to consider in keV, minimum 1.0 keV
    * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep
    */
-    void generate(const World<T>& world, T minEnergy = 1.0, T maxEnergy = 150)
+    void generate(const World<T>& world, T maxEnergy = 150, T minEnergy = 1)
     {
         const auto& materials = world.materialMap();
-        generate(materials, minEnergy, maxEnergy, false);
-        m_attenuationData = AttenuationLutInterpolator<T>(world, minEnergy, maxEnergy);
+        generate(materials, maxEnergy, minEnergy, false);
+        m_attenuationData = AttenuationLutInterpolator<T>(world, maxEnergy, minEnergy);
     }
 
     /**
@@ -76,9 +77,9 @@ public:
    * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep, maximum 2mc^2 keV
    * @param energyStep Energy stepsize in lut table, minimum 0.1 keV
    */
-    void generate(const std::vector<Material>& materials, T minEnergy = 1, T maxEnergy = 150, bool generatePhotonData = true)
+    void generate(const std::vector<Material>& materials, T maxEnergy = 150, T minEnergy = 1, bool generatePhotonData = true)
     {
-        m_minEnergy = std::max(T { 0 }, std::min(maxEnergy, minEnergy));
+        m_minEnergy = std::max(MIN_PHOTON_ENERGY(), std::min(maxEnergy, minEnergy));
         m_maxEnergy = std::min(MAX_PHOTON_ENERGY(), std::max(maxEnergy, minEnergy));
 
         generateFFdata(materials);
@@ -90,7 +91,7 @@ public:
             m_electronShellConfiguration.push_back(m.getElectronConfiguration<T>());
         }
         if (generatePhotonData) {
-            m_attenuationData = AttenuationLutInterpolator<T>(materials, minEnergy, maxEnergy);
+            m_attenuationData = AttenuationLutInterpolator<T>(materials, maxEnergy, minEnergy);
         }
     }
 
@@ -193,14 +194,13 @@ public:
    * @brief Cosine of scatter angle for a photon
    *
    * @param energy  Photon energy in keV
-   * @param momentumTransfer momentumtransfer in $Å^{-1}$
+   * @param momentumTransferSquared momentumtransfer squared in $Å^{-2}$
    * @return double
    */
-    static T cosAngle(T energy, T momentumTransfer)
+    static inline T cosAngle(const T energy, const T momentumTransferSquared)
     {
         const auto invE = KEV_TO_ANGSTROM<T>() / energy;
-
-        return 1 - 2 * momentumTransfer * momentumTransfer * invE * invE;
+        return 1 - 2 * momentumTransferSquared * invE * invE;
     }
 
 protected:
@@ -214,11 +214,12 @@ protected:
         m_formFactor.clear();
         m_formFactor.reserve(materials.size());
         const auto qmax = momentumTransferMax(m_maxEnergy);
+        const auto qmax_squared = qmax * qmax;
         for (const auto& m : materials) {
 
             T qmax_applicable = 1;
             T ff_applicable = m.getRayleightFormFactorSquared(qmax_applicable);
-            while (qmax_applicable < qmax && ff_applicable > 0.001) {
+            while (qmax_applicable < qmax_squared && ff_applicable > 0.001) {
                 if (ff_applicable > T { 0.5 })
                     qmax_applicable += T { 0.5 };
                 else
@@ -226,7 +227,7 @@ protected:
                 ff_applicable = m.getRayleightFormFactorSquared(qmax_applicable);
             }
 
-            auto f = [&](auto q) { return m.getRayleightFormFactorSquared(q); };
+            auto f = [&](auto q) { return m.getRayleightFormFactorSquared(std::sqrt(q)); };
             m_formFactor.emplace_back(T { 0 }, qmax_applicable, f);
         }
     }
@@ -266,8 +267,8 @@ protected:
 private:
     T m_minEnergy = 0;
     T m_maxEnergy = 150.0;
-    std::vector<CubicSplineInterpolator<T, 15>> m_comptonScatterFactor;
-    std::vector<RITA<T, 128>> m_formFactor;
+    std::vector<CubicSplineInterpolator<T, 16>> m_comptonScatterFactor;
+    std::vector<RITA<T, 56>> m_formFactor;
     AttenuationLutInterpolator<T> m_attenuationData;
 
     std::vector<std::array<ElectronShellConfiguration<T>, 12>> m_electronShellConfiguration;
