@@ -65,7 +65,7 @@ public:
     {
         const auto& materials = world.materialMap();
         generate(materials, maxEnergy, minEnergy, false);
-        m_attenuationData = AttenuationLutInterpolator<T>(world, maxEnergy, minEnergy);
+        m_attenuationData = AttenuationLutInterpolator<T>(world, m_maxEnergy, m_minEnergy);
     }
 
     /**
@@ -91,7 +91,7 @@ public:
             m_electronShellConfiguration.push_back(m.getElectronConfiguration<T>());
         }
         if (generatePhotonData) {
-            m_attenuationData = AttenuationLutInterpolator<T>(materials, maxEnergy, minEnergy);
+            m_attenuationData = AttenuationLutInterpolator<T>(materials, m_maxEnergy, m_minEnergy);
         }
     }
 
