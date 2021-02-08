@@ -505,7 +505,6 @@ public:
             }
         }
 
-        //const T primAng = std::acos(beam_direction[1] / xy_lenght);
         const T primAng = std::asin(-beam_direction[0]);
 
         const T zy_lenght = std::sqrt(beam_direction[2] * beam_direction[2] + beam_direction[1] * beam_direction[1]);
