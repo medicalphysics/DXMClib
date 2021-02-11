@@ -10,7 +10,7 @@ using namespace dxmc;
 
 constexpr double DOUBLEERRF = 1E-6;
 
-template<typename T>
+template <typename T>
 bool testHalfLayerCalculation()
 {
     Tube<T> t;
@@ -19,7 +19,7 @@ bool testHalfLayerCalculation()
     auto s = t.getSpecter(e);
     Material al(13);
     std::vector<T> att(e.size());
-    std::transform(e.cbegin(), e.cend(), att.begin(), [&](auto e)->T {
+    std::transform(e.cbegin(), e.cend(), att.begin(), [&](auto e) -> T {
         return static_cast<T>(al.standardDensity()) * static_cast<T>(al.getTotalAttenuation(e));
     });
 
@@ -34,8 +34,22 @@ bool testHalfLayerCalculation()
     return false;
 }
 
+template <typename T>
+void printSpecter()
+{
+    Tube<T> t;
+    t.setAnodeAngleDeg(30);
+    t.setVoltage(100);
+    const auto s = t.getSpecter();
+    std::cout << "Energy [keV], Intensity [A.U]\n";
+    for (const auto [e, n] : s) {
+        std::cout << e << ", " << n << '\n';
+    }
+}
+
 int main(int argc, char* argv[])
 {
+    printSpecter<float>();
     bool success = testHalfLayerCalculation<float>();
     if (success)
         return EXIT_SUCCESS;

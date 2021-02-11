@@ -30,12 +30,6 @@ constexpr T KEV_TO_ANGSTROM()
 }
 
 template <Floating T>
-constexpr T ELECTRON_REST_MASS()
-{
-    return T { 510.9989461 }; // kev/c^2
-}
-
-template <Floating T>
 constexpr T PI_VAL()
 {
     return std::numbers::pi_v<T>;
@@ -62,4 +56,11 @@ constexpr T MJ_TO_KEV()
 {
     return T { 1 } / KEV_TO_MJ<T>();
 }
+
+template <Floating T>
+constexpr T ELECTRON_REST_MASS()
+{
+    return T { 510.9989461 }; // kev/c^2
+}
+
 }

@@ -18,6 +18,7 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/betheHeitlerCrossSection.h"
 #include "dxmc/constants.h"
 #include "dxmc/floating.h"
 #include "dxmc/material.h"
@@ -30,11 +31,6 @@ Copyright 2019 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-
-namespace tube_implementation {
-    double betheHeitlerSpectra(double T0, double hv, double takeoffAngle);
-    std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, double takeoffAngle);
-}
 
 template <Floating T = double>
 class Tube {
@@ -163,7 +159,9 @@ public:
     void clearFiltrationMaterials() { m_filtrationMaterials.clear(); }
 
     void setEnergyResolution(T energyResolution) { m_energyResolution = energyResolution; }
+
     T energyResolution() const { return m_energyResolution; }
+
     std::vector<T> getEnergy() const
     {
         std::vector<T> energies;
@@ -190,15 +188,13 @@ public:
         return map;
     }
 
-    std::vector<T> getSpecter(const std::vector<T>& energies, T anodeAngle, bool normalize = true) const
+    std::vector<T> getSpecter(const std::vector<T>& energies, const T anodeAngle, bool normalize = true) const
     {
         std::vector<T> specter;
         specter.resize(energies.size());
         std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](auto hv) -> T {
-            const auto vd = static_cast<double>(this->voltage());
-            const auto hvd = static_cast<double>(hv);
-            const auto ad = static_cast<double>(anodeAngle);
-            const auto bh_t = static_cast<T>(tube_implementation::betheHeitlerSpectra(vd, hvd, ad));
+            const auto vd = this->voltage();
+            const auto bh_t = BetheHeitlerCrossSection::betheHeitlerSpectra(vd, hv, anodeAngle);
             return bh_t;
         });
 
@@ -237,21 +233,19 @@ protected:
         auto energyBegin = energy.begin();
         auto energyEnd = energy.end();
 
-        const double voltage_d { voltage() };
-        const double anode_d { anodeAngle() };
+        const auto voltage_d = voltage();
+        const auto anode_d = anodeAngle();
 
-        auto kEdge = tube_implementation::characteristicTungstenKedge(voltage_d, anode_d);
+        const auto kEdge = BetheHeitlerCrossSection::characteristicTungstenKedge(voltage_d, anode_d);
         for (const auto& [e, n] : kEdge) {
             //find closest energy
-            const auto e_t = static_cast<T>(e);
-            const auto n_t = static_cast<T>(n);
-            auto eIdx = std::lower_bound(energyBegin, energyEnd, e_t);
+            auto eIdx = std::lower_bound(energyBegin, energyEnd, e);
             if (eIdx != energyEnd) {
 
-                if (std::abs(e_t - *eIdx) <= 2.0) { // we only add characteristic radiation if specter energy is closer than 2 keV from the K edge
+                if (std::abs(e - *eIdx) <= 2.0) { // we only add characteristic radiation if specter energy is closer than 2 keV from the K edge
                     auto nIdx = specter.begin();
                     std::advance(nIdx, std::distance(energyBegin, eIdx));
-                    *nIdx = *nIdx + n_t; // adding characteristic k edge intensity to specter
+                    *nIdx = *nIdx + n; // adding characteristic k edge intensity to specter
                 }
             }
         }
@@ -260,13 +254,13 @@ protected:
     {
         for (auto const& [material, mm] : m_filtrationMaterials) {
             const T cm = mm * T { 0.1 }; //for mm -> cm
-            std::transform(std::execution::par_unseq, specter.begin(), specter.end(), energies.begin(), specter.begin(),
-                [&, material = material](auto n, auto e) -> T { return n * std::exp(-material.getTotalAttenuation(e) * material.standardDensity() * cm); });
+            std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), energies.cbegin(), specter.begin(),
+                [&, material = material](const auto n, const auto e) -> T { return n * std::exp(-material.getTotalAttenuation(e) * material.standardDensity() * cm); });
         }
     }
     void normalizeSpecter(std::vector<T>& specter) const
     {
-        const auto sum = std::reduce(std::execution::par, specter.begin(), specter.end());
+        const auto sum = std::reduce(std::execution::par_unseq, specter.begin(), specter.end());
         std::for_each(std::execution::par_unseq, specter.begin(), specter.end(), [=](auto& n) { n = n / sum; });
     }
 
@@ -298,7 +292,7 @@ protected:
 
 private:
     T m_voltage, m_energyResolution, m_anodeAngle;
-    T m_cachedHVL = 0.0;
+    T m_cachedHVL = 0;
     bool m_hasCachedHVL = false;
     std::vector<std::pair<Material, T>> m_filtrationMaterials;
 };

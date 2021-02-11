@@ -113,7 +113,7 @@ protected:
         }
         std::vector<T> x(d.size());
         x[d.size() - 1] = d[d.size() - 1] / H[d.size() - 1];
-        for (int i = d.size() - 2; i >= 0; --i) {
+        for (std::size_t i = d.size() - 2; i >= 0; --i) {
             x[i] = (d[i] - h[i] * x[i + 1]) / H[i];
         }
         return x;

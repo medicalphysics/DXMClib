@@ -51,11 +51,11 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc/lowenergycorrectionmodel.h"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/betheHeitlerCrossSection.h"
     "${dxmclib_SOURCE_DIR}/include/dxmc.h"    
     )
 
 add_library(libdxmc 
-    src/tube.cpp
     src/material.cpp    
     ${HEADER_LIST}
 	)
