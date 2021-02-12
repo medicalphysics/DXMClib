@@ -46,7 +46,7 @@ struct Result {
     std::chrono::duration<float> simulationTime { 0 };
     std::string_view dose_units = "";
 
-    Result() {};
+    Result() {}
     Result(std::size_t size)
     {
         dose.resize(size, 0);
@@ -204,6 +204,7 @@ public:
 
 protected:
     template <typename U>
+    requires std::is_arithmetic_v<U>
     inline void safeValueAdd(U& value, const U addValue) const noexcept
     {
         std::atomic_ref value_l(value);
@@ -369,17 +370,15 @@ protected:
                         n_pz_max.cbegin(), n_pz_max.cend(), electronConfigurations.cbegin(), shell_probs.begin(),
                         [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy && c.hartreeFockOrbital_0 > T { 0 } ? n_pz * c.numberElectrons : 0; });
                     const auto shell_probs_sum_inv = 1 / std::reduce(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend());
-                    std::uint8_t electronIdx;
-
+                    std::transform(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin(), [=](const auto p) { return p * shell_probs_sum_inv; });
+                    std::partial_sum(shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin());
+                    
                     do {
                         //sampling electron shell
-                        electronIdx = 0;
-                        auto shell_probs_cum = shell_probs[electronIdx] * shell_probs_sum_inv;
                         const auto r3 = state.randomUniform<T>();
-                        while (shell_probs_cum < r3 && electronIdx < 11) {
-                            electronIdx++;
-                            shell_probs_cum += shell_probs[electronIdx] * shell_probs_sum_inv;
-                        }
+                        const auto shell_pos = std::upper_bound(shell_probs.cbegin(), shell_probs.cend(), r3);
+                        //const auto electronIdx = std::min(std::distance(shell_probs.cbegin(), shell_pos), 11);
+                        const auto electronIdx = std::distance(shell_probs.cbegin(), shell_pos);
 
                         //sampling pz analytically
                         const auto r4 = state.randomUniform<T>();
@@ -427,9 +426,7 @@ protected:
 
         particle.energy *= e;
 
-        if constexpr (Lowenergycorrection == 1) {
-            Ee = E * (1 - e);
-        } else if (Lowenergycorrection == 0) {
+        if constexpr (Lowenergycorrection < 2) {
             Ee = E * (1 - e);
         }
         return Ee;

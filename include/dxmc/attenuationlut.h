@@ -48,7 +48,7 @@ public:
    * @brief Construct a new Attenuation Lut object
    *
    */
-    AttenuationLut() {};
+    AttenuationLut() { }
     AttenuationLut(const World<T>& world, T maxEnergy = 150, T minEnergy = 1)
     {
         generate(world, maxEnergy, minEnergy);
@@ -219,7 +219,7 @@ protected:
 
             T qmax_applicable = 1;
             T ff_applicable = m.getRayleightFormFactorSquared(qmax_applicable);
-            while (qmax_applicable < qmax_squared && ff_applicable > 0.001) {
+            while (qmax_applicable < qmax_squared && ff_applicable > T { 0.001 }) {
                 if (ff_applicable > T { 0.5 })
                     qmax_applicable += T { 0.5 };
                 else
@@ -252,10 +252,10 @@ protected:
             T sf_applicable = m.getComptonNormalizedScatterFactor(qmax_applicable);
             while (sf_applicable < T { 0.999 } && qmax_applicable < qmax_energy) {
                 sf_applicable = m.getComptonNormalizedScatterFactor(qmax_applicable);
-                if (sf_applicable < 0.5)
-                    qmax_applicable += 0.5;
+                if (sf_applicable < T { 0.5 })
+                    qmax_applicable += T { 0.5 };
                 else
-                    qmax_applicable += 0.1;
+                    qmax_applicable += T { 0.1 };
             }
 
             auto f = [&](const T q) -> T { return m.getComptonNormalizedScatterFactor(q); };

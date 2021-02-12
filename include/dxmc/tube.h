@@ -192,7 +192,7 @@ public:
     {
         std::vector<T> specter;
         specter.resize(energies.size());
-        std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [=](auto hv) -> T {
+        std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [&](auto hv) -> T {
             const auto vd = this->voltage();
             const auto bh_t = BetheHeitlerCrossSection::betheHeitlerSpectra(vd, hv, anodeAngle);
             return bh_t;
@@ -242,7 +242,7 @@ protected:
             auto eIdx = std::lower_bound(energyBegin, energyEnd, e);
             if (eIdx != energyEnd) {
 
-                if (std::abs(e - *eIdx) <= 2.0) { // we only add characteristic radiation if specter energy is closer than 2 keV from the K edge
+                if (std::abs(e - *eIdx) <= T { 2.0 }) { // we only add characteristic radiation if specter energy is closer than 2 keV from the K edge
                     auto nIdx = specter.begin();
                     std::advance(nIdx, std::distance(energyBegin, eIdx));
                     *nIdx = *nIdx + n; // adding characteristic k edge intensity to specter

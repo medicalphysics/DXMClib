@@ -23,6 +23,7 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/material.h"
 
 #include <algorithm>
+#include <cmath>
 #include <execution>
 
 namespace dxmc {
@@ -320,17 +321,18 @@ namespace BetheHeitlerCrossSection {
 
     constexpr int TUNGSTEN_ATOMIC_NUMBER = 74;
     template <Floating T>
-    consteval T FINE_STRUCTURE_CONSTANT()
+    constexpr T FINE_STRUCTURE_CONSTANT()
     {
         return T { 7.29735308E-03 };
     }
+
     template <Floating T>
-    consteval T CLASSIC_ELECTRON_RADIUS()
+    constexpr T CLASSIC_ELECTRON_RADIUS()
     {
         return T { 2.81794092E-15 }; // [m]
     }
     template <Floating T>
-    consteval T PHI_BAR()
+    constexpr T PHI_BAR()
     {
         return (TUNGSTEN_ATOMIC_NUMBER * TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS<T>() * CLASSIC_ELECTRON_RADIUS<T>() * FINE_STRUCTURE_CONSTANT<T>();
     }

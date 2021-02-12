@@ -66,9 +66,10 @@ public:
     template <typename T>
     inline T randomUniform() noexcept
     {
-        static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
-        const T r = static_cast<T>(pcg32());
-        return r / (std::numeric_limits<std::uint32_t>::max() - 1);
+        static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");        
+        const auto ui = pcg32();
+        constexpr T uiMaxInv = T { 2.32830643653869628906e-010 };
+        return ui * uiMaxInv;
     }
 
     /**
@@ -124,7 +125,7 @@ public:
     inline T randomInteger(const T max) noexcept
     {
         static_assert(sizeof(max) <= 4, "This prng only supports up to 32 bit random integers, for a capped to 32 bit random integer use randomInteger32BitCapped instead");
-        const T threshold = ((T)(-max)) % max;
+        const T threshold = (static_cast<T>(-max)) % max;
         for (;;) {
             const auto r = pcg32();
             if (r >= threshold)
@@ -136,7 +137,7 @@ public:
     inline T randomInteger32BitCapped(const T max) noexcept
     {
         static_assert(sizeof(max) > 4, "This function is intended for 64 bit values or greater, use randomInteger method instead");
-        const T threshold = ((T)(-max)) % max;
+        const T threshold = (static_cast<T>(-max)) % max;
         for (;;) {
             const auto r = pcg32();
             if (r >= threshold)
@@ -208,8 +209,8 @@ public:
     */
     std::size_t sampleIndex(RandomState& state) const
     {
-        const double r = state.randomUniform<double>();
-        const double k = state.randomUniform<std::size_t>(size());
+        const auto r = state.randomUniform<T>();
+        const auto k = state.randomUniform<std::size_t>(size());
         return r < m_probs[k] ? k : m_alias[k];
     }
 
@@ -432,9 +433,9 @@ public:
                         const auto a = v[i].a;
                         const auto b = v[i].b;
                         const auto f = (1 + a + b - a * t);
-                        const auto n = f * (1 - std::sqrt(1 - 4 * b * t * t / (f * f))) / (2 * b * t);
-                        const auto p1 = (1 + a * n + b * n * n);
-                        const auto p = p1 * p1 * (v[i + 1].e - v[i].e) / ((1 + a + b) * (1 - b * n * n) * (v[i + 1].x - v[i].x));
+                        const auto nn = f * (1 - std::sqrt(1 - 4 * b * t * t / (f * f))) / (2 * b * t);
+                        const auto p1 = (1 + a * nn + b * nn * nn);
+                        const auto p = p1 * p1 * (v[i + 1].e - v[i].e) / ((1 + a + b) * (1 - b * nn * nn) * (v[i + 1].x - v[i].x));
                         const auto res = std::abs(p - pdf(x));
 
                         v[i].error += res * (v[i + 1].x - v[i].x) / 50;
@@ -488,7 +489,7 @@ public:
         do {
             const auto r1 = state.randomUniform<T>(modifier);
             auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
-            const std::size_t index = std::distance(m_e.cbegin(), upper_bound) - 1;
+            const auto index = std::distance(m_e.cbegin(), upper_bound) - 1;
 
             const auto v = r1 - m_e[index];
             const auto d = m_e[index + 1] - m_e[index];

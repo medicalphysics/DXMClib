@@ -113,7 +113,7 @@ protected:
         }
         std::vector<T> x(d.size());
         x[d.size() - 1] = d[d.size() - 1] / H[d.size() - 1];
-        for (std::size_t i = d.size() - 2; i >= 0; --i) {
+        for (int i = d.size() - 2; i >= 0; --i) {
             x[i] = (d[i] - h[i] * x[i + 1]) / H[i];
         }
         return x;
@@ -127,7 +127,7 @@ public:
         std::vector<T> y(N);
         m_start = start;
         m_step = (stop - start) / (N - 2);
-        for (int i = 0; i < N; ++i) {
+        for (std::size_t i = 0; i < N; ++i) {
             m_x[i] = m_start + m_step * i;
             y[i] = function(m_x[i]);
         }
@@ -170,7 +170,7 @@ public:
     {
         const T x = std::clamp(x_val, m_start, m_stop);
 
-        const std::size_t index = x > m_start ? (x - m_start) / m_step : 0;
+        const std::size_t index = x > m_start ? static_cast<std::size_t>((x - m_start) / m_step) : 0;
         const std::size_t offset = index < N - 1 ? index * 4 : (N - 2) * 4;
         return m_coefficients[offset] + m_coefficients[offset + 1] * x + m_coefficients[offset + 2] * x * x + m_coefficients[offset + 3] * x * x * x;
     }
@@ -247,7 +247,7 @@ constexpr std::array<T, 20> gaussIntegrationPoints(const T start, const T stop)
     const T xii = (stop + start) * T { 0.5 };
     std::transform(std::execution::unseq, x_val.cbegin(), x_val.cend(), function_points.begin(), [=](const auto x) { return x * xi + xii; });
     return function_points;
-};
+}
 
 template <Floating T, std::regular_invocable<T> F>
 requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussIntegration(const T start, const T stop, const F function)

@@ -220,10 +220,10 @@ public:
     XCareFilter()
         : BeamFilter<T>()
     {
-        m_filterAngle = 0.0;
-        m_spanAngle = 120.0 * DEG_TO_RAD<T>();
-        m_rampAngle = 20.0 * DEG_TO_RAD<T>();
-        m_lowWeight = 0.6;
+        m_filterAngle = 0;
+        m_spanAngle =  120 * DEG_TO_RAD<T>();
+        m_rampAngle = 20 * DEG_TO_RAD<T>();
+        m_lowWeight = T { 0.6 };
     }
     virtual ~XCareFilter() = default;
 
@@ -475,11 +475,11 @@ public:
 
         // recalculating weights
         const auto abs_span_angle = std::abs(heel_angle_span);
-        if (tube.anodeAngle() < abs_span_angle * 0.5) // minimum span angle is greater than anode angle
+        if (tube.anodeAngle() < abs_span_angle / 2) // minimum span angle is greater than anode angle
             m_angleStart = -tube.anodeAngle();
         else
-            m_angleStart = -abs_span_angle * 0.5;
-        m_angleStep = (abs_span_angle * 0.5 - m_angleStart) / m_angleSize;
+            m_angleStart = -abs_span_angle / 2;
+        m_angleStep = (abs_span_angle / 2 - m_angleStart) / m_angleSize;
 
         m_weights.clear();
         m_weights.resize(m_energySize * m_angleSize);
@@ -508,13 +508,13 @@ public:
     */
     T sampleIntensityWeight(const T angle, const T energy) const
     {
-        std::size_t e_index = (energy - m_energyStart + T { 0.5 } * m_energyStep) / m_energyStep;
+        std::size_t e_index = static_cast<std::size_t>((energy - m_energyStart + T { 0.5 } * m_energyStep) / m_energyStep);
         if (e_index >= m_energySize)
             e_index = m_energySize - 1;
         if (energy < m_energyStart)
             e_index = 0;
 
-        std::size_t a_index = (angle - m_angleStart) / m_angleStep; // we want lowest angle index since we are interpolating
+        std::size_t a_index = static_cast<std::size_t>((angle - m_angleStart) / m_angleStep); // we want lowest angle index since we are interpolating
         if (a_index >= m_angleSize)
             a_index = m_angleSize - 1;
         if (angle < m_angleStart)
@@ -571,7 +571,6 @@ template <Floating T = double>
 class AECFilter {
 
 private:
-    bool m_valid = false;
     std::vector<T> m_mass;
     std::vector<T> m_massIntensity;
     T m_positionStep = 0.0;
@@ -579,6 +578,7 @@ private:
     T m_positionMax = 0.0;
     std::vector<T> m_positionIntensity;
     std::string m_filterName = "";
+    bool m_valid = false;
 
 protected:
     void generateMassWeightMap(typename std::vector<T>::const_iterator densBeg, typename std::vector<T>::const_iterator densEnd, const std::array<T, 3>& spacing, const std::array<std::size_t, 3>& dimensions, const std::vector<T>& exposuremapping)

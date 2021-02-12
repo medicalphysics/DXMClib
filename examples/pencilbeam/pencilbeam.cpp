@@ -62,7 +62,6 @@ double calculate()
     // The world is now complete, to test if it is valid and all material indices are correct
     // and arrays have correct dimensions we can call:
     world.makeValid();
-    auto valid = world.isValid();
 
     // We need a beam source, in this case a simple pencil beam
     PencilSource<T> pen;

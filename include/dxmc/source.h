@@ -85,7 +85,7 @@ public:
      * @brief Default constructor whos only job is to set source type to Type::None.
     */
     Source()
-        : m_type(Type::None) {};
+        : m_type(Type::None) {}
     /**
      * @brief Generate an exposure
      * Generate an exposure that specifies emitting numberOfHistoriesPerExposure 
@@ -116,7 +116,7 @@ public:
         m_position[0] = x;
         m_position[1] = y;
         m_position[2] = z;
-    };
+    }
     /**
      * @brief Get source position
      * @param  
@@ -285,20 +285,20 @@ public:
     T maxPhotonEnergyProduced() const override
     {
         return m_maxPhotonEnergy;
-    };
+    }
     void setTotalExposures(std::uint64_t nExposures)
     {
         m_totalExposures = nExposures;
-    };
+    }
     std::uint64_t totalExposures() const override
     {
         return m_totalExposures;
-    };
+    }
 
     T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const override
     {
         return T { 1 };
-    };
+    }
 
     bool isValid() const override { return true; }
     bool validate() override { return true; }
@@ -606,8 +606,8 @@ public:
         return m_specterValid;
     }
 
-    void setModelHeelEffect(bool on) { m_modelHeelEffect = on; };
-    bool modelHeelEffect() const { return m_modelHeelEffect; };
+    void setModelHeelEffect(bool on) { m_modelHeelEffect = on; }
+    bool modelHeelEffect() const { return m_modelHeelEffect; }
 
 protected:
     void updateFieldSize(const std::array<T, 2>& fieldSize)
@@ -655,11 +655,11 @@ private:
     std::array<T, 2> m_collimationAngles;
     std::uint64_t m_totalExposures = 1000;
     Tube<T> m_tube;
-    T m_tubeRotationAngle = 0.0;
-    bool m_specterValid = false;
+    T m_tubeRotationAngle = 0.0;    
     std::shared_ptr<SpecterDistribution<T>> m_specterDistribution = nullptr;
     std::shared_ptr<HeelFilter<T>> m_heelFilter = nullptr;
     bool m_modelHeelEffect = true;
+    bool m_specterValid = false;
 };
 
 //forward decl
@@ -697,7 +697,7 @@ public:
     {
         m_specterValid = false;
         return m_tube;
-    };
+    }
     const Tube<T>& tube(void) const { return m_tube; }
 
     virtual T maxPhotonEnergyProduced() const override { return m_tube.voltage(); }
@@ -774,9 +774,7 @@ public:
     void setExposureAngleStep(T angleStep)
     {
         const auto absAngle = std::abs(angleStep);
-        if (absAngle < PI_VAL<T>()) {
-            m_exposureAngleStep = std::max(absAngle, DEG_TO_RAD<T>() / 10);
-        }
+        m_exposureAngleStep = std::clamp(absAngle, DEG_TO_RAD<T>() / 10, PI_VAL<T>() / 2);
     }
 
     T exposureAngleStep(void) const
@@ -826,7 +824,7 @@ public:
     }
     std::uint64_t ctdiPhantomDiameter(void) const { return m_ctdiPhantomDiameter; }
 
-    virtual T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const = 0;
+    //virtual T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const = 0;
 
     virtual std::uint64_t exposuresPerRotatition() const
     {
@@ -834,7 +832,7 @@ public:
         return static_cast<std::size_t>(pi_2 / m_exposureAngleStep);
     }
 
-    bool isValid(void) const override { return m_specterValid; };
+    bool isValid(void) const override { return m_specterValid; }
     virtual bool validate(void) override
     {
         updateSpecterDistribution();
@@ -850,8 +848,8 @@ public:
             m_aecFilter->updateFromWorld(world);
     }
 
-    void setModelHeelEffect(bool on) { m_modelHeelEffect = on; };
-    bool modelHeelEffect() const { return m_modelHeelEffect; };
+    void setModelHeelEffect(bool on) { m_modelHeelEffect = on; }
+    bool modelHeelEffect() const { return m_modelHeelEffect; }
 
 protected:
     template <typename U>
@@ -893,8 +891,8 @@ protected:
         transport.setLowEnergyCorrectionModel(model);
         auto result = transport(world, &sourceCopy, progressBar, false);
 
-        typedef CTDIPhantom<T>::HolePosition holePosition;
-        std::array<CTDIPhantom<T>::HolePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
+        using holePosition = typename CTDIPhantom<T>::HolePosition;
+        std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
         std::array<T, 5> measureDose;
         measureDose.fill(0.0);
@@ -945,13 +943,13 @@ protected:
     std::shared_ptr<AECFilter<T>> m_aecFilter = nullptr;
     std::uint64_t m_ctdiPhantomDiameter = 320;
     std::shared_ptr<BowTieFilter<T>> m_bowTieFilter = nullptr;
-    XCareFilter<T> m_xcareFilter;
-    bool m_useXCareFilter = false;
-    bool m_specterValid = false;
+    XCareFilter<T> m_xcareFilter;    
     Tube<T> m_tube;
     std::shared_ptr<SpecterDistribution<T>> m_specterDistribution = nullptr;
     std::shared_ptr<HeelFilter<T>> m_heelFilter = nullptr;
     bool m_modelHeelEffect = true;
+    bool m_useXCareFilter = false;
+    bool m_specterValid = false;
 };
 
 template <Floating T = double>
@@ -966,7 +964,7 @@ public:
         m_startAngleB = this->m_startAngle + PI_VAL<T>() * T { 0.5 };
         m_tubeB.setAlFiltration(this->m_tube.AlFiltration());
     }
-    virtual Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const = 0;
+    //virtual Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const = 0;
 
     T tubeAmas() const { return m_tubeAmas; }
     T tubeBmas() const { return m_tubeBmas; }
@@ -985,7 +983,7 @@ public:
     {
         this->m_specterValid = false;
         return m_tubeB;
-    };
+    }
     const Tube<T>& tubeB(void) const { return m_tubeB; }
 
     T maxPhotonEnergyProduced() const override { return std::max(this->m_tube.voltage(), m_tubeB.voltage()); }

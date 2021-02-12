@@ -45,7 +45,7 @@ public:
     enum class Axis { X,
         Y,
         Z };
-    ProgressBar() {};
+    ProgressBar() {}
     ProgressBar(std::uint64_t totalExposures) { setTotalExposures(totalExposures); }
     void setTotalExposures(std::uint64_t totalExposures)
     {
@@ -61,7 +61,7 @@ public:
         m_currentExposures++;
         auto duration = std::chrono::system_clock::now() - m_startTime;
         auto seconds = std::chrono::duration_cast<std::chrono::seconds>(duration).count();
-        m_secondsElapsed.exchange(static_cast<double>(seconds));
+        m_secondsElapsed.exchange(static_cast<T>(seconds));
     }
     std::string getETA() const
     {

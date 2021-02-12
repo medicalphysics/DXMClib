@@ -239,9 +239,7 @@ public:
             {
                 const auto index = static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex;
                 const auto offset = index + index;
-                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
-                if (res <= T { 0 })
-                    auto test = false;
+                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);                
                 return res;
             }
         else
@@ -250,9 +248,7 @@ public:
                 const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
                 const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
                 const auto offset = index + index;
-                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
-                if (res <= T { 0 })
-                    auto test = false;
+                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);                
                 return res;
             }
     }

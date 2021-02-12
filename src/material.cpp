@@ -166,7 +166,6 @@ template <typename T>
 
                 std::array<double, 3> fluroProbabilities = { 0, 0, 0 };
                 std::array<double, 3> fluroEnergy = { 0, 0, 0 };
-                std::array<int, 3> lines { 0, 0, 0 };
 
                 int line_start = 0;
                 int line_stop = 0;
@@ -204,7 +203,7 @@ template <typename T>
                         fluroProbabilities.cbegin(), fluroProbabilities.cend(), fluroProbabilities.begin(), [=](auto p) { return p / fluroLineprobs; });
                 }
 
-                ElectronShellConfiguration<double> new_config(
+                ElectronShellConfiguration<double> new_config = {
                     bindingEnergy,
                     totalElectrons,
                     CProfile,
@@ -213,7 +212,8 @@ template <typename T>
                     fluroProbabilities,
                     fluroEnergy,
                     Z,
-                    shell);
+                    shell
+                };
                 configs.push_back(new_config);
             }
             ++shell;
@@ -346,7 +346,7 @@ void Material::setByCompoundName(const std::string& name)
         m_hasDensity = false;
         m_elements = std::vector<int>(m->Elements, m->Elements + m->nElements);
         m_elementNumberFraction.resize(m->nElements);
-        for (std::size_t i = 0; i < m->nElements; i++) {
+        for (int i = 0; i < m->nElements; i++) {
             m_elementNumberFraction[i] = m->massFractions[i] / AtomicWeight(m_elements[i], nullptr);
         }
         const auto numberSum = std::reduce(m_elementNumberFraction.cbegin(), m_elementNumberFraction.cend());
@@ -366,7 +366,7 @@ void Material::setByMaterialName(const std::string& name)
         m_density = m->density;
         m_elements = std::vector<int>(m->Elements, m->Elements + m->nElements);
         m_elementNumberFraction.resize(m->nElements);
-        for (std::size_t i = 0; i < m->nElements; i++) {
+        for (int i = 0; i < m->nElements; i++) {
             m_elementNumberFraction[i] = m->massFractions[i] / AtomicWeight(m_elements[i], nullptr);
         }
         const auto numberSum = std::reduce(m_elementNumberFraction.cbegin(), m_elementNumberFraction.cend());

@@ -124,7 +124,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline double angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3]) noexcept 
+    inline T angleBetweenOnPlane(T vec1[3], T vec2[3], T planeNormal[3]) noexcept 
     {
         normalize(vec1);
         normalize(vec2);
