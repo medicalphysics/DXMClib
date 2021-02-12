@@ -42,9 +42,7 @@ bool testSpline()
 
 int main()
 {
-
     bool splinetest = testSpline<float>();
-
-    //assert(splinetest);
+    assert(splinetest);
     return 1;
 }

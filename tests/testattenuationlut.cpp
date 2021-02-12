@@ -10,12 +10,10 @@
 
 using namespace dxmc;
 
-constexpr double ERRF = 1E-4;
-
 template <Floating T>
 bool isEqual(T a, T b)
 {
-    return std::abs(a - b) < ERRF;
+    return std::abs(a - b) < 0.0001;
 }
 
 template <typename T, typename U = float>
@@ -83,7 +81,7 @@ void testFormFactor(const std::vector<Material>& mats, const T minEnergy = 1, co
         for (std::size_t i = 0; i < 1E6; ++i) {
             const auto qmax = lut.momentumTransferMax(maxEnergy);
             const T q_val = lut.momentumTransferFromFormFactor(j, qmax * qmax, state);
-            const std::size_t idx = (q_val - min) * (q.size() - 1) / (max - min);
+            const std::size_t idx = static_cast<std::size_t>((q_val - min) * (q.size() - 1) / (max - min));
             if (idx >= hist.size()) { // ++hist[idx - 1];
             } else {
                 ++hist[idx];

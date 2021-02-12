@@ -18,6 +18,7 @@ inline bool isEqual(double a, double b)
     return std::abs(a - b) < ERRF;
 }
 
+template <typename T>
 void testUniform()
 {
     constexpr std::size_t S = 1e8;
@@ -27,14 +28,21 @@ void testUniform()
 
     RandomState state;
 
+    T maxVal = 0;
     const auto start = std::chrono::high_resolution_clock::now();
     for (std::size_t i = 0; i < S; ++i) {
-        const auto t = static_cast<std::size_t>(state.randomUniform<double>() * N);
-        pcg[t]++;
+        const auto r = state.randomUniform<T>();
+        maxVal = std::max(r, maxVal);
+        const auto t = static_cast<std::size_t>(r * N);
+        if (t == N)
+            pcg[t - 1]++;
+        else
+            pcg[t]++;
     }
     const auto end = std::chrono::high_resolution_clock::now();
 
     std::cout << "Testing random uniform\nNominal count, PCG count, Difference\n";
+    std::cout << "Max value is 1, obtained max value is " << maxVal << "\n";
     for (auto t : pcg) {
         const auto diff = t * N * 100.0 / S - 100.0;
         assert(std::abs(diff) < 5.0);
@@ -181,10 +189,11 @@ void testRita()
 
 int main(int argc, char* argv[])
 {
-    testrandomInteger();
-    testUniform();
-    testUniformRange();
-    testUniformIndex();
-    testRita<float>();
+    //testrandomInteger();
+    testUniform<double>();
+    testUniform<float>();
+    //testUniformRange();
+    //testUniformIndex();
+    //testRita<float>();
     return 0;
 }

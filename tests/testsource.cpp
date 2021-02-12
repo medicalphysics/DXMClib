@@ -129,7 +129,7 @@ bool testCTCalibration()
     Transport<T> transport;
     auto res = transport(world, &src);
 
-    typedef CTDIPhantom<T>::HolePosition holePosition;
+    using holePosition = typename CTDIPhantom<T>::HolePosition;
     std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
     std::array<T, 5> measureDose;
@@ -138,14 +138,14 @@ bool testCTCalibration()
         const auto& holeIndices = world.holeIndices(position[i]);
         for (const auto& idx : holeIndices)
             measureDose[i] += res.dose[idx];
-        measureDose[i] /= static_cast<double>(holeIndices.size());
+        measureDose[i] /= static_cast<T>(holeIndices.size());
     }
     T pher = 0;
     for (int i = 1; i < 5; ++i)
         pher += measureDose[i];
-    pher /= 4.0;
+    pher /= T { 4.0 };
     auto cent = measureDose[0];
-    T ctdi = pher * 2.0 / 3.0 + cent / 3.0;
+    T ctdi = (pher * 2) / 3 + cent / 3;
     if (ctdi > 0.990 || ctdi < 1.01) {
         std::cout << "Success\n";
         return true;

@@ -31,8 +31,6 @@ Copyright 2020 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr double ERRF = 1e-4;
-
 constexpr bool SAMPLE_RUN = false; // run with reduced number of histories
 constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::LIVERMORE;
 //constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::IA;
@@ -177,9 +175,7 @@ bool test120Specter()
     double meanEnergy = 0.0;
     for (std::size_t i = 0; i < n_samples; ++i) {
         const auto j = dist.sampleIndex();
-        sampl_specter[j] += 1;
-        if (!(j < sampl_specter.size()))
-            bool test = 0;
+        sampl_specter[j] += 1;        
         meanEnergy += dist.sampleValue();
     }
     meanEnergy /= n_samples;
@@ -195,7 +191,7 @@ bool test120Specter()
 template <typename T>
 bool inline isEqual(T a, T b)
 {
-    return std::abs(a - b) < ERRF;
+    return std::abs(a - b) < 0.0001;
 }
 
 template <typename T, typename U, typename W>
@@ -684,7 +680,6 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         src.setDirectionCosines(cosines);
 
         src.setPosition(0, std::sin(angle) * g, std::cos(angle) * g);
-        auto exp = src.getExposure(0);
         print("Incident angle is 15 degrees\n");
     } else {
         src.setPosition(0, 0, 660);
@@ -749,7 +744,7 @@ World<T> generateTG195Case4World1(bool forceInteractions = false)
 {
     const std::array<std::size_t, 3> dim = { 400, 400, 600 };
     const std::array<T, 3> spacing = { 3, 3, 5 };
-    const auto size = std::accumulate(dim.cbegin(), dim.cend(), (std::size_t)1, std::multiplies<std::size_t>());
+    const auto size = std::accumulate(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<std::size_t>());
 
     Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
     air.setStandardDensity(0.001205);
@@ -1335,7 +1330,7 @@ bool runAll(dxmc::Transport<T> transport)
     success = success && TG195Case2AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case2AbsorbedEnergy<T>(transport, true, false, false);
     success = success && TG195Case2AbsorbedEnergy<T>(transport, true, true, false);
-    
+
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, false, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
