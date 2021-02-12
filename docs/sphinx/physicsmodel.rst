@@ -57,7 +57,7 @@ of the photon energy is scored. The weight of the photon is reduced accordingly 
 Further transport of the photon is done by the ordinary method by sampling a random number to determine if an interaction occurs and determine if a Rayleight or Compton event will happen (photoelectric effect is already dealt with).
 
 Generating x-ray spectra
-------------------------
+-------------------------
 Since most diagnostic x-ray units do not emit monochromatic photon beams this library includes a x-ray spectra generator. The implementation uses a semi-analytical model proposed by Poludniowski [#Poludniowski1]_ [#Poludniowski2]_ for simulating a spectra from a pure tungsten anode. The model is valid tube potentials from 50kVp to 150 kVp but is accurate up to 300 kVp. The implementation allows for adding filtration of any material and to freely select tube potential and anode angle proving quite flexible. Since the model requires an evaluation of a double integral for each energy bin which is quite computational expensive this implementation is multi threaded. The same formalism is also used in the SpekCalc application also by Poludniowski et al. The Heel effect is also modelled for collimated beams along the anode cathode direction, and is equivalent to a corresponding change in anode angle in the model proposed by Poludniowski.  
 
 Sampling photon energies from a specter is implemented by the squaring of histogram method which is quite fast after an initial generation of a lookup table. When an energy bin is sampled the photon energy is finally uniformly sampled within the bin width. 
@@ -68,9 +68,22 @@ Photon transport in DXMClib is implemented in a relatively simple manner. A sour
 
 The sampled photon is first checked for intersecting the voxel volume, also called the world. If it intersects, it is transported to the world border before the Woodcock tracking starts. 
 
+Photon electron events for diaognostic x-ray energies handles in dxmclib are photoelectric-, rayleight- and compton-events. In compounds and tissues electrons are normally bound in atoms and will affect interaction events for these energy levels. dxmclib have three ways of dealing with atomic electrons with increased accuracy and computational complexity. The binding energy correction model can be set in the Transport class with the options None, Livermore and Impulse Approximation. The names are usally used for binding energy corrections for compton events. In dxmclib the options are not just for compton events but will also include corrections for photoelectric and rayleight events. For example the impulse approximation model will take into account shell binding effects and doppler broadning for compton events and characteristic radiation from exited shells in photoelectric events. This is done to avoid many and confusing switches for binding effects for each type of events and instead use three options with harmonizing accuracy. 
+
 Photoelectric effect
-____________
+_____________________
+
+Binding energy option: None
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 This is the simplest of three types of interactions handled by DXMClib. When a photoelectric event is triggered the photon transfers all it's energy to the voxel. The energy from a scattered electron and any photons from bremsstrahlung is assumed not to escape the voxel.
+
+Binding energy option: Livermore
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+The photoelectric effect for Livermore model is the same as the None option.
+
+Binding energy option: Impulse Approximation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Before energy imparted is scored an electron shell in an atom is selected based on the partial photoelectric cross section for each element and shell. However only shells with binding energy grater than 1 keV are considered. For the selected shell characteristic radiation is emitted based on the probability of a radiative transition wich is the photoelectric yield corrected for Coster-Kronig transition probabilities for the corresponding shell. When a radiative transition occurs, energy imparted is scored and the characteristic photon is emitted in a random direction, for other transition all energy are considered to be deposited in the voxel. 
 
 Compton scattering
 __________________
@@ -79,7 +92,7 @@ Compton events are handled by sampling the Klein Nishina differential cross sect
 .. math::
     \frac{d\rho}{d\epsilon} = \pi r_e^2\frac{m_ec^2}{E_0}Z\left[\frac{1}{\epsilon}+\epsilon \right] \left[ 1-\frac{\epsilon \sin^2\theta}{1+\epsilon^2} \right]
 
-with :math:`r_e` as the classical electron radius, :math:`m_ec^2`: electron mass, :math:`E_0` and :math:`E_1` as energy of incident and scattered photon respectivly, and :math:`\epsilon` as :math:`E_1/E_0`. Scatter angle :math:`\theta` is given by the Compton formula:
+with :math:`r_e` as the classical electron radius, :math:`m_ec^2`: electron mass, :math:`E_0` and :math:`E_1` as energy of incident and scattered photon respectivly, and :math:`\epsilon=E_1/E_0`. Scatter angle :math:`\theta` is given by the Compton formula:
 
 .. math::
     \epsilon = \frac{m_ec^2}{m_ec^2 + E_0(1-\cos\theta)}
@@ -111,18 +124,34 @@ To sample the Klein-Nishina cross section an :math:`\epsilon` is uniformly sampl
 
 where :math:`r_1` is a random number in interval :math:`[0, 1]`. For the sampled :math:`\epsilon` calculate :math:`g` and :math:`\theta`. Draw a new random number :math:`r_2` in interval :math:`[0,1]`, if :math:`r_2 \leqslant g` accept the sampled :math:`\epsilon` (and :math:`\theta`) else repeat the process. 
 
-The sampling methods described above ignores any binding effects on the electron and will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction and is enabled by default by CMake option DXMC_USE_LOW_ENERGY_COMPTON. This correction takes into account Hubbel's atomic form factor [#Hubbell]_. In this case the sampling is performed by the same procedure as a free electron except for a slighly modified rejection function:
+Binding energy option: None
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+All electrons are considered unbound and the compton event is sampled according to the Klein Nishina differential cross section. All energy delivered to the electron are assumed to be deposited in the voxel.  
+
+Binding energy option: Livermore
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+Ignoring any binding effects on the electron will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction. This correction takes into account Hubbel's atomic form factor [#Hubbell]_. In this case the sampling is performed by the same procedure as an unbound electron except for a slighly modified rejection function:
 
 .. math::
     g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right) \frac{SF(q)}{Z}
 
-Where :math:`SF(q)` is the scatter factor, :math:`Z` is the atomic number for the material and :math:`q` is the momentum transfer function:
+Where :math:`SF(q)` is the scatter factor, :math:`Z` is the atomic number for the material and :math:`q` is the momentum transfer given by:
 
 .. math::
-    q = E_0 \sin\left( \frac{\theta}{2}\right) \frac{1}{hc}
+    q = \frac{E_0}{hc} \sin\left( \frac{\theta}{2}\right) 
 
-In DXMClib the scatter factor for composite materials is obtained by the independent atom approximation, simply put the scatter factor is a weighted average over the atoms in the material. A lookup table for scatter factors are generated for materials in each simulation run and involves computing of a square root thus is more computationally demanding.  
+The scatter function goes from Z at zero mumentum transfer to zero for maximum momentum transfer. In dxmclib the scatter factor for composite materials is obtained by the independent atom approximation, simply put the scatter factor is a weighted average over the atoms in the material. The rejection function is then given by:
 
+.. math::
+    g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right) \sum_i w_i \frac{SF_i(q)}{Z_i}
+
+where :math:`w_i` is the number fraction each element in the material and :math:`\sum w_i=1`.
+A lookup table for scatter factors are generated for each material and is interpolated by qubic splines for faster lookup during execution.  
+
+
+Binding energy option: Impulse Approximation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+A more complex model for compton events are the impulse approximation model and is similar to how the Penelope monte carlo code handles compton interactions. This method approximate bound electrons by assuming the interacting electron have an initial momentum dependent on the current atomic shell. First :math:`\epsilon` and :math:`\theta` are sampled from the Klein-Nishina cross section for an unbound electron similar as the None binding energy option. 
 
 Rayleigh scattering
 ___________________
