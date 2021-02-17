@@ -18,6 +18,7 @@ Copyright 2019 Erlend Andersen
 
 #include "xraylib.h"
 
+#include "dxmc/lowenergycorrectionmodel.h"
 #include "dxmc/material.h"
 #include "dxmc/source.h"
 #include "dxmc/transport.h"
@@ -49,7 +50,6 @@ public:
     {
     }
 
-    template <int Correction = 0>
     bool testCompton(const T energy, const Material& mat)
     {
         auto& att = this->attenuationLut();
@@ -57,34 +57,45 @@ public:
         mats.push_back(mat);
         att.generate(mats, T { 1 }, energy);
 
+        std::size_t nSamp = 1e6;
+
         std::array<T, 3> pos = { 0, 0, 0 };
         std::array<T, 3> dir = { 1, 0, 0 };
         Particle<T> p { .pos = pos, .dir = dir };
         p.energy = energy;
-        const T emin = std::max(T { 1 } / (1 + 2 * energy / ELECTRON_REST_MASS<T>()) - T { 0.1 }, T { 0 });
+        const T emin = 0;
 
         const T emax = 1;
         const auto k = energy / ELECTRON_REST_MASS<T>();
 
-        std::vector<T> earr(180, 0);
+        std::vector<T> earr(200, 0);
 
         for (std::size_t i = 0; i < earr.size(); ++i) {
-
             earr[i] = emin + (emax - emin) / (earr.size()) * i;
         }
 
-        std::vector<T> res(earr.size(), 0);
-        RandomState state;
-        std::size_t nSamp = 3e6;
-        for (std::size_t i = 0; i < nSamp; ++i) {
-            auto psamp = p;
-            this->comptonScatter<Correction>(psamp, 0, state);
-            const T e = psamp.energy / p.energy;
-            auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
-            auto idx = std::distance(earr.cbegin(), it);
-            ++res[idx - 1];
+        std::vector<std::vector<T>> results(3);
+        for (int j = 0; j < 3; ++j) {
+            auto& res = results[j];
+            res.resize(earr.size());
+            std::fill(res.begin(), res.end(), T { 0 });
+            RandomState state;
+            
+            for (std::size_t i = 0; i < nSamp; ++i) {
+                auto psamp = p;
+                if (j == 0) {
+                    this->template comptonScatter<0>(psamp, 0, state);
+                } else if (j == 1) {
+                    this->template comptonScatter<1>(psamp, 0, state);
+                } else {
+                    this->template comptonScatter<2>(psamp, 0, state);
+                }
+                const T e = psamp.energy / p.energy;
+                auto it = std::upper_bound(earr.cbegin(), earr.cend(), e);
+                auto idx = std::distance(earr.cbegin(), it);
+                ++res[idx - 1];
+            }
         }
-
         const auto estep = (earr[1] - earr[0]) / 2;
         std::transform(earr.cbegin(), earr.cend(), earr.begin(), [=](auto e) { return e + estep; });
 
@@ -102,22 +113,26 @@ public:
         }
 
         normalize(meas);
-        normalize(res);
+        for (auto& res : results) {
+            normalize(res);
+        }
         std::cout << "Compton differential scattering cross section\n";
         std::cout << "with initial energy " << energy << " keV in " << mat.prettyName() << " material\n";
         std::cout << "Sampling " << nSamp << " interactions with RMS differential cross section deviation of\n";
-        const auto ms = std::transform_reduce(res.cbegin(), res.cend(), meas.cbegin(), T { 0 }, std::plus<>(), [](auto m, auto e) { return (m - e) * (m - e); });
-        const auto rmsd = std::sqrt(ms / res.size());
-        std::cout << rmsd << "\n";
-        std::cout << "K2/K1, dxmclib, meas, diff, diff [%]\n";
+
+        std::cout << "K2/K1, dxmclib None, dxmclib Livermore, dxmclib IA, xraylib\n";
 
         for (std::size_t i = 0; i < meas.size(); ++i) {
-            std::cout << earr[i] << ", " << res[i] << ", " << meas[i] << ", " << res[i] - meas[i] << ", " << (res[i] - meas[i]) / meas[i] * 100 << "\n";
+            std::array<T, 3> r;
+            std::cout << earr[i] << ", ";
+            for (int j = 0; j < 3; ++j) {
+                r[j] = results[j][i];
+                std::cout << r[j] << ", ";
+            }
+            std::cout << meas[i] << "\n";
         }
 
-        if (rmsd < 0.001)
-            return true;
-        return false;
+        return true;
     }
     template <int Correction = 0>
     bool testRayleight(const T energy, const Material& mat)
@@ -143,7 +158,7 @@ public:
         std::size_t nSamp = 3e6;
         for (std::size_t i = 0; i < nSamp; ++i) {
             auto psamp = p;
-            this->rayleightScatter<Correction>(psamp, 0, state);
+            this->template rayleightScatter<Correction>(psamp, 0, state);
             const auto cos = vectormath::dot(p.dir.data(), psamp.dir.data());
             auto it = std::upper_bound(cosAng.cbegin(), cosAng.cend(), cos);
             auto idx = std::distance(cosAng.cbegin(), it);
@@ -273,8 +288,11 @@ void testTransport()
     const T Rayenergy = 10;
     const T Comenergy = 50;
     Test<T> t;
-    t.testRayleight<1>(Rayenergy, mats[4]);
-    t.testCompton<1>(Comenergy, mats[2]);
+
+    //typename model  dxmc::LOWENERGYCORRECTION::LIVERMORE;
+
+    //t.template testRayleight<2>(Rayenergy, mats[4]);
+    t.testCompton(Comenergy, mats[2]);
 }
 
 int main()
