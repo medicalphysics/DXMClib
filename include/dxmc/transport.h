@@ -46,7 +46,7 @@ struct Result {
     std::chrono::duration<float> simulationTime { 0 };
     std::string_view dose_units = "";
 
-    Result() {}
+    Result() { }
     Result(std::size_t size)
     {
         dose.resize(size, 0);
@@ -204,8 +204,7 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_arithmetic_v<U>
-    inline void safeValueAdd(U& value, const U addValue) const noexcept
+    requires std::is_arithmetic_v<U> inline void safeValueAdd(U& value, const U addValue) const noexcept
     {
         std::atomic_ref value_l(value);
         value_l.fetch_add(addValue);
@@ -308,128 +307,178 @@ protected:
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
     {
-        const auto E = particle.energy;
-        const auto k = E / ELECTRON_REST_MASS<T>();
+        if constexpr (Lowenergycorrection == 2) {
+            return comptonScatterNRC(particle, materialIdx, state);
+        } else {
+
+            const auto E = particle.energy;
+            const auto k = E / ELECTRON_REST_MASS<T>();
+            const auto emin = 1 / (1 + 2 * k);
+            const auto gmax_inv = 1 / (1 / emin + emin);
+            T e, cosAngle, Ee;
+            bool rejected;
+            do {
+                const auto r1 = state.randomUniform<T>();
+                e = r1 + (1 - r1) * emin;
+                const auto t = (1 - e) / (k * e);
+                const auto sinthetasqr = t * (2 - t);
+                cosAngle = 1 - t;
+                const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
+                const auto r2 = state.randomUniform<T>();
+                if constexpr (Lowenergycorrection == 1) {
+                    //simple correction with scatterfactor to supress forward scattering due to binding energy
+                    const auto q = m_attenuationLut.momentumTransferFromCos(E, cosAngle);
+                    const auto scatterFactor = m_attenuationLut.comptonScatterFactor(materialIdx, q);
+                    rejected = r2 > g * scatterFactor;
+                } else {
+                    rejected = r2 > g;
+                }
+
+            } while (rejected);
+            const auto theta = std::acos(cosAngle);
+            const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
+            vectormath::peturb<T>(particle.dir.data(), theta, phi);
+            particle.energy *= e;
+            return E - particle.energy;
+        }
+    }
+
+    T comptonScatterNRC(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
+    {
+
+        const auto& eConfig = m_attenuationLut.electronShellConfiguration(materialIdx);
+        std::array<T, 12> shellProbs;
+
+        //calculating shell probs
+        std::transform(std::execution::unseq, eConfig.cbegin(), eConfig.cend(), shellProbs.begin(), [&](const auto& e) -> T {
+            return e.bindingEnergy < particle.energy && e.hartreeFockOrbital_0 > 0 ? e.numberElectrons : 0;
+        });
+        //cummulative sum of shell probs
+        std::partial_sum(shellProbs.cbegin(), shellProbs.cend(), shellProbs.begin());
+        //selectring shell
+        int shellIdx = 0;
+        const auto shellIdxSample = shellProbs.back() * state.randomUniform<T>();
+        while (shellProbs[shellIdx] <= shellIdxSample && shellIdx < 11) {
+            ++shellIdx;
+        }
+
+        const auto U = eConfig[shellIdx].bindingEnergy / ELECTRON_REST_MASS<T>();
+        const auto p = std::sqrt(2 * U + U * U);
+        const auto J0 = eConfig[shellIdx].hartreeFockOrbital_0;
+
+        const auto k = particle.energy / ELECTRON_REST_MASS<T>();
         const auto emin = 1 / (1 + 2 * k);
         const auto gmax_inv = 1 / (1 / emin + emin);
-        T e, cosAngle, Ee;
+
+        T e, cosAngle;
         bool rejected;
         do {
             const auto r1 = state.randomUniform<T>();
             e = r1 + (1 - r1) * emin;
             const auto t = (1 - e) / (k * e);
-            const auto sinthetasqr = t * (2 - t);
+            const auto sinAngleSqr = t * (2 - t);
             cosAngle = 1 - t;
+            const auto g = (1 / e + e - sinAngleSqr) * gmax_inv;
+            const auto r2 = state.randomUniform<T>();
+            rejected = r2 > g;
 
-            if constexpr (Lowenergycorrection == 1) {
-                //simple correction with scatterfactor to supress forward scattering due to binding energy
-                const auto q = m_attenuationLut.momentumTransferFromCos(E, cosAngle);
-                const auto scatterFactor = m_attenuationLut.comptonScatterFactor(materialIdx, q);
-                const auto r2 = state.randomUniform<T>();
-                const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
-                rejected = r2 > g * scatterFactor;
-            } else {
-                const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
-                const auto r2 = state.randomUniform<T>();
-                rejected = r2 > g;
-            }
-            if constexpr (Lowenergycorrection == 2) {
-                rejected = rejected || (t == T { 0 });
-                // See penelope-2018__a_code_system_for_monte_carlo_simulation_of_electron_and_photon_transport
-                // for details
+            if (!rejected) {
+                const auto pi = (k * (k - U) * (1 - cosAngle) - U) / std::sqrt(2 * k * (k - U) * (1 - cosAngle) + U * U);
+                const auto kc = k * e;
+                const auto qc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosAngle);
+                const auto alpha = qc * (1 + kc * (kc - k * cosAngle) / (qc * qc)) / k;
+                const auto b_part = 1 + 2 * J0 * std::abs(pi);
+                const auto b = (b_part * b_part + 1) / 2;
+                const auto expb = std::exp(-b);
+
+                //calculating S
+                T S;
+                if (pi <= -p) {
+                    S = (1 - alpha * p) * expb / 2;
+                } else if (pi <= 0) {
+                    const auto pabs = std::abs(p);
+                    const auto piabs = std::abs(pi);
+                    constexpr auto sp2 = 1 / (std::numbers::inv_sqrtpi_v<T> / std::numbers::sqrt2_v<T>);
+                    const auto part1 = alpha * sp2 / (4 * J0);
+                    constexpr auto a1 = T { 0.34802 };
+                    constexpr auto a2 = T { -0.0958798 };
+                    constexpr auto a3 = T { 0.7478556 };
+                    const auto sqrte = std::sqrt(std::numbers::e_v<T>);
+                    const auto tp = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * pabs));
+                    const auto tpi = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * piabs));
+                    const auto part2p = sqrte - expb * tp * (a1 + a2 * tp + a3 * tp * tp);
+                    const auto part2pi = sqrte - expb * tpi * (a1 + a2 * tpi + a3 * tpi * tpi);
+                    S = (1 - alpha * pi) * expb / 2 - part1 * (part2p - part2pi);
+                } else if (pi < p) {
+                    const auto pabs = std::abs(p);
+                    const auto piabs = std::abs(pi);
+                    constexpr auto sp2 = 1 / (std::numbers::inv_sqrtpi_v<T> / std::numbers::sqrt2_v<T>);
+                    const auto part1 = alpha * sp2 / (4 * J0);
+                    constexpr auto a1 = T { 0.34802 };
+                    constexpr auto a2 = T { -0.0958798 };
+                    constexpr auto a3 = T { 0.7478556 };
+                    const auto sqrte = std::sqrt(std::numbers::e_v<T>);
+                    const auto tp = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * pabs));
+                    const auto tpi = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * piabs));
+                    const auto part2p = sqrte - expb * tp * (a1 + a2 * tp + a3 * tp * tp);
+                    const auto part2pi = sqrte - expb * tpi * (a1 + a2 * tpi + a3 * tpi * tpi);
+                    S = 1 - (1 - alpha * pi) * expb / 2 - part1 * (part2p - part2pi);
+                } else {
+                    S = 1 - (1 - alpha * p) * expb / 2;
+                }
+
+                const auto r3 = state.randomUniform<T>();
+                rejected = r3 > S;
                 if (!rejected) {
-                    //selecting a electron shell by random, should be improved?
-                    bool acceptshell;
-                    T pz;
-                    const auto EC = E * e;
-                    const auto cqc = std::sqrt(E * E + EC * EC - 2 * E * EC * cosAngle);
-                    const auto F_pz_part = cqc * (1 + EC * (EC - E * cosAngle) / (cqc * cqc)) / E;
-                    const auto F_zp_max = std::max(1 + F_pz_part * T { 0.2 }, 1 - F_pz_part * T { 0.2 });
-
-                    const auto& electronConfigurations = m_attenuationLut.electronShellConfiguration(materialIdx);
-                    std::array<T, 12> pz_max, n_pz_max, shell_probs;
-                    //calculating pz_max and n_pz_max for all shells
-                    for (std::size_t i = 0; i < pz_max.size(); ++i) {
-                        const auto U = electronConfigurations[i].bindingEnergy;
-                        const auto cq = std::sqrt(E * E + (E - U) * (E - U) - 2 * E * (E - U) * cosAngle);
-                        pz_max[i] = E * (E - U - EC) / (EC * cq) * ELECTRON_REST_MASS<T>();
-                        //equation 2.49
-                        constexpr T d2 = std::numbers::sqrt2_v<T>;
-                        constexpr T d1 = T { 1 } / d2;
-                        const auto J = electronConfigurations[i].hartreeFockOrbital_0;
-                        if (pz_max[i] < 0) {
-                            const auto nom = (d1 - d2 * J * pz_max[i]);
-                            n_pz_max[i] = T { 0.5 } * std::exp(d1 * d1 - nom * nom);
-                        } else {
-                            const auto nom = (d1 + d2 * J * pz_max[i]);
-                            n_pz_max[i] = 1 - T { 0.5 } * std::exp(d1 * d1 - nom * nom);
-                        }
-                    }
-                    // calculating shell probability
-                    std::transform(std::execution::unseq,
-                        n_pz_max.cbegin(), n_pz_max.cend(), electronConfigurations.cbegin(), shell_probs.begin(),
-                        [=](const auto n_pz, const auto& c) -> T { return E > c.bindingEnergy && c.hartreeFockOrbital_0 > T { 0 } ? n_pz * c.numberElectrons : 0; });
-                    const auto shell_probs_sum_inv = 1 / std::reduce(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend());
-                    std::transform(std::execution::unseq, shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin(), [=](const auto p) { return p * shell_probs_sum_inv; });
-                    std::partial_sum(shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin());
-                    
-                    do {
-                        //sampling electron shell
-                        const auto r3 = state.randomUniform<T>();
-                        const auto shell_pos = std::upper_bound(shell_probs.cbegin(), shell_probs.cend(), r3);
-                        //const auto electronIdx = std::min(std::distance(shell_probs.cbegin(), shell_pos), 11);
-                        const auto electronIdx = std::distance(shell_probs.cbegin(), shell_pos);
-
-                        //sampling pz analytically
-                        const auto r4 = state.randomUniform<T>();
-                        const auto A = r4 * n_pz_max[electronIdx];
-                        // eq 2.59
-                        if (A < T { 0.5 }) {
-                            constexpr T ln2 = std::numbers::ln2_v<T>;
-                            constexpr T d2 = std::numbers::sqrt2_v<T>;
-                            constexpr T d1 = T { 1 } / d2;
-                            pz = (d1 - std::sqrt(d1 * d1 - ln2 * A)) / (d2 * electronConfigurations[electronIdx].hartreeFockOrbital_0);
-                        } else {
-                            constexpr T ln2 = std::numbers::ln2_v<T>;
-                            constexpr T d2 = std::numbers::sqrt2_v<T>;
-                            constexpr T d1 = T { 1 } / d2;
-                            pz = (std::sqrt(d1 * d1 - ln2 * (1 - A)) - d1) / (d2 * electronConfigurations[electronIdx].hartreeFockOrbital_0);
-                        }
-                        //normalizing pz to atomic units
-                        pz *= (1 / ELECTRON_REST_MASS<T>());
-
-                        //pz must be larger than  minus electron rest mass
-                        acceptshell = pz > -1;
-
-                        //Sampling
-                        const auto F_zp = 1 + F_pz_part * pz;
-                        const auto r5 = state.randomUniform<T>();
-                        acceptshell = acceptshell && r5 * F_zp_max > F_zp;
-
-                    } while (!acceptshell);
-                    // calculating doppler shifted e
-                    const auto t_s = pz * pz;
-                    const auto nom = (1 - t_s * e * cosAngle);
-                    if (pz > 0) {
-                        e = e / (1 - t_s * e * e) * (nom + std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
+                    //sampling pz
+                    T Fmax;
+                    if (pi <= -p) {
+                        Fmax = 1 - alpha * p;
+                    } else if (pi >= p) {
+                        Fmax = 1 + alpha * p;
                     } else {
-                        e = e / (1 - t_s * e * e) * (nom - std::sqrt(nom * nom - (1 - t_s * e * e) * (1 - t_s)));
+                        Fmax = 1 + alpha * pi;
                     }
-                    Ee = E * (1 - e);
+                    const auto r4 = state.randomUniform<T>();
+                    const auto r_bar2 = 2 * r4 * expb;
+                    T pz;
+                    if (r_bar2 < 1) {
+                        const auto part = sqrt(1 - 2 * std::log(r_bar2));
+                        pz = (1 - part) / (2 * J0) / ELECTRON_REST_MASS<T>();
+                    } else {
+                        const auto part = sqrt(1 - 2 * std::log(2 - r_bar2));
+                        pz = (part - 1) / (2 * J0) / ELECTRON_REST_MASS<T>();
+                    }
+
+                    T Fpz;
+                    if (pz <= -p) {
+                        Fpz = 1 - alpha * p;
+                    } else if (pz >= p) {
+                        Fpz = 1 + alpha * p;
+                    } else {
+                        Fpz = 1 + alpha * pz;
+                    }
+
+                    const auto r5 = state.randomUniform<T>();
+                    rejected = r5 > Fpz / Fmax;
+
+                    if (!rejected) {
+                        //calculate new energy
+                        const auto part = std::sqrt(1 - 2 * e * cosAngle + e * e * (1 - pz * pz * sinAngleSqr));
+                        const auto k_bar = kc / (1 - pz * pz * e * e) * (1 - pz * pz * e * cosAngle + pz * part);
+
+                        e = k_bar / k;
+                    }
                 }
             }
-
         } while (rejected);
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
 
+        const auto E = particle.energy;
         particle.energy *= e;
-
-        if constexpr (Lowenergycorrection < 2) {
-            Ee = E * (1 - e);
-        }
-        return Ee;
+        return E - particle.energy;
     }
 
     inline bool particleInsideWorld(const World<T>& world, const std::array<T, 3>& pos) const noexcept
@@ -632,7 +681,7 @@ protected:
         bool continueSampling = true;
         while (continueSampling) {
             if (updateMaxAttenuation) {
-                maxAttenuationInv = m_attenuationLut.maxTotalAttenuationInverse(p.energy);                
+                maxAttenuationInv = m_attenuationLut.maxTotalAttenuationInverse(p.energy);
                 updateMaxAttenuation = false;
             }
             const auto r1 = state.randomUniform<T>();
