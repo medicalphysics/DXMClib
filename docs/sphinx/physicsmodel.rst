@@ -52,7 +52,7 @@ Forced interactions can be used as a variance reduction technique, for example c
 of the photon energy is scored. The weight of the photon is reduced accordingly by 
 
 .. math::
-    w_{after} = w_{before}(1-\frac{\mu_{photoelectric}\rho}{\zeta})
+    w_{after} = w_{before} \left(1-\frac{\mu_{photoelectric}\rho}{\zeta} \right)
 
 Further transport of the photon is done by the ordinary method by sampling a random number to determine if an interaction occurs and determine if a Rayleight or Compton event will happen (photoelectric effect is already dealt with).
 
@@ -145,39 +145,113 @@ The scatter function goes from Z at zero mumentum transfer to zero for maximum m
 .. math::
     g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right) \sum_i w_i \frac{SF_i(q)}{Z_i}
 
-where :math:`w_i` is the number fraction each element in the material and :math:`\sum w_i=1`.
+where :math:`w_i` is the number fraction for each element in the material and :math:`\sum w_i=1`.
 A lookup table for scatter factors are generated for each material and is interpolated by qubic splines for faster lookup during execution.  
 
 
 Binding energy option: Impulse Approximation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-A more complex model for compton events are the impulse approximation model and is similar to how the Penelope monte carlo code handles compton interactions. This method approximate bound electrons by assuming the interacting electron have an initial momentum dependent on the current atomic shell. First :math:`\epsilon` and :math:`\theta` are sampled from the Klein-Nishina cross section for an unbound electron similar as the None binding energy option. 
+A more complex model for compton events are the impulse approximation model and is similar to how the EGSnrc monte carlo code handles compton interactions [#EGSnrc]_. This method approximate bound electrons by assuming the interacting electron have an initial momentum dependent on the current atomic shell. First a random atomic shell is sampled according to the number of electrons in each shell for the current element. The number of shells for each material in dxmclib is limited to 12 for materials consisting of one atomic element and for compounds. In cases where there are more than 12 electron shell configurations, typical in compounds with many elements or heavy elements, the shells with highest binding energies are included. For compounds an electron shell configuration is sampled according to number density of each element and number of electrons in each shell configuration. When the shell have been sampled, scatter angle and scattered photon energy is sampled according to the Klein-Nishina cross section. Note that the sampled shell must have binding energy less or equal to photon energy.
+
+Briefly, the electron is considered unbound but with a momentum :math:`p` corresponing to the binding energy of the electron:
+
+.. math::
+    (m_ec^2+U)^2=c^2p^2+m_e^2c^4
+
+where :math:`U` is the binding energy. The momentum transfer from the incoming photon to the electron is:
+
+.. math::
+    \vec q = \vec k_1 - \vec k_0 
+    
+with :math:`\vec k_0` and :math:`\vec k_1` as the incoming and outgoing four momentum vector of the photon. Projection of the momentum transfer onto the initial electron momentum is:
+
+.. math::
+    p_z = \frac{\vec p \cdot \vec q}{\| \vec q \|}
+
+The scattered photon energy can be calculated in terms of :math:`p_z`, 
+
+.. math::
+    E_1 = \frac{\epsilon E_0}{1-p_z^2 \epsilon^2} \left[  1-p_z^2 \epsilon \cos\theta +p_z \sqrt{1-2 \epsilon \cos \theta + \epsilon^2 (1-p_z^2 \sin^2 \theta)}  \right]
+
+The tricky part of the impulse approximation is sampling of a :math:`p_z` value. In essense, :math:`p_z` is sampled from the Hartree-Fock compton profiles :math:`J(p_z)`,
+
+.. math::
+    J(p_z) = \int dp_x dp_y \| \psi(\vec p) \|^2
+
+where :math:`\psi` is the wave function for the bound electron. In dxmclib the Hartree-Fock profiles are approximated by analytical profiles similar to the PENELOPE monte carlo code [#PENELOPE2018]_:
+
+.. math::
+    J(p_z) = J(0) (1+2J(0)|p_z|) e^{\frac 1 2 -\frac 1 2 (1+2J(0)|p_z|)^2}
+
+For details concerning the sampling procedure any interested reader is encouraged to take a look on the EGSnrc core manual and the PENELOPE workshop proceedings [#EGSnrc]_ [#PENELOPE2018]_.
 
 Rayleigh scattering
 ___________________
+Binding energy option: None
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 Differential cross section for Rayleigh scattering follows Thomson differential cross section for a free electron
 
 .. math::
     \frac{d\rho}{d\Omega} = \frac{r_c^2}{2}\left( 1-\cos^2\theta\right)
 
-This is valid for bound atomic electrons for energies up to 2 keV. For higher energies the photon scatter angle is decreased due to the electronic configuration of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of an atomic form factor [#Hubbell]_ :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
+Sampling the Thomson cross section is naivly done by randomly draw two numbers: 
 
 .. math::
-    q = E \sin\left( \frac{\theta}{2}\right) \frac{1}{hc}
+    p \in \left[0,\frac{4\sqrt 2}{3 \sqrt 3}\right)
+    
+and  
 
-for photon energy :math:`E` and :math:`hc` as Planck's constant and speed of light in vacuum. 
+.. math::
+    \theta \in [0, \pi)
+    
+The scatterangle :math:`\theta` is accepted if:
+
+.. math::
+    p < (2-\sin^2 \theta) \sin \theta
+
+The Thomson cross section is valid for bound atomic electrons for energies up to 2 keV.
+
+Binding energy option: Livermore and Impulse Approximation
+^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
+
+For higher energies the photon scatter angle is decreased due to the electron configurations of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of an atomic form factor :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
+
+.. math::
+    q = \frac{E}{hc} \sin\left( \frac{\theta}{2}\right) 
+
+for photon energy :math:`E` and :math:`hc` as Planck's constant and speed of light in vacuum [#Hubbell]_. 
 
 The differential cross section for Rayleigh scattering is then
 
 .. math::
     \frac{d\rho}{d\Omega} = \frac{r_c^2}{2}\left( 1-\cos^2\theta\right) \left[F(q, Z)\right]^2
 
-For sampling of scatter angle DXMClib uses a similar approach as the EGS5 monte carlo code. By defining 
+For sampling of scatter angle DXMClib uses a similar approach as the EGSnrc [#EGSnrc]_ monte carlo code. By defining 
 
 .. math::
     A(q_{max}^2) = \int_0^{q_{max}^2} \left[F(q, Z)\right]^2 dq^2
 
-with :math:`q_{max} = E/hc`. :math:`[F(q,Z)]^2/A(q_{max}^2)` can be used as a probability density function and :math:`(1-\cos^2\theta)/2` as a rejection function. To sample a scatter angle :math:`q` is first sampled by :math:`A(q^2) = r_1 A(q_{max}^2)` with :math:`r_1` as a random uniform number in interval [0,1). In DXMClib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. Scatter angle :math:`\theta` is also obtained from the sampled :math:`q` value. The sampled momentum transfer and therefore scatter angle is accepted if 
+with 
+
+.. math::
+    q_{max} = E/hc
+
+and
+
+.. math::
+    \frac{[F(q,Z)]^2}{A(q_{max}^2)}
+    
+to be used as a probability density function with
+
+.. math::
+   g= (1-\cos^2\theta)/2
+    
+as a rejection function. To sample a scatter angle :math:`q` is first sampled by 
+
+.. math::
+    A(q^2) = r_1 A(q_{max}^2)
+    
+with :math:`r_1` as a random uniform number in interval [0,1). In DXMClib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. The sampled momentum transfer and therefore scatter angle :math:`\theta` is accepted if 
 
 .. math::
     \frac{1+\cos^2 \theta}{2} > r_2
@@ -203,7 +277,7 @@ All sources in DXMClib uses the concept of an *exposure* meaning a static positi
 .. NOTE::
     Each exposure can run in parallell for computers with multiple cores (all computers nowadays). For optimal performance use atleast twice as many exposures as cores available. Note that number of exposures for CT sources can only be controlled indirectly by setting step angle between each exposure. 
 
-Number of histories per exposure can be set for every source. The optimal number of histories is dependent on the requirered resolution and certainties for a specific application. For example, calculating dose in a large volume of plastics requires much fewer histories compared to a detailed dose map of a CT examination. Voxel size also matters since reaching many events in a small voxel needs more histories. As a guideline, a detailed dose calculation on the voxel level for a thorax examination, either CT or DX, the total number of histories should be about :math:`10^{10}`.   
+Number of histories per exposure can be set for every source. The optimal number of histories is dependent on the requirered resolution and certainties for a specific application. For example, calculating dose in a large volume of plastics requires much fewer histories compared to a detailed dose map of a CT examination. Voxel size also matters since reaching many events in a small voxel needs more histories. As a guideline, a detailed dose calculation on the voxel level for a thorax examination, either CT or DX, the total number of histories should be about :math:`10^{7}-10^{9}`.   
 
 References
 ----------
@@ -212,4 +286,5 @@ References
 .. [#Poludniowski1] Poludniowski G.G. and Evans, P.M. Calculation of x‐ray spectra emerging from an x‐ray tube. Part I. Electron penetration characteristics in x‐ray targets. Med. Phys., 34: 2164-2174 (2007). doi:10.1118/1.2734725
 .. [#Poludniowski2] Poludniowski G.G. Calculation of x‐ray spectra emerging from an x‐ray tube. Part II. X‐ray production and filtration in x‐ray targets. Med. Phys., 34: 2175-2186 (2007). doi:10.1118/1.2734726
 .. [#Hubbell] Hubbell J.H. et al Atomic form factors, incoherent scattering functions, and photon scattering cross sections, J. Phys. Chem. Ref. Data, Vol.4, No. 3, 1975
-
+.. [#EGSnrc] I Kawrakow, E Mainegra-Hing, DWO Rogers, F Tessier, BRB Walters. The EGSnrc Code System: Monte Carlo simulation of electron and photon transport. Technical Report PIRS-701, National Research Council Canada (2020).
+.. [#PENELOPE2018]  PENELOPE 2018: A code system for Monte Carlo simulation of electron and photon transport: Workshop Proceedings, Barcelona, Spain, 28 January – 1 February 2019, OECD Publishing, Paris, https://doi.org/10.1787/32da5043-en.
