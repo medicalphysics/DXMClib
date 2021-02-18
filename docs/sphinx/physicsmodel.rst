@@ -234,7 +234,7 @@ For sampling of scatter angle DXMClib uses a similar approach as the EGSnrc [#EG
 with 
 
 .. math::
-    q_{max} = E/hc
+    q_{max} = \frac{E}{hc}
 
 and
 
@@ -244,14 +244,14 @@ and
 to be used as a probability density function with
 
 .. math::
-   g= (1-\cos^2\theta)/2
+   g= \fraq{1-\cos^2\theta}{2}
     
 as a rejection function. To sample a scatter angle :math:`q` is first sampled by 
 
 .. math::
     A(q^2) = r_1 A(q_{max}^2)
     
-with :math:`r_1` as a random uniform number in interval [0,1). In DXMClib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. The sampled momentum transfer and therefore scatter angle :math:`\theta` is accepted if 
+with :math:`r_1` as a random uniform number in interval [0,1). In dxmclib :math:`q` is found by lookup tables of the integral :math:`A(q^2)`. The sampled momentum transfer and therefore scatter angle :math:`\theta` is accepted if 
 
 .. math::
     \frac{1+\cos^2 \theta}{2} > r_2
