@@ -31,9 +31,52 @@ Copyright 2020 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = false; // run with reduced number of histories
-constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::LIVERMORE;
-//constexpr dxmc::LOWENERGYCORRECTION CORRECTION = dxmc::LOWENERGYCORRECTION::IA;
+constexpr bool SAMPLE_RUN = true;
+
+template <Floating T>
+struct ResultKeys {
+    std::string rCase;
+    std::string volume;
+    std::string specter;
+    std::string modus;
+    std::string model;
+    bool forced = true;
+    T result = 0;
+    T result_std = 0;
+};
+
+class ResultPrint {
+private:
+    std::ofstream m_myfile;
+
+public:
+    ResultPrint()
+    {
+        m_myfile.open("validationTable.txt", std::ios::out | std::ios::app);
+    }
+    ~ResultPrint()
+    {
+        m_myfile.close();
+    }
+    void header()
+    {
+        m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, Forced\n";
+    }
+    template <typename T>
+    void print(const ResultKeys<T>& r)
+    {
+        std::string forced = r.forced ? "1" : "0";
+
+        m_myfile << r.rCase << ", ";
+        m_myfile << r.volume << ", ";
+        m_myfile << r.specter << ", ";
+        m_myfile << r.model << ", ";
+        m_myfile << r.modus << ", ";
+        m_myfile << r.result << ", ";
+        m_myfile << r.result_std << ", ";
+        m_myfile << forced << "\n";
+    }
+};
 
 class Print {
 private:
@@ -175,7 +218,7 @@ bool test120Specter()
     double meanEnergy = 0.0;
     for (std::size_t i = 0; i < n_samples; ++i) {
         const auto j = dist.sampleIndex();
-        sampl_specter[j] += 1;        
+        sampl_specter[j] += 1;
         meanEnergy += dist.sampleValue();
     }
     meanEnergy /= n_samples;
@@ -349,19 +392,30 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     constexpr std::size_t histPerExposure = 1e6;
     constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 500;
 
+    ResultKeys<T> resKey;
+    resKey.rCase = "Case 2";
+    ResultPrint resPrint;
+
     Print print;
     print("TG195 Case 2\n");
-    if (forceInteractions)
+    if (forceInteractions) {
         print("Forced interaction is ON\n");
-    else
+        resKey.forced = true;
+    } else {
         print("Forced interaction is OFF\n");
+        resKey.forced = false;
+    }
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
+        resKey.model = "None";
+    } else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE) {
         print("Livermore\n");
-    else
+        resKey.model = "Livermore";
+    } else {
         print("Impulse approximation (IA)\n");
+        resKey.model = "IA";
+    }
 
     auto w = generateTG195Case2World<T>(forceInteractions);
     print("Number of histories: ", histPerExposure * nExposures, "\n");
@@ -371,10 +425,12 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
         print("Specter source of 120 kV specter\n");
+        resKey.specter = "120 kVp";
     } else {
         std::vector<T> s({ 1.0 }), e({ 56.4 });
         src.setSpecter(s, e);
         print("Monochromatic source of 56.4 keV\n");
+        resKey.specter = "56.4 keV";
     }
 
     src.setHistoriesPerExposure(histPerExposure);
@@ -399,6 +455,7 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         src.setDirectionCosines(cosines);
         src.setPosition(0, -h, 0);
         print("Incident angle is 15 degrees\n");
+        resKey.modus = "Angle 15 deg";
     } else {
         src.setPosition(0, 0, 0);
         const T halfAng = std::atan((T { 390 } / 2) / T { 1800 });
@@ -406,6 +463,7 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
         src.setDirectionCosines(cosines);
         print("Incident angle is 0 degrees\n");
+        resKey.modus = "Angle 0 deg";
     }
 
     src.validate();
@@ -451,12 +509,38 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     print("VOI, dxmc, dxmc error, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
 
     const auto [stddev, stddev_rel] = getError(1, w, res, true);
+    {
+        auto resRow = resKey;
+        resRow.volume = "Total body";
+        resRow.result = total_ev;
+        resRow.result_std = stddev;
+        resPrint.print(resRow);
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRow.model = "TG195";
+            resRow.result = sim_ev;
+            resRow.result_std = -1;
+            resPrint.print(resRow);
+        }
+    }
     print("Total body, ", total_ev, ", ", stddev, ", ", stddev_rel, ", ");
     print(total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
     for (std::size_t i = 0; i < subvol_ev.size(); ++i) {
         const auto [stddev, stddev_rel] = getError(i + 2, w, res);
         print("VOI ", i + 1, ", ", subvol_ev[i], ", ", stddev, ", ", stddev_rel, ", ");
         print(subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+
+        auto resRow = resKey;
+        resRow.volume = "VOI " + std::to_string(i + 1);
+        resRow.result = subvol_ev[i];
+        resRow.result_std = stddev;
+        resPrint.print(resRow);
+
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRow.model = "TG195";
+            resRow.result = sim_subvol[i];
+            resRow.result_std = -1;
+            resPrint.print(resRow);
+        }
     }
     print("\n");
     return true;
@@ -625,19 +709,31 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     constexpr std::size_t histPerExposure = 1e6;
     constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 200;
 
+    ResultKeys<T> resKey;
+    resKey.rCase = "Case 3";
+    ResultPrint resPrint;
+
     Print print;
     print("TG195 Case 3\n");
-    if (forceInteractions)
+    if (forceInteractions) {
         print("Forced interaction is ON\n");
-    else
+        resKey.forced = true;
+    } else {
         print("Forced interaction is OFF\n");
+        resKey.forced = false;
+    }
+
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
+        resKey.model = "None";
+    } else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE) {
         print("Livermore\n");
-    else
+        resKey.model = "Livermore";
+    } else {
         print("Impulse approximation (IA)\n");
+        resKey.model = "IA";
+    }
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     auto w = generateTG195Case3World<T>(forceInteractions);
@@ -648,10 +744,12 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         const auto specter = TG195_30KV<T>();
         src.setSpecter(specter.second, specter.first);
         print("Specter source of 30 kV specter\n");
+        resKey.specter = "30 kVp";
     } else {
         std::vector<T> s({ 1.0 }), e({ 16.8 });
         src.setSpecter(s, e);
         print("Monochromatic source of 16.8 keV\n");
+        resKey.specter = "16.8 keV";
     }
 
     src.setHistoriesPerExposure(histPerExposure);
@@ -681,6 +779,7 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 
         src.setPosition(0, std::sin(angle) * g, std::cos(angle) * g);
         print("Incident angle is 15 degrees\n");
+        resKey.modus = "Angle 15 deg";
     } else {
         src.setPosition(0, 0, 660);
         const T halfAngX = std::atan(T { 140 } / T { 660 });
@@ -690,6 +789,7 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         std::array<T, 6> cosines = { 1, 0, 0, 0, -1, 0 };
         src.setDirectionCosines(cosines);
         print("Incident angle is 0 degrees\n");
+        resKey.modus = "Angle 0 deg";
     }
 
     src.validate();
@@ -731,9 +831,36 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     print("VOI, dxmc, dxmc error, dxmc error [%], dxmc nEvents, TG195, difference [eV/hist], difference [%]\n");
     const auto [total_error, total_error_rel] = getError(4, w, res, true);
     print("Total body, ", total_ev, ", ", total_error, ", ", total_error_rel, ", ", total_events, ", ", sim_ev, ", ", total_ev - sim_ev, ", ", (total_ev - sim_ev) / sim_ev * 100, "\n");
+    {
+        auto resRow = resKey;
+        resRow.result = total_ev;
+        resRow.result_std = total_error;
+        resRow.volume = "Total body";
+        resPrint.print(resRow);
+
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRow.model = "TG195";
+            resRow.result = sim_ev;
+            resRow.result_std = -1;
+            resPrint.print(resRow);
+        }
+    }
     for (std::size_t i = 0; i < subvol_ev.size(); ++i) {
         const auto [error, error_rel] = getError(i + 4, w, res);
         print("VOI ", i + 1, ", ", subvol_ev[i], ", ", error, ", ", error_rel, ", ", subvol_events[i], ", ", sim_subvol[i], ", ", subvol_ev[i] - sim_subvol[i], ", ", (subvol_ev[i] - sim_subvol[i]) / sim_subvol[i] * 100, "\n");
+
+        auto resRow = resKey;
+        resRow.result = subvol_ev[i];
+        resRow.result_std = error;
+        resRow.volume = "VOI " + std::to_string(i + 1);
+        resPrint.print(resRow);
+
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRow.model = "TG195";
+            resRow.result = sim_subvol[i];
+            resRow.result_std = -1;
+            resPrint.print(resRow);
+        }
     }
     print("\n");
     return true;
@@ -798,19 +925,30 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
     constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1e4 : 1e5;
     constexpr std::size_t nExposures = 360;
 
+    ResultKeys<T> resKey;
+    resKey.rCase = "Case 4.1";
+    ResultPrint resPrint;
+
     Print print;
     print("TG195 Case 4.1:\n");
-    if (forceInteractions)
+    if (forceInteractions) {
         print("Forced interaction is ON\n");
-    else
+        resKey.forced = true;
+    } else {
         print("Forced interaction is OFF\n");
+        resKey.forced = false;
+    }
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
+        resKey.model = "None";
+    } else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE) {
         print("Livermore\n");
-    else
+        resKey.model = "Livermore";
+    } else {
         print("Impulse approximation (IA)\n");
+        resKey.model = "IA";
+    }
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
@@ -824,10 +962,12 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         print("Specter of 120 kV W/Al\n");
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
+        resKey.specter = "120 kVp";
     } else {
         print("Monoenergetic specter of 56.4 kev\n");
         std::vector<T> s(1, 1.0), e(1, 56.4);
         src.setSpecter(s, e);
+        resKey.specter = "56.4 keV";
     }
     src.setHistoriesPerExposure(histPerExposure);
     src.setTotalExposures(nExposures);
@@ -835,9 +975,11 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
     if (wide_collimation) {
         print("Collimation: 80 mm:\n");
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 40 } / 600) * 2);
+        resKey.modus = "Collimation 80 mm";
     } else {
         print("Collimation: 10 mm:\n");
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
+        resKey.modus = "Collimation 10 mm";
     }
 
     auto w = generateTG195Case4World1<T>(forceInteractions);
@@ -882,6 +1024,19 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         print(i + 1, ", ", voi_ev[i], ", ", voi_error[i], ", ", voi_error_rel[i], ", ");
         print(voi_nevent[i], ", ", sim_ev[i], ", ", voi_ev[i] - sim_ev[i], ", ");
         print((voi_ev[i] - sim_ev[i]) / sim_ev[i] * 100, "\n");
+
+        auto resRow = resKey;
+        resRow.volume = "VOI " + std::to_string(i + 1);
+        resRow.result = voi_ev[i];
+        resRow.result_std = voi_error[i];
+        resPrint.print(resRow);
+
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRow.model = "TG195";
+            resRow.result = sim_ev[i];
+            resRow.result_std = -1;
+            resPrint.print(resRow);
+        }
     }
     print("\n");
     return true;
@@ -968,19 +1123,31 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
             sim_ev_pher = { 34.70, 101.29375, 99.802475, 96.108725, 89.966275, 81.369475, 70.5424, 56.2835, 38.1283, 22.348775, 12.166625, 6.515755, 3.643485, 2.180365, 1.41379, 0.984371, 0.7510235, 0.6165785, 0.54522075, 0.52163, 0.54515775, 0.61643625, 0.750186, 0.9914865, 1.4138375, 2.174915, 3.6299975, 6.5142425, 12.200725, 22.2865, 38.146275, 56.287325, 70.64165, 81.424625, 89.82015, 96.16995, 99.92435 };
         }
     }
+
+    ResultKeys<T> resKey;
+    resKey.rCase = "Case 4.2";
+    ResultPrint resPrint;
+
     Print print;
     print("TG195 Case 4.2:\n");
-    if (forceInteractions)
+    if (forceInteractions) {
         print("Forced interaction is ON\n");
-    else
+        resKey.forced = true;
+    } else {
         print("Forced interaction is OFF\n");
+        resKey.forced = false;
+    }
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
+        resKey.model = "None";
+    } else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE) {
         print("Livermore\n");
-    else
+        resKey.model = "Livermore";
+    } else {
         print("Impulse approximation (IA)\n");
+        resKey.model = "IA";
+    }
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
@@ -995,20 +1162,24 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
         srcCT.setSpecter(specter.second, specter.first);
+        resKey.specter = "120 kVp";
     } else {
         print("Monoenergetic specter of 56.4 kev\n");
         std::vector<T> s(1, T { 1 }), e(1, T { 56.4 });
         src.setSpecter(s, e);
         srcCT.setSpecter(s, e);
+        resKey.specter = "56.4 keV";
     }
     if (wide_collimation) {
         print("Collimation: 80 mm:\n");
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 40 } / 600) * 2);
         srcCT.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 40 } / 600) * 2);
+        resKey.modus = "Collimation 80 mm";
     } else {
         print("Collimation: 10 mm:\n");
         src.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
         srcCT.setCollimationAngles(std::atan(T { 160 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
+        resKey.modus = "Collimation 10 mm";
     }
 
     auto w = generateTG195Case4World2<T>(forceInteractions);
@@ -1054,13 +1225,43 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         auto nevents_cent = std::transform_reduce(std::execution::par_unseq, res.nEvents.cbegin(), res.nEvents.cend(), matBegin, 0, std::plus<>(), [](auto d, auto m) { return m == 2 ? d : 0; });
         const auto [error_pher, error_pher_rel] = getError(3, w, res);
         const auto [error_cent, error_cent_rel] = getError(2, w, res);
-        if (i > 0)
+
+        auto resRowCent = resKey;
+        resRowCent.modus += " Center";
+        auto resRowPher = resKey;
+        resRowPher.modus += " Pheriphery";
+
+        if (i > 0) {
             print((i - 1) * 10);
-        else
+            resRowCent.volume = "Angle " + std::to_string((i - 1) * 10);
+            resRowPher.volume = "Angle " + std::to_string((i - 1) * 10);
+        } else {
             print("Continuous angle");
+            resRowCent.volume = "Continuous angle";
+            resRowPher.volume = "Continuous angle";
+        }
         print(", ", dose_cent, ", ", error_cent, ", ", nevents_cent, ", ", dose_pher, ", ", error_pher, ", ", nevents_pher, ", ",
             sim_ev_center[i], ", ", sim_ev_pher[i], ", ", simtime / 1000, "s, ",
             (dose_cent - sim_ev_center[i]) / sim_ev_center[i] * 100, ", ", (dose_pher - sim_ev_pher[i]) / sim_ev_pher[i] * 100, "\n");
+
+        resRowCent.result = dose_cent;
+        resRowPher.result = dose_pher;
+        resRowCent.result_std = error_cent;
+        resRowPher.result_std = error_pher;
+        resPrint.print(resRowCent);
+        resPrint.print(resRowPher);
+
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRowCent.model = "TG195";
+            resRowCent.result = sim_ev_center[i];
+            resRowCent.result_std = -1;
+            resPrint.print(resRowCent);
+
+            resRowPher.model = "TG195";
+            resRowPher.result = sim_ev_pher[i];
+            resRowPher.result_std = -1;
+            resPrint.print(resRowPher);
+        }
     }
     print("\n");
     return true;
@@ -1151,6 +1352,10 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e6;
     constexpr std::size_t nExposures = 360;
 
+    ResultKeys<T> resKey;
+    resKey.rCase = "Case 5";
+    ResultPrint resPrint;
+
     Print print;
     print("TG195 Case 5:\n");
     auto world = generateTG195Case5World<T>();
@@ -1160,13 +1365,18 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
     }
 
     print("Forced interaction is OFF\n");
+    resKey.forced = false;
     print("Low energy correction model: ");
-    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE)
+    if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
         print("None\n");
-    else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE)
+        resKey.model = "None";
+    } else if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::LIVERMORE) {
         print("Livermore\n");
-    else
+        resKey.model = "Livermore";
+    } else {
         print("Impulse approximation (IA)\n");
+        resKey.model = "IA";
+    }
 
     print("Number of histories: ", histPerExposure * nExposures, "\n");
     IsotropicSource<T> src;
@@ -1181,11 +1391,13 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         const auto specter = TG195_120KV<T>();
         src.setSpecter(specter.second, specter.first);
         srcCT.setSpecter(specter.second, specter.first);
+        resKey.specter = "120 kVp";
     } else {
         print("Monoenergetic specter of 56.4 kev\n");
         std::vector<T> s(1, T { 1 }), e(1, T { 56.4 });
         src.setSpecter(s, e);
         srcCT.setSpecter(s, e);
+        resKey.specter = "56.4 keV";
     }
     print("Collimation: 10 mm:\n");
     src.setCollimationAngles(std::atan(T { 250 } / 600) * 2, std::atan(T { 5 } / 600) * 2);
@@ -1277,6 +1489,20 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
             const auto diff = organ_doses[j] - tg195_doses[i][j];
             const auto diff_p = 100 * diff / tg195_doses[i][j];
             print(diff, ", ", diff_p, "\n");
+
+            auto resRow = resKey;
+            resRow.modus = "Descreet angle " + std::to_string(angles[i]);
+            resRow.volume = tg195_organ_names[j];
+            resRow.result = organ_doses[j];
+            resRow.result_std = error[j];
+            resPrint.print(resRow);
+
+            if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+                resRow.model = "TG195";
+                resRow.result = tg195_doses[i][j];
+                resRow.result_std = -1;
+                resPrint.print(resRow);
+            }
         }
     }
 
@@ -1314,6 +1540,20 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         const auto diff = dose_sum - tg195_organ_doses_cont[j];
         const auto diff_p = 100 * diff / tg195_organ_doses_cont[j];
         print(diff, ", ", diff_p, "\n");
+
+        auto resRow = resKey;
+        resRow.modus = "Continious angle";
+        resRow.volume = tg195_organ_names[j];
+        resRow.result = dose_sum;
+        resRow.result_std = std::sqrt(var_sum);
+        resPrint.print(resRow);
+
+        if (transport.lowEnergyCorrectionModel() == LOWENERGYCORRECTION::NONE) {
+            resRow.model = "TG195";
+            resRow.result = tg195_organ_doses_cont[j];
+            resRow.result_std = -1;
+            resPrint.print(resRow);
+        }
     }
 
     print("\n");
@@ -1357,9 +1597,16 @@ bool selectOptions()
 {
     dxmc::Transport<T> transport;
     transport.setOutputMode(dxmc::Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
-    transport.setLowEnergyCorrectionModel(CORRECTION);
 
+    transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::NONE);
     auto success = runAll(transport);
+
+    transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::LIVERMORE);
+    success = success && runAll(transport);
+
+    transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::IA);
+    success = success && runAll(transport);
+
     return success;
 }
 
@@ -1368,6 +1615,9 @@ void printStart()
     Print print;
     print("TG195 validation cases\n");
     print.date();
+
+    ResultPrint resPrint;
+    resPrint.header();
 }
 
 int main(int argc, char* argv[])
