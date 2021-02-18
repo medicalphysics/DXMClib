@@ -132,9 +132,9 @@ std::string Material::getSymbolFromAtomicNumber(int Z)
 double Material::getRayleightFormFactorSquared(const double momentumTransfer) const
 {
 
-    const auto sum = std::transform_reduce(std::execution::par_unseq, m_elements.cbegin(), m_elements.cend(), 0.0, std::plus<>(), [=](const auto Z) {
+    const auto sum = std::transform_reduce(std::execution::par_unseq, m_elements.cbegin(), m_elements.cend(), m_elementNumberFraction.cbegin(), 0.0, std::plus<>(), [=](const auto Z, const auto nf) {
         const auto f = FF_Rayl(Z, momentumTransfer, nullptr);
-        return f * f;
+        return nf * f * f;
     });
     return sum;
 }
