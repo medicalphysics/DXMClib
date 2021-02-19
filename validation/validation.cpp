@@ -31,7 +31,7 @@ Copyright 2020 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 template <Floating T>
 struct ResultKeys {
@@ -390,7 +390,7 @@ template <typename T>
 bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 500;
+    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 100;
 
     ResultKeys<T> resKey;
     resKey.rCase = "Case 2";
@@ -707,7 +707,7 @@ template <typename T>
 bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
     constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 200;
+    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 100;
 
     ResultKeys<T> resKey;
     resKey.rCase = "Case 3";
@@ -1101,7 +1101,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
 template <typename T>
 bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
-    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e6;
+    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e5;
     constexpr std::size_t nExposures = 360;
 
     std::array<T, 37> sim_ev_center, sim_ev_pher;
@@ -1349,7 +1349,7 @@ World<T> generateTG195Case5World()
 template <typename T>
 bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false)
 {
-    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e6;
+    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e5;
     constexpr std::size_t nExposures = 360;
 
     ResultKeys<T> resKey;
@@ -1491,7 +1491,7 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
             print(diff, ", ", diff_p, "\n");
 
             auto resRow = resKey;
-            resRow.modus = "Descreet angle " + std::to_string(angles[i]);
+            resRow.modus = "Descreet angle " + std::to_string(static_cast<int>(angles[i]));
             resRow.volume = tg195_organ_names[j];
             resRow.result = organ_doses[j];
             resRow.result_std = error[j];
@@ -1598,8 +1598,10 @@ bool selectOptions()
     dxmc::Transport<T> transport;
     transport.setOutputMode(dxmc::Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
 
+    bool success = true;
+
     transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::NONE);
-    auto success = runAll(transport);
+    success = success && runAll(transport);
 
     transport.setLowEnergyCorrectionModel(LOWENERGYCORRECTION::LIVERMORE);
     success = success && runAll(transport);
