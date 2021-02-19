@@ -367,6 +367,13 @@ protected:
         const auto J0 = eConfig[shellIdx].hartreeFockOrbital_0;
 
         const auto k = particle.energy / ELECTRON_REST_MASS<T>();
+
+        //Rejecting interaction if binding energy is larger than particle energy
+        //Rejecting the interaction will correct the compton cross section
+        if (U > k) {
+            return 0;
+        }
+
         const auto emin = 1 / (1 + 2 * k);
         const auto gmax_inv = 1 / (1 / emin + emin);
 
