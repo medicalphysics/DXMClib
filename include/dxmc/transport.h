@@ -358,7 +358,7 @@ protected:
         //selectring shell
         int shellIdx = 0;
         const auto shellIdxSample = shellProbs.back() * state.randomUniform<T>();
-        while (shellProbs[shellIdx] <= shellIdxSample && shellIdx < 11) {
+        while (shellProbs[shellIdx] < shellIdxSample && shellIdx < 11) {
             ++shellIdx;
         }
 
