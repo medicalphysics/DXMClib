@@ -232,23 +232,21 @@ template <typename T>
         c.numberElectrons /= electrons_sum;
     }
 
-    //calculating shell probabilities;
+    //calculating shell photoionizing probabilities;
     std::vector<double> energy(400);
     std::iota(energy.begin(), energy.end(), 0.5);
 
     for (std::size_t i = 0; i < configs_a.size(); ++i) {
         if (configs_a[i].Z > 0) {
             const auto c_prob = configs_a[i].numberElectrons * std::transform_reduce(std::execution::par_unseq, energy.cbegin(), energy.cend(), 0.0, std::plus<>(), [=](const auto e) { return CSb_Photo_Partial(configs_a[i].Z, configs_a[i].shell, e, nullptr); });
-            double tot_prob = c_prob;
-
-            for (std::size_t j = i + 1; j < configs_a.size(); ++j) {
-                tot_prob += configs_a[j].numberElectrons * std::transform_reduce(std::execution::par_unseq, energy.cbegin(), energy.cend(), 0.0, std::plus<>(), [=](const auto e) { return CSb_Photo_Partial(configs_a[j].Z, configs_a[j].shell, e, nullptr); });
-            }
-            if (tot_prob > 0) {
-                configs_a[i].photoIonizationProbability = c_prob / tot_prob;
-            }
+            configs_a[i].photoIonizationProbability = c_prob;
         }
     }
+    const auto c_prob_tot = std::transform_reduce(std::execution::par_unseq, configs_a.cbegin(), configs_a.cend(), 0.0, std::plus<>(), [](const auto& c) { return c.photoIonizationProbability; });
+    if (c_prob_tot > 0) {
+        std::for_each(configs_a.begin(), configs_a.end(), [=](auto& c) { c.photoIonizationProbability /= c_prob_tot; });
+    }
+
     return configs_a;
 }
 

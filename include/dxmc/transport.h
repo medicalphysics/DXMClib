@@ -221,30 +221,26 @@ protected:
         } else {
             // select shells where binding energy is greater than photon energy
             const auto& elConf = m_attenuationLut.electronShellConfiguration(materialIdx);
-            std::size_t idx = 0;
-            while (elConf[idx].bindingEnergy > E && idx < 11) {
-                idx++;
+            std::array<T, 12> shell_probs;
+            std::transform(std::execution::unseq, elConf.cbegin(), elConf.cend(), shell_probs.begin(), [=](const auto& c) { return E > c.bindingEnergy ? c.photoIonizationProbability : 0; });
+            //cummulative sum of shell probs
+            std::partial_sum(shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin());
+            //selectring shell
+            int idx = 0;
+            const auto shellIdxSample = shell_probs.back() * state.randomUniform<T>();
+            while (shell_probs[idx] < shellIdxSample && idx < 11) {
+                ++idx;
             }
-            if (elConf[idx].bindingEnergy > E || elConf[idx].bindingEnergy > ENERGY_CUTOFF_THRESHOLD()) {
+
+            if (elConf[idx].bindingEnergy > E || elConf[idx].bindingEnergy < ENERGY_CUTOFF_THRESHOLD()) {
                 // no suitable shell, all energy is deposited locally
                 particle.energy = 0;
                 return E;
             }
 
-            //select shell based on partial photoionization crossection
-            auto r1 = state.randomUniform<T>();
-            while (r1 >= elConf[idx].photoIonizationProbability && idx < 11) {
-                r1 = (1 - r1) / (1 - elConf[idx].photoIonizationProbability);
-                ++idx;
-            }
-            if (r1 >= elConf[idx].photoIonizationProbability) {
-                particle.energy = 0;
-                return E;
-            }
-
             //Determine randomly if a fluorscence photon is emitted from corrected yield
-            const auto r2 = state.randomUniform<T>();
-            if (r2 <= elConf[idx].fluorescenceYield) {
+            const auto r1 = state.randomUniform<T>();
+            if (r1 <= elConf[idx].fluorescenceYield) {
                 // select line transition from the three most probable lines
                 std::size_t lineIdx = 0;
                 auto r3 = state.randomUniform<T>() - elConf[idx].fluorLineProbabilities[lineIdx];
@@ -473,7 +469,6 @@ protected:
                         //calculate new energy
                         const auto part = std::sqrt(1 - 2 * e * cosAngle + e * e * (1 - pz * pz * sinAngleSqr));
                         const auto k_bar = kc / (1 - pz * pz * e * e) * (1 - pz * pz * e * cosAngle + pz * part);
-
                         e = k_bar / k;
                     }
                 }
@@ -482,7 +477,6 @@ protected:
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
         vectormath::peturb<T>(particle.dir.data(), theta, phi);
-
         const auto E = particle.energy;
         particle.energy *= e;
         return E - particle.energy;

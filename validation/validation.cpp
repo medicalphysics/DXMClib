@@ -1574,6 +1574,7 @@ bool runAll(dxmc::Transport<T> transport)
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, false, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
+
     success = success && TG195Case3AbsorbedEnergy<T>(transport, true, true, false);
 
     success = success && TG195Case41AbsorbedEnergy<T>(transport, false, false, false);
