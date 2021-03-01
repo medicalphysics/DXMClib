@@ -31,7 +31,7 @@ Copyright 2020 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = false;
+constexpr bool SAMPLE_RUN = true;
 
 template <Floating T>
 struct ResultKeys {
@@ -867,7 +867,7 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 }
 
 template <typename T>
-World<T> generateTG195Case4World1(bool forceInteractions = false)
+World<T> generateTG195Case4World1()
 {
     const std::array<std::size_t, 3> dim = { 400, 400, 600 };
     const std::array<T, 3> spacing = { 3, 3, 5 };
@@ -909,18 +909,12 @@ World<T> generateTG195Case4World1(bool forceInteractions = false)
     for (int i = 0; i < 4; ++i)
         w.addMaterialToMap(pmma);
 
-    if (forceInteractions) {
-        auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-        std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
-        w.setMeasurementMapArray(meas);
-    }
-
     w.makeValid();
     return w;
 }
 
 template <typename T>
-bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
+bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false)
 {
     constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1e4 : 1e5;
     constexpr std::size_t nExposures = 360;
@@ -931,13 +925,9 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
 
     Print print;
     print("TG195 Case 4.1:\n");
-    if (forceInteractions) {
-        print("Forced interaction is ON\n");
-        resKey.forced = true;
-    } else {
-        print("Forced interaction is OFF\n");
-        resKey.forced = false;
-    }
+    print("Forced interaction is OFF\n");
+    resKey.forced = false;
+
     print("Low energy correction model: ");
     if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
         print("None\n");
@@ -982,7 +972,7 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         resKey.modus = "Collimation 10 mm";
     }
 
-    auto w = generateTG195Case4World1<T>(forceInteractions);
+    auto w = generateTG195Case4World1<T>();
 
     const auto volume_voi = 160 * 160 * PI_VAL<T>() * 10;
     const auto voxel_volume = std::accumulate(w.spacing().cbegin(), w.spacing().cend(), T { 1 }, std::multiplies<>());
@@ -1566,26 +1556,27 @@ bool runAll(dxmc::Transport<T> transport)
     auto success = true;
 
     // call  by (use specter, wide collimation/tilting, force interactions)
-    success = success && TG195Case2AbsorbedEnergy<T>(transport, false, false, false);
-    success = success && TG195Case2AbsorbedEnergy<T>(transport, false, true, false);
-    success = success && TG195Case2AbsorbedEnergy<T>(transport, true, false, false);
-    success = success && TG195Case2AbsorbedEnergy<T>(transport, true, true, false);
+    std::array<bool, 2> forced_interactions = { true, false };
+    for (const auto forced : forced_interactions) {
+        success = success && TG195Case2AbsorbedEnergy<T>(transport, false, false, forced);
+        success = success && TG195Case2AbsorbedEnergy<T>(transport, false, true, forced);
+        success = success && TG195Case2AbsorbedEnergy<T>(transport, true, false, forced);
+        success = success && TG195Case2AbsorbedEnergy<T>(transport, true, true, forced);
 
-    success = success && TG195Case3AbsorbedEnergy<T>(transport, false, false, false);
-    success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, false);
-    success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, false);
+        success = success && TG195Case3AbsorbedEnergy<T>(transport, false, false, forced);
+        success = success && TG195Case3AbsorbedEnergy<T>(transport, false, true, forced);
+        success = success && TG195Case3AbsorbedEnergy<T>(transport, true, false, forced);
+        success = success && TG195Case3AbsorbedEnergy<T>(transport, true, true, forced);
 
-    success = success && TG195Case3AbsorbedEnergy<T>(transport, true, true, false);
-
-    success = success && TG195Case41AbsorbedEnergy<T>(transport, false, false, false);
-    success = success && TG195Case41AbsorbedEnergy<T>(transport, false, true, false);
-    success = success && TG195Case41AbsorbedEnergy<T>(transport, true, false, false);
-    success = success && TG195Case41AbsorbedEnergy<T>(transport, true, true, false);
-
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, false, false);
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, false, true, false);
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, false, false);
-    success = success && TG195Case42AbsorbedEnergy<T>(transport, true, true, false);
+        success = success && TG195Case42AbsorbedEnergy<T>(transport, false, false, forced);
+        success = success && TG195Case42AbsorbedEnergy<T>(transport, false, true, forced);
+        success = success && TG195Case42AbsorbedEnergy<T>(transport, true, false, forced);
+        success = success && TG195Case42AbsorbedEnergy<T>(transport, true, true, forced);
+    }
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, false, false);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, false, true);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, true, false);
+    success = success && TG195Case41AbsorbedEnergy<T>(transport, true, true);
 
     success = success && TG195Case5AbsorbedEnergy<T>(transport, false);
     success = success && TG195Case5AbsorbedEnergy<T>(transport, true);
