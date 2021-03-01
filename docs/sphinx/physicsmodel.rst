@@ -16,7 +16,7 @@ The world may be rotated in the basis coordinate system. Orientation of the worl
 
 Definition of materials
 -----------------------
-The only material properties DXMClib cares for are mass attenuation coefficients, atomic form factors and scatter factors for chemical elements and compounds. Thankfully, Tom Schoonjans have created an excellent library providing these properties. For this reason xraylib_ is a required dependency of DXMClib. Materials can be specified by a chemical element, or a compound described by chemical symbol and number density, for example H2O or HO0.5 for water. In addition, standard NIST materials are also included. 
+The only material properties DXMClib cares for are mass attenuation coefficients, atomic form factors, scatter factors and Hartree-Fock orbitals for chemical elements and compounds. Thankfully, Tom Schoonjans have created an excellent library providing these properties. For this reason xraylib_ is a required dependency of DXMClib. Materials can be specified by a chemical element, or a compound described by chemical symbol and number density, for example H2O or HO0.5 for water. In addition, standard NIST materials are also included. 
 
 .. _xraylib: https://github.com/tschoonj/xraylib
 
@@ -24,7 +24,7 @@ Particle transport
 ------------------
 X-ray energies above 150 keV is rarely used in diagnostic imaging, for an electron with energy 150 keV the CSDA range in soft tissue is about 0.3 mm and on par with typical voxel size in CT imaging. DXMClib assumes that all interactions creating secondary electrons positions their energy in the current voxel. All photons are described simply by a position, unit direction vector, energy and weight. Of these only the weight attribute should need an explanation. Ideally all photons will have a weight of unity or one. The weight is introduced to simplify variations in fluence from a source, for example modeling of a CT bow-tie filter. Instead of randomly sampling photons with a fluence profile mimicking a bow-tie filter a flat fluence profile can be used instead and assigning photon weight according to the bow-tie fluence profile. The expectation weight of a large number of photons is 1.0 with the added effect that same number density of photons are simulated on the filter edge as at the center of the filter. 
 
-For efficient photon transport in a voxelized volume there are two suitable algorithms; calculating the radiologic path to compute interaction point [#SUNDERMAN1998]_ or Woodcock tracking [#WOODCOCK1965]_. While Siddons path algorithm by calculating the radiologic path through the whole volume to find an interaction point are suitable to track even a few photons it's quite inefficient compared to Woodcock tracking for large number of voxels. Woodcock tracking are perhaps best explained by introducing photon transport in a homogeneous volume first.
+For efficient photon transport in a voxelized volume there are two suitable algorithms; calculating the radiologic path to compute interaction point [#SUNDERMAN1998]_ or Woodcock tracking [#WOODCOCK1965]_. While Siddons path algorithm by calculating the radiologic path through the whole volume to find an interaction point are suitable to track even a few photons it's quite inefficient compared to Woodcock tracking for large number of voxels. Woodcock tracking are perhaps best explained by introducing photon transport in a homogeneous volume.
 To sample a path length of a photon in a homogeneous volume, draw a random number :math:`r` in interval [0, 1). The photon path length is then :math:`l= -\ln(r)/(\mu \rho)` where :math:`\mu` and :math:`\rho` is mass attenuation coefficient and density of the material. This can be extended to a heterogeneous volume by introducing virtual interactions. The path length is calculated in a similar way: :math:`l= -\ln(r)/\zeta` with
 
 .. math::
@@ -58,7 +58,7 @@ Further transport of the photon is done by the ordinary method by sampling a ran
 
 Generating x-ray spectra
 -------------------------
-Since most diagnostic x-ray units do not emit monochromatic photon beams this library includes a x-ray spectra generator. The implementation uses a semi-analytical model proposed by Poludniowski [#Poludniowski1]_ [#Poludniowski2]_ for simulating a spectra from a pure tungsten anode. The model is valid tube potentials from 50kVp to 150 kVp but is accurate up to 300 kVp. The implementation allows for adding filtration of any material and to freely select tube potential and anode angle proving quite flexible. Since the model requires an evaluation of a double integral for each energy bin which is quite computational expensive this implementation is multi threaded. The same formalism is also used in the SpekCalc application also by Poludniowski et al. The Heel effect is also modelled for collimated beams along the anode cathode direction, and is equivalent to a corresponding change in anode angle in the model proposed by Poludniowski.  
+Since most diagnostic x-ray units do not emit monochromatic photon beams this library includes a x-ray spectra generator. The implementation uses a semi-analytical model proposed by Poludniowski [#Poludniowski1]_ [#Poludniowski2]_ for simulating a spectra from a pure tungsten anode. The model is valid for tube potentials from 50kVp to 150 kVp but is accurate up to 300 kVp. The implementation allows for adding filtration of any material and to freely select tube potential and anode angle. Since the model requires an evaluation of a double integral for each energy bin which is quite computational expensive this implementation is multi threaded. The same formalism is also used in the SpekCalc application also by Poludniowski et al. The Heel effect is also modelled for collimated beams along the anode cathode direction, and is equivalent to a corresponding change in anode angle in the model proposed by Poludniowski.  
 
 Sampling photon energies from a specter is implemented by the squaring of histogram method which is quite fast after an initial generation of a lookup table. When an energy bin is sampled the photon energy is finally uniformly sampled within the bin width. 
 
@@ -130,7 +130,7 @@ All electrons are considered unbound and the compton event is sampled according 
 
 Binding energy option: Livermore
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
-Ignoring any binding effects on the electron will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction. This correction takes into account Hubbel's atomic form factor [#Hubbell]_. In this case the sampling is performed by the same procedure as an unbound electron except for a slighly modified rejection function:
+Ignoring any binding effects on the electron will overestimate forward scattering for low energy photons. DXMClib can use a simplified model (the Livermore model) for low energy correction. This correction takes into account a scatter function based on Hartree-Fock compton profiles averaged over all electron shell configurations. In this case the sampling is performed by the same procedure as an unbound electron except for a slighly modified rejection function:
 
 .. math::
     g = \frac{1}{g_{max}} \left( \frac{1}{\epsilon} + \epsilon -\sin^2\theta \right) \frac{SF(q)}{Z}
@@ -214,7 +214,7 @@ The Thomson cross section is valid for bound atomic electrons for energies up to
 Binding energy option: Livermore and Impulse Approximation
 ^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^^
 
-For higher energies the photon scatter angle is decreased due to the electron configurations of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of an atomic form factor :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
+For higher energies the photon scatter angle is decreased due to the electron configurations of the whole atom. The Rayleight differential cross section is like the Thomson cross section but with the introduction of Hubbels atomic form factor :math:`F(q, Z)` where :math:`Z` is the atomic number and :math:`q` is the momentum transfer given by
 
 .. math::
     q = \frac{E}{hc} \sin\left( \frac{\theta}{2}\right) 
@@ -244,7 +244,7 @@ and
 to be used as a probability density function with
 
 .. math::
-   g= \fraq{1-\cos^2\theta}{2}
+   g= \frac{1-\cos^2\theta}{2}
     
 as a rejection function. To sample a scatter angle :math:`q` is first sampled by 
 
