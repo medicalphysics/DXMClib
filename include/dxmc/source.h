@@ -789,7 +789,8 @@ public:
 
     void setCtdiPhantomDiameter(std::uint64_t mm)
     {
-        m_ctdiPhantomDiameter = std::max(mm, 160);
+        constexpr std::uint64_t minValue = 160;
+        m_ctdiPhantomDiameter = std::max(mm, minValue);
     }
     std::uint64_t ctdiPhantomDiameter(void) const { return m_ctdiPhantomDiameter; }
 
