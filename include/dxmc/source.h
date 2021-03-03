@@ -1502,6 +1502,7 @@ public:
     CTTopogramSource()
         : CTBaseSource<T>()
     {
+        this->m_type = Source<T>::Type::CTTopogram;
     }
     Exposure<T> getExposure(std::uint64_t i) const override
     {
