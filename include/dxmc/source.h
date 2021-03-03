@@ -59,6 +59,7 @@ public:
         Pencil,
         Isotropic,
         IsotropicCT,
+        CTTopogram,
         Other
     };
 
