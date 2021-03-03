@@ -1545,7 +1545,12 @@ public:
 
         return exposure;
     }
-    void setTotalExposures(std::uint64_t nExposures) { m_totalExposures = std::max(nExposures, 3); }
+
+    void setTotalExposures(std::uint64_t nExposures)
+    {
+        constexpr std::uint64_t minValue = 3;
+        m_totalExposures = std::max(nExposures, minValue);
+    }
     std::uint64_t totalExposures() const { return m_totalExposures; }
 
     T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
