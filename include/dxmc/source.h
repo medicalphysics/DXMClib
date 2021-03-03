@@ -1566,6 +1566,12 @@ public:
         copy.setCtdiVol(ctdivol_axial);
         copy.setScanLenght(0);
         copy.setStep(this->m_collimation);
+
+        //matching angle step to number of exposures
+        constexpr auto maxStep = (2 * PI_VAL<T>()) / 72; // min step 
+        const auto step = std::min(2 * PI_VAL<T>() / totalExposures(), maxStep);
+        copy.setExposureAngleStep(step);
+
         const auto factor = CTSource<T>::ctCalibration(copy, model, progressBar);
         return (factor * m_totalExposures) / copy.totalExposures();
     }
