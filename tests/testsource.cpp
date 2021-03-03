@@ -24,6 +24,8 @@ void initiateAll()
     CTAxialSource<T> ax;
     auto tube = ax.tube();
 
+    CTTopogramSource<T> top;
+
     CTAxialDualSource<T> de_ax;
 
     CTSpiralSource<T> spiral;
@@ -154,12 +156,22 @@ bool testCTCalibration()
     return false;
 }
 
+template <typename T>
+bool testTopogramCalibration()
+{
+    CTTopogramSource<T> top;
+    top.setCollimation(2);
+    top.getCalibrationValue(LOWENERGYCORRECTION::NONE);
+
+    return true;
+}
 int main(int argc, char* argv[])
 {
     std::cout << "Testing sources\n";
     initiateAll<float>();
     initiateAll<double>();
     bool success = true;
+    success = success && testTopogramCalibration<float>();
     success = success && testDXCalibration<float>();
     success = success && testDXCalibration<double>();
     success = success && testCTCalibration<float>();

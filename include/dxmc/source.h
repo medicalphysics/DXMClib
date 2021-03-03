@@ -85,7 +85,9 @@ public:
      * @brief Default constructor whos only job is to set source type to Type::None.
     */
     Source()
-        : m_type(Type::None) {}
+        : m_type(Type::None)
+    {
+    }
     /**
      * @brief Generate an exposure
      * Generate an exposure that specifies emitting numberOfHistoriesPerExposure 
@@ -655,7 +657,7 @@ private:
     std::array<T, 2> m_collimationAngles;
     std::uint64_t m_totalExposures = 1000;
     Tube<T> m_tube;
-    T m_tubeRotationAngle = 0.0;    
+    T m_tubeRotationAngle = 0.0;
     std::shared_ptr<SpecterDistribution<T>> m_specterDistribution = nullptr;
     std::shared_ptr<HeelFilter<T>> m_heelFilter = nullptr;
     bool m_modelHeelEffect = true;
@@ -672,10 +674,10 @@ class CTAxialDualSource;
 template <Floating T>
 class CTAxialSource;
 
-template <Floating T = double>
-class CTSource : public Source<T> {
+template <Floating T>
+class CTBaseSource : public Source<T> {
 public:
-    CTSource()
+    CTBaseSource()
         : Source<T>()
     {
         this->m_type = Source<T>::Type::None;
@@ -683,15 +685,12 @@ public:
         m_collimation = 38.4;
         m_fov = 500.0;
         m_startAngle = 0.0;
-        m_exposureAngleStep = DEG_TO_RAD<T>();
         m_scanLenght = 100.0;
         auto& t = tube();
         t.setAlFiltration(7.0);
         const std::array<T, 6> ct_cosines { -1, 0, 0, 0, 0, 1 };
         this->setDirectionCosines(ct_cosines);
     }
-    virtual ~CTSource() = default;
-    virtual Exposure<T> getExposure(std::uint64_t i) const override = 0;
 
     Tube<T>& tube(void)
     {
@@ -770,28 +769,6 @@ public:
     {
         m_startAngle = DEG_TO_RAD<T>() * angle;
     }
-
-    void setExposureAngleStep(T angleStep)
-    {
-        const auto absAngle = std::abs(angleStep);
-        m_exposureAngleStep = std::clamp(absAngle, DEG_TO_RAD<T>() / 10, PI_VAL<T>() / 2);
-    }
-
-    T exposureAngleStep(void) const
-    {
-        return m_exposureAngleStep;
-    }
-
-    void setExposureAngleStepDeg(T angleStep)
-    {
-        setExposureAngleStep(angleStep * DEG_TO_RAD<T>());
-    }
-
-    T exposureAngleStepDeg(void) const
-    {
-        return m_exposureAngleStep * RAD_TO_DEG<T>();
-    }
-
     virtual void setScanLenght(T scanLenght)
     {
         m_scanLenght = std::abs(scanLenght);
@@ -808,29 +785,16 @@ public:
     }
     T ctdiVol(void) const { return m_ctdivol; }
 
-    bool useXCareFilter() const { return m_useXCareFilter; }
-    void setUseXCareFilter(bool use) { m_useXCareFilter = use; }
-    XCareFilter<T>& xcareFilter() { return m_xcareFilter; }
-    const XCareFilter<T>& xcareFilter() const { return m_xcareFilter; }
-
     virtual std::uint64_t totalExposures(void) const override = 0;
 
     void setCtdiPhantomDiameter(std::uint64_t mm)
     {
-        if (mm > 160)
-            m_ctdiPhantomDiameter = mm;
-        else
-            m_ctdiPhantomDiameter = 160;
+        m_ctdiPhantomDiameter = std::max(mm, 160);
     }
     std::uint64_t ctdiPhantomDiameter(void) const { return m_ctdiPhantomDiameter; }
 
-    //virtual T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* = nullptr) const = 0;
-
-    virtual std::uint64_t exposuresPerRotatition() const
-    {
-        constexpr T pi_2 = T { 2 } * PI_VAL<T>();
-        return static_cast<std::size_t>(pi_2 / m_exposureAngleStep);
-    }
+    void setModelHeelEffect(bool on) { m_modelHeelEffect = on; }
+    bool modelHeelEffect() const { return m_modelHeelEffect; }
 
     bool isValid(void) const override { return m_specterValid; }
     virtual bool validate(void) override
@@ -838,18 +802,6 @@ public:
         updateSpecterDistribution();
         return m_specterValid;
     }
-
-    void setAecFilter(std::shared_ptr<AECFilter<T>> filter) { m_aecFilter = filter; }
-    std::shared_ptr<AECFilter<T>> aecFilter(void) { return m_aecFilter; }
-
-    virtual void updateFromWorld(const World<T>& world) override
-    {
-        if (m_aecFilter)
-            m_aecFilter->updateFromWorld(world);
-    }
-
-    void setModelHeelEffect(bool on) { m_modelHeelEffect = on; }
-    bool modelHeelEffect() const { return m_modelHeelEffect; }
 
 protected:
     template <typename U>
@@ -860,7 +812,7 @@ protected:
             auto dummy = sourceCopy.getExposure(i);
             meanWeight += dummy.beamIntensityWeight();
         }
-        meanWeight /= static_cast<T>(sourceCopy.totalExposures());
+        meanWeight /= sourceCopy.totalExposures();
 
         const std::array<T, 6> cosines({ -1, 0, 0, 0, 0, 1 });
         sourceCopy.setDirectionCosines(cosines);
@@ -932,24 +884,78 @@ protected:
         }
     }
 
+protected:
     T m_sdd;
     T m_collimation;
     T m_fov;
     T m_startAngle;
-    T m_exposureAngleStep;
     T m_scanLenght;
-    T m_ctdivol = 1.0;
-    T m_gantryTiltAngle = 0.0;
-    std::shared_ptr<AECFilter<T>> m_aecFilter = nullptr;
+    T m_ctdivol = 1;
+    T m_gantryTiltAngle = 0;
     std::uint64_t m_ctdiPhantomDiameter = 320;
     std::shared_ptr<BowTieFilter<T>> m_bowTieFilter = nullptr;
-    XCareFilter<T> m_xcareFilter;    
     Tube<T> m_tube;
     std::shared_ptr<SpecterDistribution<T>> m_specterDistribution = nullptr;
     std::shared_ptr<HeelFilter<T>> m_heelFilter = nullptr;
     bool m_modelHeelEffect = true;
-    bool m_useXCareFilter = false;
     bool m_specterValid = false;
+};
+
+template <Floating T>
+class CTSource : public CTBaseSource<T> {
+public:
+    CTSource()
+        : CTBaseSource<T>()
+    {
+        m_exposureAngleStep = DEG_TO_RAD<T>();
+    }
+    virtual ~CTSource() = default;
+    virtual Exposure<T> getExposure(std::uint64_t i) const override = 0;
+
+    void setExposureAngleStep(T angleStep)
+    {
+        const auto absAngle = std::abs(angleStep);
+        m_exposureAngleStep = std::clamp(absAngle, DEG_TO_RAD<T>() / 10, PI_VAL<T>() / 2);
+    }
+
+    T exposureAngleStep(void) const
+    {
+        return m_exposureAngleStep;
+    }
+
+    void setExposureAngleStepDeg(T angleStep)
+    {
+        setExposureAngleStep(angleStep * DEG_TO_RAD<T>());
+    }
+
+    T exposureAngleStepDeg(void) const
+    {
+        return m_exposureAngleStep * RAD_TO_DEG<T>();
+    }
+
+    void setAecFilter(std::shared_ptr<AECFilter<T>> filter) { m_aecFilter = filter; }
+    std::shared_ptr<AECFilter<T>> aecFilter(void) { return m_aecFilter; }
+
+    bool useXCareFilter() const { return m_useXCareFilter; }
+    void setUseXCareFilter(bool use) { m_useXCareFilter = use; }
+    XCareFilter<T>& xcareFilter() { return m_xcareFilter; }
+    const XCareFilter<T>& xcareFilter() const { return m_xcareFilter; }
+
+    virtual void updateFromWorld(const World<T>& world) override
+    {
+        if (m_aecFilter)
+            m_aecFilter->updateFromWorld(world);
+    }
+    virtual std::uint64_t exposuresPerRotatition() const
+    {
+        constexpr T pi_2 = 2 * PI_VAL<T>();
+        return static_cast<std::size_t>(pi_2 / m_exposureAngleStep);
+    }
+
+    T m_exposureAngleStep = RAD_TO_DEG<T>();
+    std::shared_ptr<AECFilter<T>> m_aecFilter = nullptr;
+    XCareFilter<T> m_xcareFilter;
+    bool m_useXCareFilter = false;
 };
 
 template <Floating T = double>
@@ -1438,7 +1444,11 @@ public:
 
     std::uint64_t totalExposures(void) const override
     {
-        auto singleSourceExposure = static_cast<std::uint64_t>(this->m_scanLenght * T { 2 } * PI_VAL<T>() / (this->m_collimation * m_pitch * this->m_exposureAngleStep));
+        const auto coll = this->collimation();
+        const auto p = this->pitch();
+        const auto angStep = this->exposureAngleStep();
+        const auto scanL = this->scanLenght();
+        auto singleSourceExposure = static_cast<std::uint64_t>(scanL * 2 * PI_VAL<T>() / (coll * p * angStep));
         return singleSourceExposure * 2;
     }
 
@@ -1457,7 +1467,10 @@ public:
 
     void setScanLenght(T scanLenght) override
     {
-        this->m_scanLenght = std::max(std::abs(scanLenght), this->m_collimation * m_pitch * T { 0.5 });
+        const auto coll = this->collimation();
+        const auto p = this->pitch();
+        const auto scanLenght_val = std::max(std::abs(scanLenght), coll * p * T { 0.5 });
+        CTBaseSource<T>::setScanLenght(scanLenght_val);
     }
 
 private:
@@ -1480,4 +1493,77 @@ CTAxialDualSource<T>::CTAxialDualSource(const CTSpiralDualSource<T>& other)
     m_step = this->m_collimation;
     setScanLenght(other.scanLenght());
 }
+
+template <Floating T>
+class CTTopogramSource : public CTBaseSource<T> {
+public:
+    CTTopogramSource()
+        : CTBaseSource<T>()
+    {
+    }
+    Exposure<T> getExposure(std::uint64_t i) const override
+    {
+
+        //calculating position
+        std::array<T, 3> pos = { 0, -this->m_sdd / T { 2 }, 0 };
+
+        const auto angle = this->m_startAngle;
+        const auto step = this->scanLenght() / (m_totalExposures - 1);
+
+        auto directionCosines = this->m_directionCosines;
+        T* rotationAxis = &directionCosines[3];
+        T* otherAxis = &directionCosines[0];
+        std::array<T, 3> tiltAxis = { 1, 0, 0 };
+        auto tiltCorrection = pos;
+        vectormath::rotate(tiltCorrection.data(), tiltAxis.data(), this->m_gantryTiltAngle);
+        vectormath::rotate(rotationAxis, tiltAxis.data(), this->m_gantryTiltAngle);
+        vectormath::rotate(otherAxis, tiltAxis.data(), this->m_gantryTiltAngle);
+        vectormath::rotate(pos.data(), rotationAxis, angle);
+        pos[2] += step + tiltCorrection[2];
+
+        vectormath::rotate(otherAxis, rotationAxis, angle);
+        for (std::size_t i = 0; i < 3; ++i) {
+            pos[i] += this->m_position[i];
+        }
+        const std::array<T, 2> collimationAngles = {
+            std::atan(this->m_fov / this->m_sdd) * 2,
+            std::atan(this->m_collimation / this->m_sdd) * 2
+        };
+
+        const T weight = 1;
+
+        Exposure<T> exposure(pos,
+            directionCosines,
+            collimationAngles,
+            this->m_historiesPerExposure,
+            weight,
+            this->m_specterDistribution.get(),
+            this->m_heelFilter.get(),
+            this->m_bowTieFilter.get());
+
+        return exposure;
+    }
+    void setTotalExposures(std::uint64_t nExposures) { m_totalExposures = std::max(nExposures, 3); }
+    std::uint64_t totalExposures() const { return m_totalExposures; }
+
+    T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
+    {
+        //This should be prettier
+        CTAxialSource<T> copy;
+        CTSource<T>& ctsource = copy;
+        CTBaseSource<T>& base = ctsource;
+        base = *this;
+
+        const auto ctdivol_axial = this->ctdiVol() * this->scanLenght() / this->collimation();
+        copy.setCtdiVol(ctdivol_axial);
+        copy.setScanLenght(0);
+        copy.setStep(this->m_collimation);
+        const auto factor = CTSource<T>::ctCalibration(copy, model, progressBar);
+        return (factor * m_totalExposures) / copy.totalExposures();
+    }
+
+private:
+    std::uint64_t m_totalExposures = 100;
+};
+
 }
