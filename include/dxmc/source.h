@@ -1522,7 +1522,7 @@ public:
         vectormath::rotate(rotationAxis, tiltAxis.data(), this->m_gantryTiltAngle);
         vectormath::rotate(otherAxis, tiltAxis.data(), this->m_gantryTiltAngle);
         vectormath::rotate(pos.data(), rotationAxis, angle);
-        pos[2] += step + tiltCorrection[2];
+        pos[2] += step*i + tiltCorrection[2];
 
         vectormath::rotate(otherAxis, rotationAxis, angle);
         for (std::size_t i = 0; i < 3; ++i) {
