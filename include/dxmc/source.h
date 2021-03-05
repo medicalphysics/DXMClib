@@ -1510,8 +1510,9 @@ public:
         //calculating position
         std::array<T, 3> pos = { 0, -this->m_sdd / T { 2 }, 0 };
 
+        const auto totalExposures = this->totalExposures();
         const auto angle = this->m_startAngle;
-        const auto step = this->scanLenght() / (m_totalExposures - 1);
+        const auto step = this->scanLenght() / (totalExposures - 1);
 
         auto directionCosines = this->m_directionCosines;
         T* rotationAxis = &directionCosines[3];
@@ -1522,7 +1523,7 @@ public:
         vectormath::rotate(rotationAxis, tiltAxis.data(), this->m_gantryTiltAngle);
         vectormath::rotate(otherAxis, tiltAxis.data(), this->m_gantryTiltAngle);
         vectormath::rotate(pos.data(), rotationAxis, angle);
-        pos[2] += step*i + tiltCorrection[2];
+        pos[2] += step * i + tiltCorrection[2];
 
         vectormath::rotate(otherAxis, rotationAxis, angle);
         for (std::size_t i = 0; i < 3; ++i) {
@@ -1547,12 +1548,13 @@ public:
         return exposure;
     }
 
-    void setTotalExposures(std::uint64_t nExposures)
+    std::uint64_t totalExposures() const
     {
-        constexpr std::uint64_t minValue = 3;
-        m_totalExposures = std::max(nExposures, minValue);
+        const auto n = 3 * this->scanLenght() / this->collimation();
+        const auto un = static_cast<std::uint64_t>(std::ceil(n));
+        constexpr std::uint64_t min = 1;
+        return std::max(un, min);
     }
-    std::uint64_t totalExposures() const { return m_totalExposures; }
 
     T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
     {
@@ -1568,16 +1570,15 @@ public:
         copy.setStep(this->m_collimation);
 
         //matching angle step to number of exposures
-        constexpr auto maxStep = (2 * PI_VAL<T>()) / 72; // min step 
+        constexpr auto maxStep = (2 * PI_VAL<T>()) / 72; // min step
         const auto step = std::min(2 * PI_VAL<T>() / totalExposures(), maxStep);
         copy.setExposureAngleStep(step);
 
-        const auto factor = CTSource<T>::ctCalibration(copy, model, progressBar);
-        return (factor * m_totalExposures) / copy.totalExposures();
-    }
+        const auto totalExposures = this->totalExposures();
 
-private:
-    std::uint64_t m_totalExposures = 100;
+        const auto factor = CTSource<T>::ctCalibration(copy, model, progressBar);
+        return (factor * totalExposures) / copy.totalExposures();
+    }
 };
 
 }
