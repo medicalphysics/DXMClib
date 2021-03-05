@@ -496,7 +496,7 @@ protected:
     inline std::array<std::size_t, 3> gridIndexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const noexcept
     {
         //assumes particle is inside world
-        const auto& wpos = world.matrixExtent();
+        const auto& wpos = world.matrixExtentSafe();
         const auto& wspac = world.spacing();
         std::array<std::size_t, 3> arraypos = {
             static_cast<std::size_t>((pos[0] - wpos[0]) / wspac[0]),
@@ -539,47 +539,41 @@ protected:
             {
                 const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                    [[likely]]
-                    {
-                        const auto energyImparted = (e + p.energy) * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                        p.energy = 0;
-                        return false;
-                    }
-                else
-                    [[unlikely]]
-                    {
-                        const auto energyImparted = e * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                        updateMaxAttenuation = true;
-                    }
+                    [[likely]] {
+                    const auto energyImparted = (e + p.energy) * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    p.energy = 0;
+                    return false;
+                } else
+                    [[unlikely]] {
+                    const auto energyImparted = e * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    updateMaxAttenuation = true;
+                }
 
             } else if (r3 <= attPhoto + attCompt) // Compton event
             {
                 const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                    [[unlikely]]
-                    {
-                        const auto energyImparted = (e + p.energy) * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                        p.energy = 0;
-                        return false;
-                    }
-                else
-                    [[likely]]
-                    {
-                        const auto energyImparted = e * p.weight;
-                        safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                        safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                        safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                        updateMaxAttenuation = true;
-                    }
+                    [[unlikely]] {
+                    const auto energyImparted = (e + p.energy) * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    p.energy = 0;
+                    return false;
+                } else
+                    [[likely]] {
+                    const auto energyImparted = e * p.weight;
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                    updateMaxAttenuation = true;
+                }
             } else // Rayleigh scatter event
             {
                 rayleightScatter<Lowenergycorrection>(p, matIdx, state);
@@ -591,21 +585,18 @@ protected:
             p.weight *= (1 - weightCorrection); // to prevent bias (weightcorrection is the real probability of a photelectric event)
             const auto e = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
             if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]]
-                {
-                    const auto energyImparted = (e + p_forced.energy) * p_forced.weight * weightCorrection;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                }
-            else
-                [[unlikely]]
-                {
-                    const auto energyImparted = e * p_forced.weight * weightCorrection;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                }
+                [[likely]] {
+                const auto energyImparted = (e + p_forced.energy) * p_forced.weight * weightCorrection;
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+            } else
+                [[unlikely]] {
+                const auto energyImparted = e * p_forced.weight * weightCorrection;
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+            }
         }
         return true;
     }
@@ -621,47 +612,41 @@ protected:
         {
             const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]]
-                {
-                    const auto energyImparted = (e + p.energy) * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    p.energy = 0;
-                    return false;
-                }
-            else
-                [[unlikely]]
-                {
-                    const auto energyImparted = e * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    updateMaxAttenuation = true;
-                }
+                [[likely]] {
+                const auto energyImparted = (e + p.energy) * p.weight;
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                p.energy = 0;
+                return false;
+            } else
+                [[unlikely]] {
+                const auto energyImparted = e * p.weight;
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                updateMaxAttenuation = true;
+            }
 
         } else if (r3 <= attPhoto + attCompt) // Compton event
         {
             const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[unlikely]]
-                {
-                    const auto energyImparted = (e + p.energy) * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    p.energy = 0;
-                    return false;
-                }
-            else
-                [[likely]]
-                {
-                    const auto energyImparted = e * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    updateMaxAttenuation = true;
-                }
+                [[unlikely]] {
+                const auto energyImparted = (e + p.energy) * p.weight;
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                p.energy = 0;
+                return false;
+            } else
+                [[likely]] {
+                const auto energyImparted = e * p.weight;
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+                updateMaxAttenuation = true;
+            }
         } else // Rayleigh scatter event
         {
             rayleightScatter<Lowenergycorrection>(p, matIdx, state);
@@ -694,25 +679,25 @@ protected:
                 const std::size_t bufferIdx = indexFromPosition(p, world);
                 const auto matIdx = materialBuffer[bufferIdx];
                 const auto density = densityBuffer[bufferIdx];
+                const auto measurement = measurementBuffer[bufferIdx];
 
                 const auto attenuation = m_attenuationLut.photoComptRayAttenuation(matIdx, p.energy);
                 const auto attenuationTotal = std::reduce(std::execution::unseq, attenuation.cbegin(), attenuation.cend(), T { 0 }) * density;
                 const auto eventProbability = attenuationTotal * maxAttenuationInv;
 
-                if (measurementBuffer[bufferIdx] == 0)
+                if (measurement == 0)
                     [[likely]] // naive sampling
+                {
+                    const auto r2 = state.randomUniform<T>();
+                    if (r2 < eventProbability) // an event will happen
                     {
-                        const auto r2 = state.randomUniform<T>();
-                        if (r2 < eventProbability) // an event will happen
-                        {
-                            continueSampling = computeInteractions<Lowenergycorrection>(attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
-                        }
+                        continueSampling = computeInteractions<Lowenergycorrection>(attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
-                else
+                } else
                     [[unlikely]] // forced photoelectric effect
-                    {
-                        continueSampling = computeInteractionsForced<Lowenergycorrection>(eventProbability, attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
-                    }
+                {
+                    continueSampling = computeInteractionsForced<Lowenergycorrection>(eventProbability, attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
+                }
 
                 if (continueSampling) {
                     if ((p.energy * p.weight < RUSSIAN_RULETTE_ENERGY_THRESHOLD())) {
