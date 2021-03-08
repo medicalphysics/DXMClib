@@ -1550,7 +1550,7 @@ public:
 
     std::uint64_t totalExposures() const
     {
-        const auto n = 3 * this->scanLenght() / this->collimation();
+        const auto n = this->scanLenght();
         const auto un = static_cast<std::uint64_t>(std::ceil(n));
         constexpr std::uint64_t min = 1;
         return std::max(un, min);
