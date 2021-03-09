@@ -117,6 +117,74 @@ bool testDXCalibration()
     std::cout << "Failure\n";
     return false;
 }
+
+template <typename T>
+bool testCTForcedCalibration()
+{
+    std::cout << "Testing CT axial source calibration: \n";
+    CTAxialSource<T> src;
+    CTDIPhantom<T> world(320);
+
+    //src.setPitch(0.5);
+    src.setExposureAngleStepDeg(1);
+    src.setHistoriesPerExposure(1000000);
+
+    using holePosition = typename CTDIPhantom<T>::HolePosition;
+    std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
+
+    auto measurement = world.measurementMapArray();
+    std::fill(measurement->begin(), measurement->end(), 0);
+
+    Transport<T> transport;
+    transport.setOutputMode(Transport<T>::OUTPUTMODE::EV_PER_HISTORY);
+    auto res_n = transport(world, &src);
+
+    for (auto pos : position) {
+        const auto& holeIndices = world.holeIndices(pos);
+        auto meas_ptr = measurement->data();
+        for (const auto& idx : holeIndices)
+            meas_ptr[idx] = 1;
+    }
+
+    auto res_m = transport(world, &src);
+
+    struct Result {
+        T mean_n = 0;
+        T mean_m = 0;
+        std::uint64_t events_n = 0;
+        std::uint64_t events_m = 0;
+    };
+
+    std::array<Result, 5> measureDose;
+
+    for (std::size_t i = 0; i < position.size(); ++i) {
+        const auto& holeIndices = world.holeIndices(position[i]);
+        for (const auto& idx : holeIndices) {
+            measureDose[i].mean_n += res_n.dose[idx];
+            measureDose[i].mean_m += res_m.dose[idx];
+            measureDose[i].events_n += res_n.nEvents[idx];
+            measureDose[i].events_m += res_m.nEvents[idx];
+        }
+        measureDose[i].mean_n /= static_cast<T>(holeIndices.size());
+        measureDose[i].mean_m /= static_cast<T>(holeIndices.size());
+    }
+
+    bool success = true;
+
+    for (auto m : measureDose) {
+        std::cout << m.mean_n << ", " << m.mean_m << ", ";
+        std::cout << m.events_n << ", " << m.events_m << "\n";
+
+        success = success && std::abs(m.mean_n - m.mean_n) < T { 0.1 };
+    }
+
+    if (success)
+        std::cout << "Success\n";
+    else
+        std::cout << "Failure\n";
+    return sucess;
+}
+
 template <typename T>
 bool testCTCalibration()
 {
@@ -176,8 +244,10 @@ int main(int argc, char* argv[])
     success = success && testDXCalibration<double>();
     success = success && testCTCalibration<float>();
     success = success && testCTCalibration<double>();
+    success = success && testCTForcedCalibration<float>();
     success = success && testDXSourceAnglesMany<float>();
     success = success && testDXSourceAnglesMany<double>();
+    success = success && testCTForcedCalibration<float>();
 
     if (success)
         std::cout << "Test sources : Success\n";

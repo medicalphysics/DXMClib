@@ -529,33 +529,32 @@ protected:
         const auto attenuationTotal = attPhoto + attCompt + attRayl;
 
         const auto weightCorrection = eventProbability * attPhoto / attenuationTotal;
-        //copy of particle for forced event
+
+        // virtual event, we ignore characteristic radiation in case of forced events (this may slightly overestimate dose in high Z materials)
+        auto p_forced = p; // make a copyin case of characteristic x-ray
+
+        const auto e = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
+        if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
+            [[likely]] {
+            const auto energyImparted = (e + p_forced.energy) * p_forced.weight * weightCorrection;
+            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+        } else
+            [[unlikely]] {
+            const auto energyImparted = e * p_forced.weight * weightCorrection;
+            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+        }
+
+        p.weight *= (1 - weightCorrection); // to prevent bias (weightcorrection is the real probability of a photelectric event)
 
         const auto r2 = state.randomUniform<T>();
-        if (r2 < eventProbability) {
+        if (r2 < eventProbability * (attCompt + attRayl) / attenuationTotal) {
             //A real event happend
-            const auto r3 = state.randomUniform(attenuationTotal);
-            if (r3 <= attPhoto) // Photoelectric event
-            {
-                const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
-                if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                    [[likely]] {
-                    const auto energyImparted = (e + p.energy) * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    p.energy = 0;
-                    return false;
-                } else
-                    [[unlikely]] {
-                    const auto energyImparted = e * p.weight;
-                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                    safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-                    updateMaxAttenuation = true;
-                }
-
-            } else if (r3 <= attPhoto + attCompt) // Compton event
+            const auto r3 = state.randomUniform(attCompt + attRayl);
+            if (r3 <= attCompt) // Compton event
             {
                 const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
@@ -578,28 +577,10 @@ protected:
             {
                 rayleightScatter<Lowenergycorrection>(p, matIdx, state);
             }
-
-        } else {
-            // virtual event, we ignore characteristic radiation in case of forced events (this may slightly overestimate dose in high Z materials)
-            auto p_forced = p; // make a copyin case of characteristic x-ray
-            p.weight *= (1 - weightCorrection); // to prevent bias (weightcorrection is the real probability of a photelectric event)
-            const auto e = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
-            if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]] {
-                const auto energyImparted = (e + p_forced.energy) * p_forced.weight * weightCorrection;
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-            } else
-                [[unlikely]] {
-                const auto energyImparted = e * p_forced.weight * weightCorrection;
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-            }
         }
         return true;
     }
+
     template <int Lowenergycorrection>
     bool computeInteractions(const std::array<T, 3>& attenuation, Particle<T>& p, const std::uint8_t matIdx, Result<T>& result, const std::size_t resultBufferIdx, RandomState& state, bool& updateMaxAttenuation) const noexcept
     {
