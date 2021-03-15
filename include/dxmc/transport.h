@@ -214,9 +214,8 @@ protected:
     T photoAbsorption(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     {
         const auto E = particle.energy;
-
+        particle.energy = 0;
         if constexpr (Lowenergycorrection < 2) {
-            particle.energy = 0;
             return E;
         } else {
             // select shells where binding energy is greater than photon energy
@@ -226,7 +225,7 @@ protected:
             //cummulative sum of shell probs
             std::partial_sum(shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin());
             //selectring shell
-            int idx = 0;
+            std::size_t idx = 0;
             const auto shellIdxSample = shell_probs.back() * state.randomUniform<T>();
             while (shell_probs[idx] < shellIdxSample && idx < 11) {
                 ++idx;
@@ -234,7 +233,6 @@ protected:
 
             if (elConf[idx].bindingEnergy > E || elConf[idx].bindingEnergy < ENERGY_CUTOFF_THRESHOLD()) {
                 // no suitable shell, all energy is deposited locally
-                particle.energy = 0;
                 return E;
             }
 
@@ -244,7 +242,7 @@ protected:
                 // select line transition from the three most probable lines
                 std::size_t lineIdx = 0;
                 auto r3 = state.randomUniform<T>() - elConf[idx].fluorLineProbabilities[lineIdx];
-                while (r3 > 0) {
+                while (r3 > 0 && lineIdx < 2) {
                     ++lineIdx;
                     r3 -= elConf[idx].fluorLineProbabilities[lineIdx];
                 }
@@ -256,7 +254,6 @@ protected:
                 //return energy imparted locally
                 return E - particle.energy;
             } else {
-                particle.energy = 0;
                 return E;
             }
         }
@@ -526,35 +523,15 @@ protected:
         const auto attPhoto = attenuation[0];
         const auto attCompt = attenuation[1];
         const auto attRayl = attenuation[2];
-        const auto attenuationTotal = attPhoto + attCompt + attRayl;
+        const auto attenuationTotal = std::reduce(std::execution::unseq, attenuation.cbegin(), attenuation.cend(), T { 0 });
 
-        const auto weightCorrection = eventProbability * attPhoto / attenuationTotal;
+        const auto photoEventProbability = attPhoto / attenuationTotal;
 
-        // virtual event, we ignore characteristic radiation in case of forced events (this may slightly overestimate dose in high Z materials)
-        auto p_forced = p; // make a copyin case of characteristic x-ray
-
-        const auto e = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
-        if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
-            [[likely]] {
-            const auto energyImparted = (e + p_forced.energy) * p_forced.weight * weightCorrection;
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-        } else
-            [[unlikely]] {
-            const auto energyImparted = e * p_forced.weight * weightCorrection;
-            safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-            safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
-            safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
-        }
-
-        p.weight *= (1 - weightCorrection); // to prevent bias (weightcorrection is the real probability of a photelectric event)
-
-        const auto r2 = state.randomUniform<T>();
-        if (r2 < eventProbability * (attCompt + attRayl) / attenuationTotal) {
+        const auto r1 = state.randomUniform<T>();
+        if (r1 < (eventProbability * (1 - photoEventProbability))) {
             //A real event happend
-            const auto r3 = state.randomUniform(attCompt + attRayl);
-            if (r3 <= attCompt) // Compton event
+            const auto r2 = state.randomUniform(attCompt + attRayl);
+            if (r2 < attCompt) // Compton event
             {
                 const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
@@ -577,7 +554,27 @@ protected:
             {
                 rayleightScatter<Lowenergycorrection>(p, matIdx, state);
             }
+        } else {
+            // virtual event, we ignore characteristic radiation in case of forced events (this may slightly overestimate dose in high Z materials)
+            const auto weightCorrection = eventProbability * photoEventProbability;
+            auto p_forced = p; // make a copyin case of characteristic x-ray
+            const auto e_forced = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
+            if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
+                [[likely]] {
+                const auto energyImparted = (e_forced + p_forced.energy) * p_forced.weight * weightCorrection;
+                //safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+            } else
+                [[unlikely]] {
+                const auto energyImparted = e_forced * p_forced.weight * weightCorrection;
+                //safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
+            }
+            p.weight *= (1 - weightCorrection); // to prevent bias (weightcorrection is the real probability of a photelectric event)
         }
+
         return true;
     }
 
@@ -588,14 +585,16 @@ protected:
         const auto attCompt = attenuation[1];
         const auto attRayl = attenuation[2];
 
-        const auto r3 = state.randomUniform(attPhoto + attCompt + attRayl);
-        if (r3 <= attPhoto) // Photoelectric event
+        const auto attenuationTotal = std::reduce(std::execution::unseq, attenuation.cbegin(), attenuation.cend(), T { 0 });
+
+        const auto r3 = state.randomUniform(attenuationTotal);
+        if (r3 < attPhoto) // Photoelectric event
         {
             const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[likely]] {
                 const auto energyImparted = (e + p.energy) * p.weight;
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                //safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 p.energy = 0;
@@ -603,13 +602,13 @@ protected:
             } else
                 [[unlikely]] {
                 const auto energyImparted = e * p.weight;
-                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                //safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 updateMaxAttenuation = true;
             }
 
-        } else if (r3 <= attPhoto + attCompt) // Compton event
+        } else if (r3 < (attPhoto + attCompt)) // Compton event
         {
             const auto e = comptonScatter<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())

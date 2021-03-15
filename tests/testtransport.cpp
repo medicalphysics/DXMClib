@@ -50,6 +50,69 @@ public:
     {
     }
 
+    bool testForcedInteraction(const T energy, const Material& mat)
+    {
+        auto& att = this->attenuationLut();
+        std::vector<Material> mats;
+        mats.push_back(mat);
+        att.generate(mats, T { 1 }, energy);
+
+        std::array<T, 3> pos = { 0, 0, 0 };
+        std::array<T, 3> dir = { 1, 0, 0 };
+        Particle<T> particle { .pos = pos, .dir = dir };
+        particle.energy = energy;
+        particle.weight = 1;
+
+        RandomState state;
+
+        std::array<Result<T>, 3> energyImparted_forced;
+        std::array<Result<T>, 3> energyImparted_naive;
+        for (auto& r : energyImparted_forced) {
+            r = Result<T>(1);
+        }
+        for (auto& r : energyImparted_naive) {
+            r = Result<T>(1);
+        }
+        std::size_t N = 1e7;
+        bool dummy = true;
+        auto a = att.photoComptRayAttenuation(0, energy);
+        const T prob = 0.5;
+        this->setLowEnergyCorrectionModel(LOWENERGYCORRECTION::NONE);
+        for (std::size_t i = 0; i < N; ++i) {
+            auto p = particle;
+            p.weight = prob;
+            this->computeInteractions<0>(a, p, 0, energyImparted_naive[0], 0, state, dummy);
+            p = particle;
+            this->computeInteractionsForced<0>(prob, a, p, 0, energyImparted_forced[0], 0, state, dummy);
+        }
+        this->setLowEnergyCorrectionModel(LOWENERGYCORRECTION::LIVERMORE);
+        for (std::size_t i = 0; i < N; ++i) {
+            auto p = particle;
+            p.weight = prob;
+            this->computeInteractions<1>(a, p, 0, energyImparted_naive[1], 0, state, dummy);
+            p = particle;
+            this->computeInteractionsForced<1>(prob, a, p, 0, energyImparted_forced[1], 0, state, dummy);
+        }
+        this->setLowEnergyCorrectionModel(LOWENERGYCORRECTION::IA);
+        for (std::size_t i = 0; i < N; ++i) {
+            auto p = particle;
+            p.weight = prob;
+            this->computeInteractions<2>(a, p, 0, energyImparted_naive[2], 0, state, dummy);
+            p = particle;
+            this->computeInteractionsForced<2>(prob, a, p, 0, energyImparted_forced[2], 0, state, dummy);
+        }
+        std::cout << "Comparison forced and naive interactions\nNaive, Forced\n";
+        std::array<std::string, 3> types = { "None", "Livermore", "IA" };
+        bool success = true;
+        for (int i = 0; i < 3; ++i) {
+            std::cout << types[i] << ": ";
+            std::cout << energyImparted_naive[i].dose[0] << ", ";
+            std::cout << energyImparted_forced[i].dose[0] << '\n';
+            success = success && std::abs(energyImparted_naive[i].dose[0] - energyImparted_forced[i].dose[0]) / energyImparted_naive[i].dose[0] < 0.01;
+        }
+        return success;
+    }
+
     bool testCompton(const T energy, const Material& mat)
     {
         auto& att = this->attenuationLut();
@@ -69,8 +132,8 @@ public:
         const auto k = energy / ELECTRON_REST_MASS<T>();
 
         std::vector<T> earr(200, 0);
-        std::array<T, 3> energyImparted = {0,0,0};
-        std::array<T, 3> energyEmitted = {0,0,0};
+        std::array<T, 3> energyImparted = { 0, 0, 0 };
+        std::array<T, 3> energyEmitted = { 0, 0, 0 };
 
         for (std::size_t i = 0; i < earr.size(); ++i) {
             earr[i] = emin + (emax - emin) / (earr.size()) * i;
@@ -82,16 +145,16 @@ public:
             res.resize(earr.size());
             std::fill(res.begin(), res.end(), T { 0 });
             RandomState state;
-            
+
             for (std::size_t i = 0; i < nSamp; ++i) {
                 auto psamp = p;
                 T energyImp = 0;
                 if (j == 0) {
-                    energyImp= this->template comptonScatter<0>(psamp, 0, state);
+                    energyImp = this->template comptonScatter<0>(psamp, 0, state);
                 } else if (j == 1) {
-                    energyImp=this->template comptonScatter<1>(psamp, 0, state);
+                    energyImp = this->template comptonScatter<1>(psamp, 0, state);
                 } else {
-                    energyImp=this->template comptonScatter<2>(psamp, 0, state);
+                    energyImp = this->template comptonScatter<2>(psamp, 0, state);
                 }
                 energyImparted[j] += energyImp;
                 energyEmitted[j] += psamp.energy;
@@ -125,7 +188,7 @@ public:
         std::cout << "Compton differential scattering cross section\n";
         std::cout << "with initial energy " << energy << " keV in " << mat.prettyName() << " material\n";
         std::cout << "Sampling " << nSamp << " interactions with RMS differential cross section deviation of\n";
-        std::cout << "Total energy inbound: " << p.energy * nSamp<<'\n';
+        std::cout << "Total energy inbound: " << p.energy * nSamp << '\n';
         std::cout << "Total energy imparted: " << energyImparted[0] << ", " << energyImparted[1] << ", " << energyImparted[2] << '\n';
         std::cout << "Total energy emitted: " << energyEmitted[0] << ", " << energyEmitted[1] << ", " << energyEmitted[2] << '\n';
         std::cout << "Total energy sum: ";
@@ -210,8 +273,8 @@ public:
         return false;
     }
 
-    template<typename T, int N>
-    std::string arrayToStr(const std::array<T, N>& arr )
+    template <typename T, int N>
+    std::string arrayToStr(const std::array<T, N>& arr)
     {
         std::string s;
         for (const auto v : arr) {
@@ -232,7 +295,7 @@ public:
         Particle<T> p { .pos = pos, .dir = dir };
         p.energy = energy;
 
-        std::array<T, 3> energyImparted = {0,0,0};
+        std::array<T, 3> energyImparted = { 0, 0, 0 };
         std::array<T, 3> energyEmitted = { 0, 0, 0 };
 
         RandomState state;
@@ -258,13 +321,12 @@ public:
         std::cout << "with initial energy " << energy << " keV in " << mat.prettyName() << " material\n";
         std::cout << "Sampling " << nSamp << " interactions\n";
         std::cout << "Energy in: " << nSamp * energy << "\n";
-        std::cout << "Energy imparted: " <<arrayToStr(energyImparted) << "\n";
+        std::cout << "Energy imparted: " << arrayToStr(energyImparted) << "\n";
         std::cout << "Energy emitted: " << arrayToStr(energyEmitted) << "\n";
         std::array<T, 3> diff;
         std::transform(energyImparted.cbegin(), energyImparted.cend(), energyEmitted.cbegin(), diff.begin(), [=](auto im, auto em) { return nSamp * p.energy - im - em; });
         std::cout << "Difference: " << arrayToStr(diff) << "\n";
 
-        
         return false;
     }
 
@@ -359,6 +421,7 @@ void testTransport()
     const T Rayenergy = 10;
     const T Comenergy = 50;
     Test<T> t;
+    t.testForcedInteraction(Comenergy, mats[4]);
 
     //typename model  dxmc::LOWENERGYCORRECTION::LIVERMORE;
     t.testPhotoElectric(Comenergy, mats[3]);
