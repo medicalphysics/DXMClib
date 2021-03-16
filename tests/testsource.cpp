@@ -127,7 +127,7 @@ bool testCTForcedCalibration()
 
     //src.setPitch(0.5);
     src.setExposureAngleStepDeg(1);
-    src.setHistoriesPerExposure(1000000);
+    src.setHistoriesPerExposure(100000);
 
     using holePosition = typename CTDIPhantom<T>::HolePosition;
     std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
@@ -182,7 +182,7 @@ bool testCTForcedCalibration()
         std::cout << "Success\n";
     else
         std::cout << "Failure\n";
-    return sucess;
+    return success;
 }
 
 template <typename T>
@@ -239,14 +239,14 @@ int main(int argc, char* argv[])
     initiateAll<float>();
     initiateAll<double>();
     bool success = true;
-    success = success && testTopogramCalibration<float>();
+    /*success = success && testTopogramCalibration<float>();
     success = success && testDXCalibration<float>();
     success = success && testDXCalibration<double>();
     success = success && testCTCalibration<float>();
     success = success && testCTCalibration<double>();
     success = success && testCTForcedCalibration<float>();
     success = success && testDXSourceAnglesMany<float>();
-    success = success && testDXSourceAnglesMany<double>();
+    success = success && testDXSourceAnglesMany<double>();*/
     success = success && testCTForcedCalibration<float>();
 
     if (success)
