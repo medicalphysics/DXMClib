@@ -529,7 +529,6 @@ protected:
         const auto weightCorrection = eventProbability * photoEventProbability;
         {
             // virtual event, we ignore characteristic radiation in case of forced events (this may slightly overestimate dose in high Z materials)
-            
             auto p_forced = p; // make a copyin case of characteristic x-ray
             const auto e_forced = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
             if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
@@ -545,7 +544,6 @@ protected:
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             }
-            
         }
         const auto r1 = state.randomUniform<T>();
         if (r1 < eventProbability * (1 - photoEventProbability)) {
@@ -557,7 +555,7 @@ protected:
                 if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                     [[unlikely]] {
                     const auto energyImparted = (e + p.energy) * p.weight;
-                   safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                    safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                     safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                     safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     p.energy = 0;
@@ -595,7 +593,7 @@ protected:
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
                 [[likely]] {
                 const auto energyImparted = (e + p.energy) * p.weight;
-               safeValueAdd(result.dose[resultBufferIdx], energyImparted);
+                safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 p.energy = 0;

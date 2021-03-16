@@ -31,7 +31,7 @@ Copyright 2020 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 template <Floating T>
 struct ResultKeys {
@@ -43,6 +43,7 @@ struct ResultKeys {
     bool forced = true;
     T result = 0;
     T result_std = 0;
+    int precision = sizeof(T);
 };
 
 class ResultPrint {
@@ -60,12 +61,12 @@ public:
     }
     void header()
     {
-        m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, Forced\n";
+        m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, Forced, Precision\n";
     }
     template <typename T>
     void print(const ResultKeys<T>& r)
     {
-        std::string forced = r.forced ? "1" : "0";
+        const std::string forced = r.forced ? "1" : "0";
 
         m_myfile << r.rCase << ", ";
         m_myfile << r.volume << ", ";
@@ -74,7 +75,8 @@ public:
         m_myfile << r.modus << ", ";
         m_myfile << r.result << ", ";
         m_myfile << r.result_std << ", ";
-        m_myfile << forced << "\n";
+        m_myfile << forced << ", ";
+        m_myfile << r.precision << '\n';
     }
 };
 
@@ -398,6 +400,7 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 
     Print print;
     print("TG195 Case 2\n");
+    print("Precision: ", sizeof(T), " bytes\n");
     if (forceInteractions) {
         print("Forced interaction is ON\n");
         resKey.forced = true;
@@ -715,6 +718,7 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 
     Print print;
     print("TG195 Case 3\n");
+    print("Precision: ", sizeof(T), " bytes\n");
     if (forceInteractions) {
         print("Forced interaction is ON\n");
         resKey.forced = true;
@@ -867,7 +871,7 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 }
 
 template <typename T>
-World<T> generateTG195Case4World1()
+World<T> generateTG195Case4World1(bool forced = false)
 {
     const std::array<std::size_t, 3> dim = { 400, 400, 600 };
     const std::array<T, 3> spacing = { 3, 3, 5 };
@@ -908,13 +912,18 @@ World<T> generateTG195Case4World1()
     w.addMaterialToMap(pmma);
     for (int i = 0; i < 4; ++i)
         w.addMaterialToMap(pmma);
+    if (forced) {
+        auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
+        std::transform(std::execution::par_unseq, mat->cbegin(), mat->cend(), meas->begin(), [](const auto m) -> std::uint8_t { return m > 1 ? 1 : 0; });
+        w.setMeasurementMapArray(meas);
+    }
 
     w.makeValid();
     return w;
 }
 
 template <typename T>
-bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false)
+bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forced = false)
 {
     constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1e4 : 1e5;
     constexpr std::size_t nExposures = 360;
@@ -925,8 +934,14 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
 
     Print print;
     print("TG195 Case 4.1:\n");
-    print("Forced interaction is OFF\n");
-    resKey.forced = false;
+    print("Precision: ", sizeof(T), " bytes\n");
+    if (forced) {
+        print("Forced interaction is ON\n");
+        resKey.forced = true;
+    } else {
+        print("Forced interaction is OFF\n");
+        resKey.forced = false;
+    }
 
     print("Low energy correction model: ");
     if (transport.lowEnergyCorrectionModel() == dxmc::LOWENERGYCORRECTION::NONE) {
@@ -972,7 +987,7 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
         resKey.modus = "Collimation 10 mm";
     }
 
-    auto w = generateTG195Case4World1<T>();
+    auto w = generateTG195Case4World1<T>(forced);
 
     const auto volume_voi = 160 * 160 * PI_VAL<T>() * 10;
     const auto voxel_volume = std::accumulate(w.spacing().cbegin(), w.spacing().cend(), T { 1 }, std::multiplies<>());
@@ -1120,6 +1135,7 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
 
     Print print;
     print("TG195 Case 4.2:\n");
+    print("Precision: ", sizeof(T), " bytes\n");
     if (forceInteractions) {
         print("Forced interaction is ON\n");
         resKey.forced = true;
@@ -1353,6 +1369,8 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         print("ERROR reading voxel file. Exiting\n");
         return false;
     }
+
+    print("Precision: ", sizeof(T), " bytes\n");
 
     print("Forced interaction is OFF\n");
     resKey.forced = false;
@@ -1618,7 +1636,9 @@ int main(int argc, char* argv[])
 {
     printStart();
 
-    auto success = selectOptions<float>();
+    auto success = true;
+    //success = success && selectOptions<double>();
+    success = success && selectOptions<float>();
 
     std::cout << "Press any key to exit";
     std::string dummy;

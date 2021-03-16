@@ -73,10 +73,10 @@ public:
         for (auto& r : energyImparted_naive) {
             r = Result<T>(1);
         }
-        std::size_t N = 1e7;
+        std::size_t N = 5e7;
         bool dummy = true;
         auto a = att.photoComptRayAttenuation(0, energy);
-        const T prob = 0.5;
+        const T prob = 0.1;
         this->setLowEnergyCorrectionModel(LOWENERGYCORRECTION::NONE);
         for (std::size_t i = 0; i < N; ++i) {
             auto p = particle;
@@ -108,7 +108,7 @@ public:
             std::cout << types[i] << ": ";
             std::cout << energyImparted_naive[i].dose[0] << ", ";
             std::cout << energyImparted_forced[i].dose[0] << '\n';
-            success = success && std::abs(energyImparted_naive[i].dose[0] - energyImparted_forced[i].dose[0]) / energyImparted_naive[i].dose[0] < 0.01;
+            success = success && 100*std::abs(energyImparted_naive[i].dose[0] - energyImparted_forced[i].dose[0]) / energyImparted_naive[i].dose[0] < 0.01;
         }
         return success;
     }
