@@ -151,7 +151,7 @@ template <typename T>
     auto const numberNormalization = std::accumulate(numberFractions.cbegin(), numberFractions.cend(), 0.0);
     std::transform(numberFractions.cbegin(), numberFractions.cend(), numberFractions.begin(), [=](const auto f) { return f / numberNormalization; });
 
-    for (int i = 0; i < elements.size(); ++i) {
+    for (std::size_t i = 0; i < elements.size(); ++i) {
         const int Z = elements[i];
         const double numberFraction = numberFractions[i];
         // we group obitals together, i.e the K shell is one orbital, L1,L2,L3 is grouped into a <L> shell, all the way up to including N shells

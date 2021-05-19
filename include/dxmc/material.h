@@ -46,7 +46,7 @@ struct ElectronShellConfiguration {
         copy.numberElectrons = static_cast<U>(this->numberElectrons);
         copy.hartreeFockOrbital_0 = static_cast<U>(this->hartreeFockOrbital_0);
         copy.fluorescenceYield = static_cast<U>(this->fluorescenceYield);
-        copy.photoIonizationProbability = static_cast<T>(this->photoIonizationProbability);
+        copy.photoIonizationProbability = static_cast<U>(this->photoIonizationProbability);
         for (std::size_t i = 0; i < 3; ++i) {
             copy.fluorLineProbabilities[i] = fluorLineProbabilities[i];
             copy.fluorLineEnergies[i] = fluorLineEnergies[i];

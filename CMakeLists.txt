@@ -27,9 +27,9 @@ function(enable_cxx_compiler_flag_if_supported flag)
     endif()
 endfunction()
 # We want to add extra compiler warnings if supported
-#enable_cxx_compiler_flag_if_supported("-Wall")
-#enable_cxx_compiler_flag_if_supported("-Wextra")
-#enable_cxx_compiler_flag_if_supported("-pedantic")
+enable_cxx_compiler_flag_if_supported("-Wall")
+enable_cxx_compiler_flag_if_supported("-Wextra")
+enable_cxx_compiler_flag_if_supported("-pedantic")
 
 
 # Find packages go here.
