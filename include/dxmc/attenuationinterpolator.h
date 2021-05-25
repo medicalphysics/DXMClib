@@ -95,7 +95,7 @@ public:
         auto matBegin = world.materialIndexArray()->cbegin();
         generate(materials, densBegin, densEnd, matBegin, maxEnergy, minEnergy);
     }
-    AttenuationLutInterpolator(const std::vector<Material>& materials, T maxEnergy,  T minEnergy)
+    AttenuationLutInterpolator(const std::vector<Material>& materials, T maxEnergy, T minEnergy)
     {
         minEnergy = std::max(T { 0.1 }, minEnergy);
         maxEnergy = std::min(maxEnergy, T { 50 });
@@ -209,24 +209,21 @@ public:
         std::array<T, 3> res;
         const T logEnergy = std::log10(energy);
         if (logEnergy > m_linearEnergy)
-            [[likely]]
-            {
-                const auto index = std::min(static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex, m_resolution-1);
-                const auto offset = materialIdx * m_resolution * 6 + index * 6;
-                for (std::size_t i = 0; i < 3; ++i) {
-                    res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
-                }
+            [[likely]] {
+            const auto index = std::min(static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex, m_resolution - 1);
+            const auto offset = materialIdx * m_resolution * 6 + index * 6;
+            for (std::size_t i = 0; i < 3; ++i) {
+                res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
             }
-        else
-            [[unlikly]]
-            {
-                const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
-                const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
-                const auto offset = materialIdx * m_resolution * 6 + index * 6;
-                for (std::size_t i = 0; i < 3; ++i) {
-                    res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
-                }
+        } else
+            [[unlikly]] {
+            const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
+            const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
+            const auto offset = materialIdx * m_resolution * 6 + index * 6;
+            for (std::size_t i = 0; i < 3; ++i) {
+                res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
             }
+        }
 
         return res;
     }
@@ -235,22 +232,19 @@ public:
     {
         const T logEnergy = std::log10(energy);
         if (logEnergy > m_linearEnergy)
-            [[likely]]
-            {
-                const auto index = static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex;
-                const auto offset = index + index;
-                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);                
-                return res;
-            }
-        else
-            [[unlikly]]
-            {
-                const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
-                const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
-                const auto offset = index + index;
-                const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);                
-                return res;
-            }
+            [[likely]] {
+            const auto index = static_cast<std::size_t>((logEnergy - m_linearEnergy) / m_linearStep) + m_linearIndex;
+            const auto offset = index + index;
+            const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
+            return res;
+        } else
+            [[unlikly]] {
+            const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
+            const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
+            const auto offset = index + index;
+            const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
+            return res;
+        }
     }
 };
 }

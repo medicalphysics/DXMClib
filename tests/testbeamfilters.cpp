@@ -8,13 +8,13 @@ using namespace dxmc;
 template <typename T>
 bool testUniformWeights(const HeelFilter<T>& filter, T angle_span, T energy)
 {
-    
+
     RandomState s;
 
     std::size_t N = 1e7;
     T acc = 0;
     for (std::size_t i = 0; i < N; ++i) {
-        const auto angle = s.randomUniform(-angle_span /2, angle_span /2);
+        const auto angle = s.randomUniform(-angle_span / 2, angle_span / 2);
         acc += filter.sampleIntensityWeight(angle, energy);
     }
 
@@ -55,7 +55,7 @@ int main(int argc, char* argv[])
 
     auto w = f.sampleIntensityWeight(0 * deg2rad, 90);
     bool weights = testWeightsSum(f);
-    bool test = testUniformWeights(f, 10 * deg2rad, float{90});
+    bool test = testUniformWeights(f, 10 * deg2rad, float { 90 });
 
     return weights && test;
 }

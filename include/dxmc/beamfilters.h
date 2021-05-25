@@ -465,7 +465,7 @@ public:
     void update(const Tube<T>& tube, const T heel_angle_span = 0.0)
     {
         // recalculating energy range
-        m_energySize = static_cast<std::size_t>((tube.voltage() - m_energyStart) / m_energyStep) ;
+        m_energySize = static_cast<std::size_t>((tube.voltage() - m_energyStart) / m_energyStep);
         if (m_energySize < 2)
             m_energySize = 2;
         m_energies.clear();
