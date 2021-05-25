@@ -66,7 +66,7 @@ public:
     template <typename T>
     inline T randomUniform() noexcept
     {
-        static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");        
+        static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");
         const auto ui = pcg32();
         constexpr T uiMaxInv = T { 2.32830643653869628906e-010 };
         return ui * uiMaxInv;
@@ -90,8 +90,9 @@ public:
                 if (r >= threshold)
                     return static_cast<T>(r % static_cast<std::uint32_t>(max));
             }
-        } else
+        } else {
             static_assert(std::is_integral<T>::value || std::is_floating_point<T>::value, "Must be integral or floating point value.");
+        }
     }
 
     /**
@@ -401,7 +402,7 @@ public:
         for (std::size_t j = 1; j < n; ++j) {
             v[j].e = v[j - 1].e + simpson_integral(v[j - 1].x, v[j].x, pdf);
         }
-        const T pdf_max_value = v[n - 1].e;        
+        const T pdf_max_value = v[n - 1].e;
 
         for (std::size_t j = 1; j < n; ++j) {
             v[j].e = v[j].e / v[n - 1].e;
@@ -411,7 +412,7 @@ public:
                 if (v[i].error < 0) {
                     // finding a and b
                     const T temp = (v[i + 1].e - v[i].e) / (v[i + 1].x - v[i].x);
-                    const T px0 = pdf(v[i].x)/pdf_max_value;
+                    const T px0 = pdf(v[i].x) / pdf_max_value;
                     const T px1 = pdf(v[i + 1].x) / pdf_max_value;
                     if (px0 > 0 && px1 > 0) {
                         v[i].b = 1 - temp * temp / (px0 * px1);
