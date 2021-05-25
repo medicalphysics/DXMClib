@@ -5,16 +5,16 @@
 #include "dxmc/tube.h"
 
 using namespace dxmc;
-
-bool testUniformWeights(const HeelFilter& filter, double angle_span, double energy)
+template <typename T>
+bool testUniformWeights(const HeelFilter<T>& filter, T angle_span, T energy)
 {
-    std::uint64_t s[2];
-    randomSeed(s);
+    
+    RandomState s;
 
     std::size_t N = 1e7;
-    double acc = 0;
+    T acc = 0;
     for (std::size_t i = 0; i < N; ++i) {
-        double angle = randomUniform(s, -angle_span * 0.5, angle_span * 0.5);
+        const auto angle = s.randomUniform(-angle_span /2, angle_span /2);
         acc += filter.sampleIntensityWeight(angle, energy);
     }
 
@@ -22,8 +22,8 @@ bool testUniformWeights(const HeelFilter& filter, double angle_span, double ener
 
     return std::abs(mean - 1.0) < 0.01;
 }
-
-bool testWeightsSum(const HeelFilter& filter)
+template <typename T>
+bool testWeightsSum(const HeelFilter<T>& filter)
 {
     auto as = filter.angleSize();
     auto es = filter.energySize();
@@ -44,16 +44,18 @@ bool testWeightsSum(const HeelFilter& filter)
 
 int main(int argc, char* argv[])
 {
-    constexpr double deg2rad = 3.14159265359 / 180.0;
-    Tube t;
-
+    constexpr float deg2rad = 3.14159265359 / 180.0;
+    Tube<float> t;
+    t.setVoltage(140.0);
     t.setAnodeAngle(12 * deg2rad);
+    t.setAlFiltration(9.0);
+    t.setSnFiltration(2.0);
 
-    HeelFilter f(t, 10.0 * deg2rad);
+    HeelFilter<float> f(t, 10.0 * deg2rad);
 
     auto w = f.sampleIntensityWeight(0 * deg2rad, 90);
     bool weights = testWeightsSum(f);
-    bool test = testUniformWeights(f, 10.0 * deg2rad, 90);
+    bool test = testUniformWeights(f, 10 * deg2rad, float{90});
 
     return weights && test;
 }
