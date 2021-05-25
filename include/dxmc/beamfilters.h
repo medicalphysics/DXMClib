@@ -221,7 +221,7 @@ public:
         : BeamFilter<T>()
     {
         m_filterAngle = 0;
-        m_spanAngle =  120 * DEG_TO_RAD<T>();
+        m_spanAngle = 120 * DEG_TO_RAD<T>();
         m_rampAngle = 20 * DEG_TO_RAD<T>();
         m_lowWeight = T { 0.6 };
     }
@@ -436,7 +436,7 @@ template <Floating T = double>
 class HeelFilter {
 private:
     T m_energyStep = 2.0;
-    T m_energyStart = 20.0;
+    T m_energyStart = 10.0;
     std::size_t m_energySize = 65;
 
     T m_angleStep = 0.07; // about 4 deg step size
@@ -465,9 +465,9 @@ public:
     void update(const Tube<T>& tube, const T heel_angle_span = 0.0)
     {
         // recalculating energy range
-        m_energySize = static_cast<std::size_t>((tube.voltage() - m_energyStart) / m_energyStep);
-        if (m_energySize < 1)
-            m_energySize = 1;
+        m_energySize = static_cast<std::size_t>((tube.voltage() - m_energyStart) / m_energyStep) ;
+        if (m_energySize < 2)
+            m_energySize = 2;
         m_energies.clear();
         m_energies.reserve(m_energySize);
         for (std::size_t i = 0; i < m_energySize; ++i)
@@ -495,7 +495,12 @@ public:
             auto w_end = w_start + m_angleSize;
             //normalize to mean
             const T sum = std::reduce(w_start, w_end, 0.0) / m_angleSize;
-            w_start = std::transform(w_start, w_end, w_start, [=](auto w) -> T { return w / sum; });
+            if (sum > T { 0 }) {
+                w_start = std::transform(w_start, w_end, w_start, [=](auto w) -> T { return w / sum; });
+            } else {
+                std::fill(w_start, w_end, T { 1 });
+                w_start = w_end;
+            }
         }
     }
 
