@@ -573,17 +573,6 @@ public:
         return factor;
     }
 
-    const std::array<T, 3> tubePosition(void) const
-    {
-        std::array<T, 3> beamDirection;
-        vectormath::cross(this->m_directionCosines.data(), beamDirection.data());
-        std::array<T, 3> pos;
-        for (std::size_t i = 0; i < 3; ++i) {
-            pos[i] = this->m_position[i] - beamDirection[i] * m_sdd;
-        }
-        return pos;
-    }
-
     bool isValid(void) const override { return m_specterValid; }
     bool validate(void) override
     {
@@ -677,6 +666,17 @@ public:
         m_totalExposures = std::max(exposures, std::uint64_t { 1 });
     }
 
+    const std::array<T, 3> tubePosition(void) const
+    {
+        std::array<T, 3> beamDirection;
+        vectormath::cross(this->m_directionCosines.data(), beamDirection.data());
+        std::array<T, 3> pos;
+        for (std::size_t i = 0; i < 3; ++i) {
+            pos[i] = this->m_position[i] - beamDirection[i] * this->m_sdd;
+        }
+        return pos;
+    }
+
 private:
     std::uint64_t m_totalExposures = 1000;
 };
@@ -690,7 +690,7 @@ public:
         this->m_type = Source<T>::Type::CBCT;
         this->setSourceDetectorDistance(500.0);
     }
-    virtual ~CBCTSource() =default;
+    virtual ~CBCTSource() = default;
 
     void setRotationAxis(const std::array<T, 3>& axis)
     {
@@ -750,7 +750,17 @@ public:
         return std::max(n_steps, std::size_t { 2 });
     }
 
-protected:
+    const std::array<T, 3> tubePosition(void) const
+    {
+        std::array<T, 3> beamDirection;
+        vectormath::cross(this->m_directionCosines.data(), beamDirection.data());
+        std::array<T, 3> pos;
+        for (std::size_t i = 0; i < 3; ++i) {
+            pos[i] = this->m_position[i] - beamDirection[i] * this->m_sdd * T { 0.5 };
+        }
+        return pos;
+    }
+
 private:
     std::array<T, 3> m_rotationAxis = { 0, 0, 1 };
     T m_angleSpan = PI_VAL<T>();
