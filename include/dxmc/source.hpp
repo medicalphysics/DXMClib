@@ -60,7 +60,7 @@ public:
         Isotropic,
         IsotropicCT,
         CTTopogram,
-        CBCTSource,
+        CBCT,
         Other
     };
 
@@ -687,7 +687,7 @@ public:
     CBCTSource()
         : DAPSource<T>()
     {
-        this->m_type = Source<T>::Type::CBCTSource;
+        this->m_type = Source<T>::Type::CBCT;
         this->setSourceDetectorDistance(500.0);
     }
     virtual ~CBCTSource() =default;
