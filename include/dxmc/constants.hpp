@@ -24,41 +24,41 @@ Copyright 2020 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-constexpr T KEV_TO_ANGSTROM()
+consteval T KEV_TO_ANGSTROM()
 {
     return T { 12.398520 };
 }
 
 template <Floating T>
-constexpr T PI_VAL()
+consteval T PI_VAL()
 {
     return std::numbers::pi_v<T>;
 }
 
 template <Floating T>
-constexpr T DEG_TO_RAD()
+consteval T DEG_TO_RAD()
 {
     return PI_VAL<T>() / T { 180 };
 }
 template <Floating T>
-constexpr T RAD_TO_DEG()
+consteval T RAD_TO_DEG()
 {
     return T { 180 } / PI_VAL<T>();
 }
 
 template <Floating T>
-constexpr T KEV_TO_MJ()
+consteval T KEV_TO_MJ()
 {
     return T { 1.6021773e-13 }; // milli Joules}
 }
 template <Floating T>
-constexpr T MJ_TO_KEV()
+consteval T MJ_TO_KEV()
 {
     return T { 1 } / KEV_TO_MJ<T>();
 }
 
 template <Floating T>
-constexpr T ELECTRON_REST_MASS()
+consteval T ELECTRON_REST_MASS()
 {
     return T { 510.9989461 }; // kev/c^2
 }
