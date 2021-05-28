@@ -690,20 +690,21 @@ public:
         this->m_type = Source<T>::Type::CBCT;
         this->setSourceDetectorDistance(500.0);
     }
-    virtual ~CBCTSource() = default;
+    virtual ~CBCTSource() = default;    
 
-    void setRotationAxis(const std::array<T, 3>& axis)
-    {
-        const auto dot = vectormath::dot(axis.data(), axis.data());
-        if (dot > T { 0 } && std::isfinite(dot)) {
-            m_rotationAxis = axis;
-            vectormath::normalize(m_rotationAxis.data());
-        }
+    const std::array<T, 3> rotationAxis() const { 
+    
+        const auto& dc= this->m_directionCosines;
+        std::array<T, 3> rot = {dc[3], dc[4], dc[5]};
+        return rot;
     }
-    const std::array<T, 3>& rotationAxis() const { return m_rotationAxis; }
+
     void setSpanAngle(const T spanAngle)
     {
         m_angleSpan = std::max(spanAngle, m_angleStep);
+        const auto steps = m_angleSpan / m_angleStep;
+        const auto n_steps = static_cast<std::size_t>(steps);
+        m_totalExposures = std::max(n_steps, std::size_t { 2 });
     }
     void setSpanAngleDeg(const T spanAngle)
     {
@@ -719,6 +720,9 @@ public:
     {
         consteval T minStep = PI_VAL<T>() / T { 360 };
         m_angleStep = std::max(stepAngle, minStep);
+        const auto steps = m_angleSpan / m_angleStep;
+        const auto n_steps = static_cast<std::size_t>(steps);
+        m_totalExposures = std::max(n_steps, std::size_t { 2 });
     }
     void setStepAngleDeg(const T stepAngle)
     {
@@ -736,18 +740,19 @@ public:
         const auto rotAngle = i * m_angleStep;
 
         const auto tubePos = this->tubePosition();
-        const auto dPos = this->position();
+        const auto& dPos = this->position();
         std::array<T, 3> normIso;
         for (std::size_t i = 0; i < 3; ++i) {
-            normIso[i] = (tubePos[i] - dPos[i]) * T { 0.5 };
+            normIso[i] = (tubePos[i] - dPos[i]);
         }
-        vectormath::rotate(normIso.data(), m_rotationAxis.data(), rotAngle);
+        const auto rotAxis = rotationAxis();
+        vectormath::rotate(normIso.data(), rotAxis.data(), rotAngle);
         for (std::size_t i = 0; i < 3; ++i) {
-            normIso[i] += tubePos[i];
+            normIso[i] += dPos[i];
         }
         auto dirCosines = this->m_directionCosines;
-        vectormath::rotate(dirCosines.data(), m_rotationAxis.data(), rotAngle);
-        vectormath::rotate(&dirCosines[3], m_rotationAxis.data(), rotAngle);
+        vectormath::rotate(dirCosines.data(), rotAxis.data(), rotAngle);
+        vectormath::rotate(&dirCosines[3], rotAxis.data(), rotAngle);
 
         Exposure<T> exposure(normIso,
             dirCosines,
@@ -760,9 +765,7 @@ public:
     }
     std::uint64_t totalExposures(void) const override
     {
-        const auto steps = m_angleSpan / m_angleStep;
-        const auto n_steps = static_cast<std::size_t>(steps);
-        return std::max(n_steps, std::size_t { 2 });
+        return m_totalExposures;
     }
 
     const std::array<T, 3> tubePosition(void) const
@@ -777,7 +780,7 @@ public:
     }
 
 private:
-    std::array<T, 3> m_rotationAxis = { 0, 0, 1 };
+    std::size_t m_totalExposures = 180;
     T m_angleSpan = PI_VAL<T>();
     T m_angleStep = PI_VAL<T>() / T { 180 };
 };

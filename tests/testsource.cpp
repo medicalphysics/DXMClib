@@ -33,6 +33,7 @@ void initiateAll()
     CTAxialSource<T> from_spiral(spiral);
     CTAxialDualSource<T> from_spiral_de(de);
     CBCTSource<T> cbct;
+    cbct.setSpanAngleDeg(T { 90 });
 }
 
 template <typename T>
@@ -234,9 +235,39 @@ bool testTopogramCalibration()
 
     return true;
 }
+template<typename T>
+void testCBCTAngles()
+{
+    CBCTSource<T> src;
+
+    src.setSourceDetectorDistance(50);
+    auto pos = src.position();
+    for (std::size_t i = 0; i < 3; ++i) {
+        pos[i] += 50;
+    }
+    src.setPosition(pos);
+    src.setSpanAngle(2*PI_VAL<T>());
+    std::cout << "n, X, Y, Z" << std::endl;
+    pos = src.position();
+    for (std::size_t i = 0; i < src.totalExposures(); ++i) {
+        const auto& exp = src.getExposure(i);
+        auto pos = exp.position();
+        std::cout << i << ", ";
+        for (std::size_t i = 0; i < 3; ++i) {
+            std::cout << pos[i] << ", ";
+        }
+        std::cout << std::endl;
+    }
+
+
+}
+
+
 int main(int argc, char* argv[])
 {
     std::cout << "Testing sources\n";
+    testCBCTAngles<float>();
+
     initiateAll<float>();
     initiateAll<double>();
     bool success = true;
