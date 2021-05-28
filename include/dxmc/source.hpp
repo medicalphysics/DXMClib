@@ -701,19 +701,34 @@ public:
         }
     }
     const std::array<T, 3>& rotationAxis() const { return m_rotationAxis; }
-    void setSpanAngle(const T spanAngle) { m_angleSpan = std::max(spanAngle, m_angleStep); }
-    void setSpanAngleDeg(const T spanAngle) { setSpanAngle(spanAngle * RAD_TO_DEG<T>()); }
+    void setSpanAngle(const T spanAngle)
+    {
+        m_angleSpan = std::max(spanAngle, m_angleStep);
+    }
+    void setSpanAngleDeg(const T spanAngle)
+    {
+        setSpanAngle(spanAngle * DEG_TO_RAD<T>());
+    }
     const T spanAngle() const { return m_angleSpan; }
-    const T spanAngleDeg() const { return m_angleSpan * RAD_TO_DEG<T>(); }
+    const T spanAngleDeg() const
+    {
+        return m_angleSpan * RAD_TO_DEG<T>();
+    }
 
     void setStepAngle(const T stepAngle)
     {
         consteval T minStep = PI_VAL<T>() / T { 360 };
         m_angleStep = std::max(stepAngle, minStep);
     }
-    void setStepAngleDeg(const T stepAngle) { setStepAngle(stepAngle * RAD_TO_DEG<T>()); }
+    void setStepAngleDeg(const T stepAngle)
+    {
+        setStepAngle(stepAngle * DEG_TO_RAD<T>());
+    }
     const T stepAngle() const { return m_angleStep; }
-    const T stepAngleDeg() const { return m_angleStep * RAD_TO_DEG<T>(); }
+    const T stepAngleDeg() const
+    {
+        return m_angleStep * RAD_TO_DEG<T>();
+    }
 
     Exposure<T> getExposure(std::uint64_t i) const override
     {
