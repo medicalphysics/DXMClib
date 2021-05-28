@@ -18,10 +18,10 @@ Copyright 2019 Erlend Andersen
 
 #pragma once // include guard
 
-#include "dxmc/floating.h"
-#include "dxmc/material.h"
-#include "dxmc/tube.h"
-#include "dxmc/vectormath.h"
+#include "dxmc/floating.hpp"
+#include "dxmc/material.hpp"
+#include "dxmc/tube.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <algorithm>
 #include <array>

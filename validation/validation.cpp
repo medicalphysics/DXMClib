@@ -16,11 +16,11 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2020 Erlend Andersen
 */
 
-#include "dxmc/constants.h"
-#include "dxmc/source.h"
-#include "dxmc/transport.h"
-#include "dxmc/tube.h"
-#include "dxmc/world.h"
+#include "dxmc/constants.hpp"
+#include "dxmc/source.hpp"
+#include "dxmc/transport.hpp"
+#include "dxmc/tube.hpp"
+#include "dxmc/world.hpp"
 
 #include <cassert>
 #include <chrono>

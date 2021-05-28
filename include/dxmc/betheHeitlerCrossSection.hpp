@@ -18,9 +18,9 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/constants.h"
-#include "dxmc/floating.h"
-#include "dxmc/material.h"
+#include "dxmc/constants.hpp"
+#include "dxmc/floating.hpp"
+#include "dxmc/material.hpp"
 
 #include <algorithm>
 #include <cmath>

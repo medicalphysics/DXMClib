@@ -1,9 +1,9 @@
 
 
-#include "dxmc/material.h"
-#include "dxmc/source.h"
-#include "dxmc/transport.h"
-#include "dxmc/world.h"
+#include "dxmc/material.hpp"
+#include "dxmc/source.hpp"
+#include "dxmc/transport.hpp"
+#include "dxmc/world.hpp"
 
 #include <array>
 #include <iostream>

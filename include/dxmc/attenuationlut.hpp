@@ -18,13 +18,13 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/attenuationinterpolator.h"
-#include "dxmc/constants.h"
-#include "dxmc/dxmcrandom.h"
-#include "dxmc/floating.h"
-#include "dxmc/interpolation.h"
-#include "dxmc/material.h"
-#include "dxmc/world.h"
+#include "dxmc/attenuationinterpolator.hpp"
+#include "dxmc/constants.hpp"
+#include "dxmc/dxmcrandom.hpp"
+#include "dxmc/floating.hpp"
+#include "dxmc/interpolation.hpp"
+#include "dxmc/material.hpp"
+#include "dxmc/world.hpp"
 
 #include <array>
 #include <vector>

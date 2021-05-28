@@ -18,7 +18,7 @@ Copyright 2020 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.h"
+#include "dxmc/floating.hpp"
 #include <numbers>
 
 namespace dxmc {

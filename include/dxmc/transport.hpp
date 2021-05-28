@@ -18,14 +18,14 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/attenuationlut.h"
-#include "dxmc/dxmcrandom.h"
-#include "dxmc/exposure.h"
-#include "dxmc/lowenergycorrectionmodel.h"
-#include "dxmc/particle.h"
-#include "dxmc/progressbar.h"
-#include "dxmc/vectormath.h"
-#include "dxmc/world.h"
+#include "dxmc/attenuationlut.hpp"
+#include "dxmc/dxmcrandom.hpp"
+#include "dxmc/exposure.hpp"
+#include "dxmc/lowenergycorrectionmodel.hpp"
+#include "dxmc/particle.hpp"
+#include "dxmc/progressbar.hpp"
+#include "dxmc/vectormath.hpp"
+#include "dxmc/world.hpp"
 
 #include <algorithm>
 #include <atomic>

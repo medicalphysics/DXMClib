@@ -18,9 +18,9 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.h"
-#include "dxmc/material.h"
-#include "dxmc/world.h"
+#include "dxmc/floating.hpp"
+#include "dxmc/material.hpp"
+#include "dxmc/world.hpp"
 
 #include <array>
 #include <cmath>

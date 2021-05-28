@@ -17,7 +17,7 @@ Copyright 2019 Erlend Andersen
 */
 
 #pragma once // include guard
-#include "dxmc/floating.h"
+#include "dxmc/floating.hpp"
 
 #include <algorithm>
 #include <array>

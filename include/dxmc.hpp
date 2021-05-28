@@ -16,10 +16,10 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 #pragma once
-#include "dxmc/beamfilters.h"
-#include "dxmc/material.h"
-#include "dxmc/source.h"
-#include "dxmc/transport.h"
-#include "dxmc/vectormath.h"
-#include "dxmc/world.h"
-#include "dxmc/lowenergycorrectionmodel.h"
+#include "dxmc/beamfilters.hpp"
+#include "dxmc/material.hpp"
+#include "dxmc/source.hpp"
+#include "dxmc/transport.hpp"
+#include "dxmc/vectormath.hpp"
+#include "dxmc/world.hpp"
+#include "dxmc/lowenergycorrectionmodel.hpp"

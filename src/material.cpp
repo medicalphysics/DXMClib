@@ -16,10 +16,10 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2019 Erlend Andersen
 */
 
-#include "dxmc/material.h"
-#include "dxmc/interpolation.h"
-#include "dxmc/vectormath.h"
-#include "xraylib.h"
+#include "dxmc/material.hpp"
+#include "dxmc/interpolation.hpp"
+#include "dxmc/vectormath.hpp"
+#include "xraylib.hpp"
 
 #include <algorithm>
 #include <execution>

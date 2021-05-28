@@ -18,11 +18,11 @@ Copyright 2019 Erlend Andersen
 
 #pragma once // include guard
 
-#include "dxmc/beamfilters.h"
-#include "dxmc/dxmcrandom.h"
-#include "dxmc/floating.h"
-#include "dxmc/particle.h"
-#include "dxmc/vectormath.h"
+#include "dxmc/beamfilters.hpp"
+#include "dxmc/dxmcrandom.hpp"
+#include "dxmc/floating.hpp"
+#include "dxmc/particle.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <array>
 #include <vector>

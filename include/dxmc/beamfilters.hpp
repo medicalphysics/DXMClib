@@ -17,11 +17,11 @@ Copyright 2019 Erlend Andersen
 */
 
 #pragma once
-#include "dxmc/constants.h"
-#include "dxmc/floating.h"
-#include "dxmc/interpolation.h"
-#include "dxmc/tube.h"
-#include "dxmc/world.h"
+#include "dxmc/constants.hpp"
+#include "dxmc/floating.hpp"
+#include "dxmc/interpolation.hpp"
+#include "dxmc/tube.hpp"
+#include "dxmc/world.hpp"
 
 #include <algorithm>
 #include <array>
