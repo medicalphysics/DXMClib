@@ -1,7 +1,7 @@
 
 
-#include "dxmc/exposure.h"
-#include "dxmc/vectormath.h"
+#include "dxmc/exposure.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <iostream>
 

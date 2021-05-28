@@ -1,4 +1,4 @@
-#include "dxmc/source.h"
+#include "dxmc/source.hpp"
 
 #include <cassert>
 #include <chrono>
@@ -32,6 +32,7 @@ void initiateAll()
     CTSpiralDualSource<T> de;
     CTAxialSource<T> from_spiral(spiral);
     CTAxialDualSource<T> from_spiral_de(de);
+    CBCTSource<T> cbct;
 }
 
 template <typename T>

@@ -1,5 +1,5 @@
 
-#include "dxmc/dxmcrandom.h"
+#include "dxmc/dxmcrandom.hpp"
 
 #include <algorithm>
 #include <array>

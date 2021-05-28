@@ -4,7 +4,7 @@
 #include <iostream>
 #include <numeric>
 
-#include "dxmc/tube.h"
+#include "dxmc/tube.hpp"
 
 using namespace dxmc;
 

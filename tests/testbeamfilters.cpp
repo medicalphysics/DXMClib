@@ -1,8 +1,8 @@
 
 
-#include "dxmc/beamfilters.h"
-#include "dxmc/dxmcrandom.h"
-#include "dxmc/tube.h"
+#include "dxmc/beamfilters.hpp"
+#include "dxmc/dxmcrandom.hpp"
+#include "dxmc/tube.hpp"
 
 using namespace dxmc;
 template <typename T>

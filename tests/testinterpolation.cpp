@@ -1,10 +1,10 @@
 
 
-#include "dxmc/attenuationinterpolator.h"
-#include "dxmc/constants.h"
-#include "dxmc/dxmcrandom.h"
-#include "dxmc/interpolation.h"
-#include "dxmc/material.h"
+#include "dxmc/attenuationinterpolator.hpp"
+#include "dxmc/constants.hpp"
+#include "dxmc/dxmcrandom.hpp"
+#include "dxmc/interpolation.hpp"
+#include "dxmc/material.hpp"
 
 #include "xraylib.h"
 

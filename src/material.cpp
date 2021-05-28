@@ -19,7 +19,8 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/material.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/vectormath.hpp"
-#include "xraylib.hpp"
+
+#include "xraylib.h"
 
 #include <algorithm>
 #include <execution>

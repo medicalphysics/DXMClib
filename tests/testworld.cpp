@@ -1,6 +1,6 @@
 
-#include "dxmc/material.h"
-#include "dxmc/world.h"
+#include "dxmc/material.hpp"
+#include "dxmc/world.hpp"
 
 #include <array>
 #include <cstdlib>

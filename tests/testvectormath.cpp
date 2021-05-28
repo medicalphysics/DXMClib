@@ -1,6 +1,6 @@
 
-#include "dxmc/source.h"
-#include "dxmc/vectormath.h"
+#include "dxmc/source.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <cassert>
 #include <iostream>

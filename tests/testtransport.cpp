@@ -18,10 +18,10 @@ Copyright 2019 Erlend Andersen
 
 #include "xraylib.h"
 
-#include "dxmc/lowenergycorrectionmodel.h"
-#include "dxmc/material.h"
-#include "dxmc/source.h"
-#include "dxmc/transport.h"
+#include "dxmc/lowenergycorrectionmodel.hpp"
+#include "dxmc/material.hpp"
+#include "dxmc/source.hpp"
+#include "dxmc/transport.hpp"
 
 #include "testutils.h"
 

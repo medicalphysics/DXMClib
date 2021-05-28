@@ -2,7 +2,7 @@
 
 #pragma once
 
-#include "dxmc/floating.h"
+#include "dxmc/floating.hpp"
 
 constexpr double ERRF = 1e-6;
 

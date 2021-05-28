@@ -1,7 +1,7 @@
 
 
-#include "dxmc/attenuationinterpolator.h"
-#include "dxmc/attenuationlut.h"
+#include "dxmc/attenuationinterpolator.hpp"
+#include "dxmc/attenuationlut.hpp"
 #include "xraylib.h"
 
 #include <cassert>

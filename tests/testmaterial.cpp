@@ -1,7 +1,7 @@
 
 
-#include "dxmc/material.h"
-#include "dxmc/transport.h"
+#include "dxmc/material.hpp"
+#include "dxmc/transport.hpp"
 
 #include <cassert>
 #include <iostream>
