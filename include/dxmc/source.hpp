@@ -60,6 +60,7 @@ public:
         Isotropic,
         IsotropicCT,
         CTTopogram,
+        CBCTSource,
         Other
     };
 
@@ -89,6 +90,8 @@ public:
         : m_type(Type::None)
     {
     }
+    virtual ~Source() = default;
+
     /**
      * @brief Generate an exposure
      * Generate an exposure that specifies emitting numberOfHistoriesPerExposure 
@@ -348,6 +351,7 @@ public:
     {
         this->m_type = Source<T>::Type::IsotropicCT;
     }
+    virtual ~IsotropicCTSource() = default;
     Exposure<T> getExposure(std::uint64_t exposureNumber) const override
     {
         std::array<T, 3> rotAxis = { 0, 0, 1 };
@@ -373,12 +377,11 @@ public:
 };
 
 template <Floating T = double>
-class DXSource final : public Source<T> {
+class DAPSource : public Source<T> {
 public:
-    DXSource()
+    DAPSource()
         : Source<T>()
     {
-        this->m_type = Source<T>::Type::DX;
         m_sdd = 1000.0;
         m_fieldSize[0] = 100.0;
         m_fieldSize[1] = 100.0;
@@ -386,19 +389,7 @@ public:
         m_tube.setAlFiltration(2.0);
         this->setDirectionCosines(zeroDirectionCosines());
     }
-    virtual ~DXSource() = default;
-    Exposure<T> getExposure(std::uint64_t i) const override
-    {
-        constexpr T weight { 1 };
-        Exposure<T> exposure(tubePosition(),
-            this->m_directionCosines,
-            m_collimationAngles,
-            this->m_historiesPerExposure,
-            weight,
-            m_specterDistribution.get(),
-            m_heelFilter.get());
-        return exposure;
-    }
+    virtual ~DAPSource() = default;
 
     Tube<T>& tube(void)
     {
@@ -409,15 +400,6 @@ public:
     const Tube<T>& tube(void) const { return m_tube; }
 
     T maxPhotonEnergyProduced() const override { return m_tube.voltage(); }
-
-    std::uint64_t totalExposures(void) const override
-    {
-        return m_totalExposures;
-    }
-    void setTotalExposures(std::uint64_t exposures)
-    {
-        m_totalExposures = std::max(exposures, std::uint64_t { 1 });
-    }
 
     void setCollimationAngles(const std::array<T, 2>& angles)
     {
@@ -647,22 +629,132 @@ protected:
     std::array<T, 6> zeroDirectionCosines() const
     {
         // changing this will break setSourceAngles
-        std::array<T, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
+        constexpr std::array<T, 6> cos = { -1.0, .0, .0, .0, .0, 1.0 };
         return cos;
     }
 
-private:
+protected:
     T m_sdd = 1000.0;
     T m_dap = 1.0; // Gycm2
     std::array<T, 2> m_fieldSize;
     std::array<T, 2> m_collimationAngles;
-    std::uint64_t m_totalExposures = 1000;
+
     Tube<T> m_tube;
     T m_tubeRotationAngle = 0.0;
     std::shared_ptr<SpecterDistribution<T>> m_specterDistribution = nullptr;
     std::shared_ptr<HeelFilter<T>> m_heelFilter = nullptr;
     bool m_modelHeelEffect = true;
     bool m_specterValid = false;
+};
+
+template <Floating T = double>
+class DXSource final : public DAPSource<T> {
+public:
+    DXSource()
+        : DAPSource<T>()
+    {
+        this->m_type = Source<T>::Type::DX;
+    }
+    virtual ~DXSource() = default;
+    Exposure<T> getExposure(std::uint64_t i) const override
+    {
+        constexpr T weight { 1 };
+        Exposure<T> exposure(this->tubePosition(),
+            this->m_directionCosines,
+            this->m_collimationAngles,
+            this->m_historiesPerExposure,
+            weight,
+            this->m_specterDistribution.get(),
+            this->m_heelFilter.get());
+        return exposure;
+    }
+    std::uint64_t totalExposures(void) const override
+    {
+        return m_totalExposures;
+    }
+    void setTotalExposures(std::uint64_t exposures)
+    {
+        m_totalExposures = std::max(exposures, std::uint64_t { 1 });
+    }
+
+private:
+    std::uint64_t m_totalExposures = 1000;
+};
+
+template <Floating T = double>
+class CBCTSource final : public DAPSource<T> {
+public:
+    CBCTSource()
+        : DAPSource<T>()
+    {
+        this->m_type = Source<T>::Type::CBCTSource;
+        this->setSourceDetectorDistance(500.0);
+    }
+    virtual ~CBCTSource() =default;
+
+    void setRotationAxis(const std::array<T, 3>& axis)
+    {
+        const auto dot = vectormath::dot(axis.data(), axis.data());
+        if (dot > T { 0 } && std::isfinite(dot)) {
+            m_rotationAxis = axis;
+            vectormath::normalize(m_rotationAxis.data());
+        }
+    }
+    const std::array<T, 3>& rotationAxis() const { return m_rotationAxis; }
+    void setSpanAngle(const T spanAngle) { m_angleSpan = std::max(spanAngle, m_angleStep); }
+    void setSpanAngleDeg(const T spanAngle) { setSpanAngle(spanAngle * RAD_TO_DEG<T>()); }
+    const T spanAngle() const { return m_angleSpan; }
+    const T spanAngleDeg() const { return m_angleSpan * RAD_TO_DEG<T>(); }
+
+    void setStepAngle(const T stepAngle)
+    {
+        consteval T minStep = PI_VAL<T>() / T { 360 };
+        m_angleStep = std::max(stepAngle, minStep);
+    }
+    void setStepAngleDeg(const T stepAngle) { setStepAngle(stepAngle * RAD_TO_DEG<T>()); }
+    const T stepAngle() const { return m_angleStep; }
+    const T stepAngleDeg() const { return m_angleStep * RAD_TO_DEG<T>(); }
+
+    Exposure<T> getExposure(std::uint64_t i) const override
+    {
+        constexpr T weight { 1 };
+        const auto rotAngle = i * m_angleStep;
+
+        const auto tubePos = this->tubePosition();
+        const auto dPos = this->position();
+        std::array<T, 3> normIso;
+        for (std::size_t i = 0; i < 3; ++i) {
+            normIso[i] = (tubePos[i] - dPos[i]) * T { 0.5 };
+        }
+        vectormath::rotate(normIso.data(), m_rotationAxis.data(), rotAngle);
+        for (std::size_t i = 0; i < 3; ++i) {
+            normIso[i] += tubePos[i];
+        }
+        auto dirCosines = this->m_directionCosines;
+        vectormath::rotate(dirCosines.data(), m_rotationAxis.data(), rotAngle);
+        vectormath::rotate(&dirCosines[3], m_rotationAxis.data(), rotAngle);
+
+        Exposure<T> exposure(normIso,
+            dirCosines,
+            this->m_collimationAngles,
+            this->m_historiesPerExposure,
+            weight,
+            this->m_specterDistribution.get(),
+            this->m_heelFilter.get());
+        return exposure;
+    }
+    std::uint64_t totalExposures(void) const override
+    {
+        const auto steps = m_angleSpan / m_angleStep;
+        const auto n_steps = static_cast<std::size_t>(steps);
+        return std::max(n_steps, std::size_t { 2 });
+    }
+
+protected:
+private:
+    std::array<T, 3> m_rotationAxis = { 0, 0, 1 };
+    T m_angleSpan = PI_VAL<T>();
+    T m_angleStep = PI_VAL<T>() / T { 180 };
 };
 
 //forward decl
@@ -692,7 +784,7 @@ public:
         const std::array<T, 6> ct_cosines { -1, 0, 0, 0, 0, 1 };
         this->setDirectionCosines(ct_cosines);
     }
-
+    virtual ~CTBaseSource() = default;
     Tube<T>& tube(void)
     {
         m_specterValid = false;
@@ -972,7 +1064,7 @@ public:
         m_startAngleB = this->m_startAngle + PI_VAL<T>() * T { 0.5 };
         m_tubeB.setAlFiltration(this->m_tube.AlFiltration());
     }
-    //virtual Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const = 0;
+    virtual ~CTDualSource() = default;
 
     T tubeAmas() const { return m_tubeAmas; }
     T tubeBmas() const { return m_tubeBmas; }
@@ -1086,6 +1178,7 @@ public:
     }
 
     CTAxialSource(const CTSpiralSource<T>& other);
+    virtual ~CTAxialSource() = default;
 
     Exposure<T> getExposure(std::uint64_t exposureIndex) const override
     {
@@ -1176,6 +1269,7 @@ public:
         this->m_type = Source<T>::Type::CTSpiral;
         m_pitch = 1.0;
     }
+    virtual ~CTSpiralSource() = default;
     Exposure<T> getExposure(std::uint64_t exposureIndex) const override
     {
         std::array<T, 3> pos = { 0, -this->m_sdd / 2, 0 };
@@ -1261,6 +1355,8 @@ public:
     }
 
     CTAxialDualSource(const CTSpiralDualSource<T>& other);
+
+    virtual ~CTAxialDualSource() = default;
 
     Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const override
     {
@@ -1375,7 +1471,7 @@ public:
         this->m_type = Source<T>::Type::CTDual;
         m_pitch = 1.0;
     }
-
+    virtual ~CTSpiralDualSource() = default;
     Exposure<T> getExposure(std::uint64_t exposureIndexTotal) const override
     {
         T sdd, startAngle, fov;
@@ -1504,6 +1600,7 @@ public:
     {
         this->m_type = Source<T>::Type::CTTopogram;
     }
+    virtual ~CTTopogramSource() = default;
     Exposure<T> getExposure(std::uint64_t i) const override
     {
 
