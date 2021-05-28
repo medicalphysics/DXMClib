@@ -718,7 +718,7 @@ public:
 
     void setStepAngle(const T stepAngle)
     {
-        consteval T minStep = PI_VAL<T>() / T { 360 };
+        constexpr T minStep = PI_VAL<T>() / T { 360 };
         m_angleStep = std::max(stepAngle, minStep);
         const auto steps = m_angleSpan / m_angleStep;
         const auto n_steps = static_cast<std::size_t>(steps);
