@@ -690,12 +690,13 @@ public:
         this->m_type = Source<T>::Type::CBCT;
         this->setSourceDetectorDistance(500.0);
     }
-    virtual ~CBCTSource() = default;    
+    virtual ~CBCTSource() = default;
 
-    const std::array<T, 3> rotationAxis() const { 
-    
-        const auto& dc= this->m_directionCosines;
-        std::array<T, 3> rot = {dc[3], dc[4], dc[5]};
+    const std::array<T, 3> rotationAxis() const
+    {
+
+        const auto& dc = this->m_directionCosines;
+        std::array<T, 3> rot = { dc[3], dc[4], dc[5] };
         return rot;
     }
 
@@ -927,7 +928,7 @@ public:
 
 protected:
     template <typename U>
-        requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
+    requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
     {
         T meanWeight = 0;
         for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
@@ -972,22 +973,15 @@ protected:
         measureDose.fill(0.0);
         for (std::size_t i = 0; i < 5; ++i) {
             const auto& holeIndices = world.holeIndices(position[i]);
-            for (const auto& idx : holeIndices)
+            for (const auto& idx : holeIndices) {
                 measureDose[i] += result.dose[idx];
+            }
             measureDose[i] /= static_cast<T>(holeIndices.size());
         }
 
-        std::array<std::uint32_t, 5> measureTally;
-        measureTally.fill(0);
-        for (std::size_t i = 0; i < 5; ++i) {
-            const auto& holeIndices = world.holeIndices(position[i]);
-            for (const auto& idx : holeIndices)
-                measureTally[i] += result.nEvents[idx];
-        }
-
-        const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4.0 };
+        const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4 };
         const T ctdiCent = measureDose[0];
-        const T ctdiw = (ctdiCent + T { 2 } * ctdiPher) / T { 3 } / static_cast<T>(statCounter);
+        const T ctdiw = (ctdiCent + 2 * ctdiPher) / T { 3 };
         const T factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;
         return factor;
     }
