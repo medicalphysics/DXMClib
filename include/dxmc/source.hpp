@@ -556,19 +556,20 @@ public:
         Material airMaterial("Air, Dry (near sea level)");
         std::transform(specter.begin(), specter.end(), massAbsorb.begin(), [&](const auto& el) -> T { return airMaterial.getMassEnergyAbsorbtion(el.first); });
 
-        T calcOutput = 0.0; // Air KERMA [keV/g] == [eV/kg]
+        T calcOutput = 0.0;
         for (std::size_t i = 0; i < specter.size(); ++i) {
             const auto& [keV, weight] = specter[i];
             calcOutput += keV * weight * massAbsorb[i];
         }
 
+        constexpr T kgTOg_inv = 1000;
         constexpr T kevTOev = 1000;
         constexpr T mmsqTOcmsq { 0.01 };
         constexpr T GyTOmGY = 1000;
 
-        calcOutput *= kevTOev; //ev/kg
+        calcOutput *= kevTOev * kgTOg_inv; //ev/kg
 
-        const T output = (m_dap * GyTOmGY) / (m_fieldSize[0] * m_fieldSize[1] * mmsqTOcmsq); // mGy // mm->cm
+        const T output = (m_dap * GyTOmGY);
         const T factor = output / calcOutput;
         return factor;
     }
