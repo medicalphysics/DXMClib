@@ -31,11 +31,13 @@ def readData():
     return dt
 
 def fix_axis(fg, rotate_labels=True):
-    fg.set(ylim=(0, None), ylabel="Energy [eV/history]")
+    fg.set(ylim=(0, None))
+    fg.set_axis_labels(y_var="Energy [eV/history]")
     if rotate_labels:
         for ax in fg.axes_dict.values():             
             for tick in ax.get_xticklabels():
                 tick.set_rotation(70)
+    fg.tight_layout()
 
 def plotCase2(dt_full):
     dt=dt_full[dt_full['Case']=="Case 2"]    
