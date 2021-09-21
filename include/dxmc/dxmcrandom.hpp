@@ -483,13 +483,13 @@ public:
     T operator()(RandomState& state, const T maxValue) const
     {
         //finding xmax
-        auto upper_bound_value = std::lower_bound(m_x.cbegin(), m_x.cend(), maxValue);
+        auto upper_bound_value = std::upper_bound(m_x.cbegin(), m_x.cend(), maxValue);
         const std::size_t max_value_index = std::distance(m_x.cbegin(), upper_bound_value);
         const T modifier = upper_bound_value != m_x.cend() ? m_e[max_value_index] : 1;
         T res;
         do {
             const auto r1 = state.randomUniform<T>(modifier);
-            auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
+            auto upper_bound = std::upper_bound(m_e.cbegin(), m_e.cend(), r1);
             const auto index = std::distance(m_e.cbegin(), upper_bound) - 1;
 
             const auto v = r1 - m_e[index];
