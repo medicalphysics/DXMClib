@@ -216,7 +216,7 @@ public:
                 res[i] = std::pow(T { 10 }, m_coefficients[offset + 2 * i] + m_coefficients[offset + 2 * i + 1] * logEnergy);
             }
         } else
-            [[unlikly]] {
+            [[unlikely]] {
             const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
             const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
             const auto offset = materialIdx * m_resolution * 6 + index * 6;
@@ -238,7 +238,7 @@ public:
             const auto res = std::pow(T { 10 }, m_maxCoefficients[offset] + m_maxCoefficients[offset + 1] * logEnergy);
             return res;
         } else
-            [[unlikly]] {
+            [[unlikely]] {
             const auto pos = std::upper_bound(m_x.cbegin(), m_x.cend(), logEnergy);
             const auto index = pos != m_x.cend() ? std::distance(m_x.cbegin(), pos) : m_resolution - 1;
             const auto offset = index + index;
