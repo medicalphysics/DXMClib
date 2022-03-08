@@ -532,13 +532,13 @@ protected:
             auto p_forced = p; // make a copyin case of characteristic x-ray
             const auto e_forced = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
             if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]] {
+                [[unlikely]] {
                 const auto energyImparted = (e_forced + p_forced.energy) * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             } else
-                [[unlikely]] {
+                [[likely]] {
                 const auto energyImparted = e_forced * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
@@ -591,7 +591,7 @@ protected:
         {
             const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]] {
+                [[unlikely]] {
                 const auto energyImparted = (e + p.energy) * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
@@ -599,7 +599,7 @@ protected:
                 p.energy = 0;
                 return false;
             } else
-                [[unlikely]] {
+                [[likely]] {
                 const auto energyImparted = e * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
