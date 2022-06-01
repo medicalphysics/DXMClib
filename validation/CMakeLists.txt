@@ -3,9 +3,6 @@
 add_executable(validation validation.cpp)
 target_link_libraries(validation libdxmc)
 
-
-
-
 set(DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data")
 set(CASE5WORLD_BINARY "case5world.bin")
 set(CASE5WORLD_COMPRESSED "case5world.tar.gz")
@@ -19,7 +16,6 @@ if(EXISTS "${DATA_PATH}/${CASE5WORLD_BINARY}")
 	# Then we delete it
 	file(REMOVE "${DATA_PATH}/${CASE5WORLD_BINARY}")
 endif()
-
 
 add_custom_command(TARGET validation POST_BUILD
 			COMMENT "Extracting case 5 world ${CASE5WORLDFILE} to ${CMAKE_CURRENT_BINARY_DIR}/data/case5world.bin"

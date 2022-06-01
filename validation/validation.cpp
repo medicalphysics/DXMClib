@@ -33,6 +33,10 @@ using namespace dxmc;
 
 constexpr bool SAMPLE_RUN = false;
 
+const auto N_THREADS = std::max(std::thread::hardware_concurrency(), 1u);
+const std::size_t N_EXPOSURES = SAMPLE_RUN ? N_THREADS : 100u;
+const std::size_t N_HISTORIES = 1000000;
+
 template <Floating T>
 struct ResultKeys {
     std::string rCase;
@@ -391,8 +395,8 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
 template <typename T>
 bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
-    constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 100;
+    constexpr std::size_t histPerExposure = N_HISTORIES;
+    const std::size_t nExposures = N_EXPOSURES;
 
     ResultKeys<T> resKey;
     resKey.rCase = "Case 2";
@@ -709,8 +713,8 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
 template <typename T>
 bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool tomo = false, bool forceInteractions = false)
 {
-    constexpr std::size_t histPerExposure = 1e6;
-    constexpr std::size_t nExposures = SAMPLE_RUN ? 8 : 100;
+    const std::size_t histPerExposure = N_HISTORIES;
+    const std::size_t nExposures = N_EXPOSURES;
 
     ResultKeys<T> resKey;
     resKey.rCase = "Case 3";
@@ -925,8 +929,8 @@ World<T> generateTG195Case4World1(bool forced = false)
 template <typename T>
 bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forced = false)
 {
-    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1e4 : 1e5;
-    constexpr std::size_t nExposures = 360;
+    const std::size_t histPerExposure = N_HISTORIES;
+    const std::size_t nExposures = N_EXPOSURES;
 
     ResultKeys<T> resKey;
     resKey.rCase = "Case 4.1";
@@ -1106,8 +1110,8 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
 template <typename T>
 bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false, bool wide_collimation = false, bool forceInteractions = false)
 {
-    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e5;
-    constexpr std::size_t nExposures = 360;
+    const std::size_t histPerExposure = N_HISTORIES;
+    const std::size_t nExposures = N_EXPOSURES;
 
     std::array<T, 37> sim_ev_center, sim_ev_pher;
 
@@ -1355,8 +1359,8 @@ World<T> generateTG195Case5World()
 template <typename T>
 bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false)
 {
-    constexpr std::size_t histPerExposure = SAMPLE_RUN ? 1E4 : 1e5;
-    constexpr std::size_t nExposures = 360;
+    const std::size_t histPerExposure = N_HISTORIES;
+    const std::size_t nExposures = N_EXPOSURES;
 
     ResultKeys<T> resKey;
     resKey.rCase = "Case 5";
