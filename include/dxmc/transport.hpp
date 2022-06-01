@@ -34,6 +34,8 @@ Copyright 2019 Erlend Andersen
 #include <functional>
 #include <memory>
 #include <optional>
+#include <list>
+#include <thread>
 
 namespace dxmc {
 

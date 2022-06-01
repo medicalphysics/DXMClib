@@ -359,7 +359,7 @@ protected:
         const T xi = m_x[index];
         const T xii = m_x[index + 1];
 
-        auto p = [=](const T x) -> T {
+        auto p = [=, *this](const T x) -> T {
             T n;
             if (x == xi) {
                 n = 0;
