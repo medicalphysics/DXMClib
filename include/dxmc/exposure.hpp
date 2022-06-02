@@ -31,8 +31,8 @@ namespace dxmc {
 
 /**
  * @brief Class to describe an exposure.
- * An exposure is used to describe a particle emitter where random distributions, position and, direction and collimation do not change for particles created.  
-*/
+ * An exposure is used to describe a particle emitter where random distributions, position and, direction and collimation do not change for particles created.
+ */
 template <Floating T = double>
 class Exposure {
 
@@ -67,7 +67,7 @@ public:
      * @param filter A BeamFilter to modify photon or particle weight according to the BeamFilter weight distribution. An example is a CT bowtie filter.
      * @param specter A SpecterDistribution to sample photon energies, if null all particles will be emittet with same energy. (see set setMonoenergeticPhotonEnergy)
      * @param heelFilter A HeelFilter to model the Heel effect of an x-ray tube. If null no Heel effect is modelled.
-    */
+     */
     Exposure(const std::array<T, 3>& position,
         const std::array<T, 6>& directionCosines,
         const std::array<T, 4>& collimationAngles,
@@ -110,10 +110,10 @@ public:
 
     /**
      * @brief Set position of the exposure and also each particle starting point. Initial value is zero in all dimensions.
-     * @param x 
-     * @param y 
-     * @param z 
-    */
+     * @param x
+     * @param y
+     * @param z
+     */
     void setPosition(T x, T y, T z)
     {
         m_position[0] = x;
@@ -122,8 +122,8 @@ public:
     }
     /**
      * @brief Set position of the exposure and also each particle starting point. Initial value is zero in all dimensions.
-     * @param pos 
-    */
+     * @param pos
+     */
     void setPosition(const T pos[3])
     {
         for (std::size_t i = 0; i < 3; i++) {
@@ -132,25 +132,25 @@ public:
     }
     /**
      * @brief Set position of the exposure and also each particle starting point. Initial value is zero in all dimensions.
-     * @param pos 
-    */
+     * @param pos
+     */
     void setPosition(const std::array<T, 3>& pos) { m_position = pos; }
     /**
      * @brief Set position of the exposure in the Z or third dimension.
-     * @param posZ 
-    */
+     * @param posZ
+     */
     void setPositionZ(const T posZ) { m_position[2] = posZ; }
     /**
      * @brief Position of the exposure and also each particle starting point.
-     * @param  
-     * @return 
-    */
+     * @param
+     * @return
+     */
     const std::array<T, 3>& position(void) const { return m_position; }
 
     /**
      * @brief Add to current exposure position
-     * @param pos 
-    */
+     * @param pos
+     */
     void addPosition(const std::array<T, 3>& pos)
     {
         for (std::size_t i = 0; i < 3; ++i)
@@ -158,8 +158,8 @@ public:
     }
     /**
      * @brief Subtract from the current position
-     * @param pos 
-    */
+     * @param pos
+     */
     void subtractPosition(const std::array<T, 3>& pos)
     {
         for (std::size_t i = 0; i < 3; ++i)
@@ -167,15 +167,15 @@ public:
     }
 
     /**
-     * @brief Set the direction cosines for this exposure. 
+     * @brief Set the direction cosines for this exposure.
      * Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
-     * @param x1 
-     * @param x2 
-     * @param x3 
-     * @param y1 
-     * @param y2 
-     * @param y3 
-    */
+     * @param x1
+     * @param x2
+     * @param x3
+     * @param y1
+     * @param y2
+     * @param y3
+     */
     void setDirectionCosines(T x1, T x2, T x3, T y1, T y2, T y3)
     {
         m_directionCosines[0] = x1;
@@ -188,8 +188,8 @@ public:
     }
     /**
      * @brief Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
-     * @param cosines 
-    */
+     * @param cosines
+     */
     void setDirectionCosines(const T cosines[6])
     {
         for (std::size_t i = 0; i < 6; i++) {
@@ -200,8 +200,8 @@ public:
 
     /**
      * @brief Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
-     * @param cosines 
-    */
+     * @param cosines
+     */
     void setDirectionCosines(const std::array<T, 6>& cosines)
     {
         m_directionCosines = cosines;
@@ -210,9 +210,9 @@ public:
 
     /**
      * @brief Direction cosines describe a plane intersecting the exposure position. The plane is spanned by the orthonormal vectors X and Y. The cross product of X and Y gives the beam direction. The Beamfilter will modify the weights of a photon according to the X direction and the HeelFilter will modify photon weights by the Y direction.
-     * @param cosinesX 
-     * @param cosinesY 
-    */
+     * @param cosinesX
+     * @param cosinesY
+     */
     void setDirectionCosines(const std::array<T, 3>& cosinesX, const std::array<T, 3>& cosinesY)
     {
         for (std::size_t i = 0; i < 3; i++) {
@@ -222,15 +222,15 @@ public:
         normalizeDirectionCosines();
     }
     /**
-     * @brief Direction cosines for the exposure 
+     * @brief Direction cosines for the exposure
      * @return An array of six values where the first three is the X directional cosine and the last three is the Y directional cosine
-    */
+     */
     const std::array<T, 6>& directionCosines(void) const { return m_directionCosines; }
 
     /**
      * @brief Beam direction, given by X direction cosine cross Y direction cosine
-     * @return 
-    */
+     * @return
+     */
     const std::array<T, 3>& beamDirection(void) const { return m_beamDirection; }
 
     void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }

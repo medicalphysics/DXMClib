@@ -41,8 +41,8 @@ private:
     std::array<T, 3> m_origin = { 0.0, 0.0, 0.0 };
     std::array<T, 6> m_directionCosines = { 1.0, 0.0, 0.0, 0.0, 1.0, 0.0 };
     std::array<std::size_t, 3> m_dimensions = { 0L, 0L, 0L };
-    std ::array<T, 6> m_matrixExtent { 0, 0, 0, 0, 0, 0 };
-    std ::array<T, 6> m_matrixExtentSafe { 0, 0, 0, 0, 0, 0 };
+    std::array<T, 6> m_matrixExtent { 0, 0, 0, 0, 0, 0 };
+    std::array<T, 6> m_matrixExtentSafe { 0, 0, 0, 0, 0, 0 };
 
     // m_density and m_materialIndex can outlive member variables of this class, i.e shared pointers
     std::shared_ptr<std::vector<T>> m_density = nullptr;
@@ -206,7 +206,7 @@ bool World<T>::validate()
         return false;
     }
 
-    //testValidMaterials
+    // testValidMaterials
     for (auto const& mat : m_materialMap) {
         const bool validMaterial = mat.isValid();
         if (!validMaterial) {
@@ -288,7 +288,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
     const T radii = static_cast<T>(diameter) / T { 2 };
     const auto& dim = this->dimensions();
 
-    //making phantom
+    // making phantom
     auto dBufferPtr = std::make_shared<std::vector<T>>(this->size(), airDensity());
     auto mBufferPtr = std::make_shared<std::vector<std::uint8_t>>(this->size(), 0);
     auto measurementPtr = std::make_shared<std::vector<std::uint8_t>>(this->size(), 0);
@@ -296,7 +296,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
     this->setMaterialIndexArray(mBufferPtr);
     this->setMeasurementMapArray(measurementPtr);
 
-    //air holes indices
+    // air holes indices
     std::array<std::size_t, 2> fdim = { dim[0], dim[1] };
     std::array<T, 2> fspacing = { sp[0], sp[1] };
     std::array<T, 2> fcenter = { dim[0] * sp[0] * T { 0.5 }, dim[1] * sp[1] * T { 0.5 } };
@@ -316,7 +316,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
         for (std::size_t i = 0; i < 2; ++i)
             cvec[i] += fcenter[i];
 
-    //setting up measurement indices
+    // setting up measurement indices
     for (std::size_t k = 0; k < dim[2]; ++k) {
         const T slicePosCenter = sp[2] * (k - dim[2] * 0.5 + 0.5);
         if (std::abs(slicePosCenter) <= 50.0) // from -50 to +50 mm into center of the phantom
@@ -324,14 +324,14 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
             const std::size_t offset = k * dim[0] * dim[1];
             for (std::size_t i = 0; i < 5; ++i) {
                 auto idx = circleIndices2D(fdim, fspacing, hcenters[i], holeRadii);
-                std::transform(idx.begin(), idx.end(), idx.begin(), [=](std::size_t ind) { return ind + offset; }); //adding offset
+                std::transform(idx.begin(), idx.end(), idx.begin(), [=](std::size_t ind) { return ind + offset; }); // adding offset
                 auto& indices = m_holePositions[i];
                 indices.insert(indices.end(), idx.begin(), idx.end());
             }
         }
     }
 
-    //making phantom
+    // making phantom
     auto dBuffer = dBufferPtr->data();
     auto mBuffer = mBufferPtr->data();
 
@@ -342,7 +342,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
             dBuffer[idx + offset] = pmma.standardDensity();
             mBuffer[idx + offset] = 2;
         }
-        //air holes
+        // air holes
         for (std::size_t i = 0; i < 5; ++i) {
             auto indicesHoles = circleIndices2D(fdim, fspacing, hcenters[i], holeRadii);
             for (auto idx : indicesHoles) {
@@ -352,7 +352,7 @@ CTDIPhantom<T>::CTDIPhantom(std::size_t diameter)
         }
     }
 
-    //filling measurementArray
+    // filling measurementArray
     auto measBuffer = measurementPtr->data();
     for (const auto& vIdx : m_holePositions)
         for (const auto idx : vIdx)

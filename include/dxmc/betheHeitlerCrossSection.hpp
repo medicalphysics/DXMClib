@@ -33,7 +33,7 @@ namespace BetheHeitlerCrossSection {
     template <Floating T>
     constexpr T SIMULATED_ENERGY()
     {
-        return T { 100.0 }; //Elektron energy [keV] for MonteCarlo simulation of electron penetration in tungsten
+        return T { 100.0 }; // Elektron energy [keV] for MonteCarlo simulation of electron penetration in tungsten
     }
     template <Floating T>
     constexpr std::array<T, 5> THOMSONWIDDINGTONCONSTANT_T()
@@ -47,7 +47,7 @@ namespace BetheHeitlerCrossSection {
         std::array<T, 5> res = { 565, 710, 792, 865, 964 };
         return res;
     }
-    //Electron density distributions:
+    // Electron density distributions:
     template <Floating T>
     constexpr std::array<T, 12> CP100_F_x()
     {
@@ -317,7 +317,7 @@ namespace BetheHeitlerCrossSection {
         return numberFractionF(x, tubeVoltage) * electronDensity_F(u, x * f) + numberFractionM(x, tubeVoltage) * electronDensity_M(u, x * f);
     }
 
-    //END ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN END
+    // END ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN END
 
     constexpr int TUNGSTEN_ATOMIC_NUMBER = 74;
     template <Floating T>
@@ -337,7 +337,7 @@ namespace BetheHeitlerCrossSection {
         return (TUNGSTEN_ATOMIC_NUMBER * TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS<T>() * CLASSIC_ELECTRON_RADIUS<T>() * FINE_STRUCTURE_CONSTANT<T>();
     }
 
-    //BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSS ECTION CALCULATION
+    // BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSS ECTION CALCULATION
 
     template <Floating T>
     T tungstenFiltration(const T tungstenAtt, const T x, const T takeoffAngle)
@@ -406,7 +406,7 @@ namespace BetheHeitlerCrossSection {
         return char_rad;
     }
 
-    //END SEMIRELATIVISTIC BETHE HEITLER CROSS SECTION CALCULATION
+    // END SEMIRELATIVISTIC BETHE HEITLER CROSS SECTION CALCULATION
 
 }
 }

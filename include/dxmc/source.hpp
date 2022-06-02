@@ -42,14 +42,14 @@ namespace dxmc {
  * This class is intended to be a base class for implementation of arbitrary sources.
  * The main purpose for this class and it's derived classes is to specify geometry, x-ray source
  * and calibration to absolute dose.
-*/
+ */
 template <Floating T = double>
 class Source {
 public:
     /**
      * @brief This enumeration is not used by dxmc but is provided for
      * convenience in case of down casting of Source types.
-    */
+     */
     enum class Type {
         None,
         CTSpiral,
@@ -68,8 +68,8 @@ private:
     /**
      * @brief Normalization of both cosine direction vectors to lenght of one
      * Note that direction cosines must be orthogonal.
-     * @param  
-    */
+     * @param
+     */
     void normalizeDirectionCosines(void)
     {
         vectormath::normalize(&m_directionCosines[0]);
@@ -85,7 +85,7 @@ protected:
 public:
     /**
      * @brief Default constructor whos only job is to set source type to Type::None.
-    */
+     */
     Source()
         : m_type(Type::None)
     {
@@ -94,29 +94,29 @@ public:
 
     /**
      * @brief Generate an exposure
-     * Generate an exposure that specifies emitting numberOfHistoriesPerExposure 
-     * from a specific point and with a specific direction and collimation. 
+     * Generate an exposure that specifies emitting numberOfHistoriesPerExposure
+     * from a specific point and with a specific direction and collimation.
      * @param i Exposure number, should be less that numberOfExposures.
      * @return Exposure object
-    */
+     */
     virtual Exposure<T> getExposure(std::uint64_t i) const = 0;
     /**
      * @brief Return max photon energy produced by this source
-     * This is used to generate attenuation look up tables 
+     * This is used to generate attenuation look up tables
      * @return max photon energy with units keV
-    */
+     */
     virtual T maxPhotonEnergyProduced() const { return Tube<T>::maxVoltage(); }
     /**
      * @brief Set source position
-     * @param position 
-    */
+     * @param position
+     */
     void setPosition(const std::array<T, 3>& position) { m_position = position; }
     /**
      * @brief Set source position
-     * @param x 
-     * @param y 
-     * @param z 
-    */
+     * @param x
+     * @param y
+     * @param z
+     */
     void setPosition(T x, T y, T z)
     {
         m_position[0] = x;
@@ -125,23 +125,23 @@ public:
     }
     /**
      * @brief Get source position
-     * @param  
-     * @return 
-    */
+     * @param
+     * @return
+     */
     std::array<T, 3>& position(void) { return m_position; }
     /**
      * @brief Get source position
-     * @param  
-     * @return 
-    */
+     * @param
+     * @return
+     */
     const std::array<T, 3>& position(void) const { return m_position; }
     /**
      * @brief Set direction cosines
      * Direction cosines are two orthogonal vectors used to identify orientation of the source
      * the vectors are given as an array of size 6 with the x vector first and y vector last.
-     * The cross product (x * y) gives the beam direction vector. 
-     * @param cosines 
-    */
+     * The cross product (x * y) gives the beam direction vector.
+     * @param cosines
+     */
     void setDirectionCosines(const std::array<T, 6>& cosines)
     {
         m_directionCosines = cosines;
@@ -151,48 +151,48 @@ public:
      * @brief Get direction cosines
      * Direction cosines are two orthogonal vectors used to identify orientation of the source
      * the vectors are given as an array of size 6 with the x vector first and y vector last.
-     * The cross product (x * y) gives the beam direction vector. 
+     * The cross product (x * y) gives the beam direction vector.
      * @return
-    */
+     */
     const std::array<T, 6>& directionCosines(void) const { return m_directionCosines; }
     /**
      * @brief Get direction cosines
      * Direction cosines are two orthogonal vectors used to identify orientation of the source
      * the vectors are given as an array of size 6 with the x vector first and y vector last.
-     * The cross product (x * y) gives the beam direction vector. 
+     * The cross product (x * y) gives the beam direction vector.
      * @return
-    */
+     */
     std::array<T, 6>& directionCosines(void) { return m_directionCosines; }
     /**
      * @brief Set histories per exposure
      * Histories per exposure denotes number of photon histories emitted per exposure
-     * @param histories 
-    */
+     * @param histories
+     */
     void setHistoriesPerExposure(std::uint64_t histories) { m_historiesPerExposure = histories; }
     /**
      * @brief Get histories per exposure
      * Histories per exposure denotes number of photon histories emitted per exposure
-     * @return 
-    */
+     * @return
+     */
     std::uint64_t historiesPerExposure(void) const { return m_historiesPerExposure; }
     /**
      * @brief Total exposures for this source
      * @return number of exposures for this source
-    */
+     */
     virtual std::uint64_t totalExposures(void) const = 0;
     /**
      * @brief Get source type
-     * @return 
-    */
+     * @return
+     */
     Source::Type type() const { return m_type; }
     /**
      * @brief Get calibration value for absolute dose
      * For sources this function must be implemented for calculation of absolute doses
      * See implementation examples for derived classes DXSource and CTAxialSource.
-     * @param progress Progress bar for feedback if calculations are time 
-     * consuming. 
+     * @param progress Progress bar for feedback if calculations are time
+     * consuming.
      * @return calibration value such as dose = calibrationvalue * relative dose
-    */
+     */
     virtual T getCalibrationValue(LOWENERGYCORRECTION model = LOWENERGYCORRECTION::NONE, ProgressBar<T>* progress = nullptr) const = 0;
 
     virtual bool isValid(void) const = 0;
@@ -457,7 +457,7 @@ public:
         std::array<T, 3> x = { 1.0, .0, .0 };
         vectormath::rotate(cos.data(), x.data(), -secondaryAngle);
         vectormath::rotate(&cos[3], x.data(), -secondaryAngle);
-        //handling tube rotation
+        // handling tube rotation
         std::array<T, 3> beam_dir;
         vectormath::cross(cos.data(), beam_dir.data());
         vectormath::rotate(cos.data(), beam_dir.data(), m_tubeRotationAngle);
@@ -567,7 +567,7 @@ public:
         constexpr T mmsqTOcmsq { 0.01 };
         constexpr T GyTOmGY = 1000;
 
-        calcOutput *= kevTOev * kgTOg_inv; //ev/kg
+        calcOutput *= kevTOev * kgTOg_inv; // ev/kg
 
         const T output = (m_dap * GyTOmGY);
         const T factor = output / calcOutput;
@@ -787,7 +787,7 @@ private:
     T m_angleStep = PI_VAL<T>() / T { 180 };
 };
 
-//forward decl
+// forward decl
 template <Floating T>
 class CTSpiralSource;
 template <Floating T>
@@ -1205,7 +1205,7 @@ public:
 
     Exposure<T> getExposure(std::uint64_t exposureIndex) const override
     {
-        //calculating position
+        // calculating position
         std::array<T, 3> pos = { 0, -this->m_sdd / T { 2 }, 0 };
 
         constexpr T PI_2 = 2 * PI_VAL<T>();
@@ -1406,7 +1406,7 @@ public:
             heelFilter = this->m_heelFilterB.get();
             weight = this->m_tubeBweight;
         }
-        //calculating position
+        // calculating position
         std::array<T, 3> pos = { 0, -this->m_sdd / T { 2.0 }, 0 };
 
         constexpr T PI_2 = 2 * PI_VAL<T>();
@@ -1487,7 +1487,7 @@ private:
 template <Floating T = double>
 class CTSpiralDualSource final : public CTDualSource<T> {
 public:
-    //Source overrides
+    // Source overrides
     CTSpiralDualSource()
         : CTDualSource<T>()
     {
@@ -1627,7 +1627,7 @@ public:
     Exposure<T> getExposure(std::uint64_t i) const override
     {
 
-        //calculating position
+        // calculating position
         std::array<T, 3> pos = { 0, -this->m_sdd / T { 2 }, 0 };
 
         const auto totalExposures = this->totalExposures();
@@ -1678,7 +1678,7 @@ public:
 
     T getCalibrationValue(LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr) const override
     {
-        //This should be prettier
+        // This should be prettier
         CTAxialSource<T> copy;
         CTSource<T>& ctsource = copy;
         CTBaseSource<T>& base = ctsource;
@@ -1689,7 +1689,7 @@ public:
         copy.setScanLenght(0);
         copy.setStep(this->m_collimation);
 
-        //matching angle step to number of exposures
+        // matching angle step to number of exposures
         constexpr auto maxStep = (2 * PI_VAL<T>()) / 72; // min step
         const auto step = std::min(2 * PI_VAL<T>() / totalExposures(), maxStep);
         copy.setExposureAngleStep(step);

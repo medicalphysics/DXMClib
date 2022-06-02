@@ -17,9 +17,9 @@ Copyright 2019 Erlend Andersen
 */
 #pragma once
 #include "dxmc/beamfilters.hpp"
+#include "dxmc/lowenergycorrectionmodel.hpp"
 #include "dxmc/material.hpp"
 #include "dxmc/source.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world.hpp"
-#include "dxmc/lowenergycorrectionmodel.hpp"

@@ -24,25 +24,25 @@ Copyright 2019 Erlend Andersen
 
 namespace dxmc {
 /**
- * @brief Simple struct to describe a photon 
-*/
+ * @brief Simple struct to describe a photon
+ */
 template <Floating T = double>
 struct Particle {
     /**
      * @brief Position vector in three dimensions.
-    */
+     */
     std::array<T, 3> pos;
     /**
      * @brief Direction vector in three dimension. This vector is threated as a normal vector.
-    */
+     */
     std::array<T, 3> dir;
     /**
      * @brief Photon energy in keV.
-    */
+     */
     T energy;
     /**
      * @brief Photon relative weight.
-    */
+     */
     T weight;
 };
 }

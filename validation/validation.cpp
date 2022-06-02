@@ -254,7 +254,7 @@ bool betw(T v, U min, W max)
 template <Floating T = double>
 std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world)
 {
-    //assumes particle is inside world
+    // assumes particle is inside world
     std::size_t arraypos[3];
     const auto& wpos = world.matrixExtent();
     const auto& wdim = world.dimensions();
@@ -316,7 +316,7 @@ std::pair<T, T> getError(const std::uint8_t materialIndex, const dxmc::World<T>&
 template <typename T>
 World<T> generateTG195Case2World(bool forcedInteractions = false)
 {
-    //Material air("Air, Dry (near sea level)");
+    // Material air("Air, Dry (near sea level)");
     Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132");
     air.setStandardDensity(0.001205);
     Material soft("H62.9539171935344C12.9077870263354N1.16702581276482O22.7840718642933Na0.026328553360443P0.0390933975009805S0.0566470278101205Cl0.0341543557411274K0.0309747686593447");
@@ -337,18 +337,18 @@ World<T> generateTG195Case2World(bool forcedInteractions = false)
     extent[5] = dim[2] * spacing[2];
 
     std::vector<std::pair<int, std::array<T, 6>>> volumes;
-    volumes.emplace_back(std::make_pair(1, std::array<T, 6> { -390 / 2, 390 / 2, -390 / 2, 390 / 2, 1550, 1550 + 200 })); //soft volume
-    //center
-    volumes.emplace_back(std::make_pair(7, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 0, 1550 + 25 + 30 * 1 })); //6
-    volumes.emplace_back(std::make_pair(8, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 1, 1550 + 25 + 30 * 2 })); //7
-    volumes.emplace_back(std::make_pair(4, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //3
-    volumes.emplace_back(std::make_pair(9, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 3, 1550 + 25 + 30 * 4 })); //8
-    volumes.emplace_back(std::make_pair(10, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 4, 1550 + 25 + 30 * 5 })); //9
-    //pher
-    volumes.emplace_back(std::make_pair(2, std::array<T, 6> { -15, 15, -150 - 15, -150 + 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //1
-    volumes.emplace_back(std::make_pair(6, std::array<T, 6> { -15, 15, +150 - 15, +150 + 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //5
-    volumes.emplace_back(std::make_pair(3, std::array<T, 6> { -150 - 15, -150 + 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //2
-    volumes.emplace_back(std::make_pair(5, std::array<T, 6> { +150 - 15, +150 + 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); //4
+    volumes.emplace_back(std::make_pair(1, std::array<T, 6> { -390 / 2, 390 / 2, -390 / 2, 390 / 2, 1550, 1550 + 200 })); // soft volume
+    // center
+    volumes.emplace_back(std::make_pair(7, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 0, 1550 + 25 + 30 * 1 })); // 6
+    volumes.emplace_back(std::make_pair(8, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 1, 1550 + 25 + 30 * 2 })); // 7
+    volumes.emplace_back(std::make_pair(4, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); // 3
+    volumes.emplace_back(std::make_pair(9, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 3, 1550 + 25 + 30 * 4 })); // 8
+    volumes.emplace_back(std::make_pair(10, std::array<T, 6> { -15, 15, -15, 15, 1550 + 25 + 30 * 4, 1550 + 25 + 30 * 5 })); // 9
+    // pher
+    volumes.emplace_back(std::make_pair(2, std::array<T, 6> { -15, 15, -150 - 15, -150 + 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); // 1
+    volumes.emplace_back(std::make_pair(6, std::array<T, 6> { -15, 15, +150 - 15, +150 + 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); // 5
+    volumes.emplace_back(std::make_pair(3, std::array<T, 6> { -150 - 15, -150 + 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); // 2
+    volumes.emplace_back(std::make_pair(5, std::array<T, 6> { +150 - 15, +150 + 15, -15, 15, 1550 + 25 + 30 * 2, 1550 + 25 + 30 * 3 })); // 4
 
     auto idx_buffer = idx->data();
     auto dens_buffer = dens->data();
@@ -447,7 +447,7 @@ bool TG195Case2AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         std::array<T, 6> cosines = { 1, 0, 0, 0, 1, 0 };
         std::array<T, 3> rotaxis = { -1, 0, 0 };
 
-        //calculating angles to align beam
+        // calculating angles to align beam
         const T angle = DEG_TO_RAD<T>() * T { 15 };
         const T d = 1800;
         const T h = d * std::tan(angle);
@@ -583,7 +583,7 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
     w.setDimensions(dim);
     const auto size = w.size();
 
-    //materials
+    // materials
     Material air("C0.0150228136551869N78.439632744437O21.0780510531616Ar0.467293388746132", "air");
     air.setStandardDensity(0.001205);
     Material pmma("H53.2813989847746C33.3715774096566O13.3470236055689", "pmma");
@@ -595,22 +595,22 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
     Material water("H66.6220373399527O33.3779626600473", "water");
     water.setStandardDensity(1.0);
 
-    //std::vector<Material> materials({ air, water, pmma, breastSkin, breast });
+    // std::vector<Material> materials({ air, water, pmma, breastSkin, breast });
 
-    //arrays
+    // arrays
     auto densArr = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     auto matArr = std::make_shared<std::vector<std::uint8_t>>(size, 0);
     auto dens = densArr->data();
     auto mat = matArr->data();
 
-    //boxes with center in breast body center
+    // boxes with center in breast body center
     std::vector<std::pair<std::uint8_t, std::array<T, 6>>> boxes;
     boxes.emplace_back(std::make_pair(1, std::array<T, 6> { -170, 0, -150, 150, -150, 150 })); // body
     boxes.emplace_back(std::make_pair(2, std::array<T, 6> { 0, 140, -130, 130, 25, 25 + 2 })); // upper plate
     boxes.emplace_back(std::make_pair(2, std::array<T, 6> { 0, 140, -130, 130, -25 - 2, -25 })); // lower plate
-    //skin is 3
-    //breast tissue is 4
-    //vois
+    // skin is 3
+    // breast tissue is 4
+    // vois
     boxes.emplace_back(std::make_pair(4 + 3, std::array<T, 6> { 50 - 10, 50 + 10, -10, 10, -5, 5 })); // voi3
     boxes.emplace_back(std::make_pair(4 + 2, std::array<T, 6> { 50 - 30 - 10, 50 - 30 + 10, -10, 10, -5, 5 })); // voi2
     boxes.emplace_back(std::make_pair(4 + 4, std::array<T, 6> { 50 + 30 - 10, 50 + 30 + 10, -10, 10, -5, 5 })); // voi4
@@ -627,7 +627,7 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
     extent[5] = 660;
     extent[4] = extent[5] - dim[2] * spacing[2];
 
-    //shifting all z values
+    // shifting all z values
     const T brest_center_pos = 40;
     for (auto& [matIdx, voi] : boxes) {
         voi[4] += brest_center_pos;
@@ -636,7 +636,7 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
     std::array<T, 3> world_origin = { 0, 0, (extent[4] + extent[5]) / 2 }; // center world on z pos of scoring plane
 
     w.setOrigin(world_origin);
-    //making volume
+    // making volume
     for (std::size_t z = 0; z < dim[2]; ++z) {
         const T zp = extent[4] + (z + T { 0.5 }) * spacing[2];
         if (zp < 301) {
@@ -646,28 +646,28 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
                     const T xp = extent[0] + (x + T { 0.5 }) * spacing[0];
                     const auto idx = x + y * dim[0] + z * dim[0] * dim[1];
 
-                    //filling breast skin
+                    // filling breast skin
                     if ((zp > brest_center_pos - 25) && (zp < brest_center_pos + 25)) {
-                        //filling breast skin
+                        // filling breast skin
                         if ((xp > 0) && (xp * xp + yp * yp < 100 * 100)) {
-                            //inside semicircle
-                            //adding skin
+                            // inside semicircle
+                            // adding skin
                             mat[idx] = 3;
                         }
                     }
-                    //filling breast tissue
+                    // filling breast tissue
                     if ((zp > brest_center_pos - 23) && (zp < brest_center_pos + 23)) {
-                        //filling breast
+                        // filling breast
                         if ((xp > 0) && (xp * xp + yp * yp < 98 * 98)) {
-                            //inside semicircle
-                            //adding skin
+                            // inside semicircle
+                            // adding skin
                             mat[idx] = 4;
                         }
                     }
 
                     for (const auto& [voi_id, voi_ex] : boxes) {
                         if ((xp > voi_ex[0]) && (xp < voi_ex[1]) && (yp > voi_ex[2]) && (yp < voi_ex[3]) && (zp > voi_ex[4]) && (zp < voi_ex[5])) {
-                            //inside voi
+                            // inside voi
                             mat[idx] = voi_id;
                         }
                     }
@@ -676,7 +676,7 @@ World<T> generateTG195Case3World(bool forceInteractions = false)
         }
     }
 
-    //setting densities
+    // setting densities
     std::transform(std::execution::par_unseq, matArr->cbegin(), matArr->cend(), densArr->begin(), [&](const auto matIdx) -> T {
         if (matIdx == 0)
             return air.standardDensity();
@@ -767,7 +767,7 @@ bool TG195Case3AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         std::array<T, 6> cosines = { 1, 0, 0, 0, -1, 0 };
         std::array<T, 3> rotaxis = { 1, 0, 0 };
 
-        //calculating angles to align beam
+        // calculating angles to align beam
         const T angle = DEG_TO_RAD<T>() * T { 15 };
         const T g = 660;
         const T s = g * std::cos(angle);
@@ -888,7 +888,7 @@ World<T> generateTG195Case4World1(bool forced = false)
 
     auto mat = std::make_shared<std::vector<std::uint8_t>>(size, static_cast<std::uint8_t>(0));
     auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
-    //generate cylindar
+    // generate cylindar
     auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 160 });
     for (std::size_t z = 0; z < dim[2]; ++z) {
         const auto zpos = z * spacing[2] - (dim[2] * spacing[2]) / 2;
@@ -1066,7 +1066,7 @@ World<T> generateTG195Case4World2(bool forceInteractions = false)
     auto mat = std::make_shared<std::vector<std::uint8_t>>(size, 0);
     auto dens = std::make_shared<std::vector<T>>(size, static_cast<T>(air.standardDensity()));
     auto meas = std::make_shared<std::vector<std::uint8_t>>(size, 0);
-    //generate cylindar
+    // generate cylindar
     auto circ_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 320 } * T { 0.5 });
     auto pmma2_ind = circleIndices(T { -150 }, T { 0 }, dim, spacing, T { 5 });
     auto pmma1_ind = circleIndices(T { 0 }, T { 0 }, dim, spacing, T { 5 });
@@ -1196,7 +1196,7 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
 
     print("Angle, center dxmc [eV/hist], center error, nEvents, pher dxmc [eV/hist], pher error, nEvents, center TG195 [eV/hist], pher TG195 [eV/hist], simtime [s], diff center[%], diff pher[%]\n");
 
-    //simulate 36 projections
+    // simulate 36 projections
     for (std::size_t i = 0; i < sim_ev_center.size(); ++i) {
 
         Source<T>* s_ptr = nullptr;
@@ -1222,8 +1222,8 @@ bool TG195Case42AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
 
         const T simtime = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count();
 
-        //correction for voxelized tube, we assume a homogeneous dose distribution about the VOI
-        //for this correction
+        // correction for voxelized tube, we assume a homogeneous dose distribution about the VOI
+        // for this correction
         const auto voxel_volume = std::accumulate(w.spacing().cbegin(), w.spacing().cend(), T { 1 }, std::multiplies<>());
         const auto n_voxels = std::count(w.materialIndexArray()->cbegin(), w.materialIndexArray()->cend(), 2);
         const auto correction = PI_VAL<T>() * 5 * 5 * 100 / (voxel_volume * n_voxels);
@@ -1316,7 +1316,7 @@ World<T> generateTG195Case5World()
     w.setDimensions(dim);
     w.setSpacing(spacing);
 
-    //Materials from case TG195 5 converted from mass density to number density
+    // Materials from case TG195 5 converted from mass density to number density
     std::vector<Material> materials(20);
     materials[0] = Material("C0.015019N78.443071O21.074800Ar0.467110", "Air", 0.001205);
     materials[1] = Material("H51.869709C36.108118N4.019974O8.002200", "Cushion Foam", 0.075);
@@ -1641,7 +1641,7 @@ int main(int argc, char* argv[])
     printStart();
 
     auto success = true;
-    //success = success && selectOptions<double>();
+    // success = success && selectOptions<double>();
     success = success && selectOptions<float>();
 
     std::cout << "Press any key to exit";
