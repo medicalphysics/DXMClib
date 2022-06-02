@@ -45,9 +45,9 @@ public:
     static constexpr T MAX_PHOTON_ENERGY() { return 2 * ELECTRON_REST_MASS<T>(); }
     static constexpr T MIN_PHOTON_ENERGY() { return T { 0.5 }; }
     /**
-   * @brief Construct a new Attenuation Lut object
-   *
-   */
+     * @brief Construct a new Attenuation Lut object
+     *
+     */
     AttenuationLut() { }
     AttenuationLut(const World<T>& world, T maxEnergy = 150, T minEnergy = 1)
     {
@@ -55,12 +55,12 @@ public:
     }
 
     /**
-   * @brief Generate lookup tables for attenuation data
-   * Generate lookup tables from a valid world
-   * @param world valid World object to generate attenuation table from
-   * @param minEnergy Minimum energy to consider in keV, minimum 1.0 keV
-   * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep
-   */
+     * @brief Generate lookup tables for attenuation data
+     * Generate lookup tables from a valid world
+     * @param world valid World object to generate attenuation table from
+     * @param minEnergy Minimum energy to consider in keV, minimum 1.0 keV
+     * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep
+     */
     void generate(const World<T>& world, T maxEnergy = 150, T minEnergy = 1)
     {
         const auto& materials = world.materialMap();
@@ -69,14 +69,14 @@ public:
     }
 
     /**
-   * @brief Generate lookup tables for attenuation data
-   * The order of materials matters, i.e the first material will get index 0,
-   * second has index 1 etc...
-   * @param materials Vector of materials to generate attenuation table
-   * @param minEnergy Minimum energy to consider in keV, minimum 1.0 keV
-   * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep, maximum 2mc^2 keV
-   * @param energyStep Energy stepsize in lut table, minimum 0.1 keV
-   */
+     * @brief Generate lookup tables for attenuation data
+     * The order of materials matters, i.e the first material will get index 0,
+     * second has index 1 etc...
+     * @param materials Vector of materials to generate attenuation table
+     * @param minEnergy Minimum energy to consider in keV, minimum 1.0 keV
+     * @param maxEnergy Maximum energy to consider in keV, minimum minEnergy+energyStep, maximum 2mc^2 keV
+     * @param energyStep Energy stepsize in lut table, minimum 0.1 keV
+     */
     void generate(const std::vector<Material>& materials, T maxEnergy = 150, T minEnergy = 1, bool generatePhotonData = true)
     {
         m_minEnergy = std::max(MIN_PHOTON_ENERGY(), std::min(maxEnergy, minEnergy));
@@ -85,7 +85,7 @@ public:
         generateFFdata(materials);
         generateSFdata(materials);
 
-        //getting electron configurations
+        // getting electron configurations
         m_electronShellConfiguration.reserve(materials.size());
         for (const auto& m : materials) {
             m_electronShellConfiguration.push_back(m.getElectronConfiguration<T>());
@@ -96,25 +96,25 @@ public:
     }
 
     /**
-   * @brief Return the maximum mass attenuation value for all materials at
-   * spesific photon energy
-   *
-   * @param energy Photon energy for maximum mass attenuation in table
-   * @return double
-   */
+     * @brief Return the maximum mass attenuation value for all materials at
+     * spesific photon energy
+     *
+     * @param energy Photon energy for maximum mass attenuation in table
+     * @return double
+     */
     T maxTotalAttenuationInverse(T energy) const
     {
         return m_attenuationData.maxAttenuationInverse(energy);
     }
 
     /**
-   * @brief Returning photoelectric, compton and rayleigh,
-   * respectivly, mass attenuation for a material at specified photon energy
-   *
-   * @param material material index
-   * @param energy photon energy in keV
-   * @return std::array<double, 3>
-   */
+     * @brief Returning photoelectric, compton and rayleigh,
+     * respectivly, mass attenuation for a material at specified photon energy
+     *
+     * @param material material index
+     * @param energy photon energy in keV
+     * @return std::array<double, 3>
+     */
     std::array<T, 3> photoComptRayAttenuation(std::size_t material, T energy) const
     {
 
@@ -129,36 +129,36 @@ public:
     }
 
     /**
-   * @brief Calculate compton scatter function (low energy approximation) for
-   * current material and photon energy (momentum transfer)
-   *
-   * @param material Material index
-   * @param momentumTransfer momentum transfer
-   * @return double
-   */
+     * @brief Calculate compton scatter function (low energy approximation) for
+     * current material and photon energy (momentum transfer)
+     *
+     * @param material Material index
+     * @param momentumTransfer momentum transfer
+     * @return double
+     */
     inline T comptonScatterFactor(std::size_t material, T momentumTransfer) const
     {
         return m_comptonScatterFactor[material](momentumTransfer);
     }
 
     /**
-   * @brief Electron shell configuration for material
-   *
-   * @param materialIdx material index   
-   * @return vector of ElectronShellConfiguration structs for each shell in material.
-   */
+     * @brief Electron shell configuration for material
+     *
+     * @param materialIdx material index
+     * @return vector of ElectronShellConfiguration structs for each shell in material.
+     */
     const std::array<ElectronShellConfiguration<T>, 12>& electronShellConfiguration(std::size_t materialIdx) const
     {
         return m_electronShellConfiguration[materialIdx];
     }
 
     /**
-   * @brief Momentum transfer for photon
-   *
-   * @param energy Photon energy in keV
-   * @param angle Scattering angle in radians
-   * @return double
-   */
+     * @brief Momentum transfer for photon
+     *
+     * @param energy Photon energy in keV
+     * @param angle Scattering angle in radians
+     * @return double
+     */
     static T momentumTransfer(T energy, T angle)
     {
         constexpr T k = 1 / KEV_TO_ANGSTROM<T>(); // constant for momentum transfer
@@ -166,12 +166,12 @@ public:
     }
 
     /**
-   * @brief Momentum transfer for photon
-   *
-   * @param energy Photon energy in keV
-   * @param angle Cosine of scattering angle in radians
-   * @return double
-   */
+     * @brief Momentum transfer for photon
+     *
+     * @param energy Photon energy in keV
+     * @param angle Cosine of scattering angle in radians
+     * @return double
+     */
     static T momentumTransferFromCos(T energy, T cosAngle)
     {
         constexpr T k = 1 / KEV_TO_ANGSTROM<T>(); // constant for momentum transfer
@@ -179,11 +179,11 @@ public:
     }
 
     /**
-   * @brief Max possible momentum transfer for photon
-   *
-   * @param energy Photon energy in keV
-   * @return double
-   */
+     * @brief Max possible momentum transfer for photon
+     *
+     * @param energy Photon energy in keV
+     * @return double
+     */
     static T momentumTransferMax(T energy)
     {
         constexpr T k = 1 / KEV_TO_ANGSTROM<T>(); // constant for momentum transfer
@@ -191,12 +191,12 @@ public:
     }
 
     /**
-   * @brief Cosine of scatter angle for a photon
-   *
-   * @param energy  Photon energy in keV
-   * @param momentumTransferSquared momentumtransfer squared in $Å^{-2}$
-   * @return double
-   */
+     * @brief Cosine of scatter angle for a photon
+     *
+     * @param energy  Photon energy in keV
+     * @param momentumTransferSquared momentumtransfer squared in $Å^{-2}$
+     * @return double
+     */
     static inline T cosAngle(const T energy, const T momentumTransferSquared)
     {
         const auto invE = KEV_TO_ANGSTROM<T>() / energy;
@@ -205,10 +205,10 @@ public:
 
 protected:
     /**
-   * @brief Generate atomic form factors for materials specified.
-   *
-   * @param materials Vector of Materials
-   */
+     * @brief Generate atomic form factors for materials specified.
+     *
+     * @param materials Vector of Materials
+     */
     void generateFFdata(const std::vector<Material>& materials)
     {
         m_formFactor.clear();
@@ -233,10 +233,10 @@ protected:
     }
 
     /**
-   * @brief Generate atomic scatter factors for materials specified.
-   *
-   * @param materials Vector of Materials
-   */
+     * @brief Generate atomic scatter factors for materials specified.
+     *
+     * @param materials Vector of Materials
+     */
     void generateSFdata(const std::vector<Material>& materials)
     {
         // Compton scatter corrections

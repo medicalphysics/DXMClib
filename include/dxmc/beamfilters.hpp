@@ -36,8 +36,8 @@ namespace dxmc {
 
 /**
  * @brief Base class for filters on a photon beam
- * 
- * Base class for various filters on a photon beam based on angle of photom from beam direction along the first direction cosine vector of the source 
+ *
+ * Base class for various filters on a photon beam based on angle of photom from beam direction along the first direction cosine vector of the source
  */
 template <Floating T = double>
 class BeamFilter {
@@ -47,33 +47,33 @@ private:
 
 public:
     /**
-	 * @brief Sample intensity weigh
-	 * Sample the photon weight from this filter. The mean of photon weights sampled is 1.0 for N samples when N->infinity.  
-	 * @param angle Angle in radians.
-	 * @return double Photon weight
-	 */
+     * @brief Sample intensity weigh
+     * Sample the photon weight from this filter. The mean of photon weights sampled is 1.0 for N samples when N->infinity.
+     * @param angle Angle in radians.
+     * @return double Photon weight
+     */
     virtual T sampleIntensityWeight(const T angle) const = 0;
     /**
-	 * @brief Get the name of the filter
-	 * This is provided so we can keep track of many filters if needed. 
-	 * @param  name of filter. Defaults to empty string.
-	 * @return name of filter. Defaults to empty string.
-	*/
+     * @brief Get the name of the filter
+     * This is provided so we can keep track of many filters if needed.
+     * @param  name of filter. Defaults to empty string.
+     * @return name of filter. Defaults to empty string.
+     */
     const std::string& filterName(void) const { return m_filterName; }
     /**
-	 * @brief Set the name of the filter
-	 * This is provided so we can keep track of many filters if needed. 
-	 * @param  name of filter. Defaults to empty string.
-	 * @return name of filter. Defaults to empty string.
-	*/
+     * @brief Set the name of the filter
+     * This is provided so we can keep track of many filters if needed.
+     * @param  name of filter. Defaults to empty string.
+     * @return name of filter. Defaults to empty string.
+     */
     void setFilterName(const std::string& name) { m_filterName = name; }
 };
 
 /**
- * @brief Class for simple CT bowtie filter modeling. 
- * 
+ * @brief Class for simple CT bowtie filter modeling.
+ *
  * Filter to adjust photon weight based on a measured bowtie filter profile. Note that beamhardening of a specter is not modeled
- * and the bowtie filter simply adjust photon fluence according to a profile. 
+ * and the bowtie filter simply adjust photon fluence according to a profile.
  */
 template <Floating T = double>
 class BowTieFilter : public BeamFilter<T> {
@@ -83,8 +83,8 @@ private:
 protected:
     /**
      * @brief Normalize filter
-	 * Normalize filter such that expectation value of sampleIntensityWeight approches unity for large number of samples.
-    */
+     * Normalize filter such that expectation value of sampleIntensityWeight approches unity for large number of samples.
+     */
     void normalizeData()
     {
         const auto mean = std::reduce(m_data.begin(), m_data.end(), 0.0, [](auto a, auto el) { return a + el.second; }) / m_data.size();
@@ -93,12 +93,12 @@ protected:
 
 public:
     /**
-	 * @brief Construct a new Bow Tie Filter object
-	 * Construct a new Bow Tie Filter object
-	 * 
-	 * @param angles A vector of angles in radians for the fluence profile. The filter is assumed to be symmetrical and only absolute values of angles are used.
-	 * @param weights Photon fluence for the corresponding angles. The fluence measurements are normalized such that the average photon weight is 1.0 when number of samples -> infinity. 
-	 */
+     * @brief Construct a new Bow Tie Filter object
+     * Construct a new Bow Tie Filter object
+     *
+     * @param angles A vector of angles in radians for the fluence profile. The filter is assumed to be symmetrical and only absolute values of angles are used.
+     * @param weights Photon fluence for the corresponding angles. The fluence measurements are normalized such that the average photon weight is 1.0 when number of samples -> infinity.
+     */
     BowTieFilter(const std::vector<T>& angles, const std::vector<T>& weights)
         : BeamFilter<T>()
     {
@@ -114,10 +114,10 @@ public:
     }
 
     /**
-	 * @brief Construct a new Bow Tie Filter object
-	 * Construct a new Bow Tie Filter object
-	 * @param angleWeightsPairs A vector of angle in radians and photon fluence pairs.
-	 */
+     * @brief Construct a new Bow Tie Filter object
+     * Construct a new Bow Tie Filter object
+     * @param angleWeightsPairs A vector of angle in radians and photon fluence pairs.
+     */
     BowTieFilter(const std::vector<std::pair<T, T>>& angleWeightsPairs)
         : BeamFilter<T>()
         , m_data(angleWeightsPairs)
@@ -130,10 +130,10 @@ public:
     }
 
     /**
-	 * @brief Construct a new Bow Tie Filter object from another BowTieFilter
-	 * Construct a new Bow Tie Filter object
-	 * @param other BowTiefilter
-	 */
+     * @brief Construct a new Bow Tie Filter object from another BowTieFilter
+     * Construct a new Bow Tie Filter object
+     * @param other BowTiefilter
+     */
     BowTieFilter(const BowTieFilter& other)
         : BeamFilter<T>()
     {
@@ -142,11 +142,11 @@ public:
     virtual ~BowTieFilter() = default;
 
     /**
-	 * @brief Sample photon weight
-	 * Sample photon weight modifier for a photon with direction angle in radians along the first Source cosine direction 
-	 * @param angle Photon angle in radians 
-	 * @return double Photon fluence weight modifier 
-	 */
+     * @brief Sample photon weight
+     * Sample photon weight modifier for a photon with direction angle in radians along the first Source cosine direction
+     * @param angle Photon angle in radians
+     * @return double Photon fluence weight modifier
+     */
     T sampleIntensityWeight(T anglePlusAndMinus) const override
     {
 
@@ -156,7 +156,7 @@ public:
         auto last = m_data.end();
         std::advance(last, -1);
 
-        //binary search for angle
+        // binary search for angle
         auto mid = std::distance(first, last) / 2;
         auto it = first;
         std::advance(it, mid);
@@ -179,7 +179,7 @@ public:
             return m_data.back().second;
         }
 
-        //linear interpolation
+        // linear interpolation
 
         const auto x0 = first->first;
         const auto x1 = last->first;
@@ -190,18 +190,18 @@ public:
     }
 
     /**
-	 * @brief Filter data
-	 * Returns a vector reference to angle in radians and normalized fluence weight pairs  
-	 * @return const std::vector<std::pair<double, double>>& Vector of <angle, weight> pairs
-	 */
+     * @brief Filter data
+     * Returns a vector reference to angle in radians and normalized fluence weight pairs
+     * @return const std::vector<std::pair<double, double>>& Vector of <angle, weight> pairs
+     */
     const std::vector<std::pair<T, T>>& data() const { return m_data; }
 };
 
 /**
  * @brief Filter for modeling of organ exposure control for Siemens CT scanners (XCare).
- * 
+ *
  * This filter modifies a particle's weight along the rotation angle in the same manner as Simens have iplementet on some CT scanner models.
- * The result is decreased fluence (photon weight) along the filters span angle and increased fluence outside the filter angle. The mean photon weight over all angles in a rotation is unity. 
+ * The result is decreased fluence (photon weight) along the filters span angle and increased fluence outside the filter angle. The mean photon weight over all angles in a rotation is unity.
  */
 template <Floating T = double>
 class XCareFilter : public BeamFilter<T> {
@@ -214,9 +214,9 @@ private:
 
 public:
     /**
-	 * @brief Construct a new XCareFilter object
-	 * Constructs new XCareFilter with default values
-	 */
+     * @brief Construct a new XCareFilter object
+     * Constructs new XCareFilter with default values
+     */
     XCareFilter()
         : BeamFilter<T>()
     {
@@ -228,30 +228,30 @@ public:
     virtual ~XCareFilter() = default;
 
     /**
-	 * @brief Center filter angle
-	 * 
-	 * Center angle for the filter where photon weight is reduced
-	 * @return double Angle in radians
-	 */
+     * @brief Center filter angle
+     *
+     * Center angle for the filter where photon weight is reduced
+     * @return double Angle in radians
+     */
     T filterAngle() const { return m_filterAngle; }
 
     /**
-	 * @brief Center filter angle
-	 * 
-	 * Center angle for the filter where photon weight is reduced
-	 * @return double Angle in degrees
-	 */
+     * @brief Center filter angle
+     *
+     * Center angle for the filter where photon weight is reduced
+     * @return double Angle in degrees
+     */
     T filterAngleDeg() const
     {
         return m_filterAngle * RAD_TO_DEG<T>();
     }
 
     /**
-	 * @brief Set the Filter Angle
-	 * 
-	 * Center angle for the filter where photon weight is reduced
-	 * @param angle New filter angle in radians 
-	 */
+     * @brief Set the Filter Angle
+     *
+     * Center angle for the filter where photon weight is reduced
+     * @param angle New filter angle in radians
+     */
     void setFilterAngle(T angle)
     {
         constexpr T pi_2 = T { 2 } * PI_VAL<T>();
@@ -261,41 +261,41 @@ public:
     }
 
     /**
-	 * @brief Set the Filter Angle
-	 * 
-	 * Center angle for the filter where photon weight is reduced
-	 * @param angle New filter angle in degrees
-	 */
+     * @brief Set the Filter Angle
+     *
+     * Center angle for the filter where photon weight is reduced
+     * @param angle New filter angle in degrees
+     */
     void setFilterAngleDeg(T angle)
     {
         setFilterAngle(angle * DEG_TO_RAD<T>());
     }
 
     /**
-	 * @brief Span angle of the filter
-	 * 
-	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
-	 * @return double Span angle in radians
-	 */
+     * @brief Span angle of the filter
+     *
+     * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI.
+     * @return double Span angle in radians
+     */
     T spanAngle() const { return m_spanAngle; }
 
     /**
-	 * @brief Span angle of the filter
-	 * 
-	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
-	 * @return double Span angle in degrees
-	 */
+     * @brief Span angle of the filter
+     *
+     * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI.
+     * @return double Span angle in degrees
+     */
     T spanAngleDeg() const
     {
         return m_spanAngle * RAD_TO_DEG<T>();
     }
 
     /**
-	 * @brief Set span angle of the filter
-	 * 
-	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
-	 * @return T Span angle in radians
-	 */
+     * @brief Set span angle of the filter
+     *
+     * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI.
+     * @return T Span angle in radians
+     */
     void setSpanAngle(T angle)
     {
         constexpr T smallestDegree = T { 5.0 } * DEG_TO_RAD<T>();
@@ -304,41 +304,41 @@ public:
         }
     }
     /**
-	 * @brief Set span angle of the filter
-	 * 
-	 * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI. 
-	 * @return double Span angle in degrees
-	 */
+     * @brief Set span angle of the filter
+     *
+     * The span where photon weight is reduced, this angle span includes the ramp angle. Valid values are 5 degrees > span angle > PI.
+     * @return double Span angle in degrees
+     */
     void setSpanAngleDeg(T angle)
     {
         setSpanAngle(angle * DEG_TO_RAD<T>());
     }
 
     /**
-	 * @brief Ramp angle 
-	 * 
-	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
-	 * @return double Ramp angle in radians
-	 */
+     * @brief Ramp angle
+     *
+     * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2.
+     * @return double Ramp angle in radians
+     */
     T rampAngle() const { return m_rampAngle; }
 
     /**
-	 * @brief Ramp angle 
-	 * 
-	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
-	 * @return double Ramp angle in degrees
-	 */
+     * @brief Ramp angle
+     *
+     * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2.
+     * @return double Ramp angle in degrees
+     */
     T rampAngleDeg() const
     {
         return m_rampAngle * RAD_TO_DEG<T>();
     }
 
     /**
-	 * @brief Set ramp angle
-	 * 
-	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
-	 * @param angle ramp angle in radians 
-	 */
+     * @brief Set ramp angle
+     *
+     * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2.
+     * @param angle ramp angle in radians
+     */
     void setRampAngle(T angle)
     {
         if ((angle >= 0.0) && (angle <= 0.5 * m_spanAngle)) {
@@ -347,30 +347,30 @@ public:
     }
 
     /**
-	 * @brief Set ramp angle
-	 * 
-	 * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2. 
-	 * @param angle ramp angle in degrees 
-	 */
+     * @brief Set ramp angle
+     *
+     * The ramp angle span for ramping down the photon weight. The ramp angle are included in the span angle and must be less than spanAngle/2.
+     * @param angle ramp angle in degrees
+     */
     void setRampAngleDeg(T angle)
     {
         setRampAngle(angle * DEG_TO_RAD<T>());
     }
 
     /**
-	 * @brief Photon weight in the filters span angle excluding angle ramps 
-	 * 
-	 * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
-	 * @return double 
-	 */
+     * @brief Photon weight in the filters span angle excluding angle ramps
+     *
+     * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
+     * @return double
+     */
     T lowWeight() const { return m_lowWeight; }
 
     /**
-	 * @brief Set photon weight in the filters span angle excluding angle ramps 
-	 * 
-	 * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
-	 * @param weight
-	 */
+     * @brief Set photon weight in the filters span angle excluding angle ramps
+     *
+     * Photon weight in the span angle excluding ramp angles. Must be in 0.0 < lowWeight <= 1.0.
+     * @param weight
+     */
     void setLowWeight(T weight)
     {
         if ((weight > 0.0) && (weight <= 1.0)) {
@@ -378,11 +378,11 @@ public:
         }
     }
     /**
-	 * @brief Photon weight for angles outside span angle
-	 * 
-	 * Highest photon weight outside span angle. This value is calculated such that expectation weight across all angles is 1.0
-	 * @return double Photon hight weight
-	 */
+     * @brief Photon weight for angles outside span angle
+     *
+     * Highest photon weight outside span angle. This value is calculated such that expectation weight across all angles is 1.0
+     * @return double Photon hight weight
+     */
     T highWeight() const
     {
         constexpr T pi_2 = T { 2 } * PI_VAL<T>();
@@ -390,13 +390,13 @@ public:
     }
 
     /**
-	 * @brief Sample photon weight
-	 * 
-	 * Sample photon weight from rotation angle. Mean weight from all angles is 1.0
-	 * 
-	 * @param angle Rotation angle in radians
-	 * @return double Photon weight modifier
-	 */
+     * @brief Sample photon weight
+     *
+     * Sample photon weight from rotation angle. Mean weight from all angles is 1.0
+     *
+     * @param angle Rotation angle in radians
+     * @return double Photon weight modifier
+     */
     T sampleIntensityWeight(const T angle) const override
     {
         constexpr T pi_2 = T { 2 } * PI_VAL<T>();
@@ -428,9 +428,9 @@ public:
 
 /**
  * @brief Filter to model Heel effect of a tube.
- * 
- * Filter for modeling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects. 
- * 
+ *
+ * Filter for modeling of Heel effect of a x-ray tube. The filter do not model beam hardening of the Heel effect, only photon fluence effects.
+ *
  */
 template <Floating T = double>
 class HeelFilter {
@@ -443,7 +443,7 @@ private:
     T m_angleStart = 0.07;
     std::size_t m_angleSize = 5;
     std::vector<T> m_energies;
-    std::vector<T> m_weights; //vector of m_angleSize*m_energySize weights
+    std::vector<T> m_weights; // vector of m_angleSize*m_energySize weights
     std::string m_filterName = "";
 
 public:
@@ -451,7 +451,7 @@ public:
      * @brief Constructs a new Heel filter
      * @param tube Tube to use when calculating Heel effect
      * @param heel_angle_span Span angle in radians to calculate Heel effect. This should be atleast as large as the beam collimation from the radiation source.
-    */
+     */
     HeelFilter(const Tube<T>& tube, const T heel_angle_span = 0.0)
     {
         update(tube, heel_angle_span);
@@ -461,7 +461,7 @@ public:
      * @brief Update this filter with a new tube.
      * @param tube Tube to use when calculating Heel effect
      * @param heel_angle_span Span angle in radians to calculate Heel effect. This should be atleast as large as the beam collimation from the radiation source.
-    */
+     */
     void update(const Tube<T>& tube, const T heel_angle_span = 0.0)
     {
         // recalculating energy range
@@ -489,11 +489,11 @@ public:
             for (std::size_t j = 0; j < m_energySize; ++j)
                 m_weights[j * m_angleSize + i] = specter[j];
         }
-        //normalizing weights
+        // normalizing weights
         auto w_start = m_weights.begin();
         for (std::size_t i = 0; i < m_energySize; ++i) {
             auto w_end = w_start + m_angleSize;
-            //normalize to mean
+            // normalize to mean
             const T sum = std::reduce(w_start, w_end, 0.0) / m_angleSize;
             if (sum > T { 0 }) {
                 w_start = std::transform(w_start, w_end, w_start, [=](auto w) -> T { return w / sum; });
@@ -506,11 +506,11 @@ public:
 
     /**
      * @brief Sample weight from angle and photon energy
-	 * The expectation value of weight from a large number of samples for a specific pfoton energy is normalized to unity. 
+     * The expectation value of weight from a large number of samples for a specific pfoton energy is normalized to unity.
      * @param angle Angle of photon direction in anode cathode direction of a tube.
-     * @param energy Ebergy in keV for photon. 
+     * @param energy Ebergy in keV for photon.
      * @return Weight of photon.
-    */
+     */
     T sampleIntensityWeight(const T angle, const T energy) const
     {
         std::size_t e_index = static_cast<std::size_t>((energy - m_energyStart + T { 0.5 } * m_energyStep) / m_energyStep);
@@ -538,40 +538,40 @@ public:
     }
     /**
      * @brief Size of energy bins used for interpolation
-     * @return 
-    */
+     * @return
+     */
     std::size_t energySize() const { return m_energySize; }
     /**
      * @brief Size of angle bins used for interpolation
-     * @return 
-    */
+     * @return
+     */
     std::size_t angleSize() const { return m_angleSize; }
     /**
      * @brief Buffer for angle and energy weights
-	 * A buffer of angle size * energy size of weights used to interpolate across photon energies and angles.  
-     * @return 
-    */
+     * A buffer of angle size * energy size of weights used to interpolate across photon energies and angles.
+     * @return
+     */
     const std::vector<T>& weights() const { return m_weights; }
     /**
-	 * @brief Get the name of the filter
-	 * This is provided so we can keep track of many filters if needed. 
-	 * @param  name of filter. Defaults to empty string.
-	 * @return name of filter. Defaults to empty string.
-	*/
+     * @brief Get the name of the filter
+     * This is provided so we can keep track of many filters if needed.
+     * @param  name of filter. Defaults to empty string.
+     * @return name of filter. Defaults to empty string.
+     */
     const std::string& filterName(void) const { return m_filterName; }
     /**
-	 * @brief Set the name of the filter
-	 * This is provided so we can keep track of many filters if needed. 
-	 * @param  name of filter. Defaults to empty string.
-	 * @return name of filter. Defaults to empty string.
-	*/
+     * @brief Set the name of the filter
+     * This is provided so we can keep track of many filters if needed.
+     * @param  name of filter. Defaults to empty string.
+     * @return name of filter. Defaults to empty string.
+     */
     void setFilterName(const std::string& name) { m_filterName = name; }
 };
 
 /**
  * @brief Filter to adjust photon weights according to a tube current profile for CT examinations.
- * Filter to simulate automatic exposure control for CT examinations. This filter will match a given tube current profile to a denisty image to generate a lookup table of photon weights according to a ddensity profile. 
-*/
+ * Filter to simulate automatic exposure control for CT examinations. This filter will match a given tube current profile to a denisty image to generate a lookup table of photon weights according to a ddensity profile.
+ */
 template <Floating T = double>
 class AECFilter {
 
@@ -662,11 +662,11 @@ protected:
 public:
     /**
      * @brief Constructs a new AECFilter
-     * @param densityImage Density array of size dimension[0]*dimension[1]*dimension[2]. 
+     * @param densityImage Density array of size dimension[0]*dimension[1]*dimension[2].
      * @param spacing Spacing of each voxel for the density array.
      * @param dimensions Dimensions of the densityImage.
      * @param exposuremapping Exposure along the z (3rd) dimension, must be of size dimension[2].
-    */
+     */
     AECFilter(const std::vector<T>& densityImage, const std::array<T, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<T>& exposuremapping)
     {
         generateMassWeightMap(densityImage.cbegin(), densityImage.cend(), spacing, dimensions, exposuremapping);
@@ -674,11 +674,11 @@ public:
 
     /**
      * @brief Constructs a new AECFilter
-     * @param densityImage Density array of size dimension[0]*dimension[1]*dimension[2]. 
+     * @param densityImage Density array of size dimension[0]*dimension[1]*dimension[2].
      * @param spacing Spacing of each voxel for the density array.
      * @param dimensions Dimensions of the densityImage.
      * @param exposuremapping Exposure along the z (3rd) dimension, must be of size dimension[2].
-    */
+     */
     AECFilter(std::shared_ptr<std::vector<T>>& densityImage, const std::array<T, 3> spacing, const std::array<std::size_t, 3> dimensions, const std::vector<T>& exposuremapping)
     {
         generateMassWeightMap(densityImage->cbegin(), densityImage->cend(), spacing, dimensions, exposuremapping);
@@ -687,7 +687,7 @@ public:
      * @brief Constructs a new AECFilter directly from mass and weight arrays
      * @param mass Array of masses. Must be of same size as intensity array.
      * @param intensity Array of intensity or exposure corresponding to each mass in mass array. Must be of same size as mass array
-    */
+     */
     AECFilter(const std::vector<T>& mass, const std::vector<T>& intensity)
     {
         m_mass = mass;
@@ -704,7 +704,7 @@ public:
      * Sample AEC weight of photon originating from position. This function assumes that updateFromWorld is called with the same World object the position is generated from. The expected value of weight from a large number of samples across all valid positions (the extent of the world object) is unity.
      * @param position Position to interpolate photon weight.
      * @return photon weight
-    */
+     */
     T sampleIntensityWeight(const std::array<T, 3>& position) const
     {
         const T p = position[2];
@@ -721,10 +721,10 @@ public:
     }
 
     /**
-     * @brief Update AECFilter from a World. 
+     * @brief Update AECFilter from a World.
      * This function will generate position lookup tables based on world, such as that photon weights can be sampled from a position within the world object.
-     * @param world 
-    */
+     * @param world
+     */
 
     void updateFromWorld(const World<T>& world)
     {
@@ -736,32 +736,32 @@ public:
     }
     /**
      * @brief Returns if the AECFilter is valid and has been updated from a world.
-     * @return 
-    */
+     * @return
+     */
     bool isValid() const { return m_valid; }
     /**
      * @brief Masses used for interpolation of photon weights
      * @return Array of mass values
-    */
+     */
     const std::vector<T>& mass() const { return m_mass; }
     /**
      * @brief Intensities used for interpolation of photon weights
      * @return Array of intensity values.
-    */
+     */
     const std::vector<T>& massIntensity() const { return m_massIntensity; }
     /**
-	 * @brief Get the name of the filter
-	 * This is provided so we can keep track of many filters if needed. 
-	 * @param  name of filter. Defaults to empty string.
-	 * @return name of filter. Defaults to empty string.
-	*/
+     * @brief Get the name of the filter
+     * This is provided so we can keep track of many filters if needed.
+     * @param  name of filter. Defaults to empty string.
+     * @return name of filter. Defaults to empty string.
+     */
     const std::string& filterName(void) const { return m_filterName; }
     /**
-	 * @brief Set the name of the filter
-	 * This is provided so we can keep track of many filters if needed. 
-	 * @param  name of filter. Defaults to empty string.
-	 * @return name of filter. Defaults to empty string.
-	*/
+     * @brief Set the name of the filter
+     * This is provided so we can keep track of many filters if needed.
+     * @param  name of filter. Defaults to empty string.
+     * @return name of filter. Defaults to empty string.
+     */
     void setFilterName(const std::string& name) { m_filterName = name; }
 };
 }

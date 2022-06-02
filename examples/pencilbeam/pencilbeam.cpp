@@ -34,7 +34,7 @@ double calculate()
     world.addMaterialToMap(water);
     world.addMaterialToMap(aluminium);
 
-    //now we create the density array and material index array
+    // now we create the density array and material index array
     auto arraySize = world.size();
     // the type of density array is double
     auto densityArray = std::make_shared<std::vector<T>>(arraySize);
@@ -66,10 +66,10 @@ double calculate()
     // We need a beam source, in this case a simple pencil beam
     PencilSource<T> pen;
 
-    //PencilSource only support monochromatic intensity, in this case we use 60 keV initial photon energy
+    // PencilSource only support monochromatic intensity, in this case we use 60 keV initial photon energy
     pen.setPhotonEnergy(60.0); // keV
 
-    //Position the source above the world box
+    // Position the source above the world box
     std::array<T, 3> source_position = { 0, 0, -(dimensions[2] * spacing[2]) };
     pen.setPosition(source_position);
     // We want the source plane normal aka the beam direction to point towards the box
@@ -94,7 +94,7 @@ double calculate()
     // Do the simulation, this might take some time depending on total number of histories.
     auto res = transport(world, &pen);
 
-    //Print the dose along z direction of box
+    // Print the dose along z direction of box
     auto materials = world.materialMap();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count() / 1000.0;
     std::cout << "Simulation time, " << time << ", seconds\n";

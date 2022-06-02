@@ -81,25 +81,25 @@ public:
         for (std::size_t i = 0; i < N; ++i) {
             auto p = particle;
             p.weight = prob;
-            this->computeInteractions<0>(a, p, 0, energyImparted_naive[0], 0, state, dummy);
+            this-> template computeInteractions<0>(a, p, 0, energyImparted_naive[0], 0, state, dummy);
             p = particle;
-            this->computeInteractionsForced<0>(prob, a, p, 0, energyImparted_forced[0], 0, state, dummy);
+            this-> template computeInteractionsForced<0>(prob, a, p, 0, energyImparted_forced[0], 0, state, dummy);
         }
         this->setLowEnergyCorrectionModel(LOWENERGYCORRECTION::LIVERMORE);
         for (std::size_t i = 0; i < N; ++i) {
             auto p = particle;
             p.weight = prob;
-            this->computeInteractions<1>(a, p, 0, energyImparted_naive[1], 0, state, dummy);
+            this-> template computeInteractions<1>(a, p, 0, energyImparted_naive[1], 0, state, dummy);
             p = particle;
-            this->computeInteractionsForced<1>(prob, a, p, 0, energyImparted_forced[1], 0, state, dummy);
+            this-> template computeInteractionsForced<1>(prob, a, p, 0, energyImparted_forced[1], 0, state, dummy);
         }
         this->setLowEnergyCorrectionModel(LOWENERGYCORRECTION::IA);
         for (std::size_t i = 0; i < N; ++i) {
             auto p = particle;
             p.weight = prob;
-            this->computeInteractions<2>(a, p, 0, energyImparted_naive[2], 0, state, dummy);
+            this-> template computeInteractions<2>(a, p, 0, energyImparted_naive[2], 0, state, dummy);
             p = particle;
-            this->computeInteractionsForced<2>(prob, a, p, 0, energyImparted_forced[2], 0, state, dummy);
+            this-> template computeInteractionsForced<2>(prob, a, p, 0, energyImparted_forced[2], 0, state, dummy);
         }
         std::cout << "Comparison forced and naive interactions\nNaive, Forced\n";
         std::array<std::string, 3> types = { "None", "Livermore", "IA" };
@@ -273,7 +273,7 @@ public:
         return false;
     }
 
-    template <typename T, int N>
+    template <auto N>
     std::string arrayToStr(const std::array<T, N>& arr)
     {
         std::string s;
@@ -425,7 +425,7 @@ void testTransport()
 
     //typename model  dxmc::LOWENERGYCORRECTION::LIVERMORE;
     t.testPhotoElectric(Comenergy, mats[3]);
-    t.testRayleight<2>(Rayenergy, mats[3]);
+    t.testRayleight(Rayenergy, mats[3]);
     t.testCompton(Comenergy, mats[3]);
 }
 

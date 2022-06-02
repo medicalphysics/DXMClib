@@ -29,3 +29,4 @@ DXMClib uses CMake as build generator, to include DXMClib in a CMake project it 
     # Linking to DXMClib
     target_link_libraries(your_executable PRIVATE libdxmc)
 
+dxmclib takes advantage of concepts and std::atomic_ref introduced in C++20. Currently this library is tested on MSVC >= 16.8 and Clang >= 13.0 compilers.   

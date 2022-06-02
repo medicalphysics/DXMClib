@@ -93,13 +93,13 @@ private:
 protected:
     static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
     {
-        //Thomas algorithm for gaussian elimination for a trigonal system of equations
+        // Thomas algorithm for gaussian elimination for a trigonal system of equations
         /*
         |b0 c0  0 0  ..  | x0 |   |d0|
         |a1 b1 c1 0  ... | x1 | = |d1|
         |0  a2 b2 c2  ...| x2 |   |d2|
         |0  0  a3 b3 c3  | .. |   |..|
-               
+
         */
         std::vector<T> h = h_p;
         std::vector<T> H = H_p;

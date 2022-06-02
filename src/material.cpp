@@ -141,7 +141,8 @@ double Material::getRayleightFormFactorSquared(const double momentumTransfer) co
 }
 
 template <typename T>
-    requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::array<ElectronShellConfiguration<double>, 12> electronConfiguration(T* compound)
+requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::array < ElectronShellConfiguration<double>,
+12 > electronConfiguration(T* compound)
 {
     std::vector<ElectronShellConfiguration<double>> configs;
     std::vector<int> elements(compound->Elements, compound->Elements + compound->nElements);
@@ -233,7 +234,7 @@ template <typename T>
         c.numberElectrons /= electrons_sum;
     }
 
-    //calculating shell photoionizing probabilities;
+    // calculating shell photoionizing probabilities;
     std::vector<double> energy(400);
     std::iota(energy.begin(), energy.end(), 0.5);
 
@@ -282,7 +283,7 @@ double Material::getComptonNormalizedScatterFactor(const double momentumTransfer
 }
 
 template <typename T>
-    requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::vector<double> calculateBindingEnergies(T* compound, const double minEnergy)
+requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIST>::value std::vector<double> calculateBindingEnergies(T* compound, const double minEnergy)
 {
     std::vector<int> elements(compound->Elements, compound->Elements + compound->nElements);
     std::vector<double> edges;

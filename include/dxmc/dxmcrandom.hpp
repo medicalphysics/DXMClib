@@ -33,12 +33,12 @@ namespace dxmc {
 /**
  * @brief Class for simple generation of random numbers
  * This class aims to provide a small and fast PRNG, but should perhaps be replaced by a STL random generator.
-*/
+ */
 class RandomState {
 public:
     /**
      * @brief Initiate a RandomState with a seed from the local machine random device implementation.
-    */
+     */
     RandomState()
     {
         std::random_device d;
@@ -48,8 +48,8 @@ public:
     }
     /**
      * @brief Initiate RandomState with a custom seed
-     * @param state Pointer to a array with two unsigned 64 bit numbers. Both numbers must not be zero. 
-    */
+     * @param state Pointer to a array with two unsigned 64 bit numbers. Both numbers must not be zero.
+     */
     RandomState(std::uint64_t state[2])
     {
         m_state[0] = state[0];
@@ -62,7 +62,7 @@ public:
      * @brief Generate a random floating point number in range [0, 1.0)
      * @tparam T Must satisfy std::is_floating_point<T>::value == True
      * @return Random floating point in range [0, 1)
-    */
+     */
     template <typename T>
     inline T randomUniform() noexcept
     {
@@ -77,7 +77,7 @@ public:
      * @tparam T Type of number, either integral or floating point
      * @param max Max of range
      * @return Random number in range [0, max).
-    */
+     */
     template <typename T>
     inline T randomUniform(const T max) noexcept
     {
@@ -98,10 +98,10 @@ public:
     /**
      * @brief Generate random uniform number in interval from 0 to max, exclusive
      * @tparam T Type of number, either integral or floating point.
-     * @param min Min of range. 
+     * @param min Min of range.
      * @param max Max of range.
      * @return Random number in range [min, max).
-    */
+     */
     template <typename T>
     inline T randomUniform(const T min, const T max) noexcept
     {
@@ -119,9 +119,9 @@ public:
 
     /**
      * @brief Generate random unsigned integer on interval 0 to max inclusive
-     * @param max 
-     * @return 
-    */
+     * @param max
+     * @return
+     */
     template <std::unsigned_integral T>
     inline T randomInteger(const T max) noexcept
     {
@@ -151,8 +151,8 @@ public:
      * The function below is borrowed from:
      * Really* minimal PCG32 code / (c) 2014 M.E. O'Neill / pcg-random.org
      * Licensed under Apache License 2.0 (NO WARRANTY, etc. see website)
-     * @return A random 32 bit unsigned integer. 
-    */
+     * @return A random 32 bit unsigned integer.
+     */
     inline std::uint32_t pcg32() noexcept
     {
         const std::uint64_t oldstate = m_state[0];
@@ -167,16 +167,16 @@ public:
 };
 
 /**
- * @brief Class for sampling of random numbers from a specified descreet distribution. 
+ * @brief Class for sampling of random numbers from a specified descreet distribution.
  * Class for sampling of random numbers from a specified descreet distribution. This implementation use the filling of histogram method.
-*/
+ */
 template <Floating T = double>
 class RandomDistribution {
 public:
     /**
      * @brief Initialize RandomDistribution class
      * @param weights A vector of probabilities for each bin. Weights should be atleast of size two. The weights vector will be normalized such that sum of weights is unity.
-    */
+     */
     RandomDistribution(const std::vector<T>& weights)
     {
         generateTable(weights);
@@ -197,7 +197,7 @@ public:
     /**
      * @brief Sample an index from 0 to size() - 1 according to weights.
      * @return index with probability according to weights[index].
-    */
+     */
     std::size_t sampleIndex()
     {
         return sampleIndex(m_state);
@@ -207,7 +207,7 @@ public:
      * @brief Sample an index from 0 to size() - 1 according to weights. This function is thread safe.
      * @param state Random state for sampling of an index.
      * @return index with probability according to weights[index].
-    */
+     */
     std::size_t sampleIndex(RandomState& state) const
     {
         const auto r = state.randomUniform<T>();
@@ -218,7 +218,7 @@ public:
     /**
      * @brief Size of the weights vector
      * @return Size of weights vector.
-    */
+     */
     std::size_t size() const { return m_probs.size(); }
 
     const std::vector<std::uint64_t>& aliasingData() const { return m_alias; }
@@ -280,7 +280,7 @@ private:
 
 /**
  * @brief Class for sampling of a specter of values according to a distribution.
-*/
+ */
 template <Floating T = double>
 class SpecterDistribution : public RandomDistribution<T> {
 public:
@@ -288,7 +288,7 @@ public:
      * @brief Initialize specter distribution
      * @param weights A vector of probabilities for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity.
      * @param energies A vector of values that are sampled according to weights. Values must be monotonic increasing. Length of energies must be equal to length of weights.
-    */
+     */
     SpecterDistribution(const std::vector<T>& weights, const std::vector<T>& energies)
         : RandomDistribution<T>(weights)
     {
@@ -296,20 +296,20 @@ public:
     }
     /**
      * @brief Initialize specter distribution
-    */
+     */
     SpecterDistribution()
         : RandomDistribution<T>(std::vector<T> { 1 })
     {
-        //std::vector<T> w { 1, 1 };
-        //RandomDistribution<T>(w);
+        // std::vector<T> w { 1, 1 };
+        // RandomDistribution<T>(w);
         m_energies = std::vector<T> { 60 };
     }
 
     /**
-     * @brief Sample an energy value according to weights probability. 
+     * @brief Sample an energy value according to weights probability.
      * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
      * @return a random energy according to weights probability
-    */
+     */
     T sampleValue()
     {
         return sampleValue(this->m_state);
@@ -318,7 +318,7 @@ public:
      * @brief Sample an energy value according to weights probability. This function is thread safe.
      * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
      * @return a random energy according to weights probability
-    */
+     */
     T sampleValue(RandomState& state) const
     {
         const std::size_t ind = this->sampleIndex(state);
@@ -329,7 +329,7 @@ private:
     std::vector<T> m_energies;
 };
 
-//class for numerical inverse transform of analytical probability density functions (pdfs)
+// class for numerical inverse transform of analytical probability density functions (pdfs)
 template <Floating T, int N = 20>
 class RITA {
 private:
@@ -359,7 +359,7 @@ protected:
         const T xi = m_x[index];
         const T xii = m_x[index + 1];
 
-        auto p = [=](const T x) -> T {
+        auto p = [=, *this](const T x) -> T {
             T n;
             if (x == xi) {
                 n = 0;
@@ -398,7 +398,7 @@ public:
             v[i].e = 0;
             v[i].error = -1;
         }
-        //finding e
+        // finding e
         for (std::size_t j = 1; j < n; ++j) {
             v[j].e = v[j - 1].e + simpson_integral(v[j - 1].x, v[j].x, pdf);
         }
@@ -425,7 +425,7 @@ public:
                         v[i].a = 0;
                     }
 
-                    //calculate erroe
+                    // calculate erroe
                     v[i].error = 0;
                     for (std::size_t j = 1; j < 50; ++j) {
                         const T x = v[i].x + j * (v[i + 1].x - v[i].x) / 50;
@@ -452,7 +452,7 @@ public:
             param new_val = { x0 + (x1 - x0) / 2, 0, 0, 0, -1 };
             v.insert(max_iter, new_val);
             ++n;
-            //finding e
+            // finding e
             for (std::size_t j = 1; j < n; ++j) {
                 v[j].e = v[j - 1].e + simpson_integral(v[j - 1].x, v[j].x, pdf);
             }
@@ -470,7 +470,7 @@ public:
     T operator()(RandomState& state) const
     {
         const auto r1 = state.randomUniform<T>();
-        auto upper_bound = std::lower_bound(m_e.cbegin(), m_e.cend(), r1);
+        auto upper_bound = std::upper_bound(m_e.cbegin(), m_e.cend(), r1);
         const std::size_t index = std::distance(m_e.cbegin(), upper_bound);
         if (index == 0)
             return m_x[0];
@@ -482,7 +482,7 @@ public:
 
     T operator()(RandomState& state, const T maxValue) const
     {
-        //finding xmax
+        // finding xmax
         auto upper_bound_value = std::upper_bound(m_x.cbegin(), m_x.cend(), maxValue);
         const std::size_t max_value_index = std::distance(m_x.cbegin(), upper_bound_value);
         const T modifier = upper_bound_value != m_x.cend() ? m_e[max_value_index] : 1;

@@ -32,8 +32,10 @@ Copyright 2019 Erlend Andersen
 #include <chrono>
 #include <cmath>
 #include <functional>
+#include <list>
 #include <memory>
 #include <optional>
+#include <thread>
 
 namespace dxmc {
 
@@ -133,7 +135,7 @@ public:
     template <typename U>
     requires std::is_base_of<World<T>, U>::value
         Result<T>
-        operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool useSourceDoseCalibration = true)
+    operator()(const U& world, Source<T>* source, ProgressBar<T>* progressbar = nullptr, bool useSourceDoseCalibration = true)
     {
         Result<T> result(world.size());
 
@@ -186,7 +188,7 @@ public:
         if (m_outputmode == OUTPUTMODE::DOSE) {
             if (useSourceDoseCalibration) {
                 const T calibrationValue = source->getCalibrationValue(m_lowenergyCorrection, progressbar);
-                //energy imparted to dose
+                // energy imparted to dose
                 energyImpartedToDose(world, result, calibrationValue);
                 result.dose_units = "mGy";
             } else {
@@ -204,7 +206,8 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_arithmetic_v<U> inline void safeValueAdd(U& value, const U addValue) const noexcept
+    requires std::is_arithmetic_v<U>
+    inline void safeValueAdd(U& value, const U addValue) const noexcept
     {
         std::atomic_ref value_l(value);
         value_l.fetch_add(addValue);
@@ -222,9 +225,9 @@ protected:
             const auto& elConf = m_attenuationLut.electronShellConfiguration(materialIdx);
             std::array<T, 12> shell_probs;
             std::transform(std::execution::unseq, elConf.cbegin(), elConf.cend(), shell_probs.begin(), [=](const auto& c) { return E > c.bindingEnergy ? c.photoIonizationProbability : 0; });
-            //cummulative sum of shell probs
+            // cummulative sum of shell probs
             std::partial_sum(shell_probs.cbegin(), shell_probs.cend(), shell_probs.begin());
-            //selectring shell
+            // selectring shell
             std::size_t idx = 0;
             const auto shellIdxSample = shell_probs.back() * state.randomUniform<T>();
             while (shell_probs[idx] < shellIdxSample && idx < 11) {
@@ -236,7 +239,7 @@ protected:
                 return E;
             }
 
-            //Determine randomly if a fluorscence photon is emitted from corrected yield
+            // Determine randomly if a fluorscence photon is emitted from corrected yield
             const auto r1 = state.randomUniform<T>();
             if (r1 <= elConf[idx].fluorescenceYield) {
                 // select line transition from the three most probable lines
@@ -251,7 +254,7 @@ protected:
                 const auto theta = state.randomUniform<T>(PI_VAL<T>());
                 const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
                 vectormath::peturb(particle.dir.data(), theta, phi);
-                //return energy imparted locally
+                // return energy imparted locally
                 return E - particle.energy;
             } else {
                 return E;
@@ -278,7 +281,7 @@ protected:
             // theta is scattering angle
             // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
 
-            //finding qmax
+            // finding qmax
             const auto qmax = m_attenuationLut.momentumTransferMax(particle.energy);
             const auto qmax_squared = qmax * qmax;
 
@@ -319,7 +322,7 @@ protected:
                 const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
                 const auto r2 = state.randomUniform<T>();
                 if constexpr (Lowenergycorrection == 1) {
-                    //simple correction with scatterfactor to supress forward scattering due to binding energy
+                    // simple correction with scatterfactor to supress forward scattering due to binding energy
                     const auto q = m_attenuationLut.momentumTransferFromCos(E, cosAngle);
                     const auto scatterFactor = m_attenuationLut.comptonScatterFactor(materialIdx, q);
                     rejected = r2 > g * scatterFactor;
@@ -342,13 +345,13 @@ protected:
         const auto& eConfig = m_attenuationLut.electronShellConfiguration(materialIdx);
         std::array<T, 12> shellProbs;
 
-        //calculating shell probs
+        // calculating shell probs
         std::transform(std::execution::unseq, eConfig.cbegin(), eConfig.cend(), shellProbs.begin(), [&](const auto& e) -> T {
             return e.bindingEnergy < particle.energy && e.hartreeFockOrbital_0 > 0 ? e.numberElectrons : 0;
         });
-        //cummulative sum of shell probs
+        // cummulative sum of shell probs
         std::partial_sum(shellProbs.cbegin(), shellProbs.cend(), shellProbs.begin());
-        //selectring shell
+        // selectring shell
         int shellIdx = 0;
         const auto shellIdxSample = shellProbs.back() * state.randomUniform<T>();
         while (shellProbs[shellIdx] < shellIdxSample && shellIdx < 11) {
@@ -361,8 +364,8 @@ protected:
 
         const auto k = particle.energy / ELECTRON_REST_MASS<T>();
 
-        //Rejecting interaction if binding energy is larger than particle energy
-        //Rejecting the interaction will correct the compton cross section
+        // Rejecting interaction if binding energy is larger than particle energy
+        // Rejecting the interaction will correct the compton cross section
         if (U > k) {
             return 0;
         }
@@ -391,7 +394,7 @@ protected:
                 const auto b = (b_part * b_part + 1) / 2;
                 const auto expb = std::exp(-b);
 
-                //calculating S
+                // calculating S
                 T S;
                 if (pi <= -p) {
                     S = (1 - alpha * p) * expb / 2;
@@ -430,7 +433,7 @@ protected:
                 const auto r3 = state.randomUniform<T>();
                 rejected = r3 > S;
                 if (!rejected) {
-                    //sampling pz
+                    // sampling pz
                     T Fmax;
                     if (pi <= -p) {
                         Fmax = 1 - alpha * p;
@@ -463,7 +466,7 @@ protected:
                     rejected = r5 > Fpz / Fmax;
 
                     if (!rejected) {
-                        //calculate new energy
+                        // calculate new energy
                         const auto part = std::sqrt(1 - 2 * e * cosAngle + e * e * (1 - pz * pz * sinAngleSqr));
                         const auto k_bar = kc / (1 - pz * pz * e * e) * (1 - pz * pz * e * cosAngle + pz * part);
                         e = k_bar / k;
@@ -492,7 +495,7 @@ protected:
 
     inline std::array<std::size_t, 3> gridIndexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const noexcept
     {
-        //assumes particle is inside world
+        // assumes particle is inside world
         const auto& wpos = world.matrixExtentSafe();
         const auto& wspac = world.spacing();
         std::array<std::size_t, 3> arraypos = {
@@ -505,7 +508,7 @@ protected:
 
     inline std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world) const noexcept
     {
-        //assumes particle is inside world
+        // assumes particle is inside world
         const auto& wdim = world.dimensions();
         const auto arraypos = gridIndexFromPosition(pos, world);
         const auto idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
@@ -532,13 +535,13 @@ protected:
             auto p_forced = p; // make a copyin case of characteristic x-ray
             const auto e_forced = photoAbsorption<Lowenergycorrection>(p_forced, matIdx, state);
             if (p_forced.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]] {
+                [[unlikely]] {
                 const auto energyImparted = (e_forced + p_forced.energy) * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             } else
-                [[unlikely]] {
+                [[likely]] {
                 const auto energyImparted = e_forced * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
@@ -547,7 +550,7 @@ protected:
         }
         const auto r1 = state.randomUniform<T>();
         if (r1 < eventProbability * (1 - photoEventProbability)) {
-            //A real event happend
+            // A real event happend
             const auto r2 = state.randomUniform(attCompt + attRayl);
             if (r2 < attCompt) // Compton event
             {
@@ -591,7 +594,7 @@ protected:
         {
             const auto e = photoAbsorption<Lowenergycorrection>(p, matIdx, state);
             if (p.energy < ENERGY_CUTOFF_THRESHOLD())
-                [[likely]] {
+                [[unlikely]] {
                 const auto energyImparted = (e + p.energy) * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
@@ -599,7 +602,7 @@ protected:
                 p.energy = 0;
                 return false;
             } else
-                [[unlikely]] {
+                [[likely]] {
                 const auto energyImparted = e * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
                 safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
@@ -697,7 +700,7 @@ protected:
     }
 
     bool transportParticleToWorld(const World<T>& world, Particle<T>& particle) const noexcept
-    //returns false if particle do not intersect world
+    // returns false if particle do not intersect world
     {
         const bool isInside = particleInsideWorld(world, particle);
         if (isInside)
@@ -728,7 +731,7 @@ protected:
     {
         const auto nHistories = exposure.numberOfHistories();
         for (std::size_t i = 0; i < nHistories; ++i) {
-            //Draw a particle
+            // Draw a particle
             auto particle = exposure.sampleParticle(state);
 
             // Is particle intersecting with world
@@ -776,9 +779,9 @@ protected:
 
     void normalizeScoring(Result<T>& res) const noexcept
     {
-        //Here we normalize dose and precision to eV per history
-        //Computing precision by: Var[X] = E[X**2] - E[X]**2
-        //and Var[A]+ Var[A] = 2Var[A]
+        // Here we normalize dose and precision to eV per history
+        // Computing precision by: Var[X] = E[X**2] - E[X]**2
+        // and Var[A]+ Var[A] = 2Var[A]
 
         const auto h_inv = T { 1 } / (res.numberOfHistories - 1);
         const auto h_d_inv = T { 1E3 } / res.numberOfHistories;
@@ -799,14 +802,14 @@ protected:
         std::transform(
             std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), res.dose.begin(),
             [=](auto ei, auto de) -> auto {
-                const auto voxelMass = de * voxelVolume * T { 0.001 }; //g/cm3 * cm3 / 1000 = kg
+                const auto voxelMass = de * voxelVolume * T { 0.001 }; // g/cm3 * cm3 / 1000 = kg
                 const auto factor = calibrationValue / voxelMass;
                 return de > T { 0.0 } ? ei * factor : T { 0.0 };
             });
         std::transform(
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
             [=](auto var, auto de) -> auto {
-                const auto voxelMass = de * voxelVolume * T { 0.001 }; //g/cm3 * cm3 / 1000 = kg
+                const auto voxelMass = de * voxelVolume * T { 0.001 }; // g/cm3 * cm3 / 1000 = kg
                 const auto factor = calibrationValue / voxelMass;
                 return de > T { 0.0 } ? var * factor * factor : T { 0.0 }; // for variance we must multiply by square
             });

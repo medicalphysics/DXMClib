@@ -31,6 +31,11 @@ endfunction()
 #enable_cxx_compiler_flag_if_supported("-Wextra")
 #enable_cxx_compiler_flag_if_supported("-pedantic")
 
+option(OPTIMIZE_FOR_NATIVE "Build with -march=native" ON)
+if(OPTIMIZE_FOR_NATIVE)
+    MESSAGE("-- Trying to build for native (-march=native)")
+    enable_cxx_compiler_flag_if_supported("-march=native")    
+endif()
 
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support

@@ -198,7 +198,7 @@ public:
             return bh_t;
         });
 
-        //adding characteristic radiation
+        // adding characteristic radiation
         addCharacteristicEnergy(energies, specter);
         filterSpecter(energies, specter);
         if (normalize) {
@@ -238,11 +238,12 @@ protected:
 
         const auto kEdge = BetheHeitlerCrossSection::characteristicTungstenKedge(voltage_d, anode_d);
         for (const auto& [e, n] : kEdge) {
-            //find closest energy
+            // find closest energy
             auto eIdx = std::lower_bound(energyBegin, energyEnd, e);
             if (eIdx != energyEnd) {
 
-                if (std::abs(e - *eIdx) <= T { 2.0 }) { // we only add characteristic radiation if specter energy is closer than 2 keV from the K edge
+                if (std::abs(e - *eIdx) <= T { 2.0 }) {
+                    // we only add characteristic radiation if specter energy is closer than 2 keV from the K edge
                     auto nIdx = specter.begin();
                     std::advance(nIdx, std::distance(energyBegin, eIdx));
                     *nIdx = *nIdx + n; // adding characteristic k edge intensity to specter
@@ -253,7 +254,7 @@ protected:
     void filterSpecter(const std::vector<T>& energies, std::vector<T>& specter) const
     {
         for (auto const& [material, mm] : m_filtrationMaterials) {
-            const T cm = mm * T { 0.1 }; //for mm -> cm
+            const T cm = mm * T { 0.1 }; // for mm -> cm
             std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), energies.cbegin(), specter.begin(),
                 [&, material = material](const auto n, const auto e) -> T { return n * std::exp(-material.getTotalAttenuation(e) * material.standardDensity() * cm); });
         }

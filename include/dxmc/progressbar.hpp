@@ -45,14 +45,14 @@ public:
     enum class Axis { X,
         Y,
         Z };
-    ProgressBar() {}
+    ProgressBar() { }
     ProgressBar(std::uint64_t totalExposures) { setTotalExposures(totalExposures); }
     void setTotalExposures(std::uint64_t totalExposures)
     {
         m_totalExposures = totalExposures;
         m_currentExposures = 0;
         m_startTime = std::chrono::system_clock::now();
-    } //not thread safe
+    } // not thread safe
 
     void setPrefixMessage(const std::string& msg) { m_message = msg; } // not threadsafe
 
@@ -136,7 +136,7 @@ protected:
         doseProgressImage->spacing[0] = m_doseSpacing[1];
         doseProgressImage->spacing[1] = m_doseSpacing[2];
 
-        //doing mip over X axis
+        // doing mip over X axis
         T global_max = 0.0;
         for (std::size_t i = 0; i < m_doseDimensions[1] * m_doseDimensions[2]; ++i) {
             const auto beg = m_doseData + i * m_doseDimensions[0];
@@ -168,7 +168,7 @@ protected:
         doseProgressImage->spacing[0] = m_doseSpacing[0];
         doseProgressImage->spacing[1] = m_doseSpacing[2];
 
-        //doing mip over Y axis
+        // doing mip over Y axis
         T global_max = 0.0;
         for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
             for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
@@ -201,7 +201,7 @@ protected:
         doseProgressImage->spacing[0] = m_doseSpacing[0];
         doseProgressImage->spacing[1] = m_doseSpacing[1];
 
-        //doing mip over Z axis
+        // doing mip over Z axis
         T global_max = 0.0;
         for (std::size_t k = 0; k < m_doseDimensions[2]; ++k)
             for (std::size_t j = 0; j < m_doseDimensions[1]; ++j)
