@@ -337,7 +337,7 @@ namespace BetheHeitlerCrossSection {
         return (TUNGSTEN_ATOMIC_NUMBER * TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS<T>() * CLASSIC_ELECTRON_RADIUS<T>() * FINE_STRUCTURE_CONSTANT<T>();
     }
 
-    // BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSS ECTION CALCULATION
+    // BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSSECTION CALCULATION
 
     template <Floating T>
     T tungstenFiltration(const T tungstenAtt, const T x, const T takeoffAngle)
