@@ -31,10 +31,18 @@ endfunction()
 #enable_cxx_compiler_flag_if_supported("-Wextra")
 #enable_cxx_compiler_flag_if_supported("-pedantic")
 
-option(OPTIMIZE_FOR_NATIVE "Build with -march=native" ON)
+option(OPTIMIZE_FOR_NATIVE "Build with -march=native on gcc/clang or AVX_x on MSVC " ON)
 if(OPTIMIZE_FOR_NATIVE)
-    MESSAGE("-- Trying to build for native (-march=native)")
-    enable_cxx_compiler_flag_if_supported("-march=native")    
+    if(MSVC)
+        set(MSVC_OPTION "AVX2" CACHE STRING "Machine instructions support")
+        set_property(CACHE MSVC_OPTION PROPERTY STRINGS AVX2 AVX512)
+        MESSAGE("-- Trying to build for ${MSVC_OPTION} instruction set")
+        enable_cxx_compiler_flag_if_supported("-arch:${MSVC_OPTION}")  
+    endif()
+    if(UNIX)
+        MESSAGE("-- Trying to build for native (-march=native)")
+        enable_cxx_compiler_flag_if_supported("-march=native")  
+    endif()
 endif()
 
 # Find packages go here.
@@ -68,6 +76,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"

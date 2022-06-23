@@ -20,6 +20,7 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 
+#include <array>
 #include <cmath>
 #include <cstdint>
 #include <span>
@@ -42,11 +43,16 @@ namespace vectormath {
     }
 
     template <Floating T>
+    inline T lenght_sqr(const std::array<T, 3>& vec) noexcept { return lenght_sqr(vec.data()); }
+
+    template <Floating T>
     inline T lenght(T vec[3]) noexcept
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
         return std::sqrt(lsqr);
     }
+    template <Floating T>
+    inline T lenght(const std::array<T, 3>& vec) noexcept { return lenght(vec.data()); }
 
     template <Floating T>
     inline void normalize(T vec[3]) noexcept
@@ -58,9 +64,17 @@ namespace vectormath {
         vec[1] *= norm;
         vec[2] *= norm;
     }
+    template <Floating T>
+    inline void normalize(std::array<T, 3>& vec) noexcept { normalize(vec.data()); }
 
     template <Floating T>
     inline T dot(const T v1[3], const T v2[3]) noexcept
+    {
+        return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
+    }
+
+    template <Floating T>
+    inline T dot(const std::array<T, 3>& v1, const std::array<T, 3>& v2) noexcept
     {
         return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
     }
@@ -72,6 +86,19 @@ namespace vectormath {
         res[1] = v1[2] * v2[0] - v1[0] * v2[2];
         res[2] = v1[0] * v2[1] - v1[1] * v2[0];
     }
+
+    template <Floating T>
+    inline std::array<T, 3> cross(const std::array<T, 3>& v1, const std::array<T, 3> v2) noexcept
+    {
+        std::array<T, 3> res {
+            v1[1] * v2[2] - v1[2] * v2[1],
+            v1[2] * v2[0] - v1[0] * v2[2],
+            v1[0] * v2[1] - v1[1] * v2[0]
+        };
+        return res;
+    }
+
+
     template <Floating T>
     inline void cross(const T v1[6], T res[3]) noexcept
     {
