@@ -42,8 +42,9 @@ namespace dxmc {
 template <Floating T = double>
 struct Result {
     std::vector<T> dose;
-    std::vector<std::uint32_t> nEvents;
+    std::vector<std::uint_fast32_t> nEvents;
     std::vector<T> variance;
+    std::vector<std::uint_fast32_t> nEntered;
     std::uint64_t numberOfHistories { 0 };
     std::chrono::duration<float> simulationTime { 0 };
     std::string_view dose_units = "";
@@ -54,6 +55,7 @@ struct Result {
         dose.resize(size, 0);
         nEvents.resize(size, 0);
         variance.resize(size, 0);
+        nEntered.resize(size, 0);
     }
     [[nodiscard]] std::vector<T> relativeError() const
     {
@@ -538,13 +540,13 @@ protected:
                 [[unlikely]] {
                 const auto energyImparted = (e_forced + p_forced.energy) * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 }); 
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             } else
                 [[likely]] {
                 const auto energyImparted = e_forced * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             }
         }
@@ -559,7 +561,7 @@ protected:
                     [[unlikely]] {
                     const auto energyImparted = (e + p.energy) * p.weight;
                     safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                     safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     p.energy = 0;
                     return false;
@@ -567,7 +569,7 @@ protected:
                     [[likely]] {
                     const auto energyImparted = e * p.weight;
                     safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                    safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                     safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                     updateMaxAttenuation = true;
                 }
@@ -597,7 +599,7 @@ protected:
                 [[unlikely]] {
                 const auto energyImparted = (e + p.energy) * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 p.energy = 0;
                 return false;
@@ -605,7 +607,7 @@ protected:
                 [[likely]] {
                 const auto energyImparted = e * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 updateMaxAttenuation = true;
             }
@@ -617,7 +619,7 @@ protected:
                 [[unlikely]] {
                 const auto energyImparted = (e + p.energy) * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 p.energy = 0;
                 return false;
@@ -625,7 +627,7 @@ protected:
                 [[likely]] {
                 const auto energyImparted = e * p.weight;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint32_t { 1 });
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
                 updateMaxAttenuation = true;
             }
@@ -667,12 +669,14 @@ protected:
                 const auto attenuationTotal = std::reduce(std::execution::unseq, attenuation.cbegin(), attenuation.cend(), T { 0 }) * density;
                 const auto eventProbability = attenuationTotal * maxAttenuationInv;
 
+                safeValueAdd(result.nEntered[bufferIdx], std::uint_fast32_t { 1 });
+
                 if (measurement == 0)
                     [[likely]] // naive sampling
                 {
                     const auto r2 = state.randomUniform<T>();
                     if (r2 < eventProbability) // an event will happen
-                    {
+                    {                        
                         continueSampling = computeInteractions<Lowenergycorrection>(attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
                 } else
