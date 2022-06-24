@@ -80,11 +80,21 @@ public:
         m_dimensions = dimensions;
         updateMatrixExtent();
     }
+    void setDimensions(const std::size_t x, const std::size_t y, const std::size_t z)
+    {
+        const std::array<std::size_t, 3> dim { x, y, z };
+        setDimensions(dim);
+    }
     void setSpacing(const std::array<T, 3>& spacing)
     {
         m_valid = false;
         m_spacing = spacing;
         updateMatrixExtent();
+    }
+    void setSpacing(const T x, const T y, const T z)
+    {
+        const std::array<T, 3> s { x, y, z };
+        setSpacing(s);
     }
     void setOrigin(const std::array<T, 3>& origin)
     {
@@ -366,16 +376,18 @@ std::vector<std::size_t> CTDIPhantom<T>::circleIndices2D(const std::array<std::s
     const auto r_int = static_cast<std::size_t>(std::ceil(std::abs(radius)));
     indices.reserve(r_int * r_int);
 
-    std::array<int, 4> flimits;
-    flimits[0] = static_cast<int>((center[0] - radius) / spacing[0]);
-    flimits[1] = static_cast<int>((center[0] + radius) / spacing[0]) + 1;
-    flimits[2] = static_cast<int>((center[1] - radius) / spacing[1]);
-    flimits[3] = static_cast<int>((center[1] + radius) / spacing[1]) + 1;
-    std::array<std::size_t, 4> limits;
-    limits[0] = static_cast<std::size_t>(std::max(flimits[0], 0));
-    limits[1] = static_cast<std::size_t>(std::min(flimits[1], static_cast<int>(dim[0])));
-    limits[2] = static_cast<std::size_t>(std::max(flimits[2], 0));
-    limits[3] = static_cast<std::size_t>(std::min(flimits[3], static_cast<int>(dim[1])));
+    std::array<int, 4> flimits {
+        static_cast<int>((center[0] - radius) / spacing[0]),
+        static_cast<int>((center[0] + radius) / spacing[0]) + 1,
+        static_cast<int>((center[1] - radius) / spacing[1]),
+        static_cast<int>((center[1] + radius) / spacing[1]) + 1
+    };
+    std::array<std::size_t, 4> limits {
+        static_cast<std::size_t>(std::max(flimits[0], 0)),
+        static_cast<std::size_t>(std::min(flimits[1], static_cast<int>(dim[0]))),
+        static_cast<std::size_t>(std::max(flimits[2], 0)),
+        static_cast<std::size_t>(std::min(flimits[3], static_cast<int>(dim[1])))
+    };
 
     const auto r2 = radius * radius;
     for (std::size_t i = limits[0]; i < limits[1]; ++i) {
