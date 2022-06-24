@@ -38,10 +38,11 @@ template <Floating T>
 class TriangulatedMesh {
 public:
     TriangulatedMesh() { }
-    TriangulatedMesh(const std::vector<T>& vertices, const std::vector<std::size_t>& faceIndices)
+    TriangulatedMesh(const std::vector<std::array<T, 3>>& vertices, const std::vector<std::array<std::size_t, 3>>& faceIndices)
         : m_vertices(vertices)
         , m_faceIdx(faceIndices)
     {
+        reduce();
     }
 
     const std::array<T, 3>& getVertice(std::size_t index) const { return m_vertices[index]; }
@@ -100,6 +101,15 @@ public:
 
         return std::optional<T> { vectormath::dot(v1v3, qvec) * invDet };
     }
+
+    bool setData(const std::vector<std::array<T, 3>>& vertices, const std::vector<std::array<std::size_t, 3>>& faceIndices)
+    {
+        m_vertices = vertices;
+        m_faceIdx = faceIndices;
+        reduce();
+        return true;
+    }
+
     bool setFlatData(const std::vector<T>& vertices, const std::vector<std::size_t>& faceIndices)
     {
         const bool valid_n_points = vertices.size() % 3 == 0 && faceIndices.size() % 3 == 0;
@@ -293,9 +303,90 @@ protected:
         return mesh;
     }
 
-    TriangulatedMesh<T> readSTLfileASCII(const std::string& path) const
+    static std::vector<std::string> stringSplit(const std::string& text, char sep)
+    {
+        // this function splits a string into a vector based on a sep character
+        // it will skip empty tokens
+        std::vector<std::string> tokens;
+        std::size_t start = 0, end = 0;
+        while ((end = text.find(sep, start)) != std::string::npos) {
+            if (end != start) {
+                tokens.push_back(text.substr(start, end - start));
+            }
+            start = end + 1;
+        }
+        if (end != start) {
+            tokens.push_back(text.substr(start));
+        }
+        return tokens;
+    }
+
+    TriangulatedMesh<T> readSTLfileASCII(const std::string& path)
     {
         TriangulatedMesh<T> mesh;
+
+        auto processLine = [](const std::string& line) -> std::optional<std::array<T, 3>> {
+            auto words = stringSplit(line, ' ');
+            if (words.size() < 4)
+                return std::nullopt;
+            const std::string cmp("vertex");
+            std::transform(words[0].begin(), words[0].end(), words[0].begin(), [](unsigned char u) { return std::tolower(u); });
+            if (cmp.compare(words[0]) == 0) {
+
+                try {
+                    if constexpr (sizeof(T) == 4) {
+                        std::array<T, 3> res {
+                            std::stof(words[1]),
+                            std::stof(words[2]),
+                            std::stof(words[3])
+                        };
+                        return std::optional(res);
+                    } else {
+                        std::array<T, 3> res {
+                            std::stod(words[1]),
+                            std::stod(words[2]),
+                            std::stod(words[3])
+                        };
+                        return std::optional(res);
+                    }
+
+                } catch (std::invalid_argument) {
+                    return std::nullopt;
+                }
+            }
+            return std::nullopt;
+        };
+
+        std::vector<std::array<T, 3>> vertices;
+        std::vector<std::size_t> faceIdxFlat;
+
+        std::ifstream f(path, std::ios::in);
+        if (f.is_open()) {
+            std::size_t teller { 0 };
+            for (std::string line; std::getline(f, line);) {
+                auto res = processLine(line);
+                if (res) {
+                    vertices.push_back(*res);
+                }
+            }
+            faceIdxFlat.resize(vertices.size());
+            std::iota(faceIdxFlat.begin(), faceIdxFlat.end(), 0);
+        } else {
+            m_error = "Could not open file: " + path;
+        }
+        f.close();
+        if (vertices.size() < 3) {
+            m_error = "File do not contains any triangles";
+            return mesh;
+        }
+        std::vector<std::array<std::size_t, 3>> faceIdx(faceIdxFlat.size() / 3);
+        for (std::size_t i = 0; i < faceIdx.size(); i++) {
+            for (std::size_t j = 0; j < 3; j++) {
+                faceIdx[i][j] = faceIdxFlat[i * 3 + j];
+            }
+        }
+        mesh.setData(vertices, faceIdx);
+
         return mesh;
     }
 

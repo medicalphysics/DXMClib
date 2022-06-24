@@ -6,22 +6,12 @@
 
 int main(int argc, char* argv[])
 {
-    dxmc::STLReader<float> reader;
+    dxmc::STLReader<double> reader;
 
-    auto mesh = reader("untitled_bin.stl");
+    auto mesh = reader("untitled.stl");
     std::cout << "Message: " << reader.message() << std::endl;
 
-    const auto& faceIdx1 = mesh.getFaceIndex(0);
-
-    for (const auto idx : faceIdx1) {
-        std::cout << "Vertice: ";
-        for (auto v : mesh.getVertice(idx)) {
-            std::cout << v << ", ";
-        }
-        std::cout << std::endl;
-    }
-
-    dxmc::Particle<float> p;
+    dxmc::Particle<double> p;
     p.pos = { .5, .2, -.3 };
     p.dir = { 0, 0, 1 };
     for (std::size_t i = 0; i < mesh.nFaces(); i++) {
