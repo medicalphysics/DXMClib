@@ -95,7 +95,7 @@ double calculate()
     auto res = transport(world, &pen);
 
     // Print the dose along z direction of box
-    auto materials = world.materialMap();
+    const auto& materials = world.materialMap();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(res.simulationTime).count() / 1000.0;
     std::cout << "Simulation time, " << time << ", seconds\n";
     std::cout << "Depth [mm],  Dose, nEvents, Material index, Material\n";
