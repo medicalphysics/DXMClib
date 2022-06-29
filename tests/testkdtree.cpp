@@ -1,6 +1,7 @@
 
 
 #include "dxmc/world/kdtree.hpp"
+#include "dxmc/world/triangulatedmesh.hpp"
 
 #include <iostream>
 

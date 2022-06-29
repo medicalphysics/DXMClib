@@ -48,7 +48,7 @@ std::optional<std::array<T, 2>> intersectAABB(const std::array<T, 3>& pos, const
             t[1] = std::min(t[1], t_max_cand);
         }
     }
-    return tmin > tmax ? std::nullopt : t;
+    return t[0] > t[1] ? std::nullopt : t;
 }
 
 template <Floating T>
@@ -58,12 +58,12 @@ public:
     {
         m_D = k % 3;
 
-        std::sort(faces.begin(), faces.end(), [const & ](const auto& lf, const auto& rh) {
+        std::sort(faces.begin(), faces.end(), [& ](const auto& lf, const auto& rh) {
             T lf_val = 0;
             T rh_val = 0;
             for (std::size_t i = 0; i < 3; i++) {
-                lf_val += vertices[lf[i]][m_d];
-                rh_val += vertices[rh[i]][m_d];
+                lf_val += vertices[lf[i]][m_D];
+                rh_val += vertices[rh[i]][m_D];
             }
             return lf_val < rh_val;
         });
@@ -87,7 +87,7 @@ public:
             std::vector<std::array<std::size_t, 2>> left;
             std::vector<std::array<std::size_t, 2>> right;
             for (const auto& face : faces) {
-                const auto side = planeSide(vertices, face, plane);
+                const auto side = planeSide(vertices, face, m_plane);
                 if (side <= 0)
                     left.push_back(face);
                 if (side >= 0)
@@ -113,23 +113,23 @@ public:
         const T t = (pos[m_D] - m_plane) / dir[m_D];
 
         if (t > tbox[1]) {
-            // left only
-            if (std::signbit(dir[m_d])) {
+            if (std::signbit(dir[m_D])) {
+                //right side
                 m_children.value()[1].intersect(pos, dir, tbox);
             } else {
+                //left side
                 m_children.value()[0].intersect(pos, dir, tbox);
             }
-
-        } else if (t > tbox[0]) {
-            // right only
-            if (std::signbit(dir[m_d])) {
+        } else if (t > tbox[0]) {           
+            if (std::signbit(dir[m_D])) {
+                //right side
                 m_children.value()[0].intersect(pos, dir, tbox);
             } else {
                 m_children.value()[1].intersect(pos, dir, tbox);
             }
         } else {
             // both directions (start with left)
-            if (std::signbit(dir[m_d])) {
+            if (std::signbit(dir[m_D])) {
                 const std::array<T, 2> t_first { t, tbox[1] };
                 const auto hit = m_children.value()[1].intersect(pos, dir, t_first);
                 if (hit) {
@@ -182,8 +182,8 @@ protected:
         T min = std::numeric_limits<T>::max();
 
         for (const std::size_t& ind : face) {
-            min = std::min(vertices[ind][k], min);
-            max = std::max(vertices[ind][k], max);
+            min = std::min(vertices[ind][m_D], min);
+            max = std::max(vertices[ind][m_D], max);
         }
         if (max <= plane)
             return -1;
