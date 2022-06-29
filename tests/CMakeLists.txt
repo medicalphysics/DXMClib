@@ -16,6 +16,7 @@ set_tests_properties(testtransport
 
 set(TEST_SOURCES 
     "testreadSTL.cpp"
+    "testkdtree.cpp"
     "testtube.cpp"
     "testsource.cpp"
     "testbeamfilters.cpp"
