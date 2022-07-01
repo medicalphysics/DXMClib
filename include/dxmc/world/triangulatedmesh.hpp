@@ -49,6 +49,10 @@ public:
     const std::array<std::size_t, 3>& getFaceIndex(std::size_t index) const { return m_faceIdx[index]; }
     const std::size_t nVertices() const { return m_vertices.size(); }
     const std::size_t nFaces() const { return m_faceIdx.size(); }
+    const std::vector<std::array<T, 3>>& getVertices() { return m_vertices; }
+    const std::vector<std::array<std::size_t, 3>>& getFaceIndices() { return m_faceIdx; }
+
+
 
     template <int FORWARD>
     std::optional<T> intersect(const Particle<T>& particle) const
