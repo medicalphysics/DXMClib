@@ -47,19 +47,35 @@ public:
 
     const std::array<T, 3>& getVertice(std::size_t index) const { return m_vertices[index]; }
     const std::array<std::size_t, 3>& getFaceIndex(std::size_t index) const { return m_faceIdx[index]; }
-    const std::size_t nVertices() const { return m_vertices.size(); }
-    const std::size_t nFaces() const { return m_faceIdx.size(); }
+    std::size_t nVertices() const { return m_vertices.size(); }
+    std::size_t nFaces() const { return m_faceIdx.size(); }
     const std::vector<std::array<T, 3>>& getVertices() { return m_vertices; }
     const std::vector<std::array<std::size_t, 3>>& getFaceIndices() { return m_faceIdx; }
-
-
+    std::array<T, 6> calculateAABB() const
+    {
+        std::array<T, 6> aabb {
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::min(),
+            std::numeric_limits<T>::min(),
+            std::numeric_limits<T>::min(),
+        };
+        for (const auto& v : m_vertices) {
+            for (std::size_t i = 0; i < 3; i++) {
+                aabb[i] = std::min(aabb[i], v[i]);
+                aabb[i + 3] = std::max(aabb[i + 3], v[i]);
+            }
+        }
+        return aabb;
+    }
 
     template <int FORWARD>
     std::optional<T> intersect(const Particle<T>& particle) const
     {
         T t = std::numeric_limits<T>::max();
 
-        for (std::size_t i = 0; i < m_nFaces; i++) {
+        for (std::size_t i = 0; i < m_faceIdx.size(); i++) {
             const auto vres = intersect<FORWARD>(particle, i);
             if (vres)
                 t = std::min(t, *vres);
@@ -120,23 +136,22 @@ public:
         const bool valid_indices = vertices.size() / 3 > std::reduce(std::execution::par_unseq, faceIndices.cbegin(), faceIndices.cend(), std::size_t { 0 }, [](const auto l, const auto r) { return std::max(l, r); });
 
         if (valid_n_points && valid_indices) {
-            m_nVertices = vertices.size() / 3;
-            m_nFaces = faceIndices.size() / 3;
-            m_vertices.resize(m_nVertices);
-            m_faceIdx.resize(m_nFaces);
-            for (std::size_t i = 0; i < m_nVertices; ++i) {
+            const auto nVertices = vertices.size() / 3;
+            const auto nFaces = faceIndices.size() / 3;
+            m_vertices.resize(nVertices);
+            m_faceIdx.resize(nFaces);
+            for (std::size_t i = 0; i < nVertices; ++i) {
                 for (std::size_t j = 0; j < 3; ++j) {
                     const auto flat_ind = i * 3 + j;
                     m_vertices[i][j] = vertices[flat_ind];
                 }
             }
-            for (std::size_t i = 0; i < m_nFaces; ++i) {
+            for (std::size_t i = 0; i < nFaces; ++i) {
                 for (std::size_t j = 0; j < 3; ++j) {
                     const auto flat_ind = i * 3 + j;
                     m_faceIdx[i][j] = flat_ind;
                 }
             }
-
             reduce();
             return true;
         }
@@ -179,12 +194,9 @@ protected:
             }
         }
         m_vertices = r_vertices;
-        m_nVertices = m_vertices.size();
     }
 
 private:
-    std::size_t m_nVertices = 0;
-    std::size_t m_nFaces = 0;
     std::vector<std::array<T, 3>> m_vertices;
     std::vector<std::array<std::size_t, 3>> m_faceIdx;
 };

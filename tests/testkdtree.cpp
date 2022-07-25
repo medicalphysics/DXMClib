@@ -19,8 +19,16 @@ int main(int argc, char* argv[])
 
 
     dxmc::Particle<double> p;
-    p.pos = { .5, .2, -.3 };
+    p.pos = { .0, .0, -5 };
     p.dir = { 0, 0, 1 };
-    
+
+    const auto& aabb = mesh.calculateAABB();
+    const auto& vert = mesh.getVertices();
+
+    auto res = kdtree.intersect(p, vert, aabb);
+    if (res)
+        std::cout << *res; 
+
+
     return EXIT_SUCCESS;
 }

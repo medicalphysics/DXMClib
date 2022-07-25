@@ -25,6 +25,7 @@ Copyright 2022 Erlend Andersen
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <numeric>
 #include <optional>
 #include <vector>
 
@@ -64,13 +65,12 @@ std::optional<T> intersectTriangle(const Particle<T>& particle, const std::array
     if (v < T { 0 } || u + v > T { 1 })
         return std::nullopt;
 
-    return std::optional<T> { vectormath::dot(v1v3, qvec) * invDet };
+    return std::make_optional(vectormath::dot(v1v3, qvec) * invDet);
 }
 
 template <Floating T>
 std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
 {
-
     std::array<T, 2> t {
         std::numeric_limits<T>::min(),
         std::numeric_limits<T>::max()
@@ -86,7 +86,7 @@ std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::a
             t[1] = std::min(t[1], t_max_cand);
         }
     }
-    return t[0] > t[1] ? std::nullopt : t;
+    return t[0] > t[1] ? std::nullopt : std::make_optional(t);
 }
 
 template <Floating T>
@@ -105,23 +105,15 @@ public:
             }
             return lf_val < rh_val;
         });
-        const auto plane_ind = faces.size() / 2;
-        std::array<T, 3> plane_cand {
-            vertices[faces[plane_ind][0]][m_D],
-            vertices[faces[plane_ind][1]][m_D],
-            vertices[faces[plane_ind][2]][m_D]
-        };
-        std::array<int, 3> fom_cand {
-            figureOfMerit(vertices, faces, plane_cand[0]),
-            figureOfMerit(vertices, faces, plane_cand[1]),
-            figureOfMerit(vertices, faces, plane_cand[2])
-        };
 
-        const auto fom = fom_cand[argmin3(fom_cand)];
+        const T mean = std::transform_reduce(vertices.cbegin(), vertices.cend(), T { 0 }, std::plus {}, [&](const auto& v) { return v[m_D]; }) / vertices.size();
+
+        const T fom = figureOfMerit(vertices, faces, mean);
+
         if (fom == faces.size()) {
             m_faceIdx = faces;
         } else {
-            m_plane = plane_cand[argmin3(plane_cand)];
+            m_plane = mean;
             std::vector<std::array<std::size_t, 3>> left;
             std::vector<std::array<std::size_t, 3>> right;
             for (const auto& face : faces) {
@@ -131,83 +123,90 @@ public:
                 if (side >= 0)
                     right.push_back(face);
             }
-            m_children = std::make_optional<std::array<KDTree<T>, 2>>({ KDTree<T>(vertices, left, k + 1),
-                KDTree<T>(vertices, right, k + 1) });
+            m_left = std::make_unique<KDTree<T>>(vertices, left, k + 1);
+            m_right = std::make_unique<KDTree<T>>(vertices, right, k + 1);
         }
     }
 
     std::optional<T> intersect(const Particle<T>& particle, const std::vector<std::array<T, 3>>& vertices, const std::array<T, 6>& aabb) const
     {
-        const auto& inter = intersectAABB(particle, vertices, aabb);
+        const auto& inter = intersectAABB(particle, aabb);
         return inter ? intersect(particle, vertices, *inter) : std::nullopt;
     }
     std::optional<T> intersect(const Particle<T>& particle, const std::vector<std::array<T, 3>>& vertices, const std::array<T, 2>& tbox) const
     {
-        if (!m_children) {
+        if (m_left) {
             // intersect triangles between tbox and return;
             T t = std::numeric_limits<T>::max();
             for (const auto& face : m_faceIdx) {
-
                 const auto& v1 = vertices[face[0]];
                 const auto& v2 = vertices[face[0]];
                 const auto& v3 = vertices[face[0]];
-                const auto t_cand = intersectTriangle(particle, v1, v2, v3);
-                t = t_cand ? std::min(t, t_cand) : t;
+                const auto t_cand = intersectTriangle<T, 0>(particle, v1, v2, v3);
+                if (t_cand)
+                    t = t_cand ? std::min(t, *t_cand) : t;
             }
-            return t == std::numeric_limits<T>::max() ? std::nullopt : t;
+            return t == std::numeric_limits<T>::max() ? std::nullopt : std::make_optional(t);
         }
 
-        // må ha test for parallell
+        // test for parallell beam
+        if (std::abs(particle.dir[m_D]) < std::numeric_limits<T>::epsilon()) {
+            const auto hit_left = m_left->intersect(particle, vertices, tbox);
+            const auto hit_right = m_right->intersect(particle, vertices, tbox);
+            if (hit_left && hit_right)
+                return *hit_left < *hit_right ? hit_left : hit_right;
+            if (!hit_left)
+                return hit_right;
+            if (!hit_left)
+                return hit_right;
+        }
         const T t = (particle.pos[m_D] - m_plane) / particle.dir[m_D];
 
         if (t > tbox[1]) {
             // left only
             if (std::signbit(particle.dir[m_D])) {
-                m_children.value()[1].intersect(particle, tbox);
+                return m_right->intersect(particle, vertices, tbox);
             } else {
-                m_children.value()[0].intersect(particle, tbox);
+                return m_left->intersect(particle, vertices, tbox);
             }
 
         } else if (t > tbox[0]) {
             // right only
             if (std::signbit(particle.dir[m_D])) {
-                m_children.value()[0].intersect(particle, tbox);
+                return m_left->intersect(particle, vertices, tbox);
             } else {
-                m_children.value()[1].intersect(particle, tbox);
+                return m_right->intersect(particle, vertices, tbox);
             }
         } else {
             // both directions (start with left)
             if (std::signbit(particle.dir[m_D])) {
                 const std::array<T, 2> t_first { t, tbox[1] };
-                const auto hit = m_children.value()[1].intersect(particle, t_first);
+                const auto hit = m_right->intersect(particle, vertices, t_first);
                 if (hit) {
                     if (*hit <= t) {
                         return hit;
                     }
                 }
                 const std::array<T, 2> t_sec { tbox[0], t };
-                return m_children.value()[0].intersect(particle, t_sec);
+                return m_left->intersect(particle, vertices, t_sec);
 
             } else {
                 const std::array<T, 2> t_first { t, tbox[1] };
-                const auto hit = m_children.value()[0].intersect(particle, t_first);
+                const auto hit = m_left->intersect(particle, vertices, t_first);
                 if (hit) {
                     if (*hit <= t) {
                         return hit;
                     }
                 }
                 const std::array<T, 2> t_sec { tbox[0], t };
-                return m_children.value()[1].intersect(particle, t_sec);
+                return m_right->intersect(particle, vertices, t_sec);
             }
         }
-
-        /* if (std::signbit(dir[m_D])) {
-            // swap left right
-        }*/
     };
 
 protected:
-    static int argmin3(const std::array<int, 3>& v)
+    template <typename U>
+    static int argmin3(const std::array<U, 3>& v)
     {
         const auto it = std::min_element(v.cbegin(), v.cend());
         return it - v.cbegin();
@@ -217,14 +216,14 @@ protected:
         int fom = 0;
         int shared = 0;
         for (const auto& face : faceIdx) {
-            const auto side = planeside(vertices, face, planesep);
+            const auto side = planeSide(vertices, face, planesep);
             fom += side;
             if (side == 0)
                 shared++;
         }
         return std::abs(fom) + shared;
     }
-    static int planeSide(const std::vector<std::array<T, 3>>& vertices, const std::array<std::size_t, 3>& face, const T plane)
+    int planeSide(const std::vector<std::array<T, 3>>& vertices, const std::array<std::size_t, 3>& face, const T plane) const
     {
         T max = std::numeric_limits<T>::min();
         T min = std::numeric_limits<T>::max();
@@ -245,9 +244,9 @@ private:
     T m_plane = 0;
     std::vector<std::array<std::size_t, 3>> m_faceIdx;
 
-    KDTree<T>* m_child;
-    std::optional<std::array<KDTree<T>, 2>> m_children;
-    
+    std::unique_ptr<KDTree<T>> m_left = nullptr;
+    std::unique_ptr<KDTree<T>> m_right = nullptr;
+    // std::array<std::unique_ptr<KDTree<T>>, 2> m_children { nullptr, nullptr };
 };
 
 }
