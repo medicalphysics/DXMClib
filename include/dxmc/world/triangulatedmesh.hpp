@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/intersectsimpleobjects.hpp"
 
 #include <algorithm>
 #include <array>
@@ -38,167 +39,65 @@ template <Floating T>
 class TriangulatedMesh {
 public:
     TriangulatedMesh() { }
-    TriangulatedMesh(const std::vector<std::array<T, 3>>& vertices, const std::vector<std::array<std::size_t, 3>>& faceIndices)
-        : m_vertices(vertices)
-        , m_faceIdx(faceIndices)
+    TriangulatedMesh(const std::vector<Triangle<T>>& triangles)
+        : m_triangles(triangles)
     {
-        reduce();
     }
 
-    const std::array<T, 3>& getVertice(std::size_t index) const { return m_vertices[index]; }
-    const std::array<std::size_t, 3>& getFaceIndex(std::size_t index) const { return m_faceIdx[index]; }
-    std::size_t nVertices() const { return m_vertices.size(); }
-    std::size_t nFaces() const { return m_faceIdx.size(); }
-    const std::vector<std::array<T, 3>>& getVertices() { return m_vertices; }
-    const std::vector<std::array<std::size_t, 3>>& getFaceIndices() { return m_faceIdx; }
+    const Triangle<T>& getTriangle(std::size_t index) const { return m_triangles[index]; }
+    std::size_t nTriangles() const { return m_triangles.size(); }
+    const std::vector<Triangle<T>>& getTriangles() const
+    {
+        return m_triangles;
+    }
+    void translate(const std::array<T, 3>& dist)
+    {
+        std::for_each(std::execution::par, m_triangles.begin(), m_triangles.end(), [&](auto& tri) { tri.translate(dist); });
+    }
     std::array<T, 6> calculateAABB() const
     {
         std::array<T, 6> aabb {
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::min(),
-            std::numeric_limits<T>::min(),
-            std::numeric_limits<T>::min(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
         };
-        for (const auto& v : m_vertices) {
-            for (std::size_t i = 0; i < 3; i++) {
-                aabb[i] = std::min(aabb[i], v[i]);
-                aabb[i + 3] = std::max(aabb[i + 3], v[i]);
+        for (const auto& tri : m_triangles) {
+            for (const auto& vert : tri.vertices()) {
+                for (std::size_t i = 0; i < 3; ++i) {
+                    aabb[i] = std::min(aabb[i], vert[i]);
+                    aabb[i + 3] = std::max(aabb[i + 3], vert[i]);
+                }
             }
         }
         return aabb;
     }
 
-    template <int FORWARD>
-    std::optional<T> intersect(const Particle<T>& particle) const
+    bool setData(const std::vector<Triangle<T>>& triangles)
     {
-        T t = std::numeric_limits<T>::max();
-
-        for (std::size_t i = 0; i < m_faceIdx.size(); i++) {
-            const auto vres = intersect<FORWARD>(particle, i);
-            if (vres)
-                t = std::min(t, *vres);
-            // intersect = vres ? std::min(*vres, intersect) : intersect;
-        }
-        return t == std::numeric_limits<T>::max() ? std::nullopt : std::optional<T> { t };
-    }
-    template <int FORWARD>
-    std::optional<T> intersect(const Particle<T>& particle, const std::size_t& facetIndex) const
-    {
-        constexpr T epsilon = std::numeric_limits<T>::epsilon();
-        const auto& v1 = m_vertices[m_faceIdx[facetIndex][0]];
-        const auto& v2 = m_vertices[m_faceIdx[facetIndex][1]];
-        const auto& v3 = m_vertices[m_faceIdx[facetIndex][2]];
-
-        const std::array<T, 3> v1v2 { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
-        const std::array<T, 3> v1v3 { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
-        const auto& pvec = vectormath::cross(particle.dir, v1v3);
-        const auto det = vectormath::dot(v1v2, pvec);
-
-        // Negative det gives intersection on backside of face
-        if constexpr (FORWARD == 1) {
-            if (det < epsilon)
-                return std::nullopt;
-        } else if constexpr (FORWARD == -1) {
-            if (det > -epsilon)
-                return std::nullopt;
-        } else {
-            if (std::abs(det) < epsilon)
-                return std::nullopt;
-        }
-        const T invDet = T { 1 } / det;
-
-        const std::array<T, 3> tvec { particle.pos[0] - v1[0], particle.pos[1] - v1[1], particle.pos[2] - v1[2] };
-        const T u = vectormath::dot(tvec, pvec) * invDet;
-        if (u < T { 0 } || u > T { 1 })
-            return std::nullopt;
-
-        const auto qvec = vectormath::cross(tvec, v1v2);
-        const T v = vectormath::dot(particle.dir, qvec) * invDet;
-        if (v < T { 0 } || u + v > T { 1 })
-            return std::nullopt;
-
-        return std::optional<T> { vectormath::dot(v1v3, qvec) * invDet };
-    }
-
-    bool setData(const std::vector<std::array<T, 3>>& vertices, const std::vector<std::array<std::size_t, 3>>& faceIndices)
-    {
-        m_vertices = vertices;
-        m_faceIdx = faceIndices;
-        reduce();
+        m_triangles = triangles;
         return true;
     }
-
-    bool setFlatData(const std::vector<T>& vertices, const std::vector<std::size_t>& faceIndices)
+    bool setData(const std::vector<T>& vertices)
     {
-        const bool valid_n_points = vertices.size() % 3 == 0 && faceIndices.size() % 3 == 0;
-        const bool valid_indices = vertices.size() / 3 > std::reduce(std::execution::par_unseq, faceIndices.cbegin(), faceIndices.cend(), std::size_t { 0 }, [](const auto l, const auto r) { return std::max(l, r); });
+        const bool valid_n_points = vertices.size() % 9 == 0;
 
-        if (valid_n_points && valid_indices) {
-            const auto nVertices = vertices.size() / 3;
-            const auto nFaces = faceIndices.size() / 3;
-            m_vertices.resize(nVertices);
-            m_faceIdx.resize(nFaces);
-            for (std::size_t i = 0; i < nVertices; ++i) {
-                for (std::size_t j = 0; j < 3; ++j) {
-                    const auto flat_ind = i * 3 + j;
-                    m_vertices[i][j] = vertices[flat_ind];
-                }
+        if (valid_n_points) {
+            const auto n_triangles = vertices.size() / 9;
+            m_triangles.clear();
+            m_triangles.reserve(n_triangles);
+            for (std::size_t i = 0; i < vertices.size(); i += 9) {
+                m_triangles.emplace_back(&vertices[i]);
             }
-            for (std::size_t i = 0; i < nFaces; ++i) {
-                for (std::size_t j = 0; j < 3; ++j) {
-                    const auto flat_ind = i * 3 + j;
-                    m_faceIdx[i][j] = flat_ind;
-                }
-            }
-            reduce();
             return true;
         }
         return false;
     }
 
-protected:
-    void reduce()
-    {
-        std::vector<std::array<T, 3>> r_vertices;
-        std::vector<std::size_t> r_faceIdxFlat(m_faceIdx.size() * 3);
-
-        for (std::size_t i = 0; i < m_faceIdx.size(); i++) {
-            for (std::size_t j = 0; j < 3; j++) {
-                r_faceIdxFlat[i * 3 + j] = m_faceIdx[i][j];
-            }
-        }
-
-        auto equal = [](const std::array<T, 3>& l, const std::array<T, 3>& r) -> bool {
-            constexpr T epsilon = std::numeric_limits<T>::epsilon();
-            return std::abs(l[0] - r[0]) < epsilon && std::abs(l[1] - r[1]) < epsilon && std::abs(l[2] - r[2]) < epsilon;
-        };
-        for (std::size_t i = 0; i < m_vertices.size(); i++) {
-
-            const auto& l = m_vertices[i];
-            const auto handled = std::any_of(std::execution::par, r_vertices.cbegin(), r_vertices.cend(), [&](const auto& r) { return equal(r, l); });
-            if (!handled) {
-                r_vertices.push_back(l);
-            }
-            for (std::size_t j = 0; j < r_vertices.size(); j++) {
-                const auto& r = r_vertices[j];
-                if (equal(l, r)) {
-                    std::replace(std::execution::par_unseq, r_faceIdxFlat.begin(), r_faceIdxFlat.end(), i, j);
-                }
-            }
-        }
-        for (std::size_t i = 0; i < m_faceIdx.size(); i++) {
-            for (std::size_t j = 0; j < 3; j++) {
-                m_faceIdx[i][j] = r_faceIdxFlat[i * 3 + j];
-            }
-        }
-        m_vertices = r_vertices;
-    }
-
 private:
-    std::vector<std::array<T, 3>> m_vertices;
-    std::vector<std::array<std::size_t, 3>> m_faceIdx;
+    std::vector<Triangle<T>> m_triangles;
 };
 
 template <Floating T>
@@ -295,9 +194,7 @@ protected:
             const std::vector<float> data = readTrianglesFromBytes(buffer);
 
             std::vector<T> vertices;
-            std::vector<std::size_t> indices;
             std::vector<T> normals;
-            std::size_t teller = 0;
             for (std::size_t i = 0; i < data.size(); i = i + 12) {
                 for (std::size_t j = i; j < i + 3; j++) {
                     normals.push_back(data[j]);
@@ -305,12 +202,9 @@ protected:
                 for (std::size_t j = i + 3; j < i + 12; j++) {
                     vertices.push_back(data[j]);
                 }
-                for (std::size_t j = 0; j < 3; j++) {
-                    indices.push_back(teller++);
-                }
             }
 
-            auto validmesh = mesh.setFlatData(vertices, indices);
+            auto validmesh = mesh.setData(vertices);
             if (!validmesh) {
                 m_error = "Mesh not valid for some reason";
             }
@@ -373,8 +267,7 @@ protected:
             return std::nullopt;
         };
 
-        std::vector<std::array<T, 3>> vertices;
-        std::vector<std::size_t> faceIdxFlat;
+        std::vector<T> vertices;
 
         std::ifstream f(path, std::ios::in);
         if (f.is_open()) {
@@ -382,26 +275,21 @@ protected:
             for (std::string line; std::getline(f, line);) {
                 auto res = processLine(line);
                 if (res) {
-                    vertices.push_back(*res);
+                    for (auto val : *res)
+                        vertices.push_back(val);
                 }
             }
-            faceIdxFlat.resize(vertices.size());
-            std::iota(faceIdxFlat.begin(), faceIdxFlat.end(), 0);
+
         } else {
             m_error = "Could not open file: " + path;
         }
         f.close();
-        if (vertices.size() < 3) {
+        if (vertices.size() < 9) {
             m_error = "File do not contains any triangles";
             return mesh;
         }
-        std::vector<std::array<std::size_t, 3>> faceIdx(faceIdxFlat.size() / 3);
-        for (std::size_t i = 0; i < faceIdx.size(); i++) {
-            for (std::size_t j = 0; j < 3; j++) {
-                faceIdx[i][j] = faceIdxFlat[i * 3 + j];
-            }
-        }
-        mesh.setData(vertices, faceIdx);
+
+        mesh.setData(vertices);
 
         return mesh;
     }

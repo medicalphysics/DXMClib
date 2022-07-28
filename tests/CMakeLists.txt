@@ -15,7 +15,7 @@ set_tests_properties(testtransport
 
 
 set(TEST_SOURCES 
-    "testreadSTL.cpp"
+    "testtriangulatedmesh.cpp"
     "testkdtree.cpp"
     "testtube.cpp"
     "testsource.cpp"
