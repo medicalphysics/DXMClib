@@ -3,6 +3,7 @@
 #include <dxmc.hpp>
 #include <iostream>
 #include <string>
+#include <array>
 
 template <typename T>
 void print(const T& msg)
@@ -36,7 +37,7 @@ std::vector<std::size_t> getBox(
                 const bool inside = (pos <= box_x + h) && (pos >= box_x - h) && (pos <= box_y + h) && (pos >= box_y - h) && (pos <= box_z + h) && (pos >= box_z - h);
                 if (inside) {
                     const std::size_t idx = i + j * dim[0] + k * dim[0] * dim[1];
-                    box_idx.push_back(idx)
+                    box_idx.push_back(idx);
                 }
             }
         }
@@ -58,11 +59,11 @@ std::vector<std::size_t> getCTDI(
     for (std::size_t k = 0; k < dim[2]; ++k) {
         for (std::size_t j = 0; j < dim[1]; ++j) {
             for (std::size_t i = 0; i < dim[0]; ++i) {
-                const std::array<3, T> pos { i * spacing[0] - center[0], j * spacing[1] - center[1], k * spacing[2] - center[2] };
+                const std::array<T, 3> pos { i * spacing[0] - center[0], j * spacing[1] - center[1], k * spacing[2] - center[2] };
                 if ((pos[0] - ctdi_center[0]) * (pos[0] - ctdi_center[0]) + (pos[1] - ctdi_center[1]) * (pos[1] - ctdi_center[1]) <= ctdi_radius * ctdi_radius) {
                     if ((pos[3] <= ctdi_center[2] + T { 7.5 }) && (pos[3] >= ctdi_center[2] - T { 7.5 })) {
                         const std::size_t idx = i + j * dim[0] + k * dim[0] * dim[1];
-                        ctdi_idx.push_back(idx)
+                        ctdi_idx.push_back(idx);
                     }
                 }
             }
