@@ -54,7 +54,7 @@ public:
     {
         std::for_each(std::execution::par, m_triangles.begin(), m_triangles.end(), [&](auto& tri) { tri.translate(dist); });
     }
-    std::array<T, 6> calculateAABB() const
+    std::array<T, 6> AABB() const
     {
         std::array<T, 6> aabb {
             std::numeric_limits<T>::max(),

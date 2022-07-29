@@ -38,10 +38,21 @@ namespace dxmc {
 template <Floating T, typename U>
 class KDTree {
 public:
-    KDTree(std::vector<U>& triangles, const unsigned int k = 0)
+    KDTree(std::vector<U>& triangles)
     {
-        m_D = k % 3;
-        // sort by center of each triangle
+        if (triangles.size() == 0)
+            return;
+
+        std::array<T, 3> extent;
+        for (std::size_t i = 0; i < 3; ++i) {
+            extent[i] = std::transform_reduce(
+                std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, [](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [&](const auto& tri) {
+                const auto aabb = tri.AABB();
+                return aabb[i + 3] - aabb[i]; });
+        }
+        m_D = vectormath::argmax3<std::size_t, T>(extent.data());
+        // m_D = k % 3;
+        //  sort by center of each triangle
 
         std::sort(triangles.begin(), triangles.end(), [&](const auto& lh, const auto& rh) {
             const auto lf_val = lh.calculateCenter();
@@ -49,7 +60,7 @@ public:
             return lf_val[m_D] < rh_val[m_D];
         });
 
-        const auto mean = triangles[triangles.size() / 2].calculateCenter()[m_D];
+        const auto mean = planeSplit(triangles);
 
         const auto fom = figureOfMerit(triangles, mean);
 
@@ -66,23 +77,30 @@ public:
                 if (side >= 0)
                     right.push_back(triangle);
             }
-            m_left = std::make_unique<KDTree<T, U>>(left, k + 1);
-            m_right = std::make_unique<KDTree<T, U>>(right, k + 1);
+            m_left = std::make_unique<KDTree<T, U>>(left);
+            m_right = std::make_unique<KDTree<T, U>>(right);
         }
     }
-
+    std::array<T, 6> AABB() const
+    {
+        std::array<T, 6> aabb {
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+        };
+        AABB_iterator(aabb);
+        return aabb;
+    }
     std::size_t depth() const
     {
         std::size_t teller = 0;
         depth_iterator(teller);
         return teller;
     }
-    void depth_iterator(std::size_t& teller) const
-    {
-        teller++;
-        if (m_left)
-            m_left->depth_iterator(teller);
-    }
+
     std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto& inter = intersectAABB(particle, aabb);
@@ -132,15 +150,18 @@ public:
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
-        return m_left->intersect(particle, t_back);
+        return back->intersect(particle, t_back);
     }
 
 protected:
-    template <typename P>
-    static int argmin3(const std::array<P, 3>& v)
+    T planeSplit(const std::vector<U>& triangles) const
     {
-        const auto it = std::min_element(v.cbegin(), v.cend());
-        return it - v.cbegin();
+        const auto N = triangles.size();
+        if (N % 2 == 1) {
+            return triangles[N / 2].calculateCenter()[m_D];
+        } else {
+            return (triangles[N / 2].calculateCenter()[m_D] + triangles[N / 2 - 1].calculateCenter()[m_D]) / 2;
+        }
     }
 
     int figureOfMerit(const std::vector<U>& triangles, const T planesep) const
@@ -172,6 +193,29 @@ protected:
             return 1;
         return 0;
     }
+    void depth_iterator(std::size_t& teller) const
+    {
+        teller++;
+        if (m_left)
+            m_left->depth_iterator(teller);
+    }
+    void AABB_iterator(std::array<T, 6>& aabb) const
+    {
+        if (!m_left) {
+            for (const auto& tri : m_triangles) {
+                const auto aabb_tri = tri.AABB();
+                for (std::size_t i = 0; i < 3; ++i) {
+                    aabb[i] = std::min(aabb[i], aabb_tri[i]);
+                }
+                for (std::size_t i = 3; i < 6; ++i) {
+                    aabb[i] = std::max(aabb[i], aabb_tri[i]);
+                }
+            }
+        } else {
+            m_left->AABB_iterator(aabb);
+            m_right->AABB_iterator(aabb);
+        }
+    }
 
 private:
     unsigned int m_D = 0;
@@ -180,5 +224,6 @@ private:
 
     std::unique_ptr<KDTree<T, U>> m_left = nullptr;
     std::unique_ptr<KDTree<T, U>> m_right = nullptr;
+    friend class KDTree<T, U>;
 };
 }
