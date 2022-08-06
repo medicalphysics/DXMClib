@@ -22,7 +22,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/intersectsimpleobjects.hpp"
-#include "dxmc/world/triangulatedmesh.hpp"
 
 #include <algorithm>
 #include <array>
@@ -128,10 +127,11 @@ public:
                 return hit_right;
             return hit_left;
         }
-        const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
         KDTree<T, U>* front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
         KDTree<T, U>* back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+
+        const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
         if (t <= tbox[0]) {
             // back only
