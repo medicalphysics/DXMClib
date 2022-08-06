@@ -46,7 +46,7 @@ public:
         std::array<T, 3> extent;
         for (std::size_t i = 0; i < 3; ++i) {
             extent[i] = std::transform_reduce(
-                std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, [](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [&](const auto& tri) {
+                std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, [=](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [&](const auto& tri) {
                 const auto aabb = tri.AABB();
                 return aabb[i + 3] - aabb[i]; });
         }

@@ -9,8 +9,8 @@
 template <typename T, typename U>
 void testGeom(const dxmc::KDTree<T, U>& kdtree)
 {
-    const std::size_t Nx = 512;
-    const std::size_t Ny = 512;
+    const std::size_t Nx = 256;
+    const std::size_t Ny = 256;
     const std::size_t axis = 0;
 
     std::vector<T> buffer(Nx * Ny, 0);
@@ -29,7 +29,7 @@ void testGeom(const dxmc::KDTree<T, U>& kdtree)
         const std::array<T, 3> plane { 0, aabb[1] + dx * x, aabb[2] + dy * y };
 
         dxmc::Particle<T> p;
-        p.pos = { -100, 0, 0 };
+        p.pos = { -1000, 0, 0 };
         for (std::size_t j = 0; j < 3; ++j) {
             p.dir[j] = plane[j] - p.pos[j];
         }
@@ -50,7 +50,7 @@ int main(int argc, char* argv[])
 {
     dxmc::STLReader<double> reader;
 
-    auto mesh = reader("duck.stl");
+    auto mesh = reader("bunny.stl");
     std::cout << "Message: " << reader.message() << std::endl;
 
     dxmc::Particle<double> p;
