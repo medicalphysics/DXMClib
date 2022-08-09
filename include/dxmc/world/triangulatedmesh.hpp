@@ -67,7 +67,9 @@ public:
         for (const auto& tri : m_triangles) {
             for (const auto& vert : tri.vertices()) {
                 for (std::size_t i = 0; i < 3; ++i) {
-                    aabb[i] = std::min(aabb[i], vert[i]);
+                    aabb[i] = std::min(aabb[i], vert[i]);                    
+                }
+                for (std::size_t i = 0; i < 3; ++i) {
                     aabb[i + 3] = std::max(aabb[i + 3], vert[i]);
                 }
             }
