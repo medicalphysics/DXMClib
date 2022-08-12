@@ -97,7 +97,7 @@ public:
         return aabb;
     }
 
-    template <int FORWARD = 0>
+    template <int FORWARD = 1>
     std::optional<T> intersect(const Particle<T>& particle) const
     {
         const auto& v1 = m_vertices[0];
@@ -110,17 +110,9 @@ public:
         const auto& pvec = vectormath::cross(particle.dir, v1v3);
         const auto det = vectormath::dot(v1v2, pvec);
 
-        // Negative det gives intersection on backside of face
-        if constexpr (FORWARD == 1) {
-            if (det < epsilon)
-                return std::nullopt;
-        } else if constexpr (FORWARD == -1) {
-            if (det > -epsilon)
-                return std::nullopt;
-        } else {
-            if (std::abs(det) < epsilon)
-                return std::nullopt;
-        }
+        if (std::abs(det) < epsilon)
+            return std::nullopt;
+
         const T invDet = T { 1 } / det;
 
         const std::array<T, 3> tvec { particle.pos[0] - v1[0], particle.pos[1] - v1[1], particle.pos[2] - v1[2] };
@@ -133,7 +125,13 @@ public:
         if (v < T { 0 } || u + v > T { 1 })
             return std::nullopt;
 
-        return std::make_optional(vectormath::dot(v1v3, qvec) * invDet);
+        const auto t = vectormath::dot(v1v3, qvec) * invDet;
+        if constexpr (FORWARD == 1)
+            return t > T { 0 } ? std::make_optional(t) : std::nullopt;
+        else if constexpr (FORWARD == -1)
+            return t < T { 0 } ? std::make_optional(t) : std::nullopt;
+        else
+            return std::make_optional(t);
     }
 
 private:

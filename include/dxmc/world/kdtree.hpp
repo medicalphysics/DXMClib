@@ -100,6 +100,16 @@ public:
         return teller;
     }
 
+    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
+    {
+        const auto& inter = intersectAABB(particle, aabb);
+        if (inter) {
+            const std::array<T, 2> tbox_min { std::min(*inter[0], tbox[0]), std::min(*inter[1], tbox[1]) };
+            return intersect(particle, tbox_min);
+        } else
+            return std::nullopt;
+    }
+
     std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto& inter = intersectAABB(particle, aabb);
@@ -109,12 +119,15 @@ public:
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
-            T t = std::numeric_limits<T>::max();
+            // T t = std::numeric_limits<T>::max();
+            std::optional<T> t { std::nullopt };
             for (const auto& triangle : m_triangles) {
-                const auto t_cand = triangle.intersect(particle);
-                t = t_cand ? std::min(t, *t_cand) : t;
+                const auto t_cand = triangle.intersect<1>(particle);
+                if (t_cand) {
+                    t = t > t_cand ? t : t_cand;
+                }
             }
-            return t == std::numeric_limits<T>::max() ? std::nullopt : std::make_optional(t);
+            return t;
         }
 
         // test for parallell beam
@@ -128,8 +141,8 @@ public:
             return hit_left;
         }
 
-        KDTree<T, U>* front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        KDTree<T, U>* back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        const KDTree<T, U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        const KDTree<T, U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -154,6 +167,26 @@ public:
     }
 
 protected:
+    static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
+    {
+        std::array<T, 2> t {
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::max()
+        };
+        for (std::size_t i = 0; i < 3; i++) {
+            if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
+                const auto d_inv = T { 1 } / p.dir[i];
+                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
+                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
+                const auto t_min_cand = std::min(t1, t2);
+                const auto t_max_cand = std::max(t1, t2);
+                t[0] = std::max(t[0], t_min_cand);
+                t[1] = std::min(t[1], t_max_cand);
+            }
+        }
+        return t[0] > t[1] ? std::nullopt : std::make_optional(t);
+    }
+
     T planeSplit(const std::vector<U>& triangles) const
     {
         const auto N = triangles.size();

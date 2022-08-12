@@ -50,11 +50,11 @@ int main(int argc, char* argv[])
 {
     dxmc::STLReader<double> reader;
 
-    auto mesh = reader("bunny.stl");
+    auto mesh = reader("duck.stl");
     std::cout << "Message: " << reader.message() << std::endl;
 
     dxmc::Particle<double> p;
-    p.pos = { -100, 0, 0 };
+    p.pos = { 0, 0, 0 };
     p.dir = { 1, 0, 0 };
     dxmc::vectormath::normalize(p.dir);
 
@@ -86,6 +86,6 @@ int main(int argc, char* argv[])
         }
     }
     std::cout << "Brute force hits: " << bh_min << ", " << bh_max << std::endl;
-    testGeom(kdtree);
+    //testGeom(kdtree);
     return EXIT_SUCCESS;
 }
