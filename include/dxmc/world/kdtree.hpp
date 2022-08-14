@@ -37,7 +37,7 @@ namespace dxmc {
 template <Floating T, typename U>
 class KDTree {
 public:
-    KDTree(std::vector<U>& triangles)
+    KDTree(std::vector<U>& triangles, const std::size_t max_depth=6)
     {
         if (triangles.size() == 0)
             return;
@@ -63,7 +63,7 @@ public:
 
         const auto fom = figureOfMerit(triangles, mean);
 
-        if (fom == triangles.size() || fom == 0) {
+        if (fom == triangles.size() || fom == 0 || max_depth==0) {
             m_triangles = triangles;
         } else {
             m_plane = mean;
@@ -76,8 +76,8 @@ public:
                 if (side >= 0)
                     right.push_back(triangle);
             }
-            m_left = std::make_unique<KDTree<T, U>>(left);
-            m_right = std::make_unique<KDTree<T, U>>(right);
+            m_left = std::make_unique<KDTree<T, U>>(left, max_depth-1);
+            m_right = std::make_unique<KDTree<T, U>>(right, max_depth - 1);
         }
     }
     std::array<T, 6> AABB() const
@@ -119,15 +119,22 @@ public:
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
-            // T t = std::numeric_limits<T>::max();
-            std::optional<T> t { std::nullopt };
+            //T t = std::numeric_limits<T>::max(); 
+            std::optional<T> t;
             for (const auto& triangle : m_triangles) {
-                const auto t_cand = triangle.intersect<1>(particle);
+                auto t_cand = triangle.intersect<1>(particle);
                 if (t_cand) {
-                    t = t > t_cand ? t : t_cand;
+                    if (t) { 
+                        if (*t > *t_cand)
+                            std::swap(t, t_cand);
+                    } else {
+                        std::swap(t, t_cand);
+                    }
+                    //                    t = std::min(t, *t_cand);
                 }
             }
             return t;
+            //            return t == std::numeric_limits<T>::max() ? std::nullopt : std::make_optional(t);  
         }
 
         // test for parallell beam
