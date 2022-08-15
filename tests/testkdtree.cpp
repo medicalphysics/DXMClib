@@ -3,24 +3,29 @@
 #include "dxmc/world/kdtree.hpp"
 #include "dxmc/world/triangulatedmesh.hpp"
 
+#include <chrono>
 #include <fstream>
 #include <iostream>
 
-template <typename T, typename U>
-void testGeom(const dxmc::KDTree<T, U>& kdtree)
+template <typename T>
+void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6)
 {
-    const std::size_t Nx = 256;
-    const std::size_t Ny = 256;
+    const std::size_t Nx = 512;
+    const std::size_t Ny = 512;
     const std::size_t axis = 0;
 
     std::vector<T> buffer(Nx * Ny, 0);
     std::vector<std::size_t> idx(buffer.size());
     std::iota(idx.begin(), idx.end(), 0);
 
+    auto triangles = mesh.getTriangles();
+    dxmc::KDTree<T, dxmc::Triangle<T>> kdtree(triangles, depth);
     const auto aabb = kdtree.AABB();
 
     const T dx = (aabb[1 + 3] - aabb[1]) / Nx;
     const T dy = (aabb[2 + 3] - aabb[2]) / Ny;
+
+    const auto t0 = std::chrono::high_resolution_clock::now();
 
     std::transform(std::execution::par, idx.cbegin(), idx.cend(), buffer.begin(), [&](const auto i) {
         const std::size_t y = i / Ny;
@@ -39,7 +44,9 @@ void testGeom(const dxmc::KDTree<T, U>& kdtree)
 
         return intersection ? *intersection : 0;
     });
-
+    const auto t1 = std::chrono::high_resolution_clock::now();
+    std::cout << "KDTree depth: " << kdtree.depth();
+    std::cout << "    Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;
     std::ofstream file;
     file.open("intersect.bin", std::ios::out | std::ios::binary);
     file.write((char*)buffer.data(), buffer.size() * sizeof(T));
@@ -50,7 +57,7 @@ int main(int argc, char* argv[])
 {
     dxmc::STLReader<double> reader;
 
-    auto mesh = reader("duck.stl");
+    auto mesh = reader("bunny.stl");
     std::cout << "Message: " << reader.message() << std::endl;
 
     dxmc::Particle<double> p;
@@ -86,6 +93,8 @@ int main(int argc, char* argv[])
         }
     }
     std::cout << "Brute force hits: " << bh_min << ", " << bh_max << std::endl;
-    //testGeom(kdtree);
+
+    testGeom(mesh, 5);
+
     return EXIT_SUCCESS;
 }

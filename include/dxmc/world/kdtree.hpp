@@ -34,10 +34,10 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, typename U>
+template <Floating T, class U>
 class KDTree {
 public:
-    KDTree(std::vector<U>& triangles, const std::size_t max_depth=6)
+    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 6)
     {
         if (triangles.size() == 0)
             return;
@@ -50,8 +50,6 @@ public:
                 return aabb[i + 3] - aabb[i]; });
         }
         m_D = vectormath::argmax3<std::size_t, T>(extent.data());
-        // m_D = k % 3;
-        //  sort by center of each triangle
 
         std::sort(triangles.begin(), triangles.end(), [&](const auto& lh, const auto& rh) {
             const auto lf_val = lh.calculateCenter();
@@ -63,7 +61,7 @@ public:
 
         const auto fom = figureOfMerit(triangles, mean);
 
-        if (fom == triangles.size() || fom == 0 || max_depth==0) {
+        if (fom == triangles.size() || fom == 0 || max_depth <= 1) {
             m_triangles = triangles;
         } else {
             m_plane = mean;
@@ -76,7 +74,7 @@ public:
                 if (side >= 0)
                     right.push_back(triangle);
             }
-            m_left = std::make_unique<KDTree<T, U>>(left, max_depth-1);
+            m_left = std::make_unique<KDTree<T, U>>(left, max_depth - 1);
             m_right = std::make_unique<KDTree<T, U>>(right, max_depth - 1);
         }
     }
@@ -119,22 +117,19 @@ public:
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
-            //T t = std::numeric_limits<T>::max(); 
             std::optional<T> t;
             for (const auto& triangle : m_triangles) {
                 auto t_cand = triangle.intersect<1>(particle);
                 if (t_cand) {
-                    if (t) { 
+                    if (t) {
                         if (*t > *t_cand)
                             std::swap(t, t_cand);
                     } else {
                         std::swap(t, t_cand);
                     }
-                    //                    t = std::min(t, *t_cand);
                 }
             }
             return t;
-            //            return t == std::numeric_limits<T>::max() ? std::nullopt : std::make_optional(t);  
         }
 
         // test for parallell beam

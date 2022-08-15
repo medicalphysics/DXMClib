@@ -21,7 +21,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/kdtree.hpp"
-//#include "dxmc/material.hpp"
 #include "dxmc/attenuationlut.hpp"
 
 #include <array>
@@ -37,9 +36,8 @@ struct WorldResult {
 template <Floating T>
 class BaseWorld {
 public:
-    // virtual void setMaxPhotonEnergy(const T maxEnergy) = 0;
     template <int FORWARD = 1>
-    std::optional<T> intersect(const Particle<T>& p) const
+    std::optional<T> intersectAABB(const Particle<T>& p) const
     {
         std::array<T, 2> t {
             std::numeric_limits<T>::lowest(),
@@ -78,11 +76,18 @@ public:
             }
         }
     }
+    virtual void translate(const std::array<T, 3>& dist) = 0;
+    virtual std::array<T, 3> calculateCenter() const = 0;
+    const std::array<T, 6>& AABB() const
+    {
+        return m_aabb;
+    }
+    template <int FORWARD=1>
+    virtual std::optional<T> intersect(Particle<T>& p, )
+}
 
 protected:
 private:
     std::array<T, 6> m_aabb = { -1, -1, -1, 1, 1, 1 };
-    // AttenuationLut<T> m_attenuationLut;
-    // std::vector<Material<T>> m_materials;
 };
 }

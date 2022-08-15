@@ -103,14 +103,13 @@ public:
         const auto& v1 = m_vertices[0];
         const auto& v2 = m_vertices[1];
         const auto& v3 = m_vertices[2];
-
-        constexpr T epsilon = std::numeric_limits<T>::epsilon();
+        
         const std::array<T, 3> v1v2 { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
         const std::array<T, 3> v1v3 { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
         const auto& pvec = vectormath::cross(particle.dir, v1v3);
         const auto det = vectormath::dot(v1v2, pvec);
 
-        if (std::abs(det) < epsilon)
+        if (std::abs(det) <= std::numeric_limits<T>::epsilon())
             return std::nullopt;
 
         const T invDet = T { 1 } / det;
