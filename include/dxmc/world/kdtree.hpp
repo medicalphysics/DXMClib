@@ -27,6 +27,7 @@ Copyright 2022 Erlend Andersen
 #include <cmath>
 #include <concepts>
 #include <execution>
+#include <iterator>
 #include <memory>
 #include <numeric>
 #include <optional>
@@ -36,10 +37,11 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <typename U>
-concept KDTreeType = requires(U u, Particle<typename U::Type> p)
+concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<typename U::Type, 3> vec)
 {
     typename U::Type;
     Floating<typename U::Type>;
+    u.translate(vec);
     {
         u.intersect(p)
         } -> std::same_as<std::optional<typename U::Type>>;
@@ -52,10 +54,11 @@ concept KDTreeType = requires(U u, Particle<typename U::Type> p)
         u.AABB()
         } -> std::same_as<std::array<typename U::Type, 6>>;
 }
-|| requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p)
+|| requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p, std::array<typename std::remove_pointer<U>::type::Type, 3> vec)
 {
     std::remove_pointer<U>::type::Type;
     Floating<typename std::remove_pointer<U>::type::Type>;
+    u->translate(vec);
     {
         u->intersect(p)
         } -> std::same_as<std::optional<typename std::remove_pointer<U>::type::Type>>;
@@ -73,7 +76,8 @@ template <KDTreeType U>
 class KDTree {
 public:
     using T = typename std::remove_pointer<U>::type::Type;
-    using Type=T;
+    using Type = T;
+    KDTree() {};
     KDTree(std::vector<U>& triangles, const std::size_t max_depth = 6)
     {
         if (triangles.size() == 0)
@@ -147,12 +151,29 @@ public:
         depth_iterator(teller);
         return teller;
     }
+    std::vector<U> items() const
+    {
+        std::vector<U> all;
+        item_iterator(all);
+        return all;
+    }
+    void translate(const std::array<T, 3>& dist)
+    {
+        if (m_left) {
+            m_left->translate(dist);
+            m_right->translate(dist);
+        } else {
+            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+                tri.translate(dist);
+            });
+        }
+    }
 
     std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
     {
         const auto& inter = intersectAABB(particle, aabb);
         if (inter) {
-            const std::array<T, 2> tbox_min { std::min(*inter[0], tbox[0]), std::min(*inter[1], tbox[1]) };
+            const std::array<T, 2> tbox_min { std::min((*inter)[0], tbox[0]), std::min((*inter)[1], tbox[1]) };
             return intersect(particle, tbox_min);
         } else
             return std::nullopt;
@@ -310,6 +331,15 @@ protected:
         teller++;
         if (m_left)
             m_left->depth_iterator(teller);
+    }
+    void item_iterator(std::vector<U>& all) const
+    {
+        if (m_left) {
+            m_left->item_iterator(all);
+            m_right->item_iterator(all);
+        } else {
+            std::copy(m_triangles.cbegin(), m_triangles.cend(), std::back_inserter(all));
+        }
     }
     void AABB_iterator(std::array<T, 6>& aabb) const
     {

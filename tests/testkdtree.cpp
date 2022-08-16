@@ -102,10 +102,7 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
 
 int main(int argc, char* argv[])
 {
-    dxmc::STLReader<double> reader;
-
-    auto mesh = reader("duck.stl");
-    std::cout << "Message: " << reader.message() << std::endl;
+    dxmc::TriangulatedMesh<double> mesh("duck.stl");
 
     dxmc::Particle<double> p;
     p.pos = { 0, 0, 0 };

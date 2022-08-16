@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/baseobject.hpp"
 #include "dxmc/world/triangle.hpp"
 
 #include <algorithm>
@@ -36,73 +37,6 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class TriangulatedMesh {
-public:
-    TriangulatedMesh() { }
-    TriangulatedMesh(const std::vector<Triangle<T>>& triangles)
-        : m_triangles(triangles)
-    {
-    }
-
-    const Triangle<T>& getTriangle(std::size_t index) const { return m_triangles[index]; }
-    std::size_t nTriangles() const { return m_triangles.size(); }
-    const std::vector<Triangle<T>>& getTriangles() const
-    {
-        return m_triangles;
-    }
-    void translate(const std::array<T, 3>& dist)
-    {
-        std::for_each(std::execution::par, m_triangles.begin(), m_triangles.end(), [&](auto& tri) { tri.translate(dist); });
-    }
-    [[nodiscard("AABB is expensive to compute")]] std::array<T, 6> AABB() const
-    {
-        std::array<T, 6> aabb {
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-        };
-        for (const auto& tri : m_triangles) {
-            for (const auto& vert : tri.vertices()) {
-                for (std::size_t i = 0; i < 3; ++i) {
-                    aabb[i] = std::min(aabb[i], vert[i]);
-                }
-                for (std::size_t i = 0; i < 3; ++i) {
-                    aabb[i + 3] = std::max(aabb[i + 3], vert[i]);
-                }
-            }
-        }
-        return aabb;
-    }
-
-    bool setData(const std::vector<Triangle<T>>& triangles)
-    {
-        m_triangles = triangles;
-        return true;
-    }
-    bool setData(const std::vector<T>& vertices)
-    {
-        const bool valid_n_points = vertices.size() % 9 == 0;
-
-        if (valid_n_points) {
-            const auto n_triangles = vertices.size() / 9;
-            m_triangles.clear();
-            m_triangles.reserve(n_triangles);
-            for (std::size_t i = 0; i < vertices.size(); i += 9) {
-                m_triangles.emplace_back(&vertices[i]);
-            }
-            return true;
-        }
-        return false;
-    }
-
-private:
-    std::vector<Triangle<T>> m_triangles;
-};
-
-template <Floating T>
 class STLReader {
 public:
     STLReader(const std::string& path)
@@ -113,15 +47,14 @@ public:
 
     const std::string& message() const { return m_error; }
 
-    TriangulatedMesh<T> operator()()
+    std::vector<Triangle<T>> operator()()
     {
-
         return operator()(m_filePath);
     }
-    TriangulatedMesh<T> operator()(const std::string& path)
+    std::vector<Triangle<T>> operator()(const std::string& path)
     {
         m_filePath = path;
-        TriangulatedMesh<T> mesh;
+        std::vector<Triangle<T>> data;
         // First we chech for binary or ascii file
         std::ifstream f(path);
         if (f.is_open()) {
@@ -130,15 +63,15 @@ public:
             const auto pos = line.find("solid", 0);
             f.close();
             if (pos != std::string::npos) {
-                mesh = readSTLfileASCII(path);
+                data = readSTLfileASCII(path);
             } else {
-                mesh = readSTLfileBinary(path);
+                data = readSTLfileBinary(path);
             }
         } else {
             m_error = "Could not open file: " + path;
             f.close();
         }
-        return mesh;
+        return data;
     }
 
 protected:
@@ -164,11 +97,11 @@ protected:
         return vec;
     }
 
-    TriangulatedMesh<T> readSTLfileBinary(const std::string& path)
+    std::vector<Triangle<T>> readSTLfileBinary(const std::string& path)
     {
         constexpr auto MIN_STL_SIZE = 80 + 4 + 50;
 
-        TriangulatedMesh<T> mesh;
+        std::vector<Triangle<T>> data;
         std::vector<std::uint8_t> buffer;
 
         std::ifstream f(path, std::ios::binary | std::ios::in | std::ios::ate);
@@ -184,37 +117,43 @@ protected:
 
         if (buffer.size() < MIN_STL_SIZE) {
             m_error = "File do not contains any triangles";
-            return mesh;
+            return data;
         }
 
         const std::uint32_t n_triangles = readFromBytes<std::uint32_t>(&buffer[80]);
         const bool valid_file = MIN_STL_SIZE + 50 * (n_triangles - 1) == buffer.size();
         if (!valid_file) {
             m_error = "Error reading triangles";
-            return mesh;
+            return data;
         } else {
-            const std::vector<float> data = readTrianglesFromBytes(buffer);
+            const std::vector<float> data_buffer = readTrianglesFromBytes(buffer);
 
             std::vector<T> vertices;
             std::vector<T> normals;
-            vertices.reserve(data.size() * 9);
-            normals.reserve(data.size() * 3);
-            for (std::size_t i = 0; i < data.size(); i = i + 12) {
+            vertices.reserve(data_buffer.size() * 9);
+            normals.reserve(data_buffer.size() * 3);
+            for (std::size_t i = 0; i < data_buffer.size(); i = i + 12) {
                 for (std::size_t j = i; j < i + 3; j++) {
-                    normals.push_back(data[j]);
+                    normals.push_back(data_buffer[j]);
                 }
                 for (std::size_t j = i + 3; j < i + 12; j++) {
-                    vertices.push_back(data[j]);
+                    vertices.push_back(data_buffer[j]);
                 }
             }
 
-            auto validmesh = mesh.setData(vertices);
-            if (!validmesh) {
-                m_error = "Mesh not valid for some reason";
+            const bool valid_n_points = vertices.size() % 9 == 0;
+
+            if (valid_n_points) {
+                const auto n_triangles = vertices.size() / 9;
+                data.clear();
+                data.reserve(n_triangles);
+                for (std::size_t i = 0; i < vertices.size(); i += 9) {
+                    data.emplace_back(&vertices[i]);
+                }
             }
         }
 
-        return mesh;
+        return data;
     }
 
     static std::vector<std::string> stringSplit(const std::string& text, char sep)
@@ -235,9 +174,8 @@ protected:
         return tokens;
     }
 
-    TriangulatedMesh<T> readSTLfileASCII(const std::string& path)
+    std::vector<Triangle<T>> readSTLfileASCII(const std::string& path)
     {
-        TriangulatedMesh<T> mesh;
 
         auto processLine = [](const std::string& line) -> std::optional<std::array<T, 3>> {
             auto words = stringSplit(line, ' ');
@@ -288,12 +226,19 @@ protected:
             m_error = "Could not open file: " + path;
         }
         f.close();
+
+        std::vector<Triangle<T>> mesh;
         if (vertices.size() < 9) {
             m_error = "File do not contains any triangles";
             return mesh;
+        } else {
+            const auto n_triangles = vertices.size() / 9;
+            mesh.clear();
+            mesh.reserve(n_triangles);
+            for (std::size_t i = 0; i < vertices.size(); i += 9) {
+                mesh.emplace_back(&vertices[i]);
+            }
         }
-
-        mesh.setData(vertices);
 
         return mesh;
     }
@@ -301,5 +246,70 @@ protected:
 private:
     std::string m_error;
     std::string m_filePath;
+};
+
+template <Floating T>
+class TriangulatedMesh final : public BaseObject<T> {
+public:
+    TriangulatedMesh()
+        : BaseObject<T>()
+    {
+    }
+    TriangulatedMesh(const std::vector<Triangle<T>>& triangles)
+        : BaseObject<T>()
+    {
+        setData(triangles);
+    }
+    TriangulatedMesh(const std::string& path)
+        : BaseObject<T>()
+    {
+        STLReader<T> reader;
+        auto triangles = reader(path);
+        setData(triangles);
+    }
+    std::vector<Triangle<T>> getTriangles() const
+    {
+        return m_kdtree.items();
+    }
+    void translate(const std::array<T, 3>& dist) override
+    {
+        m_kdtree.translate(dist);
+    }
+
+    void setData(std::vector<Triangle<T>>& triangles)
+    {
+        m_kdtree = KDTree(triangles);
+        this->m_aabb = m_kdtree.AABB();
+    }
+    std::array<T, 3> center() const override
+    {
+        std::array<T, 3> center { 0, 0, 0 };
+        const auto triangles = getTriangles();
+        std::for_each(triangles.cbegin(), triangles.cend(), [&](const auto& tri) {
+            const auto c = tri.center();
+            for (std::size_t i = 0; i < 3; ++i) {
+                center[i] += c[i];
+            }
+        });
+        for (std::size_t i = 0; i < 3; ++i) {
+            center[i] /= triangles.size();
+        }
+        return center;
+    }
+    std::optional<T> intersect(Particle<T>& p) const override
+    {
+        return m_kdtree.intersect(p, this->m_aabb);
+    }
+    std::optional<T> intersect(Particle<T>& p, const std::array<T, 2>& tbox) const override
+    {
+        return m_kdtree.intersect(p, this->m_aabb, tbox);
+    }
+    T transport(Particle<T>& p, RandomState& state) const override
+    {
+        return 0;
+    }
+
+private:
+    KDTree<Triangle<T>> m_kdtree;
 };
 }

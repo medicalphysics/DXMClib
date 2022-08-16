@@ -18,13 +18,12 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/kdtree.hpp"
-#include "dxmc/dxmcrandom.hpp"
 
 #include "dxmc/attenuationlut.hpp"
-
 
 #include <array>
 #include <optional>
@@ -38,7 +37,8 @@ struct WorldResult {
 
 template <Floating T>
 class BaseObject {
-    using Type=T;
+    using Type = T;
+
 public:
     template <int FORWARD = 1>
     std::optional<T> intersectAABB(const Particle<T>& p) const
@@ -63,14 +63,14 @@ public:
         else {
             if constexpr (FORWARD == 1) {
                 if (t[0] >= T { 0 } && t[1] >= T { 0 }) {
-                    return std::min(t[0], t[1])
+                    return std::min(t[0], t[1]);
                 } else {
                     const auto t_cand = std::max(t[0], t[1]);
                     return t_cand < T { 0 } ? std::nullopt : std::make_optional(t_cand);
                 }
             } else if constexpr (FORWARD == -1) {
                 if (t[0] <= T { 0 } && t[1] <= T { 0 }) {
-                    return std::max(t[0], t[1])
+                    return std::max(t[0], t[1]);
                 } else {
                     const auto t_cand = std::min(t[0], t[1]);
                     return t_cand > T { 0 } ? std::nullopt : std::make_optional(t_cand);
@@ -82,12 +82,14 @@ public:
     }
     virtual void translate(const std::array<T, 3>& dist) = 0;
     virtual std::array<T, 3> center() const = 0;
-    virtual std::array<T, 6> AABB() const = 0;
+    const std::array<T, 6>& AABB() const { return m_aabb; }
     virtual std::optional<T> intersect(Particle<T>& p) const = 0;
-    virtual transport(Particle<T>& p, RandomState& state) const = 0;
+    virtual std::optional<T> intersect(Particle<T>& p, const std::array<T, 2>& tbox) const = 0;
+    virtual T transport(Particle<T>& p, RandomState& state) const = 0;
 
 protected:
+    std::array<T, 6> m_aabb { -1, -1, -1, 1, 1, 1 };
+
 private:
-    
 };
 }
