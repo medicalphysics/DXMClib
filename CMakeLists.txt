@@ -77,7 +77,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/world/baseworld.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/baseobject.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangle.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"

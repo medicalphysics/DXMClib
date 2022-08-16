@@ -21,7 +21,10 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/kdtree.hpp"
+#include "dxmc/dxmcrandom.hpp"
+
 #include "dxmc/attenuationlut.hpp"
+
 
 #include <array>
 #include <optional>
@@ -34,7 +37,7 @@ struct WorldResult {
 };
 
 template <Floating T>
-class BaseWorld {
+class BaseObject {
     using Type=T;
 public:
     template <int FORWARD = 1>
@@ -81,7 +84,7 @@ public:
     virtual std::array<T, 3> center() const = 0;
     virtual std::array<T, 6> AABB() const = 0;
     virtual std::optional<T> intersect(Particle<T>& p) const = 0;
-
+    virtual transport(Particle<T>& p, RandomState& state) const = 0;
 
 protected:
 private:
