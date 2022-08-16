@@ -21,22 +21,59 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/intersectsimpleobjects.hpp"
 
 #include <algorithm>
 #include <array>
 #include <cmath>
+#include <concepts>
+#include <execution>
+#include <memory>
 #include <numeric>
 #include <optional>
+#include <type_traits>
 #include <vector>
-
-#include <memory>
 
 namespace dxmc {
 
-template <Floating T, class U>
+template <typename U>
+concept KDTreeType = requires(U u, Particle<typename U::Type> p)
+{
+    typename U::Type;
+    Floating<typename U::Type>;
+    {
+        u.intersect(p)
+        } -> std::same_as<std::optional<typename U::Type>>;
+
+    {
+        u.center()
+        } -> std::same_as<std::array<typename U::Type, 3>>;
+
+    {
+        u.AABB()
+        } -> std::same_as<std::array<typename U::Type, 6>>;
+}
+|| requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p)
+{
+    std::remove_pointer<U>::type::Type;
+    Floating<typename std::remove_pointer<U>::type::Type>;
+    {
+        u->intersect(p)
+        } -> std::same_as<std::optional<typename std::remove_pointer<U>::type::Type>>;
+
+    {
+        u->center()
+        } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 3>>;
+
+    {
+        u->AABB()
+        } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 6>>;
+};
+
+template <KDTreeType U>
 class KDTree {
 public:
+    using T = typename std::remove_pointer<U>::type::Type;
+    using Type=T;
     KDTree(std::vector<U>& triangles, const std::size_t max_depth = 6)
     {
         if (triangles.size() == 0)
@@ -46,15 +83,28 @@ public:
         for (std::size_t i = 0; i < 3; ++i) {
             extent[i] = std::transform_reduce(
                 std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, [=](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [&](const auto& tri) {
-                const auto aabb = tri.AABB();
-                return aabb[i + 3] - aabb[i]; });
+                if constexpr (std::is_pointer<U>::value)
+                {
+                    const auto aabb = tri->AABB();
+                    return aabb[i + 3] - aabb[i];
+                } else {
+                    const auto aabb = tri.AABB();
+                    return aabb[i + 3] - aabb[i];
+                } });
         }
-        m_D = vectormath::argmax3<std::size_t, T>(extent.data());
+
+        m_D = vectormath::argmax3<unsigned int, T>(extent.data());
 
         std::sort(triangles.begin(), triangles.end(), [&](const auto& lh, const auto& rh) {
-            const auto lf_val = lh.calculateCenter();
-            const auto rh_val = rh.calculateCenter();
-            return lf_val[m_D] < rh_val[m_D];
+            if constexpr (std::is_pointer<U>::value) {
+                const auto lf_val = lh->center();
+                const auto rh_val = rh->center();
+                return lf_val[m_D] < rh_val[m_D];
+            } else {
+                const auto lf_val = lh.center();
+                const auto rh_val = rh.center();
+                return lf_val[m_D] < rh_val[m_D];
+            }
         });
 
         const auto mean = planeSplit(triangles);
@@ -74,8 +124,8 @@ public:
                 if (side >= 0)
                     right.push_back(triangle);
             }
-            m_left = std::make_unique<KDTree<T, U>>(left, max_depth - 1);
-            m_right = std::make_unique<KDTree<T, U>>(right, max_depth - 1);
+            m_left = std::make_unique<KDTree<U>>(left, max_depth - 1);
+            m_right = std::make_unique<KDTree<U>>(right, max_depth - 1);
         }
     }
     std::array<T, 6> AABB() const
@@ -118,14 +168,28 @@ public:
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
             std::optional<T> t;
-            for (const auto& triangle : m_triangles) {
-                auto t_cand = triangle.intersect<1>(particle);
-                if (t_cand) {
-                    if (t) {
-                        if (*t > *t_cand)
+            if constexpr (std::is_pointer<U>::value) {
+                for (const U triangle : m_triangles) {
+                    auto t_cand = triangle->intersect(particle);
+                    if (t_cand) {
+                        if (t) {
+                            if (*t > *t_cand)
+                                std::swap(t, t_cand);
+                        } else {
                             std::swap(t, t_cand);
-                    } else {
-                        std::swap(t, t_cand);
+                        }
+                    }
+                }
+            } else {
+                for (const U& triangle : m_triangles) {
+                    auto t_cand = triangle.intersect(particle);
+                    if (t_cand) {
+                        if (t) {
+                            if (*t > *t_cand)
+                                std::swap(t, t_cand);
+                        } else {
+                            std::swap(t, t_cand);
+                        }
                     }
                 }
             }
@@ -143,8 +207,8 @@ public:
             return hit_left;
         }
 
-        const KDTree<T, U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        const KDTree<T, U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        const KDTree<U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        const KDTree<U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -192,10 +256,18 @@ protected:
     T planeSplit(const std::vector<U>& triangles) const
     {
         const auto N = triangles.size();
-        if (N % 2 == 1) {
-            return triangles[N / 2].calculateCenter()[m_D];
+        if constexpr (std::is_pointer<U>::value) {
+            if (N % 2 == 1) {
+                return triangles[N / 2]->center()[m_D];
+            } else {
+                return (triangles[N / 2]->center()[m_D] + triangles[N / 2 - 1]->center()[m_D]) / 2;
+            }
         } else {
-            return (triangles[N / 2].calculateCenter()[m_D] + triangles[N / 2 - 1].calculateCenter()[m_D]) / 2;
+            if (N % 2 == 1) {
+                return triangles[N / 2].center()[m_D];
+            } else {
+                return (triangles[N / 2].center()[m_D] + triangles[N / 2 - 1].center()[m_D]) / 2;
+            }
         }
     }
 
@@ -206,8 +278,9 @@ protected:
         for (const auto& triangle : triangles) {
             const auto side = planeSide(triangle, planesep);
             fom += side;
-            if (side == 0)
+            if (side == 0) {
                 shared++;
+            }
         }
         return std::abs(fom) + shared;
     }
@@ -217,11 +290,15 @@ protected:
         T min = std::numeric_limits<T>::max();
         constexpr T epsilon = std::numeric_limits<T>::epsilon();
 
-        const auto& aabb = triangle.AABB();
-
-        min = aabb[m_D];
-        max = aabb[m_D + 3];
-
+        if constexpr (std::is_pointer<U>::value) {
+            const auto& aabb = triangle->AABB();
+            min = aabb[m_D];
+            max = aabb[m_D + 3];
+        } else {
+            const auto& aabb = triangle.AABB();
+            min = aabb[m_D];
+            max = aabb[m_D + 3];
+        }
         if (max - plane <= epsilon)
             return -1;
         if (min - plane >= -epsilon)
@@ -238,12 +315,22 @@ protected:
     {
         if (!m_left) {
             for (const auto& tri : m_triangles) {
-                const auto aabb_tri = tri.AABB();
-                for (std::size_t i = 0; i < 3; ++i) {
-                    aabb[i] = std::min(aabb[i], aabb_tri[i]);
-                }
-                for (std::size_t i = 3; i < 6; ++i) {
-                    aabb[i] = std::max(aabb[i], aabb_tri[i]);
+                if constexpr (std::is_pointer<U>::value) {
+                    const auto aabb_tri = tri->AABB();
+                    for (std::size_t i = 0; i < 3; ++i) {
+                        aabb[i] = std::min(aabb[i], aabb_tri[i]);
+                    }
+                    for (std::size_t i = 3; i < 6; ++i) {
+                        aabb[i] = std::max(aabb[i], aabb_tri[i]);
+                    }
+                } else {
+                    const auto aabb_tri = tri.AABB();
+                    for (std::size_t i = 0; i < 3; ++i) {
+                        aabb[i] = std::min(aabb[i], aabb_tri[i]);
+                    }
+                    for (std::size_t i = 3; i < 6; ++i) {
+                        aabb[i] = std::max(aabb[i], aabb_tri[i]);
+                    }
                 }
             }
         } else {
@@ -257,8 +344,8 @@ private:
     T m_plane = 0;
     std::vector<U> m_triangles;
 
-    std::unique_ptr<KDTree<T, U>> m_left = nullptr;
-    std::unique_ptr<KDTree<T, U>> m_right = nullptr;
-    friend class KDTree<T, U>;
+    std::unique_ptr<KDTree<U>> m_left = nullptr;
+    std::unique_ptr<KDTree<U>> m_right = nullptr;
+    friend class KDTree<U>;
 };
 }

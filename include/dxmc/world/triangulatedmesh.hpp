@@ -21,7 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/intersectsimpleobjects.hpp"
+#include "dxmc/world/triangle.hpp"
 
 #include <algorithm>
 #include <array>

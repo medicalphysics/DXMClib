@@ -31,7 +31,9 @@ namespace dxmc {
 
 template <Floating T>
 class Triangle {
+    
 public:
+    using Type=T;
     Triangle(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third)
     {
         m_vertices[0] = first;
@@ -63,7 +65,7 @@ public:
         return m_vertices;
     }
 
-    std::array<T, 3> calculateCenter() const
+    std::array<T, 3> center() const
     {
         std::array<T, 3> cent { 0, 0, 0 };
         for (const auto& vert : m_vertices) {

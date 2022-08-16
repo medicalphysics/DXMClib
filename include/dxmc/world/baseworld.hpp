@@ -35,6 +35,7 @@ struct WorldResult {
 
 template <Floating T>
 class BaseWorld {
+    using Type=T;
 public:
     template <int FORWARD = 1>
     std::optional<T> intersectAABB(const Particle<T>& p) const
@@ -77,17 +78,13 @@ public:
         }
     }
     virtual void translate(const std::array<T, 3>& dist) = 0;
-    virtual std::array<T, 3> calculateCenter() const = 0;
-    const std::array<T, 6>& AABB() const
-    {
-        return m_aabb;
-    }
-    template <int FORWARD=1>
-    virtual std::optional<T> intersect(Particle<T>& p, )
-}
+    virtual std::array<T, 3> center() const = 0;
+    virtual std::array<T, 6> AABB() const = 0;
+    virtual std::optional<T> intersect(Particle<T>& p) const = 0;
+
 
 protected:
 private:
-    std::array<T, 6> m_aabb = { -1, -1, -1, 1, 1, 1 };
+    
 };
 }
