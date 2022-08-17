@@ -255,18 +255,19 @@ public:
         : BaseObject<T>()
     {
     }
-    TriangulatedMesh(const std::vector<Triangle<T>>& triangles)
+    TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept=6)
         : BaseObject<T>()
     {
-        setData(triangles);
+        setData(triangles, max_tree_dept);
     }
-    TriangulatedMesh(const std::string& path)
+    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 6)
         : BaseObject<T>()
     {
         STLReader<T> reader;
         auto triangles = reader(path);
-        setData(triangles);
+        setData(triangles, max_tree_dept);
     }
+    const KDTree<Triangle<T>>& kdtree() const { return m_kdtree; }
     std::vector<Triangle<T>> getTriangles() const
     {
         return m_kdtree.items();
@@ -274,11 +275,12 @@ public:
     void translate(const std::array<T, 3>& dist) override
     {
         m_kdtree.translate(dist);
+        this->m_aabb = m_kdtree.AABB();
     }
 
-    void setData(std::vector<Triangle<T>>& triangles)
+    void setData(std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept)
     {
-        m_kdtree = KDTree(triangles);
+        m_kdtree = KDTree(triangles, max_tree_dept);
         this->m_aabb = m_kdtree.AABB();
     }
     std::array<T, 3> center() const override

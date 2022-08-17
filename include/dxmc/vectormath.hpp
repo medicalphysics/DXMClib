@@ -98,7 +98,6 @@ namespace vectormath {
         return res;
     }
 
-
     template <Floating T>
     inline void cross(const T v1[6], T res[3]) noexcept
     {
@@ -171,6 +170,15 @@ namespace vectormath {
         return x <= y ? x <= z ? 0 : 2 : y <= z ? 1
                                                 : 2;
     }
+    template <Index U, Floating T>
+    inline U argmin3(const std::array<T, 3>& vec) noexcept
+    {
+        const T x = std::abs(vec[0]);
+        const T y = std::abs(vec[1]);
+        const T z = std::abs(vec[2]);
+        return x <= y ? x <= z ? 0 : 2 : y <= z ? 1
+                                                : 2;
+    }
 
     template <Index U, Floating T>
     inline U argmax3(const T vec[3]) noexcept
@@ -181,6 +189,16 @@ namespace vectormath {
         return x >= y ? x >= z ? 0 : 2 : y >= z ? 1
                                                 : 2;
     }
+    template <Index U, Floating T>
+    inline U argmax3(const std::array<T, 3>& vec) noexcept
+    {
+        const T x = std::abs(vec[0]);
+        const T y = std::abs(vec[1]);
+        const T z = std::abs(vec[2]);
+        return x >= y ? x >= z ? 0 : 2 : y >= z ? 1
+                                                : 2;
+    }
+
 
     template <Floating T>
     inline void changeBasis(const T b1[3], const T b2[3], const T b3[3], const T vector[3], T newVector[3]) noexcept

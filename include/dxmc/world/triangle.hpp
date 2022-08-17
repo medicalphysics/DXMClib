@@ -138,7 +138,7 @@ public:
 private:
     std::array<std::array<T, 3>, 3> m_vertices;
 };
-
+/*
 template <Floating T>
 std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
 {
@@ -158,5 +158,5 @@ std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::a
         }
     }
     return t[0] > t[1] ? std::nullopt : std::make_optional(t);
-}
+}*/
 }

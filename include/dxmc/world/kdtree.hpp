@@ -188,41 +188,27 @@ public:
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
-            std::optional<T> t;
+            T t = std::numeric_limits<T>::max();
+            for (const U& triangle : m_triangles) {
             if constexpr (std::is_pointer<U>::value) {
-                for (const U triangle : m_triangles) {
-                    auto t_cand = triangle->intersect(particle);
-                    if (t_cand) {
-                        if (t) {
-                            if (*t > *t_cand)
-                                std::swap(t, t_cand);
+                    const auto t_cand = triangle->intersect(particle);
+                    if (t_cand)
+                        t = std::min(t, *t_cand);
                         } else {
-                            std::swap(t, t_cand);
-                        }
+                    const auto t_cand = triangle.intersect<0>(particle);
+                    if (t_cand)
+                        t = std::min(t, *t_cand);
                     }
                 }
-            } else {
-                for (const U& triangle : m_triangles) {
-                    auto t_cand = triangle.intersect(particle);
-                    if (t_cand) {
-                        if (t) {
-                            if (*t > *t_cand)
-                                std::swap(t, t_cand);
-                        } else {
-                            std::swap(t, t_cand);
-                        }
+            return t <= tbox[1] && t >= tbox[0] ? std::make_optional(t) : std::nullopt;
                     }
-                }
-            }
-            return t;
-        }
 
         // test for parallell beam
-        if (std::abs(particle.dir[m_D]) < std::numeric_limits<T>::epsilon()) {
+         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
             const auto hit_left = m_left->intersect(particle, tbox);
             const auto hit_right = m_right->intersect(particle, tbox);
             if (hit_left && hit_right)
-                return *hit_left < *hit_right ? hit_left : hit_right;
+                return std::min(hit_left, hit_right);
             if (!hit_left)
                 return hit_right;
             return hit_left;
@@ -320,9 +306,9 @@ protected:
             min = aabb[m_D];
             max = aabb[m_D + 3];
         }
-        if (max - plane <= epsilon)
+        if (max - plane <= -epsilon)
             return -1;
-        if (min - plane >= -epsilon)
+        if (min - plane >= epsilon)
             return 1;
         return 0;
     }
