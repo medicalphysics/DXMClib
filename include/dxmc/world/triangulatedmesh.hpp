@@ -255,12 +255,12 @@ public:
         : BaseObject<T>()
     {
     }
-    TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept=6)
+    TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
         : BaseObject<T>()
     {
         setData(triangles, max_tree_dept);
     }
-    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 6)
+    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
         : BaseObject<T>()
     {
         STLReader<T> reader;

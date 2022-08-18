@@ -9,7 +9,7 @@
 #include <iostream>
 
 template <typename U>
-void test_ptr(U& kdtree, const std::size_t depth = 6)
+void test_ptr(U& kdtree, const std::size_t depth = 8)
 {
     using T = typename U::Type;
     const std::size_t Nx = 512;

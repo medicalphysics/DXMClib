@@ -80,24 +80,34 @@ public:
     using T = typename std::remove_pointer<U>::type::Type;
     using Type = T;
     KDTree() {};
-    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 6)
+    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
         if (triangles.size() == 0)
             return;
-
-        std::array<T, 3> extent;
-        for (std::size_t i = 0; i < 3; ++i) {
-            extent[i] = std::transform_reduce(
-                std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, [=](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [&](const auto& tri) {
-                if constexpr (std::is_pointer<U>::value)
-                {
-                    const auto aabb = tri->AABB();
-                    return aabb[i + 3] - aabb[i];
-                } else {
-                    const auto aabb = tri.AABB();
-                    return aabb[i + 3] - aabb[i];
-                } });
+        // finding aabb
+        std::array<T, 6> aabb {
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+        };
+        for (const auto& tri : triangles) {
+            std::array<T, 6> aabb_tri;
+            if constexpr (std::is_pointer<U>::value) {
+                aabb_tri = tri->AABB();
+            } else {
+                aabb_tri = tri.AABB();
+            }
+            for (std::size_t i = 0; i < 3; ++i) {
+                aabb[i] = std::min(aabb[i], aabb_tri[i]);
+            }
+            for (std::size_t i = 3; i < 6; ++i) {
+                aabb[i] = std::max(aabb[i], aabb_tri[i]);
+            }
         }
+        const std::array<T, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
 
         m_D = vectormath::argmax3<unsigned int, T>(extent.data());
 
@@ -164,6 +174,7 @@ public:
     }
     void translate(const std::array<T, 3>& dist)
     {
+        m_plane += dist[m_D];
         if (m_left) {
             m_left->translate(dist);
             m_right->translate(dist);
