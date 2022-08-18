@@ -669,8 +669,7 @@ public:
 
     const std::array<T, 3> tubePosition(void) const
     {
-        std::array<T, 3> beamDirection;
-        vectormath::cross(this->m_directionCosines.data(), beamDirection.data());
+        std::array<T, 3> beamDirection = vectormath::cross(this->m_directionCosines);
         std::array<T, 3> pos;
         for (std::size_t i = 0; i < 3; ++i) {
             pos[i] = this->m_position[i] - beamDirection[i] * this->m_sdd;
@@ -748,13 +747,14 @@ public:
             normIso[i] = (tubePos[i] - dPos[i]);
         }
         const auto rotAxis = rotationAxis();
-        vectormath::rotate(normIso.data(), rotAxis.data(), rotAngle);
+        vectormath::rotate(normIso.data(), rotAxis, rotAngle);
         for (std::size_t i = 0; i < 3; ++i) {
             normIso[i] += dPos[i];
         }
         auto dirCosines = this->m_directionCosines;
-        vectormath::rotate(dirCosines.data(), rotAxis.data(), rotAngle);
-        vectormath::rotate(&dirCosines[3], rotAxis.data(), rotAngle);
+
+        vectormath::rotate(&dirCosines[0], rotAxis, rotAngle);
+        vectormath::rotate(&dirCosines[3], rotAxis, rotAngle);
 
         Exposure<T> exposure(normIso,
             dirCosines,
@@ -772,8 +772,7 @@ public:
 
     const std::array<T, 3> tubePosition(void) const
     {
-        std::array<T, 3> beamDirection;
-        vectormath::cross(this->m_directionCosines.data(), beamDirection.data());
+        std::array<T, 3> beamDirection = vectormath::cross(this->m_directionCosines);
         std::array<T, 3> pos;
         for (std::size_t i = 0; i < 3; ++i) {
             pos[i] = this->m_position[i] - beamDirection[i] * this->m_sdd * T { 0.5 };
@@ -1525,13 +1524,15 @@ public:
         const auto angle = startAngle + this->m_exposureAngleStep * exposureIndex;
 
         auto directionCosines = this->m_directionCosines;
-        T* rotationAxis = &directionCosines[3];
+
         T* otherAxis = &directionCosines[0];
+        T* rotationAxis = &directionCosines[3];
+
         std::array<T, 3> tiltAxis = { 1, 0, 0 };
-        auto tiltCorrection = pos;
-        vectormath::rotate(tiltCorrection.data(), tiltAxis.data(), this->m_gantryTiltAngle);
-        vectormath::rotate(rotationAxis, tiltAxis.data(), this->m_gantryTiltAngle);
-        vectormath::rotate(otherAxis, tiltAxis.data(), this->m_gantryTiltAngle);
+        auto tiltCorrection = vectormath::rotate(pos, tiltAxis, this->m_gantryTiltAngle);
+        vectormath::rotate(rotationAxis, tiltAxis, this->m_gantryTiltAngle);
+        vectormath::rotate(otherAxis, tiltAxis, this->m_gantryTiltAngle);
+
         vectormath::rotate(pos.data(), rotationAxis, angle);
         constexpr T PI_2 = T { 2 } * PI_VAL<T>();
         pos[2] += (exposureIndex * this->m_exposureAngleStep) * this->m_collimation * m_pitch / PI_2 + tiltCorrection[2];

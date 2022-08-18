@@ -255,7 +255,7 @@ protected:
                 particle.energy = elConf[idx].fluorLineEnergies[lineIdx];
                 const auto theta = state.randomUniform<T>(PI_VAL<T>());
                 const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-                vectormath::peturb(particle.dir.data(), theta, phi);
+                vectormath::peturb(particle.dir, theta, phi);
                 // return energy imparted locally
                 return E - particle.energy;
             } else {
@@ -278,7 +278,7 @@ protected:
             }
             // calc angle and add randomly 90 degrees since dist i symetrical
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            vectormath::peturb<T>(particle.dir.data(), theta, phi);
+            vectormath::peturb<T>(particle.dir, theta, phi);
         } else {
             // theta is scattering angle
             // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
@@ -295,7 +295,7 @@ protected:
 
             const auto theta = std::acos(cosAngle);
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            vectormath::peturb<T>(particle.dir.data(), theta, phi);
+            vectormath::peturb<T>(particle.dir, theta, phi);
         }
     }
 
@@ -335,7 +335,7 @@ protected:
             } while (rejected);
             const auto theta = std::acos(cosAngle);
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            vectormath::peturb<T>(particle.dir.data(), theta, phi);
+            vectormath::peturb<T>(particle.dir, theta, phi);
             particle.energy *= e;
             return E - particle.energy;
         }
@@ -478,7 +478,7 @@ protected:
         } while (rejected);
         const auto theta = std::acos(cosAngle);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-        vectormath::peturb<T>(particle.dir.data(), theta, phi);
+        vectormath::peturb<T>(particle.dir, theta, phi);
         const auto E = particle.energy;
         particle.energy *= e;
         return E - particle.energy;
@@ -540,7 +540,7 @@ protected:
                 [[unlikely]] {
                 const auto energyImparted = (e_forced + p_forced.energy) * p_forced.weight * weightCorrection;
                 safeValueAdd(result.dose[resultBufferIdx], energyImparted);
-                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 }); 
+                safeValueAdd(result.nEvents[resultBufferIdx], std::uint_fast32_t { 1 });
                 safeValueAdd(result.variance[resultBufferIdx], energyImparted * energyImparted);
             } else
                 [[likely]] {
@@ -676,7 +676,7 @@ protected:
                 {
                     const auto r2 = state.randomUniform<T>();
                     if (r2 < eventProbability) // an event will happen
-                    {                        
+                    {
                         continueSampling = computeInteractions<Lowenergycorrection>(attenuation, p, matIdx, result, bufferIdx, state, updateMaxAttenuation);
                     }
                 } else
@@ -805,14 +805,14 @@ protected:
 
         std::transform(
             std::execution::par_unseq, res.dose.cbegin(), res.dose.cend(), density->cbegin(), res.dose.begin(),
-            [=](auto ei, auto de) -> auto {
+            [=](auto ei, auto de) -> auto{
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; // g/cm3 * cm3 / 1000 = kg
                 const auto factor = calibrationValue / voxelMass;
                 return de > T { 0.0 } ? ei * factor : T { 0.0 };
             });
         std::transform(
             std::execution::par_unseq, res.variance.cbegin(), res.variance.cend(), density->cbegin(), res.variance.begin(),
-            [=](auto var, auto de) -> auto {
+            [=](auto var, auto de) -> auto{
                 const auto voxelMass = de * voxelVolume * T { 0.001 }; // g/cm3 * cm3 / 1000 = kg
                 const auto factor = calibrationValue / voxelMass;
                 return de > T { 0.0 } ? var * factor * factor : T { 0.0 }; // for variance we must multiply by square

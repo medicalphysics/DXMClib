@@ -191,7 +191,7 @@ requires std::is_same<T, compoundData>::value || std::is_same<T, compoundDataNIS
                     yield = FluorYield(Z, L3_SHELL, nullptr);
                 }
                 for (int line = line_start; line >= line_stop; --line) {
-                    const auto amin = vectormath::argmin3<int, double>(fluroProbabilities.data());
+                    const auto amin = vectormath::argmin3<int, double>(fluroProbabilities);
                     xrl_error* errorLine = nullptr;
                     const double prob = RadRate(Z, line, &errorLine);
                     if (prob > fluroProbabilities[amin] && !errorLine) {

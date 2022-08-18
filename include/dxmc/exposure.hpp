@@ -58,7 +58,7 @@ protected:
 
     void calculateBeamDirection(void)
     {
-        vectormath::cross(m_directionCosines.data(), m_beamDirection.data());
+        m_beamDirection = vectormath::cross(m_directionCosines);
     }
 
 public:
@@ -267,14 +267,16 @@ public:
 
     void alignToDirectionCosines(const std::array<T, 6>& directionCosines) noexcept
     {
-        const T* b1 = directionCosines.data();
-        const T* b2 = &b1[3];
-        T b3[3];
-        vectormath::cross(b1, b2, b3);
-        vectormath::changeBasisInverse(b1, b2, b3, m_position.data());
-        vectormath::changeBasisInverse(b1, b2, b3, m_directionCosines.data());
-        vectormath::changeBasisInverse(b1, b2, b3, &m_directionCosines[3]);
-        vectormath::changeBasisInverse(b1, b2, b3, m_beamDirection.data());
+        auto [b1, b2] = vectormath::splice(directionCosines);
+        auto b3 = vectormath::cross(b1, b2);
+
+        m_position = vectormath::changeBasisInverse(b1, b2, b3, m_position);
+
+        auto cos1 = vectormath::changeBasisInverse(b1, b2, b3, b1);
+        auto cos2 = vectormath::changeBasisInverse(b1, b2, b3, b2);
+        m_directionCosines = vectormath::join(b1, b2);
+
+        m_beamDirection = vectormath::changeBasisInverse(b1, b2, b3, m_beamDirection);
     }
 
     Particle<T> sampleParticle(RandomState& state) const noexcept // thread safe

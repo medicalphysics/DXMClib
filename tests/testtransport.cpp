@@ -235,7 +235,7 @@ public:
         for (std::size_t i = 0; i < nSamp; ++i) {
             auto psamp = p;
             this->template rayleightScatter<Correction>(psamp, 0, state);
-            const auto cos = vectormath::dot(p.dir.data(), psamp.dir.data());
+            const auto cos = vectormath::dot(p.dir, psamp.dir);
             auto it = std::upper_bound(cosAng.cbegin(), cosAng.cend(), cos);
             auto idx = std::distance(cosAng.cbegin(), it);
             ++res[idx - 1];

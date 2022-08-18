@@ -109,7 +109,7 @@ public:
         }
         const std::array<T, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
 
-        m_D = vectormath::argmax3<unsigned int, T>(extent.data());
+        m_D = vectormath::argmax3<unsigned int, T>(extent);
 
         std::sort(triangles.begin(), triangles.end(), [&](const auto& lh, const auto& rh) {
             if constexpr (std::is_pointer<U>::value) {

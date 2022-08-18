@@ -965,8 +965,7 @@ bool TG195Case41AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = fals
     std::array<T, 6> cos = { 0, 1, 0, 0, 0, 1 };
     src.setDirectionCosines(cos);
 
-    T direction[3];
-    vectormath::cross(cos.data(), direction);
+    auto direction = vectormath::cross(cos);
     if (specter) {
         print("Specter of 120 kV W/Al\n");
         const auto specter = TG195_120KV<T>();
@@ -1471,8 +1470,7 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
         dxmc::vectormath::rotate(cos.data(), rot_axis.data(), rad);
         dxmc::vectormath::rotate(&cos[3], rot_axis.data(), rad);
 
-        std::array<T, 3> beam_dir = { 0, 0, 0 };
-        dxmc::vectormath::cross(cos.data(), beam_dir.data());
+        std::array<T, 3> beam_dir = dxmc::vectormath::cross(cos);
 
         src.setPosition(pos);
         src.setDirectionCosines(cos);
@@ -1495,7 +1493,7 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
             print(organ_doses[j], ", ", error[j], ", ", tg195_doses[i][j], ", ");
             const auto nevents_sum = std::transform_reduce(
                 std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.nEvents.cbegin(),
-                0, std::plus<>(), [&](auto m, auto d) -> auto { return m == tg195_organ_idx[j] ? d : 0; });
+                0, std::plus<>(), [&](auto m, auto d) -> auto{ return m == tg195_organ_idx[j] ? d : 0; });
             print(nevents_sum, ", ");
 
             const auto diff = organ_doses[j] - tg195_doses[i][j];
@@ -1546,7 +1544,7 @@ bool TG195Case5AbsorbedEnergy(dxmc::Transport<T> transport, bool specter = false
 
         const auto nevents_sum = std::transform_reduce(
             std::execution::par_unseq, world.materialIndexArray()->cbegin(), world.materialIndexArray()->cend(), res.nEvents.cbegin(),
-            0, std::plus<>(), [&](auto m, auto d) -> auto { return m == tg195_organ_idx[j] ? d : 0; });
+            0, std::plus<>(), [&](auto m, auto d) -> auto{ return m == tg195_organ_idx[j] ? d : 0; });
         print(nevents_sum, ", ");
 
         const auto diff = dose_sum - tg195_organ_doses_cont[j];

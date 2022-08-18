@@ -78,8 +78,7 @@ double calculate()
     std::array<T, 6> beam_cosines = { 1, 0, 0, 0, 1, 0 };
     pen.setDirectionCosines(beam_cosines);
     // The beam direction is then x cross y
-    std::array<T, 3> beam_direction;
-    vectormath::cross(beam_cosines.data(), beam_direction.data());
+    std::array<T, 3> beam_direction = vectormath::cross(beam_cosines);
     // The beam direction should be [0, 0, 1]
 
     // Specify number of exposures, each exposure is run on a single thread

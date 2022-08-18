@@ -118,8 +118,7 @@ public:
     const std::array<T, 6>& directionCosines(void) const { return m_directionCosines; }
     std::array<T, 3> depthDirection(void) const
     {
-        std::array<T, 3> dir;
-        vectormath::cross(m_directionCosines.data(), dir.data());
+        std::array<T, 3> dir = vectormath::cross(m_directionCosines);
         return dir;
     }
     void setDensityArray(std::shared_ptr<std::vector<T>> densityArray)
@@ -225,7 +224,8 @@ bool World<T>::validate()
     }
 
     auto depthDirectionCosine = depthDirection();
-    const T testOrtogonality = vectormath::dot(depthDirectionCosine.data(), m_directionCosines.data()) + vectormath::dot(depthDirectionCosine.data(), &m_directionCosines[3]) + vectormath::dot(&m_directionCosines[0], &m_directionCosines[3]);
+    const auto [cos1, cos2] = vectormath::splice(m_directionCosines);
+    const T testOrtogonality = vectormath::dot(depthDirectionCosine, cos1) + vectormath::dot(depthDirectionCosine, cos2) + vectormath::dot(cos1, cos2);
 
     if (std::abs(testOrtogonality) > T { 0.001 }) {
         return false;
