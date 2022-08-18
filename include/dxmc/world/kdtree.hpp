@@ -41,6 +41,7 @@ concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<type
 {
     typename U::Type;
     Floating<typename U::Type>;
+    u <=> u;
     u.translate(vec);
     {
         u.intersect(p)
@@ -58,6 +59,7 @@ concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<type
 {
     std::remove_pointer<U>::type::Type;
     Floating<typename std::remove_pointer<U>::type::Type>;
+    *u <=> *u;
     u->translate(vec);
     {
         u->intersect(p)
@@ -122,7 +124,7 @@ public:
             std::vector<U> left;
             std::vector<U> right;
             for (const auto& triangle : triangles) {
-                const auto side = planeSide(triangle, m_plane);
+                const auto side = planeSide(triangle, m_plane, m_D);
                 if (side <= 0)
                     left.push_back(triangle);
                 if (side >= 0)
@@ -155,6 +157,9 @@ public:
     {
         std::vector<U> all;
         item_iterator(all);
+        std::sort(all.begin(), all.end());
+        auto last = std::unique(all.begin(), all.end());
+        all.erase(last, all.end());
         return all;
     }
     void translate(const std::array<T, 3>& dist)
@@ -190,21 +195,21 @@ public:
             // intersect triangles between tbox and return;
             T t = std::numeric_limits<T>::max();
             for (const U& triangle : m_triangles) {
-            if constexpr (std::is_pointer<U>::value) {
+                if constexpr (std::is_pointer<U>::value) {
                     const auto t_cand = triangle->intersect(particle);
                     if (t_cand)
                         t = std::min(t, *t_cand);
-                        } else {
+                } else {
                     const auto t_cand = triangle.intersect<0>(particle);
                     if (t_cand)
                         t = std::min(t, *t_cand);
-                    }
                 }
+            }
             return t <= tbox[1] && t >= tbox[0] ? std::make_optional(t) : std::nullopt;
-                    }
+        }
 
         // test for parallell beam
-         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
+        if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
             const auto hit_left = m_left->intersect(particle, tbox);
             const auto hit_right = m_right->intersect(particle, tbox);
             if (hit_left && hit_right)
@@ -283,7 +288,7 @@ protected:
         int fom = 0;
         int shared = 0;
         for (const auto& triangle : triangles) {
-            const auto side = planeSide(triangle, planesep);
+            const auto side = planeSide(triangle, planesep, m_D);
             fom += side;
             if (side == 0) {
                 shared++;
@@ -291,7 +296,7 @@ protected:
         }
         return std::abs(fom) + shared;
     }
-    int planeSide(const U& triangle, const T plane) const
+    static int planeSide(const U& triangle, const T plane, const unsigned int D)
     {
         T max = std::numeric_limits<T>::lowest();
         T min = std::numeric_limits<T>::max();
@@ -299,12 +304,12 @@ protected:
 
         if constexpr (std::is_pointer<U>::value) {
             const auto& aabb = triangle->AABB();
-            min = aabb[m_D];
-            max = aabb[m_D + 3];
+            min = aabb[D];
+            max = aabb[D + 3];
         } else {
             const auto& aabb = triangle.AABB();
-            min = aabb[m_D];
-            max = aabb[m_D + 3];
+            min = aabb[D];
+            max = aabb[D + 3];
         }
         if (max - plane <= -epsilon)
             return -1;

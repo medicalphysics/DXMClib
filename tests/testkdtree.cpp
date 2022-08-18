@@ -56,8 +56,8 @@ void test_ptr(U& kdtree, const std::size_t depth = 6)
 template <typename T>
 void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6)
 {
-    const std::size_t Nx = 512;
-    const std::size_t Ny = 512;
+    const std::size_t Nx = 64;
+    const std::size_t Ny = 64;
     const std::size_t axis = 0;
 
     std::vector<T> buffer(Nx * Ny, 0);
@@ -87,6 +87,7 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
         dxmc::vectormath::normalize(p.dir);
 
         const auto intersection = kdtree.intersect(p, aabb);
+        const auto intersection2 = mesh.intersect(p);
 
         return intersection ? *intersection : 0;
     });
@@ -94,7 +95,7 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
     std::cout << "KDTree depth: " << kdtree.depth();
     std::cout << "    Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;
     std::ofstream file;
-    
+
     file.open("intersect.bin", std::ios::out | std::ios::binary);
     file.write((char*)buffer.data(), buffer.size() * sizeof(T));
     file.close();
@@ -102,7 +103,8 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
 
 int main(int argc, char* argv[])
 {
-    dxmc::TriangulatedMesh<double> mesh("duck.stl");
+
+    dxmc::TriangulatedMesh<double> mesh("bunny_low.stl");
 
     dxmc::Particle<double> p;
     p.pos = { 0, 0, 0 };
@@ -124,11 +126,11 @@ int main(int argc, char* argv[])
 
     auto kdtree = dxmc::KDTree(triangles);
     auto kdtree_ptr = dxmc::KDTree(triangles_ptr);
+    const auto& kdtree_m = mesh.kdtree();
 
-    test_ptr(kdtree);
-    test_ptr(kdtree_ptr);
+    // test_ptr(kdtree);
+    // test_ptr(kdtree_ptr);
 
-    
     std::cout << "KDTree depth : " << kdtree.depth() << std::endl;
 
     const auto aabb_k = kdtree.AABB();
@@ -150,6 +152,6 @@ int main(int argc, char* argv[])
     std::cout << "Brute force hits: " << bh_min << ", " << bh_max << std::endl;
 
     testGeom(mesh, 5);
-    
+
     return EXIT_SUCCESS;
 }

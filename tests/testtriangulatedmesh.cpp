@@ -6,10 +6,10 @@
 #include <fstream>
 #include <iostream>
 
-template <dxmc::KDTreeType U>
-void create_image(U& object)
+template <typename T>
+void create_image(dxmc::TriangulatedMesh<T>& object)
 {
-    using T = typename U::Type;
+    
     const std::size_t Nx = 64;
     const std::size_t Ny = 64;
     const std::size_t axis = 0;
@@ -32,7 +32,7 @@ void create_image(U& object)
         const std::array<T, 3> plane { 0, aabb[1] + dx * x, aabb[2] + dy * y };
 
         dxmc::Particle<T> p;
-        p.pos = { -200, 0, 0 };
+        p.pos = { -1000, 0, 0 };
         for (std::size_t j = 0; j < 3; ++j) {
             p.dir[j] = plane[j] - p.pos[j];
         }
@@ -61,10 +61,17 @@ std::array<T, 3> neg_center(const std::array<T, 6>& aabb)
 
 int main(int argc, char* argv[])
 {
-    dxmc::TriangulatedMesh<double> mesh("bunny_low.stl", 5);
+    auto reader = dxmc::STLReader<double>("bunny_low.stl");
+    auto triangles = reader();
+    dxmc::TriangulatedMesh<double> mesh(triangles, 6);
+    dxmc::KDTree<dxmc::Triangle<double>> kdtree(triangles, 6);
+
+    
+    
+
     //dxmc::TriangulatedMesh<double> mesh("duck.stl", 5);
 
-    const auto& aabb_pre = mesh.AABB();
+    /* const auto& aabb_pre = mesh.AABB();
 
     auto triangles = mesh.getTriangles();
     std::cout << "Number of triangles: " << triangles.size() << std::endl;
@@ -85,8 +92,8 @@ int main(int argc, char* argv[])
 
     const auto& kdtree = mesh.kdtree();
     std::cout << "Tree depth: " << kdtree.depth() << std::endl;
-
+    */
     create_image(mesh);
-
+    
     return EXIT_SUCCESS;
 }

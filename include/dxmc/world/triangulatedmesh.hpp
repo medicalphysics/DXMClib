@@ -278,7 +278,7 @@ public:
         this->m_aabb = m_kdtree.AABB();
     }
 
-    void setData(std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept)
+    void setData(std::vector<Triangle<T>> triangles, const std::size_t max_tree_dept)
     {
         m_kdtree = KDTree(triangles, max_tree_dept);
         this->m_aabb = m_kdtree.AABB();
