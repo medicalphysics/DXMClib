@@ -32,7 +32,8 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-struct WorldResult {
+struct ResultObject {
+
 };
 
 template <Floating T>
@@ -86,11 +87,12 @@ public:
     std::array<T, 6> AABB(){ return m_aabb; }
     virtual std::optional<T> intersect(Particle<T>& p) const = 0;
     virtual std::optional<T> intersect(Particle<T>& p, const std::array<T, 2>& tbox) const = 0;
-    virtual T transport(Particle<T>& p, RandomState& state) const = 0;
+    virtual T transport(Particle<T>& p, RandomState& state)  = 0;
 
 protected:
+    virtual T stepLenght(const Particle<T>& p, RandomState& state) const = 0;
     std::array<T, 6> m_aabb { -1, -1, -1, 1, 1, 1 };
-
+    ResultObject<T> m_result;
 private:
 };
 }

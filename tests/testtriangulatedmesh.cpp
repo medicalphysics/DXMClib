@@ -7,7 +7,7 @@
 #include <iostream>
 
 template <typename T>
-auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& camera_pos, bool print=true)
+auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& camera_pos, bool print = true)
 {
     const std::int64_t Nx = 2048;
     const std::int64_t Ny = 2048;
@@ -78,11 +78,11 @@ std::array<T, 3> neg_center(const std::array<T, 6>& aabb)
     return c;
 }
 
-template<typename T>
-void benchmark(const std::vector<dxmc::Triangle<T>> &tri)
+template <typename T>
+void benchmark(const std::vector<dxmc::Triangle<T>>& tri)
 {
-    std::array<T, 3> pos{ 1000, 1000, 1000 };
-    for (std::size_t i=4;i <= 14;++i) {
+    std::array<T, 3> pos { 1000, 1000, 1000 };
+    for (std::size_t i = 4; i <= 14; ++i) {
         dxmc::TriangulatedMesh<T> mesh(tri, i);
         std::cout << "Max depth: " << i << " Depth: " << mesh.kdtree().depth();
         auto time = create_image(mesh, pos, false);
@@ -91,14 +91,69 @@ void benchmark(const std::vector<dxmc::Triangle<T>> &tri)
 }
 
 
+template <typename T>
+std::vector<dxmc::Triangle<T>> getPyramid() {
+    std::vector<std::array<T, 3>> p;
+    constexpr T d = 30;
+    p.push_back({ 1, 1, 0 }); // 0
+    p.push_back({ 1, -1, 0 }); // 1
+    p.push_back({ -1, -1, 0 }); // 2
+    p.push_back({ -1, 1, 0 }); // 3
+    p.push_back({ 0, 0, 1 });
+    for (auto& i : p)
+        for (auto& j : i)
+            j *= d;
+
+    std::vector<dxmc::Triangle<T>> t;
+    t.push_back({ p[0], p[1], p[4] });
+    t.push_back({ p[1], p[2], p[4] });
+    t.push_back({ p[2], p[3], p[4] });
+    t.push_back({ p[3], p[0], p[4] });
+    return t;
+}
+
+template <typename T>
+std::vector<dxmc::Triangle<T>> getBox()
+{
+    std::vector<std::array<T, 3>> p;
+    constexpr T d = 30;
+    p.push_back({ 1, 1, 1 }); // 0
+    p.push_back({ 1, 1, -1 }); // 1
+    p.push_back({ 1, -1, 1 }); // 2
+    p.push_back({ -1, 1, 1 }); // 3
+    p.push_back({ -1, -1, 1 }); // 4
+    p.push_back({ -1, 1, -1 }); // 5
+    p.push_back({ 1, -1, -1 }); // 6
+    p.push_back({ -1, -1, -1 }); // 7
+    for (auto& i : p)
+        for (auto& j : i)
+            j *= d;
+
+    std::vector<dxmc::Triangle<T>> t;
+    t.push_back({ p[0], p[3], p[4] });
+    t.push_back({ p[0], p[4], p[2] });
+    t.push_back({ p[6], p[2], p[4] });
+    t.push_back({ p[6], p[4], p[7] });
+    t.push_back({ p[7], p[4], p[3] });
+    t.push_back({ p[7], p[3], p[5] });
+    t.push_back({ p[5], p[1], p[6] });
+    t.push_back({ p[5], p[6], p[7] });
+    t.push_back({ p[1], p[0], p[2] });
+    t.push_back({ p[1], p[2], p[6] });
+    t.push_back({ p[5], p[3], p[0] });
+    t.push_back({ p[5], p[0], p[1] });
+    return t;
+}
 int main(int argc, char* argv[])
 {
-    auto reader = dxmc::STLReader<double>("bunny.stl");
-    //auto reader = dxmc::STLReader<double>("bunny_low.stl");
-    //auto reader = dxmc::STLReader<double>("duck.stl");
-    const auto triangles = reader();
+    //auto reader = dxmc::STLReader<double>("bunny.stl");
+    // auto reader = dxmc::STLReader<double>("bunny_low.stl");
+    // auto reader = dxmc::STLReader<double>("duck.stl");
+    //const auto triangles = reader();
+    const auto triangles = getBox<double>();
+    //const auto triangles = getPyramid<double>();
+    
     dxmc::TriangulatedMesh<double> mesh(triangles, 9);
-    //dxmc::KDTree<dxmc::Triangle<double>> kdtree(triangles, 6);
 
     // centering aabb
     auto aabb_pre = mesh.AABB();
@@ -106,9 +161,8 @@ int main(int argc, char* argv[])
     mesh.translate(dist);
     auto aabb = mesh.AABB();
 
-    
-    std::array<double, 3> pos { -1000.0, -1000.0, 1000.0 };
+    std::array<double, 3> pos { -1000.0, 500.0, 500.0 };
     create_image(mesh, pos);
-    //benchmark(triangles);
+    // benchmark(triangles);
     return EXIT_SUCCESS;
 }

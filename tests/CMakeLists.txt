@@ -3,7 +3,7 @@
 
 set(TEST_SOURCES 
     "testdxmclib.cpp"
-#    "testtriangulatedmesh.cpp"
+    "testtriangulatedmesh.cpp"
 #    "testkdtree.cpp"
 #    "testtube.cpp"
 #    "testsource.cpp"
