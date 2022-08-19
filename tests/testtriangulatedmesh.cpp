@@ -9,8 +9,8 @@
 template <typename T>
 auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& camera_pos, bool print = true)
 {
-    const std::int64_t Nx = 2048;
-    const std::int64_t Ny = 2048;
+    const std::int64_t Nx = 512;
+    const std::int64_t Ny = 512;
 
     std::vector<T> buffer(Nx * Ny, 0);
     std::vector<std::size_t> idx(buffer.size());
@@ -109,6 +109,11 @@ std::vector<dxmc::Triangle<T>> getPyramid() {
     t.push_back({ p[1], p[2], p[4] });
     t.push_back({ p[2], p[3], p[4] });
     t.push_back({ p[3], p[0], p[4] });
+
+    //underside
+    t.push_back({ p[0], p[3], p[2] });
+    t.push_back({ p[2], p[1], p[0] });
+
     return t;
 }
 
@@ -144,25 +149,50 @@ std::vector<dxmc::Triangle<T>> getBox()
     t.push_back({ p[5], p[0], p[1] });
     return t;
 }
+template<dxmc::Floating T>
+bool testPyramid()
+{
+    const auto triangles = getPyramid<T>();
+
+    dxmc::TriangulatedMesh<T> mesh(triangles);
+    const auto target = mesh.center();
+    std::array<T, 3> pos { 500,500,-250};
+
+    auto dir = dxmc::vectormath::subtract(target, pos);
+    dxmc::vectormath::normalize(dir);
+    dxmc::Particle<T> p;
+    p.pos = pos;
+    p.dir = dir;
+    auto hit=mesh.intersect(p);
+    return hit ? true : false;
+
+}
+
 int main(int argc, char* argv[])
 {
+
+    auto success = testPyramid<float>();
+    std::cout << success << std::endl;
+
     //auto reader = dxmc::STLReader<double>("bunny.stl");
     // auto reader = dxmc::STLReader<double>("bunny_low.stl");
     // auto reader = dxmc::STLReader<double>("duck.stl");
     //const auto triangles = reader();
-    const auto triangles = getBox<double>();
-    //const auto triangles = getPyramid<double>();
+    
+    //const auto triangles = getBox<double>();
+    const auto triangles = getPyramid<double>();
     
     dxmc::TriangulatedMesh<double> mesh(triangles, 9);
 
     // centering aabb
     auto aabb_pre = mesh.AABB();
     auto dist = neg_center(aabb_pre);
-    mesh.translate(dist);
+    //mesh.translate(dist);
     auto aabb = mesh.AABB();
 
-    std::array<double, 3> pos { -1000.0, 500.0, 500.0 };
-    create_image(mesh, pos);
+    std::array<double, 3> pos { 500.0, 500.0, -250.0 };
+    create_image(mesh, pos, true);
+
     // benchmark(triangles);
     return EXIT_SUCCESS;
 }

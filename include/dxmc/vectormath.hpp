@@ -48,17 +48,6 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void normalize(T vec[3]) noexcept
-    {
-        const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
-        constexpr T one { 1 };
-        const T norm = one / std::sqrt(lsqr);
-        vec[0] *= norm;
-        vec[1] *= norm;
-        vec[2] *= norm;
-    }
-
-    template <Floating T>
     std::pair<std::array<T, 3>, std::array<T, 3>> splice(const std::array<T, 6>& a)
     {
         std::array a1 { a[0], a[1], a[2] };
@@ -70,6 +59,17 @@ namespace vectormath {
     {
         std::array r { a[0], a[1], a[2], b[0], b[1], b[2] };
         return r;
+    }
+
+    template <Floating T>
+    inline void normalize(T vec[3]) noexcept
+    {
+        const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
+        constexpr T one { 1 };
+        const T norm = one / std::sqrt(lsqr);
+        vec[0] *= norm;
+        vec[1] *= norm;
+        vec[2] *= norm;
     }
 
     template <Floating T>

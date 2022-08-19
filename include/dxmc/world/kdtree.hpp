@@ -208,15 +208,17 @@ public:
             for (const U& triangle : m_triangles) {
                 if constexpr (std::is_pointer<U>::value) {
                     const auto t_cand = triangle->intersect(particle);
-                    if (t_cand)
+                    if (t_cand) {
                         t = std::min(t, *t_cand);
+                    }
                 } else {
-                    const auto t_cand = triangle.intersect<0>(particle);
-                    if (t_cand)
+                    const auto t_cand = triangle.intersect<1>(particle);
+                    if (t_cand) {
                         t = std::min(t, *t_cand);
+                    }
                 }
             }
-            return t <= tbox[1] && t >= tbox[0] ? std::make_optional(t) : std::nullopt;
+            return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
         }
 
         // test for parallell beam
@@ -311,8 +313,6 @@ protected:
     {
         T max = std::numeric_limits<T>::lowest();
         T min = std::numeric_limits<T>::max();
-        constexpr T epsilon = std::numeric_limits<T>::epsilon();
-
         if constexpr (std::is_pointer<U>::value) {
             const auto& aabb = triangle->AABB();
             min = aabb[D];
@@ -322,9 +322,11 @@ protected:
             min = aabb[D];
             max = aabb[D + 3];
         }
-        if (max - plane <= -epsilon)
+        if (lessOrEqual(max, plane))
+            // if (max - plane <= epsilon())
             return -1;
-        if (min - plane >= epsilon)
+        if (greaterOrEqual(min, plane))
+            // if (plane - min <= epsilon())
             return 1;
         return 0;
     }
@@ -369,6 +371,19 @@ protected:
             m_left->AABB_iterator(aabb);
             m_right->AABB_iterator(aabb);
         }
+    }
+    consteval static T epsilon()
+    {
+        // Huristic epsilon for triangle intersections
+        return T { 11 } * std::numeric_limits<T>::epsilon();
+    }
+    constexpr static bool lessOrEqual(T a, T b)
+    {
+        return a - b <= a * epsilon();
+    }
+    constexpr static bool greaterOrEqual(T a, T b)
+    {
+        return b - a <= a * epsilon();
     }
 
 private:

@@ -306,7 +306,7 @@ public:
     {
         return m_kdtree.intersect(p, this->m_aabb, tbox);
     }
-    T transport(Particle<T>& p, RandomState& state) const override
+    T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;
     }

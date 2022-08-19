@@ -90,7 +90,7 @@ public:
     virtual T transport(Particle<T>& p, RandomState& state)  = 0;
 
 protected:
-    virtual T stepLenght(const Particle<T>& p, RandomState& state) const = 0;
+    //virtual T stepLenght(const Particle<T>& p, RandomState& state) const = 0;
     std::array<T, 6> m_aabb { -1, -1, -1, 1, 1, 1 };
     ResultObject<T> m_result;
 private:
