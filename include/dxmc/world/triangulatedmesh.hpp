@@ -298,11 +298,11 @@ public:
         }
         return center;
     }
-    std::optional<T> intersect(Particle<T>& p) const override
+    std::optional<T> intersect(const Particle<T>& p) const override
     {
         return m_kdtree.intersect(p, this->m_aabb);
     }
-    std::optional<T> intersect(Particle<T>& p, const std::array<T, 2>& tbox) const override
+    std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
     {
         return m_kdtree.intersect(p, this->m_aabb, tbox);
     }

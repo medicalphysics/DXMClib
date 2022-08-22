@@ -1,13 +1,14 @@
 
-
+#include "dxmc/particle.hpp"
+#include "dxmc/world/baseobject.hpp"
+#include "dxmc/world/itemcollection.hpp"
 #include "dxmc/world/triangulatedmesh.hpp"
 
-#include <chrono>
-#include <fstream>
 #include <iostream>
+#include <memory>
 
 template <typename T>
-auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& camera_pos, bool print = true)
+auto create_image(dxmc::ItemCollection<T>& object, const std::array<T, 3>& camera_pos, bool print = true)
 {
     const std::int64_t Nx = 512;
     const std::int64_t Ny = 512;
@@ -67,28 +68,7 @@ auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& cam
         file.close();
     }
     return t1 - t0;
-}
-template <dxmc::Floating T>
-std::array<T, 3> neg_center(const std::array<T, 6>& aabb)
-{
-    std::array<T, 3> c;
-    for (int i = 0; i < 3; ++i) {
-        c[i] = -(aabb[i] + aabb[i + 3]) / 2;
-    }
-    return c;
-}
-
-template <typename T>
-void benchmark(const std::vector<dxmc::Triangle<T>>& tri)
-{
-    std::array<T, 3> pos { 1000, 1000, 1000 };
-    for (std::size_t i = 4; i <= 14; ++i) {
-        dxmc::TriangulatedMesh<T> mesh(tri, i);
-        std::cout << "Max depth: " << i << " Depth: " << mesh.kdtree().depth();
-        auto time = create_image(mesh, pos, false);
-        std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << std::endl;
-    }
-}
+};
 
 template <typename T>
 std::vector<dxmc::Triangle<T>> getPyramid()
@@ -149,49 +129,26 @@ std::vector<dxmc::Triangle<T>> getBox()
     t.push_back({ p[5], p[0], p[1] });
     return t;
 }
-template <dxmc::Floating T>
-bool testPyramid()
+
+template <typename T>
+void testPyramidCollection()
 {
-    const auto triangles = getPyramid<T>();
+    auto test = dxmc::ItemCollection<T>();
 
-    dxmc::TriangulatedMesh<T> mesh(triangles);
-    const auto target = mesh.center();
-    std::array<T, 3> pos { 500, 500, -250 };
+    auto pyramid = std::make_shared<dxmc::TriangulatedMesh<T>>(getPyramid<T>());
+    auto pyramid2 = std::make_shared<dxmc::TriangulatedMesh<T>>(getPyramid<T>());
+    std::array<T, 3> disp { 61, 0, 0 };
+    pyramid2->translate(disp);
+    test.addItem(pyramid);
+    test.addItem(pyramid2);
 
-    auto dir = dxmc::vectormath::subtract(target, pos);
-    dxmc::vectormath::normalize(dir);
-    dxmc::Particle<T> p;
-    p.pos = pos;
-    p.dir = dir;
-    auto hit = mesh.intersect(p);
-    return hit ? true : false;
+    std::array<T, 3> cam_pos { 1000, 500, 500 };
+    create_image(test, cam_pos, true);
 }
 
 int main(int argc, char* argv[])
 {
+    testPyramidCollection<double>();
 
-    auto success = testPyramid<float>();
-    std::cout << success << std::endl;
-
-    // auto reader = dxmc::STLReader<double>("bunny.stl");
-    //  auto reader = dxmc::STLReader<double>("bunny_low.stl");
-    //  auto reader = dxmc::STLReader<double>("duck.stl");
-    // const auto triangles = reader();
-
-    // const auto triangles = getBox<double>();
-    const auto triangles = getPyramid<double>();
-
-    dxmc::TriangulatedMesh<double> mesh(triangles, 9);
-
-    // centering aabb
-    auto aabb_pre = mesh.AABB();
-    auto dist = neg_center(aabb_pre);
-    // mesh.translate(dist);
-    auto aabb = mesh.AABB();
-
-    std::array<double, 3> pos { 500.0, 500.0, -250.0 };
-    create_image(mesh, pos, true);
-
-    // benchmark(triangles);
     return EXIT_SUCCESS;
 }

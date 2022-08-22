@@ -59,7 +59,8 @@ concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<type
 {
     std::remove_pointer<U>::type::Type;
     Floating<typename std::remove_pointer<U>::type::Type>;
-    *u <=> *u;
+    u <=> u;
+
     u->translate(vec);
     {
         u->intersect(p)
@@ -127,7 +128,7 @@ public:
 
         const auto fom = figureOfMerit(triangles, mean);
 
-        if (fom == triangles.size() || fom == 0 || max_depth <= 1) {
+        if (fom == triangles.size() || max_depth <= 1 || triangles.size() <= 1) {
             m_triangles = triangles;
         } else {
             m_plane = mean;
@@ -180,7 +181,11 @@ public:
             m_right->translate(dist);
         } else {
             std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-                tri.translate(dist);
+                if constexpr (std::is_pointer<U>::value) {
+                    tri->translate(dist);
+                } else {
+                    tri.translate(dist);
+                }
             });
         }
     }

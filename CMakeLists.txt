@@ -76,6 +76,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/itemcollection.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/baseobject.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"

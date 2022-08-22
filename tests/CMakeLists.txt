@@ -11,7 +11,7 @@ set(TEST_SOURCES
 #    "testmaterial.cpp"
 #    "testrandom.cpp"
 #    "testattenuationlut.cpp"
-#    "testworld.cpp"
+    "testitemcollection.cpp"
 #    "testvectormath.cpp"
 #    "testexposure.cpp"
 #    "testinterpolation.cpp"
