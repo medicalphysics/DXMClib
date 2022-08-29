@@ -259,4 +259,51 @@ requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussInt
     return gaussIntegration(start, stop, function_values);
 }
 
+template <Floating T>
+class SQMatrix {
+public:
+    SQMatrix(const std::vector<T>& el)
+    {
+        m_N = static_cast<std::size_t>(std::sqrt(el.size()));
+        static_assert(m_N * m_N == el.size());
+        m_elements = el;
+    }
+    SQMatrix(std::size_T N)
+        : m_N(N)
+    {
+        m_elements.resize(m_N, T { 0 });
+    }
+    void setElement(std::size_t i, std::size_t j, T val)
+    {
+        const std::size_t ind = j * m_N + i;
+        m_elements[ind] = val;
+    }
+    T getElement(std::size_t i, std::size_t j) const
+    {
+        const std::size_t ind = j * m_N + i;
+        return m_elements[ind];
+    }
+    SQMatrix transpose()const
+    {
+        SQMatrix<T> other(m_N);
+        for (std::size_t j ==0;j < m_N ;++j)
+            for (std::size_t i == 0; i < m_N; ++i) {
+                other.setElement(j, i, this->getElement(i, j));
+            }
+        return other;
+    }
+
+private:
+    std::vector<T> m_elements;
+    std::size_t m_N = 0;
+};
+
+template <Floating T, int N>
+class CubicLSInterpolator {
+public:
+    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
+    {
+    }
+};
+
 }
