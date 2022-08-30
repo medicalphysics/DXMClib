@@ -260,42 +260,142 @@ requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussInt
 }
 
 template <Floating T>
-class SQMatrix {
+class Matrix {
 public:
-    SQMatrix(const std::vector<T>& el)
+    /*
+    Construct R x C matrix; example
+    3 x 2 =
+    |c11 c21|
+    |c12 c22|
+    |c13 c23|
+    */
+    Matrix(std::size_t R, std::size_t C, const std::vector<T>& el)
+        : m_R(R)
+        , m_C(C)
     {
-        m_N = static_cast<std::size_t>(std::sqrt(el.size()));
-        static_assert(m_N * m_N == el.size());
-        m_elements = el;
+        if (m_R * m_C == el.size()) {
+            m_elements = el;
+        } else {
+            m_elements.resize(m_R * m_C);
+            std::fill(m_elements.begin(), m_elements.end(), T { 0 });
+        }
     }
-    SQMatrix(std::size_T N)
-        : m_N(N)
+    Matrix(std::size_t R, std::size_t C)
+        : m_R(R)
+        , m_C(C)
     {
-        m_elements.resize(m_N, T { 0 });
+        m_elements.resize(m_R * m_C, T { 0 });
     }
+
     void setElement(std::size_t i, std::size_t j, T val)
     {
-        const std::size_t ind = j * m_N + i;
+        const auto ind = index(i, j);
         m_elements[ind] = val;
     }
     T getElement(std::size_t i, std::size_t j) const
     {
-        const std::size_t ind = j * m_N + i;
+        const auto ind = index(i, j);
         return m_elements[ind];
     }
-    SQMatrix transpose()const
+    Matrix<T> transpose() const
     {
-        SQMatrix<T> other(m_N);
-        for (std::size_t j ==0;j < m_N ;++j)
-            for (std::size_t i == 0; i < m_N; ++i) {
-                other.setElement(j, i, this->getElement(i, j));
+        Matrix<T> other(m_C, m_R);
+        for (std::size_t j = 0; j < m_C; ++j)
+            for (std::size_t i = 0; i < m_R; ++i) {
+                other.setElement(j, i, getElement(i, j));
             }
         return other;
     }
 
+    Matrix<T> reducedRowEchelonForm() const
+    {
+        Matrix<T> other(m_R, m_C, m_elements);
+        std::size_t lead = 0;
+
+        for (std::size_t row = 0; row < m_R; ++row) {
+            if (lead >= m_C)
+                return other;
+            std::size_t i = row;
+            while (std::abs(other.getElement(i, lead)) < std::numeric_limits<T>::epsilon()) { // essentially other[i, lead]==0
+                ++i;
+                if (i >= m_R) {
+                    i = row;
+                    ++lead;
+                    if (lead >= m_C)
+                        return other;
+                }
+            }
+            other.swapRows(i, row);
+            other.divideRow(row, other.getElement(row, lead));
+            for (std::size_t ii = 0; ii < m_R; ++ii) {
+                if (ii != row) {
+                    other.addMultipleRow(ii, row, -other.getElement(ii, lead));
+                }
+            }
+        }
+        return other;
+    }
+
+    std::vector<T> solve(const std::vector<T>& b)
+    {
+        // for solving Mx=b
+        Matrix<T> ext(m_R, m_C + 1);
+        for (std::size_t i = 0; i < m_R; ++i) {
+            for (std::size_t j = 0; j < m_C; ++j) {
+                ext.setElement(i, j, getElement(i, j));
+            }
+        }
+        for (std::size_t i = 0; i < m_R; ++i) {
+            ext.setElement(i, m_C, b[i]);
+        }
+        auto ansM = ext.reducedRowEchelonForm();
+        std::vector<T> ans(b.size());
+        for (std::size_t i = 0; i < m_R; ++i) {
+            ans[i] = ext.getElement(i, m_C);
+        }
+        return ans;
+    }
+
+    std::size_t nrows() const { return m_R; }
+    std::size_t ncolumns() const { return m_C; }
+
+protected:
+    std::size_t index(std::size_t i, std::size_t j) const
+    {
+        return i * m_C + j;
+    }
+
+    void swapRows(std::size_t from, std::size_t to)
+    {
+        if (from != to) {
+            for (std::size_t j = 0; j < m_C; ++j) {
+                const auto r = getElement(from, j);
+                setElement(from, j, getElement(to, j));
+                setElement(to, j, r);
+            }
+        }
+    }
+
+    void divideRow(const std::size_t r, const T value)
+    {
+        const T factor = T { 1 } / value;
+        for (std::size_t c = 0; c < m_C; ++c) {
+            setElement(r, c, getElement(r, c) * factor);
+        }
+    }
+
+    void addMultipleRow(const std::size_t to, const std::size_t from, const T value)
+    {
+        for (std::size_t c = 0; c < m_C; ++c) {
+            const auto v = getElement(to, c) + getElement(from, c) * value;
+            setElement(to, c, v);
+        }
+    }
+
 private:
     std::vector<T> m_elements;
-    std::size_t m_N = 0;
+    std::size_t m_R = 0;
+    std::size_t m_C = 0;
 };
 
 template <Floating T, int N>

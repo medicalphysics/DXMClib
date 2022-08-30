@@ -14,7 +14,7 @@ set(TEST_SOURCES
     "testitemcollection.cpp"
 #    "testvectormath.cpp"
 #    "testexposure.cpp"
-#    "testinterpolation.cpp"
+    "testinterpolation.cpp"
 )
 
 foreach(sourcefile ${TEST_SOURCES})
