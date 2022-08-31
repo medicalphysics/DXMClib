@@ -398,12 +398,143 @@ private:
     std::size_t m_C = 0;
 };
 
-template <Floating T, int N>
+template <Floating T>
 class CubicLSInterpolator {
 public:
     CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
-    {
+    { // assume x is sorted
+        const std::size_t N = t.size() - 1;
+
+        std::vector<T> h(N);
+        for (std::size_t i = 0; i < N; ++i)
+            h[i] = t[i + 1] - t[i];
+
+        // deal with t intervals without data
+        std::vector<std::size_t> pn(N, 0);
+        std::vector<std::size_t> p(N, 0);
+        std::size_t j = 0;
+        for (std::size_t i = 0; i < x.size(); ++i) {
+            if (x[i] <= t[j + 1]) {
+                pn[j]++;
+            } else {
+                j++;
+                p[j] = i;
+                pn[j] = 0;
+                while (x[i] > t[j + 1]) {
+                    j++;
+                    p[j] = i;
+                    pn[j] = 0;
+                }
+                pn[j] = 1;
+            }
+        }
+
+        // setting up matrices
+        std::vector<T> taa(N, T { 0 });
+        std::vector<T> tab(N, T { 0 });
+        std::vector<T> tag(N, T { 0 });
+        std::vector<T> tad(N, T { 0 });
+        std::vector<T> tbb(N, T { 0 });
+        std::vector<T> tbg(N, T { 0 });
+        std::vector<T> tbd(N, T { 0 });
+        std::vector<T> tgg(N, T { 0 });
+        std::vector<T> tgd(N, T { 0 });
+        std::vector<T> tdd(N, T { 0 });
+
+        std::vector<T> D(N + 1, T { 0 });
+        std::vector<T> G(N + 1, T { 0 });
+
+        for (std::size_t i = 0; i < N; ++i) {
+            for (std::size_t j = p[i]; j < p[i] + pn[i]; ++j) {
+                const auto u = (x[j] - t[i]) / h[i];
+                const auto v = u - 1;
+                const auto alpha = (2 * u + 1) * v * v;
+                const auto beta = u * u * (1 - 2 * v);
+                const auto gamma = h[i] * u * v * v;
+                const auto delta = h[i] * u * u * v;
+                taa[i] += alpha * alpha;
+                tab[i] += alpha * beta;
+                tag[i] += alpha * gamma;
+                tad[i] += alpha * delta;
+                tbb[i] += beta * beta;
+                tbg[i] += beta * gamma;
+                tbd[i] += beta * delta;
+                tgg[i] += gamma * gamma;
+                tgd[i] += gamma * delta;
+                tdd[i] += delta * delta;
+                D[i] += 2 * y[j] * alpha;
+                D[i + 1] += 2 * y[j] * beta;
+                G[i] += 2 * y[j] * gamma;
+                G[i + 1] += 2 * y * delta;
+            }
+        }
+
+        Matrix<T> A(N + 1, N + 1);
+        Matrix<T> B(N + 1, N + 1);
+        Matrix<T> E(N + 1, N + 1);
+        Matrix<T> C(N - 1, N + 1);
+        Matrix<T> F(N - 1, N + 1);
+        for (std::size_t i = 0; i < N; ++i) {
+            const auto aii = A.getElement(i, i);
+            A.setElement(i, i, 2 * taa[i] + aii);
+            A.setElement(i + 1, i + 1, 2 * tbb[i]);
+            A.setElement(i, i + 1, 2 * tab[i]);
+            A.setElement(i + 1, i, 2 * taa[i]); // same value as above
+
+            const auto bii = B.getElement(i, i);
+            B.setElement(i, i, 2 * tag[i] + bii);
+            B.setElement(i + 1, i + 1, 2 * tbd[i]);
+            B.setElement(i, i + 1, 2 * tbg[i]);
+            B.setElement(i + 1, i, 2 * tad[i]);
+
+            const auto eii = E.getElement(i, i);
+            E.setElement(i, i, 2 * tgg[i] + eii);
+            E.setElement(i + 1, i + 1, 2 * tdd[i]);
+            E.setElement(i, i + 1, 2 * tgd[i]);
+            E.setElement(i + 1, i, 2 * tgd[i]); // same as above
+        }
+        for (std::size_t i = 0; i < N - 1; ++i) {
+            C.setElement(i, i) = 3 * h[i + 1] / h[i];
+            C.setElement(i, i + 2) = -3 * h[i] / h[i + 1];
+            const auto c_02 = -C.getElement(i, i) - C.getElement(i, i + 2);
+            C.setElement(i, i + 1, c_02);
+
+            F.setElement(i, i, h[i + 1]);
+            F.setElement(i, i + 1, 2 * (h[i] + h[i + 1]));
+            F.setElement(i, i + 2, h[i]);
+        }
+
+        auto BT = B.transpose();
+        auto CT = C.transpose();
+        auto FT = F.transpose();
+
+        Matrix<T> sol(N + 1 + N + 1 + N - 1, N + 1 + N + 1 + N);
+        for (std::size_t is = 0; is < sol.nrows(); ++is) {
+            for (std::size_t js = 0; js < sol.ncolumns() - 1; ++js) {
+                std::size_t indr = 0;
+                std::size_t indc = 0;
+                Matrix<T>* M = nullptr;
+
+                if ((0 <= is) && (is < N + 1) && (0 <= js) && (js < N + 1)) {
+                    M = &A;
+                    indr = is;
+                    indc = js;
+                } else if ((N + 1 <= is) && (is < N + 1 + N + 1) && (0 <= js) && (js < N + 1)) {
+                    M = &BT;
+                    indr = is - (N + 1);
+                    indc = js;
+                } else if ((2*(N + 1) <= is) && (is < 2*(N + 1)+N) && (0 <= js) && (js < N + 1)) {
+                    M = &C;
+                    indr = is - 2*(N + 1);
+                    indc = js;
+                }
+
+                sol.setElement(is, js, M->getElement(indr, indc));
+            }
+        }
     }
+
+private:
 };
 
 }
