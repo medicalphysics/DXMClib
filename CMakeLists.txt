@@ -48,26 +48,7 @@ endif()
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support
 
-if (NOT TARGET Eigen3::Eigen)
-    option(USE_SYSTEM_EIGEN "Use the system Eigen" ON)
-    find_package(Eigen3 NO_MODULE)
-    if(USE_SYSTEM_EIGEN AND ${Eigen3_FOUND})        
-        message(STATUS "Found Eigen3 Version: ${Eigen3_VERSION} Path: ${Eigen3_DIR}")
-    else()
-        message("Attemting to download Eigen 3.4.0 from https://gitlab.com/libeigen/eigen")
-        include(FetchContent)
-        FetchContent_Declare(
-          Eigen3
-          GIT_REPOSITORY https://gitlab.com/libeigen/eigen
-          GIT_TAG 3.4.0
-          GIT_SHALLOW TRUE
-          GIT_PROGRESS TRUE
-        )
-        set(EIGEN_BUILD_DOC OFF)
-        set(EIGEN_BUILD_PKGCONFIG OFF)
-        FetchContent_MakeAvailable(Eigen3)
-    endif()
-endif()
+
 
 # Finding xraylib library
 IF(WIN32)
@@ -117,17 +98,26 @@ add_library(libdxmc
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
-target_include_directories(libdxmc PRIVATE "${Eigen3_SOURCE_DIR}/Eigen")
-message("")
-message ("${Eigen3_SOURCE_DIR}")
-message ("${Eigen3_DIR}")
+
+#add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen")
+message("${EIGEN_INCLUDES}")
+target_include_directories(libdxmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/include")
+#include_directories("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
+target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
+
+
+target_include_directories(
+    libdxmc
+    INTERFACE
+    $<INSTALL_INTERFACE:include>
+    $<BUILD_INTERFACE:${PROJECT_SOURCE_DIR}/include>
+)
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 
     Threads::Threads
     ${XRAYLIB}
-    Eigen3::Eigen
     )
 
 ## Install

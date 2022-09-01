@@ -19,7 +19,7 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.hpp"
 
-#include <eigen3/Core>
+#include "Eigen/Dense"
 
 #include <algorithm>
 #include <array>
@@ -509,7 +509,7 @@ public:
         auto BT = B.transpose();
         auto CT = C.transpose();
         auto FT = F.transpose();
-
+        Matrix<T> sol(5, 5);
         for (std::size_t is = 0; is < sol.nrows(); ++is) {
             for (std::size_t js = 0; js < sol.ncolumns() - 1; ++js) {
                 std::size_t indr = 0;
@@ -524,9 +524,9 @@ public:
                     M = &BT;
                     indr = is - (N + 1);
                     indc = js;
-                } else if ((2*(N + 1) <= is) && (is < 2*(N + 1)+N) && (0 <= js) && (js < N + 1)) {
+                } else if ((2 * (N + 1) <= is) && (is < 2 * (N + 1) + N) && (0 <= js) && (js < N + 1)) {
                     M = &C;
-                    indr = is - 2*(N + 1);
+                    indr = is - 2 * (N + 1);
                     indc = js;
                 }
 
