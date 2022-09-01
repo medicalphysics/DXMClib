@@ -48,6 +48,23 @@ endif()
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support
 
+if (NOT TARGET Eigen3::Eigen)
+    option(USE_SYSTEM_EIGEN "Use the system Eigen" ON)
+    find_package(Eigen3 NO_MODULE)
+    if(USE_SYSTEM_EIGEN AND ${Eigen3_FOUND})        
+        message(STATUS "Found Eigen3 Version: ${Eigen3_VERSION} Path: ${Eigen3_DIR}")
+    else()
+        message("Attemting to download Eigen 3.4.0 from https://gitlab.com/libeigen/eigen")
+        include(FetchContent)
+        FetchContent_Declare(
+          eigen
+          GIT_REPOSITORY https://gitlab.com/libeigen/eigen
+          GIT_TAG 3.4.0
+        )
+        FetchContent_MakeAvailable(eigen)
+    endif()
+endif()
+
 # Finding xraylib library
 IF(WIN32)
     set(XRAYLIB_INSTALL_PATH "C:/Program Files/xraylib 64-bit" CACHE PATH "Install path for xraylib (https://github.com/tschoonj/xraylib)")
@@ -96,12 +113,16 @@ add_library(libdxmc
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
+target_link_directories(libdxmc PRIVATE ${EIGEN3_INCLUDE_DIRS})
+message("")
+message ("${EIGEN3_INCLUDE_DIRS}")
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
 target_link_libraries(libdxmc PRIVATE 
     Threads::Threads
     ${XRAYLIB}
+    Eigen3::Eigen
     )
 
 ## Install
