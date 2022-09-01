@@ -57,11 +57,15 @@ if (NOT TARGET Eigen3::Eigen)
         message("Attemting to download Eigen 3.4.0 from https://gitlab.com/libeigen/eigen")
         include(FetchContent)
         FetchContent_Declare(
-          eigen
+          Eigen3
           GIT_REPOSITORY https://gitlab.com/libeigen/eigen
           GIT_TAG 3.4.0
+          GIT_SHALLOW TRUE
+          GIT_PROGRESS TRUE
         )
-        FetchContent_MakeAvailable(eigen)
+        set(EIGEN_BUILD_DOC OFF)
+        set(EIGEN_BUILD_PKGCONFIG OFF)
+        FetchContent_MakeAvailable(Eigen3)
     endif()
 endif()
 
@@ -113,9 +117,10 @@ add_library(libdxmc
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
-target_link_directories(libdxmc PRIVATE ${EIGEN3_INCLUDE_DIRS})
+target_include_directories(libdxmc PRIVATE "${Eigen3_SOURCE_DIR}/Eigen")
 message("")
-message ("${EIGEN3_INCLUDE_DIRS}")
+message ("${Eigen3_SOURCE_DIR}")
+message ("${Eigen3_DIR}")
 
 # Make sure you link your targets with this command. It can also link libraries and
 # even flags, so linking a target that does not exist will not give a configure-time error.
