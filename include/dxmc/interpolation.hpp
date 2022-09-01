@@ -404,6 +404,7 @@ template <Floating T>
 class CubicLSInterpolator {
 public:
     CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
+        : m_t(t)
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
 
@@ -467,75 +468,109 @@ public:
                 D[i] += 2 * y[j] * alpha;
                 D[i + 1] += 2 * y[j] * beta;
                 G[i] += 2 * y[j] * gamma;
-                G[i + 1] += 2 * y * delta;
+                G[i + 1] += 2 * y[j] * delta;
             }
         }
 
-        Matrix<T> A(N + 1, N + 1);
-        Matrix<T> B(N + 1, N + 1);
-        Matrix<T> E(N + 1, N + 1);
-        Matrix<T> C(N - 1, N + 1);
-        Matrix<T> F(N - 1, N + 1);
+        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> A, B, E, C, F, Z;
+        A.setZero(N + 1, N + 1);
+        B.setZero(N + 1, N + 1);
+        E.setZero(N + 1, N + 1);
+        C.setZero(N - 1, N + 1);
+        F.setZero(N - 1, N + 1);
+        Z.setZero(N - 1, N + 1);
         for (std::size_t i = 0; i < N; ++i) {
-            const auto aii = A.getElement(i, i);
-            A.setElement(i, i, 2 * taa[i] + aii);
-            A.setElement(i + 1, i + 1, 2 * tbb[i]);
-            A.setElement(i, i + 1, 2 * tab[i]);
-            A.setElement(i + 1, i, 2 * tab[i]); // same value as above
+            A(i, i) += 2 * taa[i];
+            A(i + 1, i + 1) = 2 * tbb[i];
+            A(i, i + 1) = 2 * tab[i];
+            A(i + 1, i) = 2 * tab[i]; // same value as above
 
-            const auto bii = B.getElement(i, i);
-            B.setElement(i, i, 2 * tag[i] + bii);
-            B.setElement(i + 1, i + 1, 2 * tbd[i]);
-            B.setElement(i, i + 1, 2 * tbg[i]);
-            B.setElement(i + 1, i, 2 * tad[i]);
+            B(i, i) += 2 * tag[i];
+            B(i + 1, i + 1) = 2 * tbd[i];
+            B(i, i + 1) = 2 * tbg[i];
+            B(i + 1, i) = 2 * tad[i];
 
-            const auto eii = E.getElement(i, i);
-            E.setElement(i, i, 2 * tgg[i] + eii);
-            E.setElement(i + 1, i + 1, 2 * tdd[i]);
-            E.setElement(i, i + 1, 2 * tgd[i]);
-            E.setElement(i + 1, i, 2 * tgd[i]); // same as above
+            E(i, i) += 2 * tgg[i];
+            E(i + 1, i + 1) = 2 * tdd[i];
+            E(i, i + 1) = 2 * tgd[i];
+            E(i + 1, i) = 2 * tgd[i]; // same as above
         }
         for (std::size_t i = 0; i < N - 1; ++i) {
-            C.setElement(i, i) = 3 * h[i + 1] / h[i];
-            C.setElement(i, i + 2) = -3 * h[i] / h[i + 1];
-            const auto c_02 = -C.getElement(i, i) - C.getElement(i, i + 2);
-            C.setElement(i, i + 1, c_02);
+            C(i, i) = 3 * h[i + 1] / h[i];
+            C(i, i + 2) = -3 * h[i] / h[i + 1];
+            C(i, i + 1) = -C(i, i) - C(i, i + 2);
 
-            F.setElement(i, i, h[i + 1]);
-            F.setElement(i, i + 1, 2 * (h[i] + h[i + 1]));
-            F.setElement(i, i + 2, h[i]);
+            F(i, i) = h[i + 1];
+            F(i, i + 1) = 2 * (h[i] + h[i + 1]);
+            F(i, i + 2) = h[i];
         }
 
         auto BT = B.transpose();
         auto CT = C.transpose();
         auto FT = F.transpose();
-        Matrix<T> sol(5, 5);
-        for (std::size_t is = 0; is < sol.nrows(); ++is) {
-            for (std::size_t js = 0; js < sol.ncolumns() - 1; ++js) {
-                std::size_t indr = 0;
-                std::size_t indc = 0;
-                Matrix<T>* M = nullptr;
+        
+        using Matrix = typename Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+        Matrix sol(A.rows() + BT.rows() + C.rows(), A.cols() + BT.cols() + CT.cols());
+        sol.setZero();
 
-                if ((0 <= is) && (is < N + 1) && (0 <= js) && (js < N + 1)) {
-                    M = &A;
-                    indr = is;
-                    indc = js;
-                } else if ((N + 1 <= is) && (is < N + 1 + N + 1) && (0 <= js) && (js < N + 1)) {
-                    M = &BT;
-                    indr = is - (N + 1);
-                    indc = js;
-                } else if ((2 * (N + 1) <= is) && (is < 2 * (N + 1) + N) && (0 <= js) && (js < N + 1)) {
-                    M = &C;
-                    indr = is - 2 * (N + 1);
-                    indc = js;
+        for (std::size_t r = 0; r < sol.rows(); ++r) {
+            for (std::size_t c = 0; c < sol.cols(); ++c) {
+                if ((r < N + 1) && (c < N + 1)) {
+                    sol(r, c) = A(r, c);
+                } else if ((r < N + 1) && (c >= N + 1) && (c < 2 * (N + 1))) {
+                    sol(r, c) = BT(r, c - (N + 1));
+                } else if ((r < N + 1) && (c >= 2 * (N + 1))) {
+                    sol(r, c) = CT(r, c - (2 * (N + 1)));
+                } else if ((r >= N + 1) && (r < 2 * (N + 1)) && (c < N + 1)) {
+                    sol(r, c) = BT(r - (N + 1), c);
+                } else if ((r >= N + 1) && (r < 2 * (N + 1)) && (c >= N + 1) && (c < 2 * (N + 1))) {
+                    sol(r, c) = E(r - (N + 1), c - (N + 1));
+                } else if ((r >= N + 1) && (r < 2 * (N + 1)) && (c >= 2 * (N + 1))) {
+                    sol(r, c) = FT(r - (N + 1), c - 2 * (N + 1));
+                } else if ((r >= 2 * (N + 1)) && (c < N + 1)) {
+                    sol(r, c) = C(r - 2 * (N + 1), c);
+                } else if ((r >= 2 * (N + 1)) && (c >= N + 1) && (c < 2 * (N + 1))) {
+                    sol(r, c) = F(r - 2 * (N + 1), c - (N + 1));
+                } else if ((r >= 2 * (N + 1)) && (c >= 2 * (N + 1))) {
+                    sol(r, c) = 0;
                 }
-
-                sol.setElement(is, js, M->getElement(indr, indc));
             }
         }
+
+        Eigen::VectorX<T> bval(sol.rows());
+        bval.setZero();
+        for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
+            bval(i) = i < N + 1 ? D[i] : G[i - (N + 1)];
+        }
+        Eigen::VectorX<T> res = sol.colPivHouseholderQr().solve(bval);
+        m_z.resize(N + 1);
+        m_zp.resize(N + 1);
+        for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
+            if (i < N + 1)
+                m_z[i] = res(i);
+            else
+                m_zp[i - (N + 1)] = res(i);
+        }
+        bool test;
+    }
+    T operator()(T x) const
+    {
+        const auto it = std::lower_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
+        const std::size_t ind = std::distance(m_t.cbegin(), it - 1);
+        const auto h = m_t[ind + 1] - m_t[ind];
+        const auto u = (x - m_t[ind]) / h;
+        const auto v = u - 1;
+
+        const auto f1 = (2 * u + 1) * v * v * m_z[ind];
+        const auto f2 = u * u * (1 - 2 * v) * m_z[ind + 1];
+        const auto f3 = h * u * v * v * m_zp[ind];
+        const auto f4 = h * u * u * v * m_zp[ind + 1];
+        return f1 + f2 + f3 + f4;
     }
 
 private:
+    std::vector<T> m_z;
+    std::vector<T> m_zp;
+    std::vector<T> m_t;
 };
-
 }

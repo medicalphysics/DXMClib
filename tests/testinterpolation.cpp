@@ -51,28 +51,25 @@ void printMatrix(const dxmc::Matrix<T>& mat)
     }
     std::cout << std::endl;
 }
-template <dxmc::Floating T>
-bool testMatrix()
+template <typename T>
+bool testLSSplines()
 {
-    // std::vector<T> test { 1, 2, 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16 };
-    // dxmc::Matrix m(4, 4, test);
-
-    //std::vector<T> test { 1, 2, -1, -4, 2, 3, -1, -11, -2, 0, -3, 22 };
-    std::vector<T> test { 5, -6, -7, 7, 3, -2, 5, -17, 2, 4, -3, 29 };
-    dxmc::Matrix m(3, 4, test);
-    printMatrix(m);
-    printMatrix(m.transpose());
-    // m.swapRows(0, 1);
-    // printMatrix(m);
-
-    printMatrix(m.reducedRowEchelonForm());
-
+    std::vector<T> x, y, t;
+    for (int i = 0; i < 50; ++i) {
+        x.push_back(i / T { 20 }-0.5);
+        y.push_back(std::exp(-x[i] * x[i]));
+    }
+    t = { x[0], .1, .5, .9, x.back() };
+    dxmc::CubicLSInterpolator<T> s(x, y, t);
+    for (int i = 0; i < x.size(); ++i) {
+        std::cout << x[i] << ", " << y[i] << ", " << s(x[i]) << std::endl;
+    }
     return true;
 }
 
 int main()
 {
-    testMatrix<double>();
+    testLSSplines<double>();
     // bool splinetest = testSpline<float>();
     // assert(splinetest);
     return 1;
