@@ -19,6 +19,8 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.hpp"
 
+#include <eigen3/Core>
+
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -479,7 +481,7 @@ public:
             A.setElement(i, i, 2 * taa[i] + aii);
             A.setElement(i + 1, i + 1, 2 * tbb[i]);
             A.setElement(i, i + 1, 2 * tab[i]);
-            A.setElement(i + 1, i, 2 * taa[i]); // same value as above
+            A.setElement(i + 1, i, 2 * tab[i]); // same value as above
 
             const auto bii = B.getElement(i, i);
             B.setElement(i, i, 2 * tag[i] + bii);
@@ -508,7 +510,6 @@ public:
         auto CT = C.transpose();
         auto FT = F.transpose();
 
-        Matrix<T> sol(N + 1 + N + 1 + N - 1, N + 1 + N + 1 + N);
         for (std::size_t is = 0; is < sol.nrows(); ++is) {
             for (std::size_t js = 0; js < sol.ncolumns() - 1; ++js) {
                 std::size_t indr = 0;
