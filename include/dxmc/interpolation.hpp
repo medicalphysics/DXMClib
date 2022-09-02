@@ -19,7 +19,13 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.hpp"
 
+//#define USE_EIGEN
+
+#ifdef USE_EIGEN
 #include "Eigen/Dense"
+#endif // USE_EIGEN
+
+#include <iostream>
 
 #include <algorithm>
 #include <array>
@@ -264,140 +270,165 @@ requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussInt
 template <Floating T>
 class Matrix {
 public:
-    /*
-    Construct R x C matrix; example
-    3 x 2 =
-    |c11 c21|
-    |c12 c22|
-    |c13 c23|
-    */
-    Matrix(std::size_t R, std::size_t C, const std::vector<T>& el)
-        : m_R(R)
-        , m_C(C)
-    {
-        if (m_R * m_C == el.size()) {
-            m_elements = el;
-        } else {
-            m_elements.resize(m_R * m_C);
-            std::fill(m_elements.begin(), m_elements.end(), T { 0 });
-        }
-    }
+    Matrix() {};
     Matrix(std::size_t R, std::size_t C)
-        : m_R(R)
-        , m_C(C)
+        : m_r(R)
+        , m_c(C)
     {
-        m_elements.resize(m_R * m_C, T { 0 });
+        m_data.resize(m_r * m_c, T { 0 });
+    }
+    Matrix(std::size_t R, std::size_t C, const std::vector<T>& d)
+        : m_r(R)
+        , m_c(C)
+    {
+        m_data.resize(m_r * m_c);
+        std::copy(d.cbegin(), d.cend(), m_data.begin());
     }
 
-    void setElement(std::size_t i, std::size_t j, T val)
+    T& operator()(std::size_t r, std::size_t c)
     {
-        const auto ind = index(i, j);
-        m_elements[ind] = val;
+        return m_data[index(r, c)];
     }
-    T getElement(std::size_t i, std::size_t j) const
+    const T& operator()(std::size_t r, std::size_t c) const
     {
-        const auto ind = index(i, j);
-        return m_elements[ind];
+
+        return m_data[index(r, c)];
     }
+    std::vector<T> operator*(const std::vector<T>& x)
+    {
+        std::vector<T> y(x.size(), 0);
+        for (std::size_t r = 0; r < m_r; ++r) {
+            for (std::size_t c = 0; c < m_c; ++c) {
+                y[r] += m_data[index(r, c)] * x[c];
+            }
+        }
+        return y;
+    }
+    std::vector<T> solve(const std::vector<T>& bvalues) const
+    {
+        // gaussian ellim
+
+        auto b = bvalues;
+        Matrix<T> A(m_r, m_c, m_data);
+
+        for (std::size_t k = 0; k < m_r; ++k) {
+            auto imax = A.find_row_argmax(k);
+            if (std::abs(A(imax, k)) <= std::numeric_limits<T>::epsilon()) {
+                // we have a singular matrix return nans
+                std::fill(b.begin(), b.end(), std::numeric_limits<T>::quiet_NaN());
+                return b;
+            }
+            A.swapRows(k, imax);
+            std::swap(b[k], b[imax]);
+            for (std::size_t i = k + 1; i < m_r; ++i) {
+                const auto c = A(i, k) / A(k, k);
+                A(i, k) = T { 0 };
+                for (std::size_t j = k + 1; j < m_r; ++j) {
+                    A(i, j) -= c * A(k, j);
+                }
+                b[i] -= c * b[k];
+            }
+        }
+
+        // backsubstitution before return
+        std::vector<T> x(b.size());
+        for (std::size_t r = m_r - 1; r < m_r; --r) { // note we rely on unsigned wraparound
+            T s = 0;
+            for (std::size_t c = r + 1; c < m_r; ++c) {
+                s += A(r, c) * b[c];
+            }
+            b[r] = (b[r] - s) / A(r, r);
+        }
+        return b;
+    }
+
+    void fill(const T value)
+    {
+        std::fill(m_data.begin(), m_data.end(), value);
+    }
+    void setZero()
+    {
+        fill(T { 0 });
+    }
+    void setZero(std::size_t r, std::size_t c)
+    {
+        m_r = r;
+        m_c = c;
+        m_data.resize(m_r * m_c);
+        fill(T { 0 });
+    }
+
+    void print() const
+    {
+        for (std::size_t i = 0; i < m_r; ++i) {
+            for (std::size_t j = 0; j < m_c; ++j) {
+
+                std::cout << m_data[index(i, j)] << "  ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+    void print(const std::vector<T>& b) const
+    {
+        for (std::size_t i = 0; i < m_r; ++i) {
+            for (std::size_t j = 0; j < m_c; ++j) {
+
+                std::cout << m_data[index(i, j)] << "  ";
+            }
+            std::cout << b[i];
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
+    }
+
+    std::size_t rows() const { return m_r; }
+    std::size_t cols() const { return m_c; }
+
     Matrix<T> transpose() const
     {
-        Matrix<T> other(m_C, m_R);
-        for (std::size_t j = 0; j < m_C; ++j)
-            for (std::size_t i = 0; i < m_R; ++i) {
-                other.setElement(j, i, getElement(i, j));
+        Matrix<T> t(m_c, m_r);
+        for (std::size_t i = 0; i < m_r; ++i) {
+            for (std::size_t j = 0; j < m_c; ++j) {
+                t(j, i) = m_data[index(i, j)];
             }
-        return other;
+        }
+        return t;
     }
-
-    Matrix<T> reducedRowEchelonForm() const
-    {
-        Matrix<T> other(m_R, m_C, m_elements);
-        std::size_t lead = 0;
-
-        for (std::size_t row = 0; row < m_R; ++row) {
-            if (lead >= m_C)
-                return other;
-            std::size_t i = row;
-            while (std::abs(other.getElement(i, lead)) < std::numeric_limits<T>::epsilon()) { // essentially other[i, lead]==0
-                ++i;
-                if (i >= m_R) {
-                    i = row;
-                    ++lead;
-                    if (lead >= m_C)
-                        return other;
-                }
-            }
-            other.swapRows(i, row);
-            other.divideRow(row, other.getElement(row, lead));
-            for (std::size_t ii = 0; ii < m_R; ++ii) {
-                if (ii != row) {
-                    other.addMultipleRow(ii, row, -other.getElement(ii, lead));
-                }
-            }
-        }
-        return other;
-    }
-
-    std::vector<T> solve(const std::vector<T>& b)
-    {
-        // for solving Mx=b
-        Matrix<T> ext(m_R, m_C + 1);
-        for (std::size_t i = 0; i < m_R; ++i) {
-            for (std::size_t j = 0; j < m_C; ++j) {
-                ext.setElement(i, j, getElement(i, j));
-            }
-        }
-        for (std::size_t i = 0; i < m_R; ++i) {
-            ext.setElement(i, m_C, b[i]);
-        }
-        auto ansM = ext.reducedRowEchelonForm();
-        std::vector<T> ans(b.size());
-        for (std::size_t i = 0; i < m_R; ++i) {
-            ans[i] = ext.getElement(i, m_C);
-        }
-        return ans;
-    }
-
-    std::size_t nrows() const { return m_R; }
-    std::size_t ncolumns() const { return m_C; }
 
 protected:
-    std::size_t index(std::size_t i, std::size_t j) const
-    {
-        return i * m_C + j;
-    }
-
     void swapRows(std::size_t from, std::size_t to)
     {
-        if (from != to) {
-            for (std::size_t j = 0; j < m_C; ++j) {
-                const auto r = getElement(from, j);
-                setElement(from, j, getElement(to, j));
-                setElement(to, j, r);
+        if (from == to)
+            return;
+        for (std::size_t i = 0; i < m_c; ++i) {
+            std::swap(m_data[index(from, i)], m_data[index(to, i)]);
+        }
+    }
+
+    std::size_t index(std::size_t r, std::size_t c) const
+    {
+        return r * m_c + c;
+    }
+
+    std::size_t find_row_argmax(std::size_t r) const
+    {
+        auto imax = r;
+        T max_pivot = std::abs(m_data[index(r, r)]);
+        for (std::size_t i = r + 1; i < m_r; ++i) {
+            const T a = std::abs(m_data[index(i, r)]);
+            if (a > max_pivot) {
+                max_pivot = a;
+                imax = i;
             }
         }
-    }
-
-    void divideRow(const std::size_t r, const T value)
-    {
-        const T factor = T { 1 } / value;
-        for (std::size_t c = 0; c < m_C; ++c) {
-            setElement(r, c, getElement(r, c) * factor);
-        }
-    }
-
-    void addMultipleRow(const std::size_t to, const std::size_t from, const T value)
-    {
-        for (std::size_t c = 0; c < m_C; ++c) {
-            const auto v = getElement(to, c) + getElement(from, c) * value;
-            setElement(to, c, v);
-        }
+        return imax;
     }
 
 private:
-    std::vector<T> m_elements;
-    std::size_t m_R = 0;
-    std::size_t m_C = 0;
+    std::vector<T> m_data;
+    std::size_t m_r = 0;
+    std::size_t m_c = 0;
 };
 
 template <Floating T>
@@ -471,19 +502,25 @@ public:
                 G[i + 1] += 2 * y[j] * delta;
             }
         }
+#ifdef USE_EIGEN
+        using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+#else
+        using Matrix = Matrix<T>;
+#endif // USE_EIGEN
 
-        Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic> A, B, E, C, F, Z;
+        Matrix A, B, E, C, F, Z;
         A.setZero(N + 1, N + 1);
         B.setZero(N + 1, N + 1);
         E.setZero(N + 1, N + 1);
         C.setZero(N - 1, N + 1);
         F.setZero(N - 1, N + 1);
         Z.setZero(N - 1, N + 1);
+
         for (std::size_t i = 0; i < N; ++i) {
             A(i, i) += 2 * taa[i];
             A(i + 1, i + 1) = 2 * tbb[i];
             A(i, i + 1) = 2 * tab[i];
-            A(i + 1, i) = 2 * tab[i]; // same value as above
+            A(i + 1, i) = A(i, i + 1);
 
             B(i, i) += 2 * tag[i];
             B(i + 1, i + 1) = 2 * tbd[i];
@@ -493,7 +530,7 @@ public:
             E(i, i) += 2 * tgg[i];
             E(i + 1, i + 1) = 2 * tdd[i];
             E(i, i + 1) = 2 * tgd[i];
-            E(i + 1, i) = 2 * tgd[i]; // same as above
+            E(i + 1, i) = E(i, i + 1);
         }
         for (std::size_t i = 0; i < N - 1; ++i) {
             C(i, i) = 3 * h[i + 1] / h[i];
@@ -508,10 +545,12 @@ public:
         auto BT = B.transpose();
         auto CT = C.transpose();
         auto FT = F.transpose();
-        
-        using Matrix = typename Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
+
         Matrix sol(A.rows() + BT.rows() + C.rows(), A.cols() + BT.cols() + CT.cols());
         sol.setZero();
+
+        auto nrows = sol.rows();
+        auto ncols = sol.cols();
 
         for (std::size_t r = 0; r < sol.rows(); ++r) {
             for (std::size_t c = 0; c < sol.cols(); ++c) {
@@ -522,7 +561,7 @@ public:
                 } else if ((r < N + 1) && (c >= 2 * (N + 1))) {
                     sol(r, c) = CT(r, c - (2 * (N + 1)));
                 } else if ((r >= N + 1) && (r < 2 * (N + 1)) && (c < N + 1)) {
-                    sol(r, c) = BT(r - (N + 1), c);
+                    sol(r, c) = B(r - (N + 1), c);
                 } else if ((r >= N + 1) && (r < 2 * (N + 1)) && (c >= N + 1) && (c < 2 * (N + 1))) {
                     sol(r, c) = E(r - (N + 1), c - (N + 1));
                 } else if ((r >= N + 1) && (r < 2 * (N + 1)) && (c >= 2 * (N + 1))) {
@@ -536,14 +575,29 @@ public:
                 }
             }
         }
-
+#ifdef USE_EIGEN
         Eigen::VectorX<T> bval(sol.rows());
         bval.setZero();
-        for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
-            bval(i) = i < N + 1 ? D[i] : G[i - (N + 1)];
-        }
-        Eigen::VectorX<T> res = sol.colPivHouseholderQr().solve(bval);
-        m_z.resize(N + 1);
+#else
+        std::vector<T> bval(sol.rows(), T {0});
+#endif // USE_EIGEN
+        std::copy(D.begin(), D.end(), bval.begin());
+        std::copy(G.begin(), G.end(), bval.begin()+N+1);
+        //for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
+         //   bval(i) = i < N + 1 ? D[i] : G[i - (N + 1)];
+        //}
+
+#ifdef USE_EIGEN
+        // Eigen::VectorX<T> res = sol.colPivHouseholderQr().solve(bval);
+        Eigen::VectorX<T> res = sol.lu().solve(bval);
+        //printEigenMatrix(res);
+#else
+        auto res = sol.solve(bval);
+#endif // USE_EIGEN
+
+        m_z = std::vector<T>(res.begin(), res.begin() + N + 1);
+        m_zp = std::vector<T>(res.begin() + N + 1, res.begin() + 2 * (N + 1));
+        /* m_z.resize(N + 1);
         m_zp.resize(N + 1);
         for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
             if (i < N + 1)
@@ -551,12 +605,22 @@ public:
             else
                 m_zp[i - (N + 1)] = res(i);
         }
+        */
         bool test;
+
     }
     T operator()(T x) const
     {
-        const auto it = std::lower_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
-        const std::size_t ind = std::distance(m_t.cbegin(), it - 1);
+        const auto x_c = std::clamp(x, m_t[0], m_t.back());
+        std::size_t ind = m_t.size() - 2;
+        for (std::size_t i = 0; i < m_t.size() - 1; ++i) {
+            if ((m_t[i] <= x_c) && (x_c < m_t[i + 1])) {
+                ind = i;
+            }
+        }
+
+        // const auto it = std::lower_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
+        // const std::size_t ind = std::distance(m_t.cbegin(), it - 1);
         const auto h = m_t[ind + 1] - m_t[ind];
         const auto u = (x - m_t[ind]) / h;
         const auto v = u - 1;
@@ -566,6 +630,17 @@ public:
         const auto f3 = h * u * v * v * m_zp[ind];
         const auto f4 = h * u * u * v * m_zp[ind + 1];
         return f1 + f2 + f3 + f4;
+    }
+    template <typename U>
+    void printEigenMatrix(const U& mat)
+    {
+        for (std::size_t i = 0; i < mat.rows(); ++i) {
+            for (std::size_t j = 0; j < mat.cols(); ++j) {
+                std::cout << mat(i, j) << "  ";
+            }
+            std::cout << std::endl;
+        }
+        std::cout << std::endl;
     }
 
 private:
