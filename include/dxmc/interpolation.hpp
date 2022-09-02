@@ -410,8 +410,80 @@ private:
 template <Floating T>
 class CubicLSInterpolator {
 public:
-    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
-        : m_t(t)
+    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_dicont = true)
+    {
+        if (maybe_dicont) {
+            // all this to handle dicontinous functions designated by a equal x value
+            std::size_t x_start = 0;
+            for (std::size_t i = 0; i < x.size() - 1; ++i) {
+                constexpr auto epsilon = std::numeric_limits<T>::epsilon();
+                if (x[i + 1] - x[i] < epsilon) {
+                    // ups, we have a discontinous function
+                    auto x_beg = x_start;
+                    x_start = i + 1;
+
+                    std::vector<T> x_red, y_red, t_red;
+                    for (std::size_t j = x_beg; j < x_start; ++j) {
+                        x_red.push_back(x[j]);
+                        y_red.push_back(y[j]);
+                    }
+                    t_red.push_back(x[x_beg]);
+                    for (std::size_t j = 0; j < t.size(); ++j) {
+                        if ((t[j] < x[i]) && (t[j] > x[x_beg])) {
+                            t_red.push_back(t[j]);
+                        }
+                    }
+                    t_red.push_back(x[i]);
+                    addLSSplinePart(x_red, y_red, t_red);
+                }
+            }
+            // did we se any discontinoutis?
+            if (x_start == 0) {
+                addLSSplinePart(x, y, t);
+            } else {
+                std::vector<T> x_red, y_red, t_red;
+                for (std::size_t j = x_start; j < x.size(); ++j) {
+                    x_red.push_back(x[j]);
+                    y_red.push_back(y[j]);
+                }
+                t_red.push_back(x[x_start]);
+                for (std::size_t j = 0; j < t.size(); ++j) {
+                    if (t[j] > x[x_start]) {
+                        t_red.push_back(t[j]);
+                    }
+                }
+
+                addLSSplinePart(x_red, y_red, t_red);
+            }
+        } else {
+            addLSSplinePart(x, y, t);
+        }
+
+        m_t.shrink_to_fit();
+        m_z.shrink_to_fit();
+        m_zp.shrink_to_fit();
+    }
+
+    T operator()(T x) const
+    {
+        auto it = std::upper_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
+        const auto h = *it - *(--it);
+        const auto u = (x - *it) / h;
+        const auto v = u - 1;
+        const auto uu = u * u;
+        const auto vv = v * v;
+
+        const auto ind = std::distance(m_t.cbegin(), it);
+
+        const auto f1 = (2 * u + 1) * vv * m_z[ind];
+        const auto f2 = uu * (1 - 2 * v) * m_z[ind + 1];
+        const auto f3 = h * u * vv * m_zp[ind];
+        const auto f4 = h * uu * v * m_zp[ind + 1];
+        return f1 + f2 + f3 + f4;
+    }
+
+protected:
+    void addLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
 
@@ -566,32 +638,11 @@ public:
 #else
         auto res = sol.solve(bval);
 #endif // USE_EIGEN
-
-        m_z = std::vector<T>(res.begin(), res.begin() + N + 1);
-        m_zp = std::vector<T>(res.begin() + N + 1, res.begin() + 2 * (N + 1));
-    }
-
-    T operator()(T x) const
-    {
-        const auto x_c = std::clamp(x, m_t[0], m_t.back());
-        std::size_t ind = m_t.size() - 2;
-        for (std::size_t i = 0; i < m_t.size() - 1; ++i) {
-            if ((m_t[i] <= x_c) && (x_c < m_t[i + 1])) {
-                ind = i;
-            }
-        }
-
-        // const auto it = std::lower_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
-        // const std::size_t ind = std::distance(m_t.cbegin(), it - 1);
-        const auto h = m_t[ind + 1] - m_t[ind];
-        const auto u = (x - m_t[ind]) / h;
-        const auto v = u - 1;
-
-        const auto f1 = (2 * u + 1) * v * v * m_z[ind];
-        const auto f2 = u * u * (1 - 2 * v) * m_z[ind + 1];
-        const auto f3 = h * u * v * v * m_zp[ind];
-        const auto f4 = h * u * u * v * m_zp[ind + 1];
-        return f1 + f2 + f3 + f4;
+        std::copy(res.begin(), res.begin() + N + 1, std::back_inserter(m_z));
+        std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), std::back_inserter(m_zp));
+        std::copy(t.begin(), t.end(), std::back_inserter(m_t));
+        // m_z = std::vector<T>(res.begin(), res.begin() + N + 1);
+        // m_zp = std::vector<T>(res.begin() + N + 1, res.begin() + 2 * (N + 1));
     }
 
 private:

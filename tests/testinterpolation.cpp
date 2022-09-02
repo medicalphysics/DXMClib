@@ -58,10 +58,15 @@ bool testLSSplines()
     for (int i = 0; i < 50; ++i) {
         x.push_back(i / T { 50 });
         y.push_back(1 - std::exp(-x[i]));
+        if (i == 20) {
+            x.push_back(i / T { 50 });
+            y.push_back(1 - std::exp(-x[i]));
+            y.back() += .3;
+        }
         if (i > 20)
-            y[i] += 0.3;
+            y.back() += 0.3;
     }
-    t = { x[0], .1, .5, .9, x.back(), x[20], x[21] };
+    t = { x[0], .1, .5, .9, x.back(),   };
     std::sort(t.begin(), t.end());
     dxmc::CubicLSInterpolator<T> s(x, y, t);
     for (int i = 0; i < x.size(); ++i) {
