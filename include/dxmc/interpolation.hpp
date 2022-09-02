@@ -358,30 +358,6 @@ public:
         fill(T { 0 });
     }
 
-    void print() const
-    {
-        for (std::size_t i = 0; i < m_r; ++i) {
-            for (std::size_t j = 0; j < m_c; ++j) {
-
-                std::cout << m_data[index(i, j)] << "  ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
-    }
-    void print(const std::vector<T>& b) const
-    {
-        for (std::size_t i = 0; i < m_r; ++i) {
-            for (std::size_t j = 0; j < m_c; ++j) {
-
-                std::cout << m_data[index(i, j)] << "  ";
-            }
-            std::cout << b[i];
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
-    }
-
     std::size_t rows() const { return m_r; }
     std::size_t cols() const { return m_c; }
 
@@ -579,36 +555,22 @@ public:
         Eigen::VectorX<T> bval(sol.rows());
         bval.setZero();
 #else
-        std::vector<T> bval(sol.rows(), T {0});
+        std::vector<T> bval(sol.rows(), T { 0 });
 #endif // USE_EIGEN
         std::copy(D.begin(), D.end(), bval.begin());
-        std::copy(G.begin(), G.end(), bval.begin()+N+1);
-        //for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
-         //   bval(i) = i < N + 1 ? D[i] : G[i - (N + 1)];
-        //}
+        std::copy(G.begin(), G.end(), bval.begin() + N + 1);
 
 #ifdef USE_EIGEN
         // Eigen::VectorX<T> res = sol.colPivHouseholderQr().solve(bval);
         Eigen::VectorX<T> res = sol.lu().solve(bval);
-        //printEigenMatrix(res);
 #else
         auto res = sol.solve(bval);
 #endif // USE_EIGEN
 
         m_z = std::vector<T>(res.begin(), res.begin() + N + 1);
         m_zp = std::vector<T>(res.begin() + N + 1, res.begin() + 2 * (N + 1));
-        /* m_z.resize(N + 1);
-        m_zp.resize(N + 1);
-        for (std::size_t i = 0; i < 2 * (N + 1); ++i) {
-            if (i < N + 1)
-                m_z[i] = res(i);
-            else
-                m_zp[i - (N + 1)] = res(i);
-        }
-        */
-        bool test;
-
     }
+
     T operator()(T x) const
     {
         const auto x_c = std::clamp(x, m_t[0], m_t.back());
@@ -630,17 +592,6 @@ public:
         const auto f3 = h * u * v * v * m_zp[ind];
         const auto f4 = h * u * u * v * m_zp[ind + 1];
         return f1 + f2 + f3 + f4;
-    }
-    template <typename U>
-    void printEigenMatrix(const U& mat)
-    {
-        for (std::size_t i = 0; i < mat.rows(); ++i) {
-            for (std::size_t j = 0; j < mat.cols(); ++j) {
-                std::cout << mat(i, j) << "  ";
-            }
-            std::cout << std::endl;
-        }
-        std::cout << std::endl;
     }
 
 private:
