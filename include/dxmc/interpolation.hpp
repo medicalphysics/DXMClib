@@ -410,23 +410,86 @@ private:
 template <Floating T>
 class CubicLSInterpolator {
 public:
-    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_dicont = true)
+    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
     {
-        if (maybe_dicont) {
+        const auto [xmin, xmax] = std::minmax_element(x.cbegin(), x.cend());
+        std::vector<T> t = { *xmin, *xmax };
+
+        //We need to not test both values at discontinities, only highest index value
+        
+        auto errmax_ind = x.size() / 2;
+        std::vector<T> x_test, y_test;
+        for (std::size_t i = 1; i < x.size()-1; ++i) {
+            if (x[i + 1] != x[i] && i!=errmax_ind) {
+                x_test.push_back(x[i]);
+                y_test.push_back(y[i]);
+            }
+        }
+        
+        std::vector<T> s(x_test.size());
+        
+        T errmax = 0;
+        do {
+            clear();
+            t.push_back(x[errmax_ind]);
+            std::sort(t.begin(), t.end());
+            setupSplines(x, y, t, maybe_discont);
+            std::transform(
+                std::execution::par, x_test.cbegin(), x_test.cend(), y_test.cbegin(), s.begin(), [&y, this](const auto& xi, const auto& yi) -> T {
+                    constexpr auto epsilon = std::numeric_limits<T>::epsilon();
+                    const auto y_pred = this->operator()(xi);
+                    return std::abs(yi) <= epsilon ? T { 0 } : std::abs(y_pred / yi - T { 1 });
+                });
+            const auto max_error_it = std::max_element(std::execution::par_unseq, s.cbegin(), s.cend());
+            errmax_ind = std::distance(s.cbegin(), max_error_it);
+            errmax = *max_error_it;
+            s.erase(s.begin() + errmax_ind); //delete max error test
+            x_test.erase(x_test.begin() + errmax_ind);
+            y_test.erase(y_test.begin() + errmax_ind);
+        } while (errmax > max_rel_deviation);
+    }
+    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_discont = true)
+    {
+        setupSplines(x, y, t, maybe_discont);
+    }
+
+    T operator()(T x) const
+    {
+        auto it = std::upper_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
+        const auto h = *it - *(--it);
+        const auto u = (x - *it) / h;
+        const auto v = u - 1;
+        const auto uu = u * u;
+        const auto vv = v * v;
+
+        const auto ind = std::distance(m_t.cbegin(), it);
+
+        const auto f1 = (2 * u + 1) * vv * m_z[ind];
+        const auto f2 = uu * (1 - 2 * v) * m_z[ind + 1];
+        const auto f3 = h * u * vv * m_zp[ind];
+        const auto f4 = h * uu * v * m_zp[ind + 1];
+        return f1 + f2 + f3 + f4;
+    }
+
+protected:
+    void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_discont)
+    {
+        if (maybe_discont) {
             // all this to handle dicontinous functions designated by a equal x value
             std::size_t x_start = 0;
             for (std::size_t i = 0; i < x.size() - 1; ++i) {
                 constexpr auto epsilon = std::numeric_limits<T>::epsilon();
-                if (x[i + 1] - x[i] < epsilon) {
+                if (x[i + 1] - x[i] <= epsilon) {
                     // ups, we have a discontinous function
                     auto x_beg = x_start;
                     x_start = i + 1;
 
                     std::vector<T> x_red, y_red, t_red;
-                    for (std::size_t j = x_beg; j < x_start; ++j) {
+                    for (std::size_t j = x_beg; j <= i; ++j) {
                         x_red.push_back(x[j]);
                         y_red.push_back(y[j]);
                     }
+                    
                     t_red.push_back(x[x_beg]);
                     for (std::size_t j = 0; j < t.size(); ++j) {
                         if ((t[j] < x[i]) && (t[j] > x[x_beg])) {
@@ -437,7 +500,7 @@ public:
                     addLSSplinePart(x_red, y_red, t_red);
                 }
             }
-            // did we se any discontinoutis?
+            // did we se any discontinuities?
             if (x_start == 0) {
                 addLSSplinePart(x, y, t);
             } else {
@@ -463,26 +526,6 @@ public:
         m_z.shrink_to_fit();
         m_zp.shrink_to_fit();
     }
-
-    T operator()(T x) const
-    {
-        auto it = std::upper_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
-        const auto h = *it - *(--it);
-        const auto u = (x - *it) / h;
-        const auto v = u - 1;
-        const auto uu = u * u;
-        const auto vv = v * v;
-
-        const auto ind = std::distance(m_t.cbegin(), it);
-
-        const auto f1 = (2 * u + 1) * vv * m_z[ind];
-        const auto f2 = uu * (1 - 2 * v) * m_z[ind + 1];
-        const auto f3 = h * u * vv * m_zp[ind];
-        const auto f4 = h * uu * v * m_zp[ind + 1];
-        return f1 + f2 + f3 + f4;
-    }
-
-protected:
     void addLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
@@ -644,8 +687,13 @@ protected:
         // m_z = std::vector<T>(res.begin(), res.begin() + N + 1);
         // m_zp = std::vector<T>(res.begin() + N + 1, res.begin() + 2 * (N + 1));
     }
-
-private:
+    void clear()
+    {
+        m_z.clear();
+        m_zp.clear();
+        m_t.clear();
+    }
+ private:
     std::vector<T> m_z;
     std::vector<T> m_zp;
     std::vector<T> m_t;
