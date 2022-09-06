@@ -593,7 +593,7 @@ protected:
                 if (std::abs(y) > std::numeric_limits<T>::epsilon())
                     return std::abs(evaluateSpline(x, result.m_t, result.m_p, result.m_pz) / y - T { 1 });
                 else
-                    return T { 0 };
+                    return std::abs(evaluateSpline(x, result.m_t, result.m_p, result.m_pz);
             });
             auto max_err_it = std::max_element(error.cbegin(), error.cend());
             max_error_ind = std::distance(error.cbegin(), max_err_it);
