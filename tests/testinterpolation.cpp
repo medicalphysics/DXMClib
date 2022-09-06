@@ -69,7 +69,7 @@ bool testLSSplines()
     }
     t = { x[0], .1, .5, .9, x.back(),   };
     std::sort(t.begin(), t.end());
-    dxmc::CubicLSInterpolator<T> s(x, y);
+    dxmc::CubicLSInterpolator<T> s(x, y, 0.0001);
     for (int i = 0; i < x.size(); ++i) {
         std::cout << x[i] << ", " << y[i] << ", " << s(x[i]) << std::endl;
     }

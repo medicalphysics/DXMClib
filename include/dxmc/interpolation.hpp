@@ -410,24 +410,24 @@ private:
 template <Floating T>
 class CubicLSInterpolator {
 public:
-    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
+    /* CubicLSInterpolator2(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
     {
         const auto [xmin, xmax] = std::minmax_element(x.cbegin(), x.cend());
         std::vector<T> t = { *xmin, *xmax };
 
-        //We need to not test both values at discontinities, only highest index value
-        
+        // We need to not test both values at discontinities, only highest index value
+
         auto errmax_ind = x.size() / 2;
         std::vector<T> x_test, y_test;
-        for (std::size_t i = 1; i < x.size()-1; ++i) {
-            if (x[i + 1] != x[i] && i!=errmax_ind) {
+        for (std::size_t i = 1; i < x.size() - 1; ++i) {
+            if (x[i + 1] != x[i] && i != errmax_ind) {
                 x_test.push_back(x[i]);
                 y_test.push_back(y[i]);
             }
         }
-        
+
         std::vector<T> s(x_test.size());
-        
+
         T errmax = 0;
         do {
             clear();
@@ -443,37 +443,75 @@ public:
             const auto max_error_it = std::max_element(std::execution::par_unseq, s.cbegin(), s.cend());
             errmax_ind = std::distance(s.cbegin(), max_error_it);
             errmax = *max_error_it;
-            s.erase(s.begin() + errmax_ind); //delete max error test
+            s.erase(s.begin() + errmax_ind); // delete max error test
             x_test.erase(x_test.begin() + errmax_ind);
             y_test.erase(y_test.begin() + errmax_ind);
         } while (errmax > max_rel_deviation);
+    }*/
+    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
+    {
+        setupSplines(x, y, max_rel_deviation, maybe_discont);
     }
+
     CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_discont = true)
     {
         setupSplines(x, y, t, maybe_discont);
     }
 
-    T operator()(T x) const
+    T operator()(const T x) const
     {
-        auto it = std::upper_bound(m_t.cbegin() + 1, m_t.cend() - 1, x);
+        return evaluateSpline(x, m_t, m_z, m_zp);
+    }
+
+protected:
+    template <Floating T>
+    struct Spline {
+        Spline(const std::vector<T>& t, const std::vector<T>& p, const std::vector<T>& pz)
+            : m_t(t)
+            , m_p(p)
+            , m_pz(pz)
+        {
+        }
+        Spline() {};
+        Spline<T> operator+(const Spline<T>& right)
+        {
+            Spline<T> res(m_t, m_p, m_pz);
+            res.m_t.insert(res.m_t.end(), right.m_t.cbegin(), right.m_t.cend());
+            res.m_p.insert(res.m_p.end(), right.m_p.cbegin(), right.m_p.cend());
+            res.m_pz.insert(res.m_pz.end(), right.m_pz.cbegin(), right.m_pz.cend());
+            return res;
+        }
+        void operator+=(const Spline<T>& right)
+        {
+            m_t.insert(m_t.end(), right.m_t.cbegin(), right.m_t.cend());
+            m_p.insert(m_p.end(), right.m_p.cbegin(), right.m_p.cend());
+            m_pz.insert(m_pz.end(), right.m_pz.cbegin(), right.m_pz.cend());
+        }
+        std::vector<T> m_t;
+        std::vector<T> m_p;
+        std::vector<T> m_pz;
+    };
+    static inline T evaluateSpline(const T x, const std::vector<T>& t, const std::vector<T>& z, const std::vector<T>& zp)
+    {
+        auto it = std::upper_bound(t.cbegin() + 1, t.cend() - 1, x);
         const auto h = *it - *(--it);
         const auto u = (x - *it) / h;
         const auto v = u - 1;
         const auto uu = u * u;
         const auto vv = v * v;
 
-        const auto ind = std::distance(m_t.cbegin(), it);
+        const auto ind = std::distance(t.cbegin(), it);
 
-        const auto f1 = (2 * u + 1) * vv * m_z[ind];
-        const auto f2 = uu * (1 - 2 * v) * m_z[ind + 1];
-        const auto f3 = h * u * vv * m_zp[ind];
-        const auto f4 = h * uu * v * m_zp[ind + 1];
+        const auto f1 = (2 * u + 1) * vv * z[ind];
+        const auto f2 = uu * (1 - 2 * v) * z[ind + 1];
+        const auto f3 = h * u * vv * zp[ind];
+        const auto f4 = h * uu * v * zp[ind + 1];
         return f1 + f2 + f3 + f4;
     }
-
-protected:
-    void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_discont)
+    template <typename U>
+    requires(std::is_convertible<U, std::vector<T>>::value || std::is_convertible<U, T>::value) void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const U& t, bool maybe_discont)
     {
+        Spline<T> spline;
         if (maybe_discont) {
             // all this to handle dicontinous functions designated by a equal x value
             std::size_t x_start = 0;
@@ -484,49 +522,90 @@ protected:
                     auto x_beg = x_start;
                     x_start = i + 1;
 
-                    std::vector<T> x_red, y_red, t_red;
+                    std::vector<T> x_red, y_red;
                     for (std::size_t j = x_beg; j <= i; ++j) {
                         x_red.push_back(x[j]);
                         y_red.push_back(y[j]);
                     }
-                    
-                    t_red.push_back(x[x_beg]);
-                    for (std::size_t j = 0; j < t.size(); ++j) {
-                        if ((t[j] < x[i]) && (t[j] > x[x_beg])) {
-                            t_red.push_back(t[j]);
+                    if constexpr (std::is_convertible<U, T>::value) {
+                        spline += calculateLSSplinePart(x_red, y_red, t);
+                    } else {
+                        std::vector<T> t_red;
+                        t_red.push_back(x[x_beg]);
+                        for (std::size_t j = 0; j < t.size(); ++j) {
+                            if ((t[j] < x[i]) && (t[j] > x[x_beg])) {
+                                t_red.push_back(t[j]);
+                            }
                         }
+                        t_red.push_back(x[i]);
+                        spline += calculateLSSplinePart(x_red, y_red, t_red);
                     }
-                    t_red.push_back(x[i]);
-                    addLSSplinePart(x_red, y_red, t_red);
                 }
             }
             // did we se any discontinuities?
             if (x_start == 0) {
-                addLSSplinePart(x, y, t);
+                spline = calculateLSSplinePart(x, y, t);
             } else {
-                std::vector<T> x_red, y_red, t_red;
+                std::vector<T> x_red, y_red;
                 for (std::size_t j = x_start; j < x.size(); ++j) {
                     x_red.push_back(x[j]);
                     y_red.push_back(y[j]);
                 }
-                t_red.push_back(x[x_start]);
-                for (std::size_t j = 0; j < t.size(); ++j) {
-                    if (t[j] > x[x_start]) {
-                        t_red.push_back(t[j]);
+                if constexpr (std::is_convertible<U, T>::value) {
+                    spline += calculateLSSplinePart(x_red, y_red, t);
+                } else {
+                    std::vector<T> t_red;
+                    t_red.push_back(x[x_start]);
+                    for (std::size_t j = 0; j < t.size(); ++j) {
+                        if (t[j] > x[x_start]) {
+                            t_red.push_back(t[j]);
+                        }
                     }
+                    spline += calculateLSSplinePart(x_red, y_red, t_red);
                 }
-
-                addLSSplinePart(x_red, y_red, t_red);
             }
         } else {
-            addLSSplinePart(x, y, t);
+            spline = calculateLSSplinePart(x, y, t);
         }
 
+        m_t = spline.m_t;
         m_t.shrink_to_fit();
+        m_z = spline.m_p;
         m_z.shrink_to_fit();
+        m_zp = spline.m_pz;
         m_zp.shrink_to_fit();
     }
-    void addLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t)
+    Spline<T> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const T s) const
+    {
+        Spline<T> result;
+
+        std::vector<T> t = { x[0], x.back() };
+        T max_error = 0;
+        std::size_t max_error_ind = 0;
+        std::vector<T> x_test(x.cbegin() + 1, x.cend() - 1);
+        std::vector<T> y_test(y.cbegin() + 1, y.cend() - 1);
+
+        std::vector<T> error;
+        do {
+            result = calculateLSSplinePart(x, y, t);
+            error.resize(x_test.size());
+            std::transform(std::execution::par, x_test.cbegin(), x_test.cend(), y_test.cbegin(), error.begin(), [&](const auto x, const auto y) -> T {
+                if (std::abs(y) > std::numeric_limits<T>::epsilon())
+                    return std::abs(evaluateSpline(x, result.m_t, result.m_p, result.m_pz) / y - T { 1 });
+                else
+                    return T { 0 };
+            });
+            auto max_err_it = std::max_element(error.cbegin(), error.cend());
+            max_error_ind = std::distance(error.cbegin(), max_err_it);
+            max_error = *max_err_it;
+            t.push_back(x_test[max_error_ind]);
+            std::sort(t.begin(), t.end());
+            x_test.erase(x_test.begin() + max_error_ind);
+            y_test.erase(y_test.begin() + max_error_ind);
+        } while (max_error > s);
+        return result;
+    }
+    Spline<T> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t) const
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
 
@@ -681,11 +760,13 @@ protected:
 #else
         auto res = sol.solve(bval);
 #endif // USE_EIGEN
-        std::copy(res.begin(), res.begin() + N + 1, std::back_inserter(m_z));
-        std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), std::back_inserter(m_zp));
-        std::copy(t.begin(), t.end(), std::back_inserter(m_t));
-        // m_z = std::vector<T>(res.begin(), res.begin() + N + 1);
-        // m_zp = std::vector<T>(res.begin() + N + 1, res.begin() + 2 * (N + 1));
+
+        Spline<T> spline;
+
+        std::copy(res.begin(), res.begin() + N + 1, std::back_inserter(spline.m_p));
+        std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), std::back_inserter(spline.m_pz));
+        std::copy(t.begin(), t.end(), std::back_inserter(spline.m_t));
+        return spline;
     }
     void clear()
     {
@@ -693,7 +774,8 @@ protected:
         m_zp.clear();
         m_t.clear();
     }
- private:
+
+private:
     std::vector<T> m_z;
     std::vector<T> m_zp;
     std::vector<T> m_t;
