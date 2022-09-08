@@ -69,34 +69,23 @@ bool testLSSplines()
     }
     t = { x[0], .1, .5, .9, x.back(),   };
     std::sort(t.begin(), t.end());
-    dxmc::CubicLSInterpolator<T> s(x, y, 0.0001);
+    dxmc::CubicLSInterpolator<T> s(x, y, 0.001);
+    bool result = true;
     for (int i = 0; i < x.size(); ++i) {
+        if (y[i] > std::numeric_limits<T>::epsilon() && i !=20)
+            result = result && (s(x[i]) / y[i] - T { 1 }) <= 0.001;
+
+        
         std::cout << x[i] << ", " << y[i] << ", " << s(x[i]) << std::endl;
     }
-    return true;
-}
-
-bool testMatrix()
-{
-    std::vector<double> a { 1, 1, 1, 0, 2, 5, 2, 5, -1 };
-    dxmc::Matrix<double> m(3, 3, a);
-    std::vector<double> b { 6, -4, 27 };
-
-    std::cout << "A:" << std::endl;
-    auto res = m.solve(b);
-
-    std::vector<double> test { 5, 3, -2 };
-    auto y = m * res;
-    auto y2 = m * test;
-
-    return true;
+    return result;
 }
 
 int main()
 {
 
-    testLSSplines<double>();
+    return testLSSplines<double>();
     // bool splinetest = testSpline<float>();
     // assert(splinetest);
-    return 1;
+    //return 1;
 }

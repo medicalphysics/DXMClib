@@ -410,44 +410,6 @@ private:
 template <Floating T>
 class CubicLSInterpolator {
 public:
-    /* CubicLSInterpolator2(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
-    {
-        const auto [xmin, xmax] = std::minmax_element(x.cbegin(), x.cend());
-        std::vector<T> t = { *xmin, *xmax };
-
-        // We need to not test both values at discontinities, only highest index value
-
-        auto errmax_ind = x.size() / 2;
-        std::vector<T> x_test, y_test;
-        for (std::size_t i = 1; i < x.size() - 1; ++i) {
-            if (x[i + 1] != x[i] && i != errmax_ind) {
-                x_test.push_back(x[i]);
-                y_test.push_back(y[i]);
-            }
-        }
-
-        std::vector<T> s(x_test.size());
-
-        T errmax = 0;
-        do {
-            clear();
-            t.push_back(x[errmax_ind]);
-            std::sort(t.begin(), t.end());
-            setupSplines(x, y, t, maybe_discont);
-            std::transform(
-                std::execution::par, x_test.cbegin(), x_test.cend(), y_test.cbegin(), s.begin(), [&y, this](const auto& xi, const auto& yi) -> T {
-                    constexpr auto epsilon = std::numeric_limits<T>::epsilon();
-                    const auto y_pred = this->operator()(xi);
-                    return std::abs(yi) <= epsilon ? T { 0 } : std::abs(y_pred / yi - T { 1 });
-                });
-            const auto max_error_it = std::max_element(std::execution::par_unseq, s.cbegin(), s.cend());
-            errmax_ind = std::distance(s.cbegin(), max_error_it);
-            errmax = *max_error_it;
-            s.erase(s.begin() + errmax_ind); // delete max error test
-            x_test.erase(x_test.begin() + errmax_ind);
-            y_test.erase(y_test.begin() + errmax_ind);
-        } while (errmax > max_rel_deviation);
-    }*/
     CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
     {
         setupSplines(x, y, max_rel_deviation, maybe_discont);
@@ -460,52 +422,54 @@ public:
 
     T operator()(const T x) const
     {
-        return evaluateSpline(x, m_t, m_z, m_zp);
+        return evaluateSpline(x, m_data);
     }
 
 protected:
     template <Floating T>
     struct Spline {
         Spline(const std::vector<T>& t, const std::vector<T>& p, const std::vector<T>& pz)
-            : m_t(t)
-            , m_p(p)
-            , m_pz(pz)
         {
+            m_data.reserve(t.size());
+            for (std::size_t i = 0; i < t.size(); ++i) {
+                std::array<T, 3> val { t[i], p[i], pz[i] };
+                m_data.push_back(val);
+            }
         }
         Spline() {};
-        Spline<T> operator+(const Spline<T>& right)
+        Spline(const std::vector<std::array<T, 3>>& data)
+            : m_data(data)
         {
-            Spline<T> res(m_t, m_p, m_pz);
-            res.m_t.insert(res.m_t.end(), right.m_t.cbegin(), right.m_t.cend());
-            res.m_p.insert(res.m_p.end(), right.m_p.cbegin(), right.m_p.cend());
-            res.m_pz.insert(res.m_pz.end(), right.m_pz.cbegin(), right.m_pz.cend());
+        }
+        Spline<T> operator+(const Spline<T>& right) const
+        {
+            Spline<T> res(m_data);
+            res.m_data.insert(res.m_data.end(), right.m_data.cbegin(), right.m_data.cend());
             return res;
         }
         void operator+=(const Spline<T>& right)
         {
-            m_t.insert(m_t.end(), right.m_t.cbegin(), right.m_t.cend());
-            m_p.insert(m_p.end(), right.m_p.cbegin(), right.m_p.cend());
-            m_pz.insert(m_pz.end(), right.m_pz.cbegin(), right.m_pz.cend());
+            m_data.insert(m_data.end(), right.m_data.cbegin(), right.m_data.cend());
         }
-        std::vector<T> m_t;
-        std::vector<T> m_p;
-        std::vector<T> m_pz;
+        std::vector<std::array<T, 3>> m_data; // m_t, m_z, m_zp
     };
-    static inline T evaluateSpline(const T x, const std::vector<T>& t, const std::vector<T>& z, const std::vector<T>& zp)
+    static inline T evaluateSpline(const T x, const std::vector<std::array<T, 3>>& data)
     {
-        auto it = std::upper_bound(t.cbegin() + 1, t.cend() - 1, x);
-        const auto h = *it - *(--it);
-        const auto u = (x - *it) / h;
+        std::array<T, 3> x_comp { x, 0, 0 };
+        auto it = std::upper_bound(data.cbegin() + 1, data.cend() - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });
+        const auto& d1 = *it;
+        const auto& d0 = *(--it);
+
+        const auto h = d1[0] - d0[0];
+        const auto u = (x - d0[0]) / h;
         const auto v = u - 1;
         const auto uu = u * u;
         const auto vv = v * v;
 
-        const auto ind = std::distance(t.cbegin(), it);
-
-        const auto f1 = (2 * u + 1) * vv * z[ind];
-        const auto f2 = uu * (1 - 2 * v) * z[ind + 1];
-        const auto f3 = h * u * vv * zp[ind];
-        const auto f4 = h * uu * v * zp[ind + 1];
+        const auto f1 = (2 * u + 1) * vv * d0[1];
+        const auto f2 = uu * (1 - 2 * v) * d1[1];
+        const auto f3 = h * u * vv * d0[2];
+        const auto f4 = h * uu * v * d1[2];
         return f1 + f2 + f3 + f4;
     }
     template <typename U>
@@ -568,12 +532,7 @@ protected:
             spline = calculateLSSplinePart(x, y, t);
         }
 
-        m_t = spline.m_t;
-        m_t.shrink_to_fit();
-        m_z = spline.m_p;
-        m_z.shrink_to_fit();
-        m_zp = spline.m_pz;
-        m_zp.shrink_to_fit();
+        m_data = spline.m_data;
     }
     Spline<T> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const T s) const
     {
@@ -589,11 +548,11 @@ protected:
         do {
             result = calculateLSSplinePart(x, y, t);
             error.resize(x_test.size());
-            std::transform(std::execution::par, x_test.cbegin(), x_test.cend(), y_test.cbegin(), error.begin(), [&](const auto x, const auto y) -> T {
+            std::transform(std::execution::par, x_test.cbegin(), x_test.cend(), y_test.cbegin(), error.begin(), [&](const auto x, const auto y) {
                 if (std::abs(y) > std::numeric_limits<T>::epsilon())
-                    return std::abs(evaluateSpline(x, result.m_t, result.m_p, result.m_pz) / y - T { 1 });
+                    return std::abs(evaluateSpline(x, result.m_data) / y - T { 1 });
                 else
-                    return std::abs(evaluateSpline(x, result.m_t, result.m_p, result.m_pz);
+                    return std::abs(evaluateSpline(x, result.m_data));
             });
             auto max_err_it = std::max_element(error.cbegin(), error.cend());
             max_error_ind = std::distance(error.cbegin(), max_err_it);
@@ -761,23 +720,17 @@ protected:
         auto res = sol.solve(bval);
 #endif // USE_EIGEN
 
-        Spline<T> spline;
+        std::vector<T> m_p(N + 1);
+        std::vector<T> m_pz(N + 1);
 
-        std::copy(res.begin(), res.begin() + N + 1, std::back_inserter(spline.m_p));
-        std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), std::back_inserter(spline.m_pz));
-        std::copy(t.begin(), t.end(), std::back_inserter(spline.m_t));
+        std::copy(res.begin(), res.begin() + N + 1, m_p.begin());
+        std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), m_pz.begin());
+        Spline<T> spline(t, m_p, m_pz);
         return spline;
     }
-    void clear()
-    {
-        m_z.clear();
-        m_zp.clear();
-        m_t.clear();
-    }
+    
 
 private:
-    std::vector<T> m_z;
-    std::vector<T> m_zp;
-    std::vector<T> m_t;
+    std::vector<std::array<T, 3>> m_data; // array of m_t, m_z, m_zp
 };
 }
