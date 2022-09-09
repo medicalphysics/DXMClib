@@ -34,8 +34,8 @@ endfunction()
 option(OPTIMIZE_FOR_NATIVE "Build with -march=native on gcc/clang or AVX_x on MSVC " ON)
 if(OPTIMIZE_FOR_NATIVE)
     if(MSVC)
-        set(MSVC_OPTION "AVX2" CACHE STRING "Machine instructions support")
-        set_property(CACHE MSVC_OPTION PROPERTY STRINGS AVX AVX2 AVX512)
+        set(MSVC_OPTION "AVX" CACHE STRING "Machine instructions support")
+        set_property(CACHE MSVC_OPTION PROPERTY STRINGS SSE2 AVX AVX2 AVX512)
         MESSAGE("-- Trying to build for ${MSVC_OPTION} instruction set")
         enable_cxx_compiler_flag_if_supported("-arch:${MSVC_OPTION}")  
     endif()
@@ -136,6 +136,10 @@ if(WIN32)
     install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH_64} DESTINATION bin OPTIONAL)
 endif(WIN32)
 install(FILES ${HEADER_LIST} DESTINATION include)
+
+
+# EPICS data parser
+add_subdirectory(data)
 
 # Testing
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
