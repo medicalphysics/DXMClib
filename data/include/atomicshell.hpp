@@ -16,21 +16,14 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
-#pragma once 
+#pragma once
 
-#include <string>
+class AtomicShell {
+    enum class Shell {};
 
-
-
-class EPICSparser {
 public:
-    EPICSparser(std::string_view path);
-
-
-
+    AtomicShell();
 
 private:
-
-
 
 };
