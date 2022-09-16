@@ -18,5 +18,21 @@ Copyright 2022 Erlend Andersen
 
 #include "epicsparser.hpp"
 
-#include "atomicelement.hpp"
+#include <fstream>
+#include <iostream>
 
+EPICSparser::EPICSparser(const std::string& path)
+{
+    read(path);
+}
+
+void EPICSParser::read(const std::string& path)
+{
+    std::ifstream stream;
+    stream.open(path);
+    std::string line;
+    if (stream.is_open()) {
+        while (std::getline(stream, line)) {
+        }
+    }
+}

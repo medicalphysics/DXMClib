@@ -18,8 +18,15 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
+#include "atomicshell.hpp"
+
+#include <vector>
+
 class AtomicElement {
 public:
-    AtomicElement(); 
+    AtomicElement(std::uint8_t Z);
 
+private:
+    std::uint8_t m_Z = 0;
+    std::vector<AtomicShell> m_shells;
 };

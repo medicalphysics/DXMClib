@@ -18,14 +18,9 @@ Copyright 2022 Erlend Andersen
 
 #include "atomicelement.hpp"
 
-
 #include "dxmc/interpolation.hpp"
 
-
-AtomicElement::AtomicElement() { }
-
-
-
-
-
-
+AtomicElement::AtomicElement(std::uint8_t Z)
+    : m_Z(Z)
+{
+}
