@@ -24,9 +24,11 @@ Copyright 2022 Erlend Andersen
 
 class EPICSparser {
 public:
-    EPICSparser(std::string_view path);
-
-    void read(std::string_view path);
+    EPICSparser(const std::string_view& path);
+    void read(const std::string_view& path);
+    
+    
 
 private:
+    constexpr std::size_t endIdx() { return 71; }
 };

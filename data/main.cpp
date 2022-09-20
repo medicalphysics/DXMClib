@@ -24,6 +24,7 @@ int main()
 {
     constexpr std::string_view eadl { EADLPATH };
     constexpr std::string_view epdl { EPDLPATH };
-    
+    EPICSparser parser(epdl);
+
     return 1;
 }
