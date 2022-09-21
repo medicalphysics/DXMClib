@@ -24,3 +24,51 @@ AtomicElement::AtomicElement(std::uint8_t Z)
     : m_Z(Z)
 {
 }
+
+
+
+void AtomicElement::setCoherentData(const std::vector<double>& data) {
+
+    const auto N = data.size() / 2;
+    m_coherent.reserve(N);
+    for (std::size_t i = 0; i < N; ++i) {
+        const auto ind = i * 2;
+        const double e = data[ind] * 0.001;
+        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
+            const double a = data[ind + 1] * barnToAtt();
+            m_coherent.push_back(std::make_pair(e, a));
+        }
+    }
+    m_coherent.shrink_to_fit();
+}
+void AtomicElement::setIncoherentData(const std::vector<double>& data)
+{
+
+    const auto N = data.size() / 2;
+    m_incoherent.reserve(N);
+    for (std::size_t i = 0; i < N; ++i) {
+        const auto ind = i * 2;
+        const double e = data[ind] * 0.001;
+        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
+            const double a = data[ind + 1] * barnToAtt();
+            m_incoherent.push_back(std::make_pair(e, a));
+        }
+    }
+    m_incoherent.shrink_to_fit();
+}
+
+void AtomicElement::setPhotoelectricData(const std::vector<double>& data)
+{
+
+    const auto N = data.size() / 2;
+    m_photoel.reserve(N);
+    for (std::size_t i = 0; i < N; ++i) {
+        const auto ind = i * 2;
+        const double e = data[ind] * 0.001;
+        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
+            const double a = data[ind + 1] * barnToAtt();
+            m_photoel.push_back(std::make_pair(e, a));
+        }
+    }
+    m_photoel.shrink_to_fit();
+}

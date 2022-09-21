@@ -426,7 +426,7 @@ public:
     }
 
 protected:
-    template <Floating T>
+    template<Floating T>
     struct Spline {
         Spline(const std::vector<T>& t, const std::vector<T>& p, const std::vector<T>& pz)
         {

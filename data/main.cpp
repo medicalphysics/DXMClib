@@ -22,8 +22,9 @@ Copyright 2022 Erlend Andersen
 
 int main()
 {
-    constexpr std::string_view eadl { EADLPATH };
-    constexpr std::string_view epdl { EPDLPATH };
+    const std::string eadl = EADLPATH;
+    const std::string epdl = EPDLPATH;
+
     EPICSparser parser(epdl);
 
     return 1;

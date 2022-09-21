@@ -24,9 +24,33 @@ Copyright 2022 Erlend Andersen
 
 class AtomicElement {
 public:
+    AtomicElement() {};
     AtomicElement(std::uint8_t Z);
+
+    void setZ(std::uint8_t Z) { m_Z = Z; }
+    void setAtomicWeight(double AW) { m_atomicWeight = AW; }
+
+    void setPhotoelectricData(const std::vector<double>& data);
+    void setCoherentData(const std::vector<double>& data);
+    void setIncoherentData(const std::vector<double>& data);
+
+    constexpr double maxPhotonEnergy() { return 500.0; }
+    constexpr double minPhotonEnergy() { return 1.0; }
+    double barnToAtt() {
+        constexpr double u = 1.6605402;
+        return 1.0 / (u * m_atomicWeight);            
+    }
 
 private:
     std::uint8_t m_Z = 0;
+    double m_atomicWeight = 0.0;
+    std::vector<std::pair<double, double>> m_coherent;
+    std::vector<std::pair<double, double>> m_incoherent;
+    std::vector<std::pair<double, double>> m_photoel;
+
+
     std::vector<AtomicShell> m_shells;
+
+
+
 };

@@ -100,7 +100,6 @@ target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
 
 #add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen")
-message("${EIGEN_INCLUDES}")
 target_include_directories(libdxmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/include")
 #include_directories("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")

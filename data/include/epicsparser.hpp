@@ -20,15 +20,19 @@ Copyright 2022 Erlend Andersen
 
 #include "atomicelement.hpp"
 
+#include <map>
 #include <string>
 
 class EPICSparser {
 public:
-    EPICSparser(const std::string_view& path);
-    void read(const std::string_view& path);
-    
-    
+    EPICSparser(const std::string& path);
+    void read(const std::string& path);
+
+    std::map<std::uint8_t, AtomicElement>& getElements() { return m_elements; }
+
+protected:
+    constexpr static std::size_t endIdx() { return 71; }
 
 private:
-    constexpr std::size_t endIdx() { return 71; }
+    std::map<std::uint8_t, AtomicElement> m_elements;
 };

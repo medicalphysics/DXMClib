@@ -21,7 +21,6 @@ Copyright 2022 Erlend Andersen
 #include <fstream>
 #include <iostream>
 #include <sstream>
-#include <string>
 #include <vector>
 
 struct DataSegment {
@@ -72,7 +71,7 @@ void processSecondHeaderLine(const std::string& line, DataSegment& segment)
     segment.X1 = static_cast<std::uint8_t>(std::stod(line.substr(21, 10)));
 }
 
-EPICSparser::EPICSparser(const std::string_view& path)
+EPICSparser::EPICSparser(const std::string& path)
 {
     read(path);
 }
@@ -80,32 +79,54 @@ EPICSparser::EPICSparser(const std::string_view& path)
 std::vector<double> split(const std::string& s)
 {
     constexpr std::size_t sublen = 16;
-    const auto n_data = s.size() % 16;
+    const auto n_data = s.size() / 16;
     std::vector<double> data(n_data);
     for (std::size_t i = 0; i < n_data; ++i) {
         data[i] = std::stod(s.substr(i * sublen, sublen));
     }
-    /*
-    std::vector<double> result;
-    std::stringstream ss(s);
-    std::string item;
-    double item_t;
-
-    while (std::getline(ss, item, delim)) {
-        bool canconvert = true;
-        try {
-            item_t = std::stod(item);
-        } catch (std::invalid_argument& e) {
-            canconvert = false;
-        }
-        if (canconvert) {
-            result.push_back(item_t);
-        }
-    }*/
     return data;
 }
 
-void EPICSparser::read(const std::string_view& path)
+void processSegments(const std::vector<DataSegment>& segments, std::map<std::uint8_t, AtomicElement>& elements)
+{
+    std::vector<int> shells;
+    for (const auto& seg : segments) {
+        if (!elements.contains(seg.Z)) { // adding uniqe element
+            elements.emplace(seg.Z, seg.Z);
+            //elements[seg.Z] = AtomicElement(seg.Z);
+            elements[seg.Z].setAtomicWeight(seg.AW);
+        }
+        if (seg.Yi == 7) { // incoming photon
+            if (seg.C == 71) { // coherent
+                if (seg.X1 == 0) { // whole atom
+                    if (seg.I == 0) {
+                        elements[seg.Z].setCoherentData(seg.data);
+                    }
+                }
+            }
+            if (seg.C == 72) { // incoherent
+                if (seg.X1 == 0) { // whole atom
+                    if (seg.I == 0) {
+                        elements[seg.Z].setIncoherentData(seg.data);
+                    }
+                }
+            }
+            if (seg.C == 73) { // photoelectric
+                if (seg.X1 == 0) { // whole atom
+                    if (seg.I == 0) {
+                        elements[seg.Z].setPhotoelectricData(seg.data);
+                    }
+                } else {
+                    if (seg.I == 0 && seg.Z==16)
+                        shells.push_back(seg.X1);
+                }
+            }
+        }
+    }
+    auto stop = true;
+}
+
+void EPICSparser::read(const std::string& path)
 {
     std::ifstream stream;
     stream.open(std::string(path));
@@ -148,4 +169,6 @@ void EPICSparser::read(const std::string_view& path)
             ++linenumber;
         }
     }
+
+    processSegments(segments, m_elements);
 }
