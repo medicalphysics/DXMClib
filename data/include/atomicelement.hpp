@@ -34,11 +34,16 @@ public:
     void setCoherentData(const std::vector<double>& data);
     void setIncoherentData(const std::vector<double>& data);
 
+    const auto& photoelectricData() const { return m_photoel; }
+    const auto& coherentData() const { return m_coherent; }
+    const auto& incoherentData() const { return m_incoherent; }
+
     constexpr double maxPhotonEnergy() { return 500.0; }
     constexpr double minPhotonEnergy() { return 1.0; }
-    double barnToAtt() {
+    double barnToAtt()
+    {
         constexpr double u = 1.6605402;
-        return 1.0 / (u * m_atomicWeight);            
+        return 1.0 / (u * m_atomicWeight);
     }
 
 private:
@@ -48,9 +53,5 @@ private:
     std::vector<std::pair<double, double>> m_incoherent;
     std::vector<std::pair<double, double>> m_photoel;
 
-
     std::vector<AtomicShell> m_shells;
-
-
-
 };

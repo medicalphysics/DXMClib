@@ -20,12 +20,24 @@ Copyright 2022 Erlend Andersen
 
 #include <string>
 
+#include <iostream>
+
 int main()
 {
     const std::string eadl = EADLPATH;
     const std::string epdl = EPDLPATH;
 
     EPICSparser parser(epdl);
+
+    for (const auto& [key, value] : parser.getElements()) {
+
+        std::cout << "Z: " << static_cast<int>(key) << "  ";
+
+        std::cout << "N_photo: " << value.photoelectricData().size() << "  ";
+        std::cout << "N_inco: " << value.incoherentData().size() << "  ";
+        std::cout << "N_coher: " << value.coherentData().size() << "  ";
+        std::cout << std::endl;
+    }
 
     return 1;
 }

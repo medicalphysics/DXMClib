@@ -25,5 +25,4 @@ public:
     AtomicShell();
 
 private:
-
 };

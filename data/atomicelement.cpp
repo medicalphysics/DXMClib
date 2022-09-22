@@ -25,9 +25,8 @@ AtomicElement::AtomicElement(std::uint8_t Z)
 {
 }
 
-
-
-void AtomicElement::setCoherentData(const std::vector<double>& data) {
+void AtomicElement::setCoherentData(const std::vector<double>& data)
+{
 
     const auto N = data.size() / 2;
     m_coherent.reserve(N);

@@ -93,7 +93,7 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
     for (const auto& seg : segments) {
         if (!elements.contains(seg.Z)) { // adding uniqe element
             elements.emplace(seg.Z, seg.Z);
-            //elements[seg.Z] = AtomicElement(seg.Z);
+            // elements[seg.Z] = AtomicElement(seg.Z);
             elements[seg.Z].setAtomicWeight(seg.AW);
         }
         if (seg.Yi == 7) { // incoming photon
@@ -117,7 +117,7 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                         elements[seg.Z].setPhotoelectricData(seg.data);
                     }
                 } else {
-                    if (seg.I == 0 && seg.Z==16)
+                    if (seg.I == 0 && seg.Z == 16)
                         shells.push_back(seg.X1);
                 }
             }
