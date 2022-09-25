@@ -18,11 +18,27 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
+#include <utility>
+#include <vector>
+
 class AtomicShell {
     enum class Shell {};
 
 public:
-    AtomicShell();
+    AtomicShell() {};
+    AtomicShell(std::uint8_t shell)
+        : m_shell(shell)
+    {
+    }
+    void setShell(std::uint8_t shell) { m_shell = shell; }
+    void setBindingEnergy(double en) { m_bindingEnergy = en; }
+    
+    void setPhotoelectricData(const std::vector<double>& data, double minEnergy, double maxEnergy, double barnToAtt);
+    const auto& photoelectricData() const { return m_photoel; }
+    
 
 private:
+    std::uint8_t m_shell = 0;
+    double m_bindingEnergy = 0;
+    std::vector<std::pair<double, double>> m_photoel;
 };

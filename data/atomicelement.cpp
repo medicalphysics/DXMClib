@@ -56,6 +56,14 @@ void AtomicElement::setIncoherentData(const std::vector<double>& data)
     m_incoherent.shrink_to_fit();
 }
 
+void AtomicElement::setShellBindingEnergy(std::uint8_t shell, double bindingEnergy)
+{
+}
+
+void AtomicElement::setShellPhotoelectricData(std::uint8_t shell, const std::vector<double>& data)
+{
+}
+
 void AtomicElement::setPhotoelectricData(const std::vector<double>& data)
 {
 

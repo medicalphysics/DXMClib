@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "atomicshell.hpp"
 
 #include <vector>
+#include <utility>
 
 class AtomicElement {
 public:
@@ -38,6 +39,10 @@ public:
     const auto& coherentData() const { return m_coherent; }
     const auto& incoherentData() const { return m_incoherent; }
 
+    void setShellBindingEnergy(std::uint8_t shell, double bindingEnergy);
+    void setShellPhotoelectricData(std::uint8_t shell, const std::vector<double>& data);
+
+
     constexpr double maxPhotonEnergy() { return 500.0; }
     constexpr double minPhotonEnergy() { return 1.0; }
     double barnToAtt()
@@ -45,6 +50,8 @@ public:
         constexpr double u = 1.6605402;
         return 1.0 / (u * m_atomicWeight);
     }
+
+protected:
 
 private:
     std::uint8_t m_Z = 0;
