@@ -20,8 +20,9 @@ Copyright 2022 Erlend Andersen
 
 #include "atomicshell.hpp"
 
-#include <vector>
+#include <map>
 #include <utility>
+#include <vector>
 
 class AtomicElement {
 public:
@@ -39,12 +40,16 @@ public:
     const auto& coherentData() const { return m_coherent; }
     const auto& incoherentData() const { return m_incoherent; }
 
-    void setShellBindingEnergy(std::uint8_t shell, double bindingEnergy);
+    void setShellBindingEnergy(const std::vector<double>& data);
     void setShellPhotoelectricData(std::uint8_t shell, const std::vector<double>& data);
+    void setShellNumberOfElectrons(const std::vector<double>& data);
 
-
-    constexpr double maxPhotonEnergy() { return 500.0; }
-    constexpr double minPhotonEnergy() { return 1.0; }
+    static constexpr double maxPhotonEnergy()
+    {
+        return 500.0;
+    }
+    static constexpr double minPhotonEnergy() { return 1.0; }
+    static constexpr double MeV2keV() { return 1000; }
     double barnToAtt()
     {
         constexpr double u = 1.6605402;
@@ -52,7 +57,6 @@ public:
     }
 
 protected:
-
 private:
     std::uint8_t m_Z = 0;
     double m_atomicWeight = 0.0;
@@ -60,5 +64,5 @@ private:
     std::vector<std::pair<double, double>> m_incoherent;
     std::vector<std::pair<double, double>> m_photoel;
 
-    std::vector<AtomicShell> m_shells;
+    std::map<std::uint8_t, AtomicShell> m_shells;
 };

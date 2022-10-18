@@ -24,15 +24,15 @@ Copyright 2022 Erlend Andersen
 #include <vector>
 
 struct DataSegment {
-    std::uint8_t Z = 0;
-    std::uint8_t Yi = 0;
-    std::uint8_t Yo = 0;
-    std::uint8_t Iflag = 0;
-    std::uint8_t C = 0;
-    std::uint8_t I = 0;
-    std::uint8_t S = 0;
-    std::uint8_t X1 = 0;
-    std::uint8_t dataDim = 0;
+    int Z = 0;
+    int Yi = 0;
+    int Yo = 0;
+    //int Iflag = 0;
+    int C = 0;
+    int I = 0;
+    int S = 0;
+    int X1 = 0;
+    int dataDim = 0;
     double AW = 0.0;
     double A = 0.0;
     std::vector<double> data;
@@ -42,7 +42,7 @@ struct DataSegment {
         Z = 0;
         Yi = 0;
         Yo = 0;
-        Iflag = 0;
+        //Iflag = 0;
         C = 0;
         I = 0;
         S = 0;
@@ -60,15 +60,15 @@ void processFirstHeaderLine(const std::string& line, DataSegment& segment)
     segment.A = std::stod(line.substr(3, 3));
     segment.Yi = std::stoi(line.substr(7, 2));
     segment.Yo = std::stoi(line.substr(10, 2));
-    segment.Iflag = std::stoi(line.substr(31, 1));
     segment.AW = std::stod(line.substr(13, 10));
+    // segment.Iflag = std::stoi(line.substr(31, 1));
 }
 void processSecondHeaderLine(const std::string& line, DataSegment& segment)
 {
     segment.C = std::stoi(line.substr(0, 2));
     segment.I = std::stoi(line.substr(2, 3));
     segment.S = std::stoi(line.substr(5, 3));
-    segment.X1 = static_cast<std::uint8_t>(std::stod(line.substr(21, 10)));
+    segment.X1 = static_cast<int>(std::stod(line.substr(21, 10)));
 }
 
 EPICSparser::EPICSparser(const std::string& path)
@@ -93,37 +93,44 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
     for (const auto& seg : segments) {
         if (!elements.contains(seg.Z)) { // adding uniqe element
             elements.emplace(seg.Z, seg.Z);
-            // elements[seg.Z] = AtomicElement(seg.Z);
             elements[seg.Z].setAtomicWeight(seg.AW);
         }
         if (seg.Yi == 7) { // incoming photon
             if (seg.C == 71) { // coherent
                 if (seg.X1 == 0) { // whole atom
-                    if (seg.I == 0) {
+                    if (seg.I == 0) { // integrated cross section
                         elements[seg.Z].setCoherentData(seg.data);
                     }
                 }
             }
             if (seg.C == 72) { // incoherent
                 if (seg.X1 == 0) { // whole atom
-                    if (seg.I == 0) {
+                    if (seg.I == 0) { // integrated cross section
                         elements[seg.Z].setIncoherentData(seg.data);
                     }
                 }
             }
             if (seg.C == 73) { // photoelectric
                 if (seg.X1 == 0) { // whole atom
-                    if (seg.I == 0) {
+                    if (seg.I == 0) { // integrated cross section
                         elements[seg.Z].setPhotoelectricData(seg.data);
                     }
-                } else {
-                    if (seg.I == 0 && seg.Z == 16)
-                        shells.push_back(seg.X1);
+                } else { // subshell
+                    if (seg.I == 0) { // integrated cross section
+                        elements[seg.Z].setShellPhotoelectricData(seg.X1, seg.data);
+                    }
+                }
+            }
+        } else if (seg.Yi == 0) { // other atom/shell parameters
+            if (seg.C == 91) { // subshell parameters
+                if (seg.I == 912) { // Number of electrons
+                    elements[seg.Z].setShellNumberOfElectrons(seg.data);
+                } else if (seg.I == 913) { // Binding energy
+                    elements[seg.Z].setShellBindingEnergy(seg.data);                    
                 }
             }
         }
     }
-    auto stop = true;
 }
 
 void EPICSparser::read(const std::string& path)

@@ -20,18 +20,3 @@ Copyright 2022 Erlend Andersen
 
 
 
-
-void AtomicShell::setPhotoelectricData(const std::vector<double>& data, double minEnergy, double maxEnergy, double barnToAtt)
-{
-    const auto N = data.size() / 2;
-    m_photoel.reserve(N);
-    for (std::size_t i = 0; i < N; ++i) {
-        const auto ind = i * 2;
-        const double e = data[ind] * 0.001;
-        if (e >= minEnergy && e <= maxEnergy) {
-            const double a = data[ind + 1] * barnToAtt;
-            m_photoel.push_back(std::make_pair(e, a));
-        }
-    }
-    m_photoel.shrink_to_fit();
-}

@@ -27,7 +27,9 @@ int main()
     const std::string eadl = EADLPATH;
     const std::string epdl = EPDLPATH;
 
-    EPICSparser parser(epdl);
+    EPICSparser parser(eadl);
+    parser.read(epdl);
+
 
     for (const auto& [key, value] : parser.getElements()) {
 
