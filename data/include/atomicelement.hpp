@@ -36,20 +36,32 @@ public:
     void setCoherentData(const std::vector<double>& data);
     void setIncoherentData(const std::vector<double>& data);
 
+    void setFormFactor(const std::vector<double>& data);
+    void setImaginaryAnomalousSF(const std::vector<double>& data);
+    void setRealAnomalousSF(const std::vector<double>& data);
+    void setIncoherentSF(const std::vector<double>& data);
+
     const auto& photoelectricData() const { return m_photoel; }
     const auto& coherentData() const { return m_coherent; }
     const auto& incoherentData() const { return m_incoherent; }
+    
+    const auto& formFactor() const { return m_formFactor; }
+    const auto& imaginaryAnomalousSF() const { return m_imagAnomSF; }
+    const auto& realAnomalousSF() const { return m_realAnomSF; }
+    const auto& incoherentSF() const { return m_incoherentSF; }
 
     void setShellBindingEnergy(const std::vector<double>& data);
     void setShellPhotoelectricData(std::uint8_t shell, const std::vector<double>& data);
     void setShellNumberOfElectrons(const std::vector<double>& data);
+
+    static double momentumTransfer(double energy, double angle);
 
     static constexpr double maxPhotonEnergy()
     {
         return 500.0;
     }
     static constexpr double minPhotonEnergy() { return 1.0; }
-    static constexpr double MeV2keV() { return 1000; }
+    static constexpr double MeVTokeV() { return 1000; }
     double barnToAtt()
     {
         constexpr double u = 1.6605402;
@@ -63,6 +75,10 @@ private:
     std::vector<std::pair<double, double>> m_coherent;
     std::vector<std::pair<double, double>> m_incoherent;
     std::vector<std::pair<double, double>> m_photoel;
+    std::vector<std::pair<double, double>> m_formFactor;
+    std::vector<std::pair<double, double>> m_imagAnomSF;
+    std::vector<std::pair<double, double>> m_realAnomSF;
+    std::vector<std::pair<double, double>> m_incoherentSF;
 
     std::map<std::uint8_t, AtomicShell> m_shells;
 };

@@ -27,7 +27,7 @@ struct DataSegment {
     int Z = 0;
     int Yi = 0;
     int Yo = 0;
-    //int Iflag = 0;
+    // int Iflag = 0;
     int C = 0;
     int I = 0;
     int S = 0;
@@ -42,7 +42,7 @@ struct DataSegment {
         Z = 0;
         Yi = 0;
         Yo = 0;
-        //Iflag = 0;
+        // Iflag = 0;
         C = 0;
         I = 0;
         S = 0;
@@ -121,12 +121,29 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                     }
                 }
             }
-        } else if (seg.Yi == 0) { // other atom/shell parameters
+            if (seg.C == 93) { //coherent and incoherent data (not cross section)
+                if (seg.X1 == 0) { //whole atom
+                    if (seg.I == 941) { // form factor
+                        elements[seg.Z].setFormFactor(seg.data);
+                    }
+                    if (seg.I == 943) { // imaginary anomalous scattering factor
+                        elements[seg.Z].setImaginaryAnomalousSF(seg.data);
+                    }
+                    if (seg.I == 944) { // imaginary anomalous scattering factor
+                        elements[seg.Z].setRealAnomalousSF(seg.data);
+                    }
+                    if (seg.I == 942) { // incoherent scatter function
+                        elements[seg.Z].setIncoherentSF(seg.data);
+                    }
+                }
+            }
+        }
+        if (seg.Yi == 0) { // other atom/shell parameters
             if (seg.C == 91) { // subshell parameters
                 if (seg.I == 912) { // Number of electrons
                     elements[seg.Z].setShellNumberOfElectrons(seg.data);
                 } else if (seg.I == 913) { // Binding energy
-                    elements[seg.Z].setShellBindingEnergy(seg.data);                    
+                    elements[seg.Z].setShellBindingEnergy(seg.data);
                 }
             }
         }

@@ -31,13 +31,13 @@ endfunction()
 #enable_cxx_compiler_flag_if_supported("-Wextra")
 #enable_cxx_compiler_flag_if_supported("-pedantic")
 
-option(OPTIMIZE_FOR_NATIVE "Build with -march=native on gcc/clang or AVX_x on MSVC " ON)
-if(OPTIMIZE_FOR_NATIVE)
+option(DXMCLIB_OPTIMIZE_FOR_NATIVE "Build with -march=native on gcc/clang or AVX_x on MSVC " ON)
+if(DXMCLIB_OPTIMIZE_FOR_NATIVE)
     if(MSVC)
-        set(MSVC_OPTION "AVX" CACHE STRING "Machine instructions support")
-        set_property(CACHE MSVC_OPTION PROPERTY STRINGS SSE2 AVX AVX2 AVX512)
-        MESSAGE("-- Trying to build for ${MSVC_OPTION} instruction set")
-        enable_cxx_compiler_flag_if_supported("-arch:${MSVC_OPTION}")  
+        set(DXMCLIB_MSVC_OPTION "AVX" CACHE STRING "Machine instructions support")
+        set_property(CACHE DXMCLIB_MSVC_OPTION PROPERTY STRINGS SSE2 AVX AVX2 AVX512)
+        MESSAGE("-- Trying to build for ${DXMCLIB_MSVC_OPTION} instruction set")
+        enable_cxx_compiler_flag_if_supported("-arch:${DXMCLIB_MSVC_OPTION}")  
     endif()
     if(UNIX)
         MESSAGE("-- Trying to build for native (-march=native)")
@@ -47,8 +47,6 @@ endif()
 
 # Find packages go here.
 find_package(Threads REQUIRED) # for threading support
-
-
 
 # Finding xraylib library
 IF(WIN32)
@@ -99,11 +97,8 @@ add_library(libdxmc
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
 
-#add_subdirectory("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen")
 target_include_directories(libdxmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/include")
-#include_directories("${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
-
 
 target_include_directories(
     libdxmc
@@ -135,7 +130,6 @@ if(WIN32)
     install(FILES ${XRAYLIB_LIBRARY_SHARED_PATH_64} DESTINATION bin OPTIONAL)
 endif(WIN32)
 install(FILES ${HEADER_LIST} DESTINATION include)
-
 
 # EPICS data parser
 add_subdirectory(data)
