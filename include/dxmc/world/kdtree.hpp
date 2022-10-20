@@ -57,7 +57,7 @@ concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<type
 }
 || requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p, std::array<typename std::remove_pointer<U>::type::Type, 3> vec)
 {
-    std::remove_pointer<U>::type::Type;
+    typename std::remove_pointer<U>::type::Type;
     Floating<typename std::remove_pointer<U>::type::Type>;
     u <=> u;
 
@@ -217,7 +217,7 @@ public:
                         t = std::min(t, *t_cand);
                     }
                 } else {
-                    const auto t_cand = triangle.intersect<1>(particle);
+                    const auto t_cand = triangle.intersect(particle);
                     if (t_cand) {
                         t = std::min(t, *t_cand);
                     }
@@ -377,18 +377,18 @@ protected:
             m_right->AABB_iterator(aabb);
         }
     }
-    consteval static T epsilon()
+    constexpr static T epsilon()
     {
         // Huristic epsilon for triangle intersections
         return T { 11 } * std::numeric_limits<T>::epsilon();
     }
     constexpr static bool lessOrEqual(T a, T b)
     {
-        return a - b <= a * epsilon();
+        return a - b <= epsilon() * a;
     }
     constexpr static bool greaterOrEqual(T a, T b)
     {
-        return b - a <= a * epsilon();
+        return b - a <= epsilon() * a;
     }
 
 private:

@@ -426,7 +426,6 @@ public:
     }
 
 protected:
-    template<Floating T>
     struct Spline {
         Spline(const std::vector<T>& t, const std::vector<T>& p, const std::vector<T>& pz)
         {
@@ -441,13 +440,13 @@ protected:
             : m_data(data)
         {
         }
-        Spline<T> operator+(const Spline<T>& right) const
+        Spline operator+(const Spline& right) const
         {
-            Spline<T> res(m_data);
+            Spline res(m_data);
             res.m_data.insert(res.m_data.end(), right.m_data.cbegin(), right.m_data.cend());
             return res;
         }
-        void operator+=(const Spline<T>& right)
+        void operator+=(const Spline& right)
         {
             m_data.insert(m_data.end(), right.m_data.cbegin(), right.m_data.cend());
         }
@@ -475,7 +474,7 @@ protected:
     template <typename U>
     requires(std::is_convertible<U, std::vector<T>>::value || std::is_convertible<U, T>::value) void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const U& t, bool maybe_discont)
     {
-        Spline<T> spline;
+        Spline spline;
         if (maybe_discont) {
             // all this to handle dicontinous functions designated by a equal x value
             std::size_t x_start = 0;
@@ -534,9 +533,9 @@ protected:
 
         m_data = spline.m_data;
     }
-    Spline<T> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const T s) const
+    Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const T s) const
     {
-        Spline<T> result;
+        Spline result;
 
         std::vector<T> t = { x[0], x.back() };
         T max_error = 0;
@@ -564,7 +563,7 @@ protected:
         } while (max_error > s);
         return result;
     }
-    Spline<T> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t) const
+    Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t) const
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
 
@@ -714,7 +713,6 @@ protected:
         std::copy(G.begin(), G.end(), bval.begin() + N + 1);
 
 #ifdef USE_EIGEN
-        // Eigen::VectorX<T> res = sol.colPivHouseholderQr().solve(bval);
         Eigen::VectorX<T> res = sol.lu().solve(bval);
 #else
         auto res = sol.solve(bval);
@@ -725,10 +723,9 @@ protected:
 
         std::copy(res.begin(), res.begin() + N + 1, m_p.begin());
         std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), m_pz.begin());
-        Spline<T> spline(t, m_p, m_pz);
+        Spline spline(t, m_p, m_pz);
         return spline;
     }
-    
 
 private:
     std::vector<std::array<T, 3>> m_data; // array of m_t, m_z, m_zp

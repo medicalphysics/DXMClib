@@ -1669,7 +1669,7 @@ public:
         return exposure;
     }
 
-    std::uint64_t totalExposures() const
+    std::uint64_t totalExposures() const override
     {
         const auto n = this->scanLenght();
         const auto un = static_cast<std::uint64_t>(std::ceil(n));
