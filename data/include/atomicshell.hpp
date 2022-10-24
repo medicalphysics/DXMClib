@@ -33,6 +33,12 @@ public:
     void setShell(std::uint8_t shell) { m_shell = shell; }
     void setBindingEnergy(double en) { m_bindingEnergy = en; }
     void setNumberOfElectrons(double N) { m_numberOfElectrons = N; }
+    void setNumberOfPhotonsPerInitVacancy(double N) { m_numberOfPhotonsPerInitVacancy = N; }
+    void setEnergyOfPhotonsPerInitVacancy(double keV) { m_energyOfPhotonsPerInitVacancy = keV; }
+
+    std::uint8_t shell() const { return m_shell; }
+    double numberOfElectrons() const { return m_numberOfElectrons; }
+    double bindingEnergy() const { return m_bindingEnergy; }
 
     void setPhotoelectricData(const std::vector<std::pair<double, double>>& data) { m_photoel = data; }
     const auto& photoelectricData() const { return m_photoel; }
@@ -42,5 +48,7 @@ private:
     double m_numberOfElectrons = 0;
     double m_bindingEnergy = 0;
     double m_HartreeFockOrbital_0 = 0;
+    double m_numberOfPhotonsPerInitVacancy = 0;
+    double m_energyOfPhotonsPerInitVacancy = 0;
     std::vector<std::pair<double, double>> m_photoel;
 };

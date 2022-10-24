@@ -121,8 +121,8 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                     }
                 }
             }
-            if (seg.C == 93) { //coherent and incoherent data (not cross section)
-                if (seg.X1 == 0) { //whole atom
+            if (seg.C == 93) { // coherent and incoherent data (not cross section)
+                if (seg.X1 == 0) { // whole atom
                     if (seg.I == 941) { // form factor
                         elements[seg.Z].setFormFactor(seg.data);
                     }
@@ -144,6 +144,16 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                     elements[seg.Z].setShellNumberOfElectrons(seg.data);
                 } else if (seg.I == 913) { // Binding energy
                     elements[seg.Z].setShellBindingEnergy(seg.data);
+                }
+            }
+            if (seg.C == 92) { // transition data
+                if (seg.Yo == 7) { // photon data
+                    if (seg.I == 933) { // number of particles per vacancy
+                        elements[seg.Z].setShellNumberOfPhotonsPerInitVacancy(seg.data);
+                    }
+                    if (seg.I == 934) { // avg energy of particles per vacancy
+                        elements[seg.Z].setShellEnergyOfPhotonsPerInitVacancy(seg.data);
+                    }
                 }
             }
         }

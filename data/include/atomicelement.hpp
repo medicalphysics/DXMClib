@@ -44,15 +44,17 @@ public:
     const auto& photoelectricData() const { return m_photoel; }
     const auto& coherentData() const { return m_coherent; }
     const auto& incoherentData() const { return m_incoherent; }
-    
+
     const auto& formFactor() const { return m_formFactor; }
     const auto& imaginaryAnomalousSF() const { return m_imagAnomSF; }
     const auto& realAnomalousSF() const { return m_realAnomSF; }
     const auto& incoherentSF() const { return m_incoherentSF; }
 
     void setShellBindingEnergy(const std::vector<double>& data);
-    void setShellPhotoelectricData(std::uint8_t shell, const std::vector<double>& data);
+    void setShellPhotoelectricData(const std::uint8_t shell, const std::vector<double>& data);
     void setShellNumberOfElectrons(const std::vector<double>& data);
+    void setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data);
+    void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
 
     static double momentumTransfer(double energy, double angle);
 
