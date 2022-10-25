@@ -26,6 +26,8 @@ Copyright 2022 Erlend Andersen
 
 int main()
 {
+    AtomicElement::momentumTransfer(1, std::numbers::pi);
+
     const std::string eadl = EADLPATH;
     const std::string epdl = EPDLPATH;
 
@@ -68,6 +70,9 @@ int main()
         f << x << ", " << v << std::endl;
     }
     f.close();
+
+
+    parser.writeMaterialHeaderFile("slett.txt");
 
     return 1;
 }
