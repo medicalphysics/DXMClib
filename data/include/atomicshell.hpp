@@ -39,6 +39,9 @@ public:
     std::uint8_t shell() const { return m_shell; }
     double numberOfElectrons() const { return m_numberOfElectrons; }
     double bindingEnergy() const { return m_bindingEnergy; }
+    double hartreeFockOrbital_0() const { return m_HartreeFockOrbital_0; }
+    double numberOfPhotonsPerInitVacancy() const { return m_numberOfPhotonsPerInitVacancy; }
+    double energyOfPhotonsPerInitVacancy() const { return m_energyOfPhotonsPerInitVacancy; }
 
     void setPhotoelectricData(const std::vector<std::pair<double, double>>& data) { m_photoel = data; }
     const auto& photoelectricData() const { return m_photoel; }

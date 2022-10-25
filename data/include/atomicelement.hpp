@@ -32,6 +32,9 @@ public:
     void setZ(std::uint8_t Z) { m_Z = Z; }
     void setAtomicWeight(double AW) { m_atomicWeight = AW; }
 
+    std::uint8_t Z() const { return m_Z; }
+    double atomicWeight() const { return m_atomicWeight; }
+
     void setPhotoelectricData(const std::vector<double>& data);
     void setCoherentData(const std::vector<double>& data);
     void setIncoherentData(const std::vector<double>& data);
@@ -55,6 +58,8 @@ public:
     void setShellNumberOfElectrons(const std::vector<double>& data);
     void setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data);
     void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
+
+    const std::map<std::uint8_t, AtomicShell>& shells() const { return m_shells; }
 
     static double momentumTransfer(double energy, double angle);
 

@@ -205,21 +205,69 @@ void EPICSparser::read(const std::string& path)
     processSegments(segments, m_elements);
 }
 
-
 std::string writePairVector(const std::vector<std::pair<double, double>>& vec)
 {
-    std::string start = R"V0G0N({)V0G0N";
-    std::string end = R"V0G0N(};\n)V0G0N";
-
     std::stringstream ss;
     for (const auto& [first, second] : vec) {
 
         ss << "{" << first << ", " << second << "}"
            << ",";
     }
+    return "{" + ss.str() + "}";
+}
+
+std::string writePairVector(const std::string& name, const std::vector<std::pair<double, double>>& vec)
+{
+    std::string start = "auto " + name + " =";
+    return start + writePairVector(vec) + ";\n";
+}
+
+std::string writeShellsMap(const std::string& name, const std::map<std::uint8_t, AtomicShell>& shells)
+{
+    std::string start = "std::map<std::uint8_t, Shell> " + name + ";\n";
+    std::string end = "\n";
+
+    std::stringstream ss;
+    for (const auto& [shell_id, obj] : shells) {
+        ss << name << "[" << static_cast<int>(shell_id) << "]= {\n";
+        ss << ".shell=" << static_cast<int>(shell_id) << ",\n";
+        ss << ".bindingEnergy=" << obj.bindingEnergy() << ",\n";
+        ss << ".numberOfElectrons=" << obj.numberOfElectrons() << ",\n";
+        ss << ".hartreeFockOrbital_0=" << obj.hartreeFockOrbital_0() << ",\n";
+        ss << ".numberOfPhotonsPerInitVacancy=" << obj.numberOfPhotonsPerInitVacancy() << ",\n";
+        ss << ".energyOfPhotonsPerInitVacancy=" << obj.energyOfPhotonsPerInitVacancy() << ",\n";
+        ss << ".photo=" << writePairVector(obj.photoelectricData());
+        ss << "\n};";
+        break;
+    }
     return start + ss.str() + end;
 }
 
+std::string writeElementsMap(const std::string& name, const std::map<std::uint8_t, AtomicElement>& elements)
+{
+    std::string start = "std::map<std::uint8_t, Atom> " + name + "; \n";
+    std::string end = "\n";
+    std::stringstream ss;
+    for (const auto& [Z, obj] : elements) {
+        std::string exp = name + "[" + std::to_string(static_cast<int>(Z)) + "]";
+        ss << "{\n";
+        ss << exp << "= {\n ";
+        ss << ".Z=" << static_cast<int>(Z) << ",\n";
+        ss << ".atomicWeight=" << obj.atomicWeight() << ",\n";
+        ss << "};\n";
+        ss << exp << ".photo=" << writePairVector(obj.photoelectricData()) << ";\n";
+        ss << exp << ".incoherent=" << writePairVector(obj.incoherentData()) << ";\n";
+        ss << exp << ".coherent=" << writePairVector(obj.coherentData()) << ";\n";
+        ss << exp << ".formfactor=" << writePairVector(obj.formFactor()) << ";\n";
+        ss << exp << ".scatterfactor=" << writePairVector(obj.incoherentSF()) << ";\n";
+        const std::string shellname = "shells";
+        ss << writeShellsMap(shellname, obj.shells());
+        ss << exp << ".shells =" << shellname << ";\n";
+        ss << "}\n";
+        break;
+    }
+    return start + ss.str() + end;
+}
 
 bool EPICSparser::writeMaterialHeaderFile(const std::string& filename) const
 {
@@ -238,33 +286,35 @@ bool EPICSparser::writeMaterialHeaderFile(const std::string& filename) const
 namespace dxmclib{
 namespace material{
 struct Shell{
-    std::uint8_t m_shell = 0;
-    double m_bindingEnergy = 0;
-    double m_numberOfElectrons = 0; 
-    double m_HartreeFockOrbital_0 = 0;
-    double m_numberOfPhotonsPerInitVacancy = 0;
-    double m_energyOfPhotonsPerInitVacancy = 0;
-    std::vector<std::pair<double, double>> m_photo;
+    std::uint8_t shell = 0;
+    double bindingEnergy = 0;
+    double numberOfElectrons = 0; 
+    double hartreeFockOrbital_0 = 0;
+    double numberOfPhotonsPerInitVacancy = 0;
+    double energyOfPhotonsPerInitVacancy = 0;
+    std::vector<std::pair<double, double>> photo;
 };
 struct Atom{
-    std::uint8_t m_Z=0:
-    double m_AtomicWeight=0;
-    std::vector<std::pair<double, double>> m_photo;
-    std::vector<std::pair<double, double>> m_incoherent;
-    std::vector<std::pair<double, double>> m_coherent;
-    std::vector<std::pair<double, double>> m_formFactor;
-    std::vector<std::pair<double, double>> m_scatterFactor;
+    std::uint8_t Z=0;
+    double atomicWeight=0;
+    std::vector<std::pair<double, double>> photo;
+    std::vector<std::pair<double, double>> incoherent;
+    std::vector<std::pair<double, double>> coherent;
+    std::vector<std::pair<double, double>> formFactor;
+    std::vector<std::pair<double, double>> scatterFactor;
+    std::map<std::uint8_t, Shell> shells;
 };
-
-std::map<std::uint8_t, Atom> atoms;
 )V0G0N";
 
     auto end = R"V0G0N(}})V0G0N";
 
     fstream << start;
 
-    fstream << std::endl
+    fstream << std::endl;
 
+    const auto& photo = m_elements.at(16).photoelectricData();
+
+    fstream << writeElementsMap("atoms", m_elements);
 
     fstream.close();
     return true;

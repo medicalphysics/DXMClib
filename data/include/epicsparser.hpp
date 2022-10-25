@@ -30,7 +30,7 @@ public:
 
     std::map<std::uint8_t, AtomicElement>& getElements() { return m_elements; }
 
-    bool writeMaterialHeaderFile(const std::string& filename) const; 
+    bool writeMaterialHeaderFile(const std::string& filename) const;
 
 protected:
     constexpr static std::size_t endIdx() { return 71; }

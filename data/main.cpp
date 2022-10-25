@@ -71,7 +71,6 @@ int main()
     }
     f.close();
 
-
     parser.writeMaterialHeaderFile("slett.txt");
 
     return 1;
