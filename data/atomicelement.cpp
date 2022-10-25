@@ -190,6 +190,29 @@ void AtomicElement::setShellEnergyOfPhotonsPerInitVacancy(const std::vector<doub
     }
 }
 
+ std::vector<char> AtomicElement::toBinary() const
+{
+    std::size_t size = sizeof(std::uint64_t)+sizeof(m_Z) + sizeof(m_atomicWeight);
+    size += sizeof(double) * 2 * (
+        m_coherent.size() + 
+        m_incoherent.size() + 
+        m_photoel.size() + 
+        m_formFactor.size() + 
+        m_incoherentSF.size());
+    
+
+
+
+
+    return std::vector<char>();
+}
+
+std::vector<char>::iterator AtomicElement::fromBinary(std::vector<char>::iterator begin, std::vector<char>::iterator end)
+{
+    return std::vector<char>::iterator();
+}
+
+
 double AtomicElement::momentumTransfer(double energy, double angle)
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m

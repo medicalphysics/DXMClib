@@ -205,6 +205,7 @@ void EPICSparser::read(const std::string& path)
     processSegments(segments, m_elements);
 }
 
+
 std::string writePairVector(const std::vector<std::pair<double, double>>& vec)
 {
     std::stringstream ss;
@@ -238,7 +239,6 @@ std::string writeShellsMap(const std::string& name, const std::map<std::uint8_t,
         ss << ".energyOfPhotonsPerInitVacancy=" << obj.energyOfPhotonsPerInitVacancy() << ",\n";
         ss << ".photo=" << writePairVector(obj.photoelectricData());
         ss << "\n};";
-        break;
     }
     return start + ss.str() + end;
 }
@@ -258,13 +258,12 @@ std::string writeElementsMap(const std::string& name, const std::map<std::uint8_
         ss << exp << ".photo=" << writePairVector(obj.photoelectricData()) << ";\n";
         ss << exp << ".incoherent=" << writePairVector(obj.incoherentData()) << ";\n";
         ss << exp << ".coherent=" << writePairVector(obj.coherentData()) << ";\n";
-        ss << exp << ".formfactor=" << writePairVector(obj.formFactor()) << ";\n";
-        ss << exp << ".scatterfactor=" << writePairVector(obj.incoherentSF()) << ";\n";
+        ss << exp << ".formFactor=" << writePairVector(obj.formFactor()) << ";\n";
+        ss << exp << ".scatterFactor=" << writePairVector(obj.incoherentSF()) << ";\n";
         const std::string shellname = "shells";
         ss << writeShellsMap(shellname, obj.shells());
         ss << exp << ".shells =" << shellname << ";\n";
-        ss << "}\n";
-        break;
+        ss << "}\n";        
     }
     return start + ss.str() + end;
 }
@@ -304,9 +303,11 @@ struct Atom{
     std::vector<std::pair<double, double>> scatterFactor;
     std::map<std::uint8_t, Shell> shells;
 };
+
+static std::map<std::uint8_t, Atom> generateAtoms() {
 )V0G0N";
 
-    auto end = R"V0G0N(}})V0G0N";
+    auto end = R"V0G0N(return atoms;}}})V0G0N";
 
     fstream << start;
 
@@ -315,6 +316,8 @@ struct Atom{
     const auto& photo = m_elements.at(16).photoelectricData();
 
     fstream << writeElementsMap("atoms", m_elements);
+
+    fstream << end;
 
     fstream.close();
     return true;

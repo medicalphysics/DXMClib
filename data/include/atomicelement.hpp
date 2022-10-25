@@ -61,6 +61,11 @@ public:
 
     const std::map<std::uint8_t, AtomicShell>& shells() const { return m_shells; }
 
+
+    std::vector<char> toBinary() const;
+    std::vector<char>::iterator fromBinary(std::vector<char>::iterator begin, std::vector<char>::iterator end);
+
+
     static double momentumTransfer(double energy, double angle);
 
     static constexpr double maxPhotonEnergy()

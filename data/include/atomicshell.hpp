@@ -46,6 +46,8 @@ public:
     void setPhotoelectricData(const std::vector<std::pair<double, double>>& data) { m_photoel = data; }
     const auto& photoelectricData() const { return m_photoel; }
 
+    void fromBinary
+
 private:
     std::uint8_t m_shell = 0;
     double m_numberOfElectrons = 0;

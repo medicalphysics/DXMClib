@@ -24,24 +24,15 @@ Copyright 2022 Erlend Andersen
 #include <numbers>
 #include <string>
 
-int main()
-{
-    AtomicElement::momentumTransfer(1, std::numbers::pi);
+//#include "C:\Users\ander\source\repos\medicalphysics\DXMClib\out\build\x64-Debug\data\slett.txt"
 
+int main()
+{    
     const std::string eadl = EADLPATH;
     const std::string epdl = EPDLPATH;
 
     EPICSparser parser(eadl);
     parser.read(epdl);
-
-    for (const auto& [key, value] : parser.getElements()) {
-
-        std::cout << "Z: " << static_cast<int>(key) << "  ";
-        std::cout << "N_photo: " << value.photoelectricData().size() << "  ";
-        std::cout << "N_inco: " << value.incoherentData().size() << "  ";
-        std::cout << "N_coher: " << value.coherentData().size() << "  ";
-        std::cout << std::endl;
-    }
 
     const std::uint8_t Z = 16;
     const double angle = std::numbers::pi;
