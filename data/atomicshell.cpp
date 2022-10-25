@@ -17,6 +17,3 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "atomicshell.hpp"
-
-
-

@@ -166,6 +166,30 @@ void AtomicElement::setShellNumberOfElectrons(const std::vector<double>& data)
     }
 }
 
+void AtomicElement::setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data)
+{
+    for (std::size_t i = 0; i < data.size(); i = i + 2) {
+        const auto shell = static_cast<std::uint8_t>(data[i]);
+        const auto N = data[i + 1];
+        if (!m_shells.contains(shell)) {
+            m_shells[shell] = AtomicShell(shell);
+        }
+        m_shells[shell].setNumberOfPhotonsPerInitVacancy(N);
+    }
+}
+
+void AtomicElement::setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data)
+{
+    for (std::size_t i = 0; i < data.size(); i = i + 2) {
+        const auto shell = static_cast<std::uint8_t>(data[i]);
+        const auto E = data[i + 1] * MeVTokeV();
+        if (!m_shells.contains(shell)) {
+            m_shells[shell] = AtomicShell(shell);
+        }
+        m_shells[shell].setEnergyOfPhotonsPerInitVacancy(E);
+    }
+}
+
 double AtomicElement::momentumTransfer(double energy, double angle)
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m
