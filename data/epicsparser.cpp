@@ -205,6 +205,22 @@ void EPICSparser::read(const std::string& path)
     processSegments(segments, m_elements);
 }
 
+
+std::string writePairVector(const std::vector<std::pair<double, double>>& vec)
+{
+    std::string start = R"V0G0N({)V0G0N";
+    std::string end = R"V0G0N(};\n)V0G0N";
+
+    std::stringstream ss;
+    for (const auto& [first, second] : vec) {
+
+        ss << "{" << first << ", " << second << "}"
+           << ",";
+    }
+    return start + ss.str() + end;
+}
+
+
 bool EPICSparser::writeMaterialHeaderFile(const std::string& filename) const
 {
     if (m_elements.size() == 0)
@@ -222,9 +238,12 @@ bool EPICSparser::writeMaterialHeaderFile(const std::string& filename) const
 namespace dxmclib{
 namespace material{
 struct Shell{
-    std::uint8_t m_shell=0;
-    double m_bindingEnergy=0;
-    double m_numberOfElectrons=0; 
+    std::uint8_t m_shell = 0;
+    double m_bindingEnergy = 0;
+    double m_numberOfElectrons = 0; 
+    double m_HartreeFockOrbital_0 = 0;
+    double m_numberOfPhotonsPerInitVacancy = 0;
+    double m_energyOfPhotonsPerInitVacancy = 0;
     std::vector<std::pair<double, double>> m_photo;
 };
 struct Atom{
@@ -237,12 +256,15 @@ struct Atom{
     std::vector<std::pair<double, double>> m_scatterFactor;
 };
 
-std::vector<Material> materials(100);
+std::map<std::uint8_t, Atom> atoms;
 )V0G0N";
 
     auto end = R"V0G0N(}})V0G0N";
 
     fstream << start;
+
+    fstream << std::endl
+
 
     fstream.close();
     return true;
