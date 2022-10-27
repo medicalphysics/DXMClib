@@ -17,9 +17,7 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "atomicelement.hpp"
-#include <algorithm>
 #include <cmath>
-#include <concepts>
 
 AtomicElement::AtomicElement(std::uint8_t Z)
     : m_Z(Z)
@@ -63,7 +61,7 @@ void AtomicElement::setFormFactor(const std::vector<double>& data)
     m_formFactor.clear();
     m_formFactor.reserve(N);
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
-        const auto x = data[i] * 1E6; // for units of
+        const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
         m_formFactor.push_back(std::make_pair(x, f));
     }
@@ -188,29 +186,6 @@ void AtomicElement::setShellEnergyOfPhotonsPerInitVacancy(const std::vector<doub
         }
         m_shells[shell].setEnergyOfPhotonsPerInitVacancy(E);
     }
-}
-
-template <typename T>
-concept Number = std::is_integral<T>::value || std::is_floating_point<T>::value;
-
-template <Number T>
-auto copyBinary(T* in, std::vector<char>::iterator dest)
-{
-    auto in_c = reinterpret_cast<char*>(in);
-    return std::copy(in_c, in_c + sizeof(T), dest);
-}
-auto copyBinary(const std::vector<std::pair<double, double>>& data, std::vector<char>::iterator dest)
-{
-    auto in_c = reinterpret_cast<char const*>(data.data());
-    return std::copy(in_c, in_c + 2 * sizeof(double) * data.size(), dest);
-}
-
-std::vector<char> AtomicElement::toBinary() const
-{
-    std::size_t size = sizeof(std::uint64_t) + sizeof(m_Z) + sizeof(m_atomicWeight);
-    size += sizeof(double) * 2 * (m_coherent.size() + m_incoherent.size() + m_photoel.size() + m_formFactor.size() + m_incoherentSF.size());
-
-    return std::vector<char>();
 }
 
 std::vector<char>::iterator AtomicElement::fromBinary(std::vector<char>::iterator begin, std::vector<char>::iterator end)

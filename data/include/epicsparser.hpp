@@ -19,9 +19,11 @@ Copyright 2022 Erlend Andersen
 #pragma once
 
 #include "atomicelement.hpp"
+#include "serialize.hpp"
 
 #include <map>
 #include <string>
+#include <vector>
 
 class EPICSparser {
 public:
@@ -31,6 +33,18 @@ public:
     std::map<std::uint8_t, AtomicElement>& getElements() { return m_elements; }
 
     bool writeMaterialHeaderFile(const std::string& filename) const;
+
+    std::vector<char> serializeElements() const
+    {
+        std::vector<char> buffer;
+        std::uint64_t n_elements = m_elements.size();
+        serialize(&n_elements, buffer);
+        for (const auto& [Z, atom] : m_elements) {
+            auto el_buffer = atom.toBinary();
+            serialize(el_buffer, buffer);
+        }
+        return buffer;
+    }
 
 protected:
     constexpr static std::size_t endIdx() { return 71; }

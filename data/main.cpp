@@ -16,6 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#include "atomicshell.hpp"
 #include "epicsparser.hpp"
 
 #include <format>
@@ -27,7 +28,7 @@ Copyright 2022 Erlend Andersen
 //#include "C:\Users\ander\source\repos\medicalphysics\DXMClib\out\build\x64-Debug\data\slett.txt"
 
 int main()
-{    
+{
     const std::string eadl = EADLPATH;
     const std::string epdl = EPDLPATH;
 
@@ -62,7 +63,10 @@ int main()
     }
     f.close();
 
-    parser.writeMaterialHeaderFile("slett.txt");
+    f.open("data.bin", std::ios::binary);
+    auto data = parser.serializeElements();
+    f.write(data.data(), data.size());
+    f.close();
 
     return 1;
 }

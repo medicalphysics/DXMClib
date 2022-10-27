@@ -19,6 +19,7 @@ Copyright 2022 Erlend Andersen
 #pragma once
 
 #include "atomicshell.hpp"
+#include "serialize.hpp"
 
 #include <map>
 #include <utility>
@@ -61,10 +62,36 @@ public:
 
     const std::map<std::uint8_t, AtomicShell>& shells() const { return m_shells; }
 
+    std::vector<char> toBinary() const
+    {
+        std::vector<char> buffer;
 
-    std::vector<char> toBinary() const;
+        serialize(&m_Z, buffer);
+        serialize(&m_atomicWeight, buffer);
+        serialize(m_coherent, buffer);
+        serialize(m_incoherent, buffer);
+        serialize(m_photoel, buffer);
+        serialize(m_formFactor, buffer);
+        serialize(m_incoherentSF, buffer);
+
+        // adding shells
+        // adding number of shells
+        std::uint64_t n_shells = m_shells.size();
+        serialize(&n_shells, buffer);
+        // adding each shell
+        for (const auto& [id, shell] : m_shells) {
+            auto s_buffer = shell.toBinary();
+            serialize(s_buffer, buffer);
+        }
+
+        const std::uint64_t buffer_size = buffer.size();
+        auto buffer_size_ptr = &buffer_size;
+
+        // std::copy(buffer_size_ptr, buffer_size_ptr + sizeof(buffer_size), std::front_inserter(buffer));
+        return buffer;
+    }
+
     std::vector<char>::iterator fromBinary(std::vector<char>::iterator begin, std::vector<char>::iterator end);
-
 
     static double momentumTransfer(double energy, double angle);
 

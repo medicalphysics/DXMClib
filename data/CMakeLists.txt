@@ -14,7 +14,7 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     target_compile_definitions(EPICSparser PUBLIC EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
     target_compile_definitions(EPICSparser PUBLIC EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
     target_include_directories(EPICSparser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-    target_link_libraries(EPICSparser PRIVATE libdxmc)
+    #target_link_libraries(EPICSparser PRIVATE libdxmc)
 endif()
 
 

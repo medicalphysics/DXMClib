@@ -205,7 +205,6 @@ void EPICSparser::read(const std::string& path)
     processSegments(segments, m_elements);
 }
 
-
 std::string writePairVector(const std::vector<std::pair<double, double>>& vec)
 {
     std::stringstream ss;
@@ -263,7 +262,7 @@ std::string writeElementsMap(const std::string& name, const std::map<std::uint8_
         const std::string shellname = "shells";
         ss << writeShellsMap(shellname, obj.shells());
         ss << exp << ".shells =" << shellname << ";\n";
-        ss << "}\n";        
+        ss << "}\n";
     }
     return start + ss.str() + end;
 }
