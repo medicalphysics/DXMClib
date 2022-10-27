@@ -17,6 +17,7 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "epicsparser.hpp"
+#include "serialize.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -74,6 +75,11 @@ void processSecondHeaderLine(const std::string& line, DataSegment& segment)
 EPICSparser::EPICSparser(const std::string& path)
 {
     read(path);
+}
+
+EPICSparser::EPICSparser(std::vector<char>& data)
+{
+    deSerializeElements(data);
 }
 
 std::vector<double> split(const std::string& s)
@@ -320,4 +326,34 @@ static std::map<std::uint8_t, Atom> generateAtoms() {
 
     fstream.close();
     return true;
+}
+
+std::vector<char> EPICSparser::serializeElements() const
+{
+    std::vector<char> buffer;
+    // writing number of elements
+    std::uint64_t n_elements = m_elements.size();
+    serialize(n_elements, buffer);
+    for (const auto& [Z, atom] : m_elements) {
+        auto el_buffer = atom.toBinary();
+        serialize(el_buffer, buffer);
+    }
+    return buffer;
+}
+
+void EPICSparser::deSerializeElements(std::vector<char>& data)
+{
+    if (data.size() == 0)
+        return;
+    auto begin = &(data[0]);
+
+    std::uint64_t number_elements;
+    begin = deserialize(number_elements, begin);
+
+    m_elements.clear();
+    for (std::size_t i = 0; i < number_elements; i++) {
+        AtomicElement element;
+        begin = element.fromBinary(data, begin);
+        m_elements[element.Z()] = element;
+    }
 }

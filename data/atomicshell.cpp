@@ -17,3 +17,36 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "atomicshell.hpp"
+#include "serialize.hpp"
+
+std::vector<char> AtomicShell::toBinary() const
+{
+    std::vector<char> buffer(sizeof(std::uint64_t));
+    serialize(m_shell, buffer);
+    serialize(m_numberOfElectrons, buffer);
+    serialize(m_bindingEnergy, buffer);
+    serialize(m_HartreeFockOrbital_0, buffer);
+    serialize(m_numberOfPhotonsPerInitVacancy, buffer);
+    serialize(m_energyOfPhotonsPerInitVacancy, buffer);
+    serialize(m_photoel, buffer);
+    std::uint64_t buffer_size = buffer.size() - sizeof(std::uint64_t);
+    auto buffer_size_addr = reinterpret_cast<char*>(&buffer_size);
+    // writing over first value to contain size of serialized data
+    std::copy(buffer_size_addr, buffer_size_addr + sizeof(std::uint64_t), buffer.begin());
+    return buffer;
+}
+
+char* AtomicShell::fromBinary(std::vector<char>& data, char* begin)
+{
+    std::uint64_t size;
+    auto start = deserialize(size, begin);
+    start = deserialize(m_shell, start);
+    start = deserialize(m_numberOfElectrons, start);
+    start = deserialize(m_bindingEnergy, start);
+    start = deserialize(m_HartreeFockOrbital_0, start);
+    start = deserialize(m_numberOfPhotonsPerInitVacancy, start);
+    start = deserialize(m_energyOfPhotonsPerInitVacancy, start);
+    start = deserialize(m_photoel, start);
+
+    return start;
+}

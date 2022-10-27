@@ -18,8 +18,6 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "serialize.hpp"
-
 #include <algorithm>
 #include <iterator>
 #include <utility>
@@ -50,22 +48,8 @@ public:
     void setPhotoelectricData(const std::vector<std::pair<double, double>>& data) { m_photoel = data; }
     const auto& photoelectricData() const { return m_photoel; }
 
-    std::vector<char> toBinary() const
-    {
-        std::vector<char> buffer;
-        serialize(&m_shell, buffer);
-        serialize(&m_numberOfElectrons, buffer);
-        serialize(&m_bindingEnergy, buffer);
-        serialize(&m_HartreeFockOrbital_0, buffer);
-        serialize(&m_numberOfPhotonsPerInitVacancy, buffer);
-        serialize(&m_energyOfPhotonsPerInitVacancy, buffer);
-        serialize(m_photoel, buffer);
-        const std::uint64_t buffer_size = buffer.size();
-        auto buffer_size_ptr = &buffer_size;
-        // std::copy(buffer_size_ptr, buffer_size_ptr + sizeof(buffer_size), std::front_inserter(buffer));
-        return buffer;
-    }
-    std::vector<char>::iterator fromBinary(std::vector<char>::iterator begin, std::vector<char>::iterator end);
+    std::vector<char> toBinary() const;
+    char* fromBinary(std::vector<char>& data, char* begin);
 
 private:
     std::uint8_t m_shell = 0;

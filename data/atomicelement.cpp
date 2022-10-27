@@ -17,6 +17,8 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "atomicelement.hpp"
+#include "serialize.hpp"
+
 #include <cmath>
 
 AtomicElement::AtomicElement(std::uint8_t Z)
@@ -188,11 +190,57 @@ void AtomicElement::setShellEnergyOfPhotonsPerInitVacancy(const std::vector<doub
     }
 }
 
-std::vector<char>::iterator AtomicElement::fromBinary(std::vector<char>::iterator begin, std::vector<char>::iterator end)
+std::vector<char> AtomicElement::toBinary() const
 {
-    return std::vector<char>::iterator();
-}
+    std::vector<char> buffer(sizeof(std::uint64_t));
+    serialize(m_Z, buffer);
+    serialize(m_atomicWeight, buffer);
+    serialize(m_coherent, buffer);
+    serialize(m_incoherent, buffer);
+    serialize(m_photoel, buffer);
+    serialize(m_formFactor, buffer);
+    serialize(m_incoherentSF, buffer);
 
+    // adding shells
+    // adding number of shells
+    std::uint64_t n_shells = m_shells.size();
+    serialize(n_shells, buffer);
+    // adding each shell
+    for (const auto& [id, shell] : m_shells) {
+        auto s_buffer = shell.toBinary();
+        serialize(s_buffer, buffer);
+    }
+
+    std::uint64_t buffer_size = buffer.size() - sizeof(std::uint64_t);
+    auto buffer_size_addr = reinterpret_cast<char*>(&buffer_size);
+    // writing over first value to contain size of serialized data
+    std::copy(buffer_size_addr, buffer_size_addr + sizeof(std::uint64_t), buffer.begin());
+
+    return buffer;
+}
+char* AtomicElement::fromBinary(std::vector<char>& data, char* begin)
+{
+    std::uint64_t size;
+    auto start = deserialize(size, begin);
+    start = deserialize(m_Z, start);
+    start = deserialize(m_atomicWeight, start);
+    start = deserialize(m_coherent, start);
+    start = deserialize(m_incoherent, start);
+    start = deserialize(m_photoel, start);
+    start = deserialize(m_formFactor, start);
+    start = deserialize(m_incoherentSF, start);
+
+    std::uint64_t n_shells;
+    m_shells.clear();
+    start = deserialize(n_shells, start);
+    for (std::size_t i = 0; i < n_shells; ++i) {
+        AtomicShell shell;
+        start = shell.fromBinary(data, start);
+        m_shells[shell.shell()] = shell;
+    }
+
+    return start;
+}
 double AtomicElement::momentumTransfer(double energy, double angle)
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m

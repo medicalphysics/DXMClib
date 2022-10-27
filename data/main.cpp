@@ -68,5 +68,8 @@ int main()
     f.write(data.data(), data.size());
     f.close();
 
+    EPICSparser parser2(data);
+    
+
     return 1;
 }
