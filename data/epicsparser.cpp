@@ -93,7 +93,7 @@ std::vector<double> split(const std::string& s)
     return data;
 }
 
-void processSegments(const std::vector<DataSegment>& segments, std::map<std::uint8_t, AtomicElement>& elements)
+void processSegments(const std::vector<DataSegment>& segments, std::map<std::uint64_t, AtomicElement>& elements)
 {
     for (const auto& seg : segments) {
         if (!elements.contains(seg.Z)) { // adding uniqe element
@@ -228,7 +228,7 @@ std::string writePairVector(const std::string& name, const std::vector<std::pair
     return start + writePairVector(vec) + ";\n";
 }
 
-std::string writeShellsMap(const std::string& name, const std::map<std::uint8_t, AtomicShell>& shells)
+std::string writeShellsMap(const std::string& name, const std::map<std::uint64_t, AtomicShell>& shells)
 {
     std::string start = "std::map<std::uint8_t, Shell> " + name + ";\n";
     std::string end = "\n";
@@ -248,7 +248,7 @@ std::string writeShellsMap(const std::string& name, const std::map<std::uint8_t,
     return start + ss.str() + end;
 }
 
-std::string writeElementsMap(const std::string& name, const std::map<std::uint8_t, AtomicElement>& elements)
+std::string writeElementsMap(const std::string& name, const std::map<std::uint64_t, AtomicElement>& elements)
 {
     std::string start = "std::map<std::uint8_t, Atom> " + name + "; \n";
     std::string end = "\n";
@@ -337,6 +337,7 @@ std::vector<char> EPICSparser::serializeElements() const
     for (const auto& [Z, atom] : m_elements) {
         auto el_buffer = atom.toBinary();
         serialize(el_buffer, buffer);
+        return buffer;
     }
     return buffer;
 }
@@ -348,12 +349,13 @@ void EPICSparser::deSerializeElements(std::vector<char>& data)
     auto begin = &(data[0]);
 
     std::uint64_t number_elements;
-    begin = deserialize(number_elements, begin);
+    auto start = deserialize(number_elements, begin);
 
     m_elements.clear();
     for (std::size_t i = 0; i < number_elements; i++) {
         AtomicElement element;
-        begin = element.fromBinary(data, begin);
+        start = element.fromBinary(data, start);
         m_elements[element.Z()] = element;
+        return;
     }
 }

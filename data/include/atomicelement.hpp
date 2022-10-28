@@ -27,12 +27,12 @@ Copyright 2022 Erlend Andersen
 class AtomicElement {
 public:
     AtomicElement() {};
-    AtomicElement(std::uint8_t Z);
+    AtomicElement(std::uint64_t Z);
 
-    void setZ(std::uint8_t Z) { m_Z = Z; }
+    void setZ(std::uint64_t Z) { m_Z = Z; }
     void setAtomicWeight(double AW) { m_atomicWeight = AW; }
 
-    std::uint8_t Z() const { return m_Z; }
+    std::uint64_t Z() const { return m_Z; }
     double atomicWeight() const { return m_atomicWeight; }
 
     void setPhotoelectricData(const std::vector<double>& data);
@@ -54,12 +54,12 @@ public:
     const auto& incoherentSF() const { return m_incoherentSF; }
 
     void setShellBindingEnergy(const std::vector<double>& data);
-    void setShellPhotoelectricData(const std::uint8_t shell, const std::vector<double>& data);
+    void setShellPhotoelectricData(const std::uint64_t shell, const std::vector<double>& data);
     void setShellNumberOfElectrons(const std::vector<double>& data);
     void setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data);
     void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
 
-    const std::map<std::uint8_t, AtomicShell>& shells() const { return m_shells; }
+    const std::map<std::uint64_t, AtomicShell>& shells() const { return m_shells; }
 
     std::vector<char> toBinary() const;
 
@@ -81,7 +81,7 @@ public:
 
 protected:
 private:
-    std::uint8_t m_Z = 0;
+    std::uint64_t m_Z = 0;
     double m_atomicWeight = 0.0;
     std::vector<std::pair<double, double>> m_coherent;
     std::vector<std::pair<double, double>> m_incoherent;
@@ -91,5 +91,5 @@ private:
     std::vector<std::pair<double, double>> m_realAnomSF;
     std::vector<std::pair<double, double>> m_incoherentSF;
 
-    std::map<std::uint8_t, AtomicShell> m_shells;
+    std::map<std::uint64_t, AtomicShell> m_shells;
 };

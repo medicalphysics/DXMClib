@@ -30,20 +30,26 @@ template <Number T>
 void serialize(T in, std::vector<char>& buffer)
 {
     auto dest = std::back_inserter(buffer);
-    auto in_c = reinterpret_cast<const char*>(&in);
+    auto in_c = reinterpret_cast<char*>(&in);
     std::copy(in_c, in_c + sizeof(T), dest);
 }
 
 template <typename T>
 void serialize(const std::vector<T>& data, std::vector<char>& buffer)
 {
-    std::uint64_t size = data.size() * sizeof(T);
-    serialize(size, buffer);
-
-    auto in_c = reinterpret_cast<char const*>(data.data());
-    auto dest = std::back_inserter(buffer);
-    std::copy(in_c, in_c + size, dest);
+    if constexpr (std::same_as<T, char>) {
+        std::copy(data.cbegin(), data.cend(), std::back_inserter(buffer));
+    } else {
+        std::uint64_t size = data.size() * sizeof(T);
+        serialize(size, buffer);
+        auto in_c = reinterpret_cast<const char*>(data.data());
+        auto dest = std::back_inserter(buffer);
+        std::copy(in_c, in_c + size, dest);
+    }
 }
+
+
+
 
 template <Number T>
 char* deserialize(T& value, char* begin)
@@ -56,6 +62,7 @@ template<typename T>
 char* deserialize(std::vector<T>& val, char* begin, std::size_t size)
 {
     auto n_elements = size / (sizeof(T));
+    val.clear();
     auto start = reinterpret_cast<T*>(begin);
     std::copy(start, start + n_elements, std::back_inserter(val));
     return begin + n_elements * sizeof(T);

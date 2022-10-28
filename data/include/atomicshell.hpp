@@ -38,7 +38,7 @@ public:
     void setNumberOfPhotonsPerInitVacancy(double N) { m_numberOfPhotonsPerInitVacancy = N; }
     void setEnergyOfPhotonsPerInitVacancy(double keV) { m_energyOfPhotonsPerInitVacancy = keV; }
 
-    std::uint8_t shell() const { return m_shell; }
+    std::uint64_t shell() const { return m_shell; }
     double numberOfElectrons() const { return m_numberOfElectrons; }
     double bindingEnergy() const { return m_bindingEnergy; }
     double hartreeFockOrbital_0() const { return m_HartreeFockOrbital_0; }
@@ -52,7 +52,7 @@ public:
     char* fromBinary(std::vector<char>& data, char* begin);
 
 private:
-    std::uint8_t m_shell = 0;
+    std::uint64_t m_shell = 0;
     double m_numberOfElectrons = 0;
     double m_bindingEnergy = 0;
     double m_HartreeFockOrbital_0 = 0;

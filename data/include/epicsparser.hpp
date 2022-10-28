@@ -30,7 +30,7 @@ public:
     EPICSparser(std::vector<char>& data);
     void read(const std::string& path);
 
-    std::map<std::uint8_t, AtomicElement>& getElements() { return m_elements; }
+    std::map<std::uint64_t, AtomicElement>& getElements() { return m_elements; }
 
     bool writeMaterialHeaderFile(const std::string& filename) const;
 
@@ -41,5 +41,5 @@ protected:
     constexpr static std::size_t endIdx() { return 71; }
 
 private:
-    std::map<std::uint8_t, AtomicElement> m_elements;
+    std::map<std::uint64_t, AtomicElement> m_elements;
 };

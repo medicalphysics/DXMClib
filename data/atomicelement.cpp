@@ -21,7 +21,7 @@ Copyright 2022 Erlend Andersen
 
 #include <cmath>
 
-AtomicElement::AtomicElement(std::uint8_t Z)
+AtomicElement::AtomicElement(std::uint64_t Z)
     : m_Z(Z)
 {
 }
@@ -120,7 +120,7 @@ void AtomicElement::setPhotoelectricData(const std::vector<double>& data)
     }
     m_photoel.shrink_to_fit();
 }
-void AtomicElement::setShellPhotoelectricData(std::uint8_t shell, const std::vector<double>& data)
+void AtomicElement::setShellPhotoelectricData(std::uint64_t shell, const std::vector<double>& data)
 {
     if (!m_shells.contains(shell)) {
         m_shells[shell] = AtomicShell(shell);
@@ -193,6 +193,7 @@ void AtomicElement::setShellEnergyOfPhotonsPerInitVacancy(const std::vector<doub
 std::vector<char> AtomicElement::toBinary() const
 {
     std::vector<char> buffer(sizeof(std::uint64_t));
+    //std::vector<char> buffer;
     serialize(m_Z, buffer);
     serialize(m_atomicWeight, buffer);
     serialize(m_coherent, buffer);
@@ -210,12 +211,12 @@ std::vector<char> AtomicElement::toBinary() const
         auto s_buffer = shell.toBinary();
         serialize(s_buffer, buffer);
     }
-
+    
     std::uint64_t buffer_size = buffer.size() - sizeof(std::uint64_t);
     auto buffer_size_addr = reinterpret_cast<char*>(&buffer_size);
     // writing over first value to contain size of serialized data
     std::copy(buffer_size_addr, buffer_size_addr + sizeof(std::uint64_t), buffer.begin());
-
+    
     return buffer;
 }
 char* AtomicElement::fromBinary(std::vector<char>& data, char* begin)
