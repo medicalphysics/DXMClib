@@ -27,6 +27,25 @@ Copyright 2022 Erlend Andersen
 
 //#include "C:\Users\ander\source\repos\medicalphysics\DXMClib\out\build\x64-Debug\data\slett.txt"
 
+bool test_serializer(EPICSparser& parser)
+{
+    auto data = parser.serializeElements();
+    EPICSparser parser2(data);
+
+    auto elements = parser.getElements();
+    auto elements2 = parser2.getElements();
+
+    if (elements.size() != elements2.size()) {
+        return false;
+    }
+
+    for 
+
+
+
+}
+
+
 int main()
 {
     const std::string eadl = EADLPATH;
@@ -35,11 +54,21 @@ int main()
     EPICSparser parser(eadl);
     parser.read(epdl);
 
+    auto data = parser.serializeElements();
+
+    
+    EPICSparser parser2(data);
+    
+    auto test = true;
+
+
+    /*
     const std::uint8_t Z = 16;
     const double angle = std::numbers::pi;
+
     // write Form factor data
     std::ofstream f;
-
+    
     const auto& elements = parser.getElements();
     f.open("formfactor_test.txt");
     for (const auto& [x, v] : elements.at(Z).formFactor()) {
@@ -62,13 +91,13 @@ int main()
         f << x << ", " << v << std::endl;
     }
     f.close();
-
+    
     f.open("data.bin", std::ios::binary);
     auto data = parser.serializeElements();
     f.write(data.data(), data.size());
     f.close();
-
-    EPICSparser parser2(data);
+    */
+    
     
 
     return 1;

@@ -131,12 +131,14 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                     if (seg.I == 941) { // form factor
                         elements[seg.Z].setFormFactor(seg.data);
                     }
+                    /*
                     if (seg.I == 943) { // imaginary anomalous scattering factor
                         elements[seg.Z].setImaginaryAnomalousSF(seg.data);
                     }
                     if (seg.I == 944) { // imaginary anomalous scattering factor
                         elements[seg.Z].setRealAnomalousSF(seg.data);
                     }
+                    */
                     if (seg.I == 942) { // incoherent scatter function
                         elements[seg.Z].setIncoherentSF(seg.data);
                     }
@@ -337,7 +339,6 @@ std::vector<char> EPICSparser::serializeElements() const
     for (const auto& [Z, atom] : m_elements) {
         auto el_buffer = atom.toBinary();
         serialize(el_buffer, buffer);
-        return buffer;
     }
     return buffer;
 }
@@ -355,7 +356,6 @@ void EPICSparser::deSerializeElements(std::vector<char>& data)
     for (std::size_t i = 0; i < number_elements; i++) {
         AtomicElement element;
         start = element.fromBinary(data, start);
-        m_elements[element.Z()] = element;
-        return;
+        m_elements[element.Z()] = element;        
     }
 }

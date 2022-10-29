@@ -68,7 +68,7 @@ void AtomicElement::setFormFactor(const std::vector<double>& data)
         m_formFactor.push_back(std::make_pair(x, f));
     }
 }
-
+/*
 void AtomicElement::setImaginaryAnomalousSF(const std::vector<double>& data)
 {
     const auto N = data.size() / 2;
@@ -92,7 +92,7 @@ void AtomicElement::setRealAnomalousSF(const std::vector<double>& data)
         m_realAnomSF.push_back(std::make_pair(x, f));
     }
 }
-
+*/
 void AtomicElement::setIncoherentSF(const std::vector<double>& data)
 {
     const auto N = data.size() / 2;

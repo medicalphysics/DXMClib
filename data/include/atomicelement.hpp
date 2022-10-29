@@ -40,8 +40,8 @@ public:
     void setIncoherentData(const std::vector<double>& data);
 
     void setFormFactor(const std::vector<double>& data);
-    void setImaginaryAnomalousSF(const std::vector<double>& data);
-    void setRealAnomalousSF(const std::vector<double>& data);
+    //void setImaginaryAnomalousSF(const std::vector<double>& data);
+    //void setRealAnomalousSF(const std::vector<double>& data);
     void setIncoherentSF(const std::vector<double>& data);
 
     const auto& photoelectricData() const { return m_photoel; }
@@ -49,8 +49,8 @@ public:
     const auto& incoherentData() const { return m_incoherent; }
 
     const auto& formFactor() const { return m_formFactor; }
-    const auto& imaginaryAnomalousSF() const { return m_imagAnomSF; }
-    const auto& realAnomalousSF() const { return m_realAnomSF; }
+    //const auto& imaginaryAnomalousSF() const { return m_imagAnomSF; }
+    //const auto& realAnomalousSF() const { return m_realAnomSF; }
     const auto& incoherentSF() const { return m_incoherentSF; }
 
     void setShellBindingEnergy(const std::vector<double>& data);
@@ -87,8 +87,8 @@ private:
     std::vector<std::pair<double, double>> m_incoherent;
     std::vector<std::pair<double, double>> m_photoel;
     std::vector<std::pair<double, double>> m_formFactor;
-    std::vector<std::pair<double, double>> m_imagAnomSF;
-    std::vector<std::pair<double, double>> m_realAnomSF;
+    //std::vector<std::pair<double, double>> m_imagAnomSF;
+    //std::vector<std::pair<double, double>> m_realAnomSF;
     std::vector<std::pair<double, double>> m_incoherentSF;
 
     std::map<std::uint64_t, AtomicShell> m_shells;
