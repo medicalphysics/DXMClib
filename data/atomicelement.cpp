@@ -242,11 +242,16 @@ char* AtomicElement::fromBinary(std::vector<char>& data, char* begin)
 
     return start;
 }
-bool AtomicElement::operator==(const AtomicElement& other)
+bool AtomicElement::operator==(const AtomicElement& other) const
 {
     bool eq = m_Z == other.m_Z;
     eq = eq && m_atomicWeight == other.m_atomicWeight;
     eq = eq && m_photoel == other.m_photoel;
+    eq = eq && m_coherent == other.m_coherent;
+    eq = eq && m_incoherent == other.m_incoherent;
+    eq = eq && m_incoherentSF == other.m_incoherentSF;
+    eq = eq && m_formFactor == other.m_formFactor;
+    eq = eq && m_shells == other.m_shells;
     return eq;
 }
 double AtomicElement::momentumTransfer(double energy, double angle)

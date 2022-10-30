@@ -32,8 +32,6 @@ public:
 
     std::map<std::uint64_t, AtomicElement>& getElements() { return m_elements; }
 
-    bool writeMaterialHeaderFile(const std::string& filename) const;
-
     std::vector<char> serializeElements() const;
     void deSerializeElements(std::vector<char>& data);
 

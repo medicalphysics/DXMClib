@@ -29,6 +29,8 @@ public:
     AtomicElement() {};
     AtomicElement(std::uint64_t Z);
 
+    bool operator==(const AtomicElement& other) const;
+
     void setZ(std::uint64_t Z) { m_Z = Z; }
     void setAtomicWeight(double AW) { m_atomicWeight = AW; }
 
@@ -64,8 +66,6 @@ public:
     std::vector<char> toBinary() const;
 
     char* fromBinary(std::vector<char>& data, char* begin);
-
-    bool operator==(const AtomicElement& other);
 
     static double momentumTransfer(double energy, double angle);
 

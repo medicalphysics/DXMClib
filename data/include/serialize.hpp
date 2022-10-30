@@ -48,9 +48,6 @@ void serialize(const std::vector<T>& data, std::vector<char>& buffer)
     }
 }
 
-
-
-
 template <Number T>
 char* deserialize(T& value, char* begin)
 {
@@ -58,7 +55,7 @@ char* deserialize(T& value, char* begin)
     value = *val_ptr;
     return begin + sizeof(T);
 }
-template<typename T>
+template <typename T>
 char* deserialize(std::vector<T>& val, char* begin, std::size_t size)
 {
     auto n_elements = size / (sizeof(T));
@@ -68,7 +65,7 @@ char* deserialize(std::vector<T>& val, char* begin, std::size_t size)
     return begin + n_elements * sizeof(T);
 }
 
-template<typename T>
+template <typename T>
 char* deserialize(std::vector<T>& val, char* begin)
 {
     std::uint64_t size;

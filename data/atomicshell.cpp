@@ -19,6 +19,19 @@ Copyright 2022 Erlend Andersen
 #include "atomicshell.hpp"
 #include "serialize.hpp"
 
+bool AtomicShell::operator==(const AtomicShell& other) const
+{
+    bool eq = m_shell == other.m_shell;
+    eq = eq && m_bindingEnergy == other.m_bindingEnergy;
+    eq = eq && m_energyOfPhotonsPerInitVacancy == other.m_energyOfPhotonsPerInitVacancy;
+    eq = eq && m_HartreeFockOrbital_0 == other.m_HartreeFockOrbital_0;
+    eq = eq && m_numberOfElectrons == other.m_numberOfElectrons;
+    eq = eq && m_numberOfPhotonsPerInitVacancy == other.m_numberOfPhotonsPerInitVacancy;
+    eq = eq && m_photoel == other.m_photoel;
+
+    return eq;
+}
+
 std::vector<char> AtomicShell::toBinary() const
 {
     std::vector<char> buffer(sizeof(std::uint64_t));

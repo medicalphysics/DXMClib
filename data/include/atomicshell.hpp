@@ -32,6 +32,9 @@ public:
         : m_shell(shell)
     {
     }
+
+    bool operator==(const AtomicShell& other) const;
+
     void setShell(std::uint8_t shell) { m_shell = shell; }
     void setBindingEnergy(double en) { m_bindingEnergy = en; }
     void setNumberOfElectrons(double N) { m_numberOfElectrons = N; }

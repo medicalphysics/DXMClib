@@ -58,6 +58,21 @@ int main()
 
     auto success = test_serializer(parser);
 
+    std::ofstream of;
+    of.open("data.bin", std::ios::binary);
+    auto data = parser.serializeElements();
+    of.write(data.data(), data.size());
+    of.close();
+
+    std::ifstream iff;
+    iff.open("data.bin", std::ios::binary);
+    std::vector<char> buffer(std::istreambuf_iterator<char>(iff), {});
+    iff.close();
+
+    EPICSparser parser2(buffer);
+
+    auto success2 = parser.getElements() == parser2.getElements();
+
     /*
     const std::uint8_t Z = 16;
     const double angle = std::numbers::pi;
@@ -88,10 +103,7 @@ int main()
     }
     f.close();
 
-    f.open("data.bin", std::ios::binary);
-    auto data = parser.serializeElements();
-    f.write(data.data(), data.size());
-    f.close();
+
     */
 
     return 1;
