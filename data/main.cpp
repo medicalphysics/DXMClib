@@ -32,19 +32,21 @@ bool test_serializer(EPICSparser& parser)
     auto data = parser.serializeElements();
     EPICSparser parser2(data);
 
-    auto elements = parser.getElements();
+    auto elements1 = parser.getElements();
     auto elements2 = parser2.getElements();
 
-    if (elements.size() != elements2.size()) {
+    if (elements1.size() != elements2.size()) {
         return false;
     }
 
-    for 
-
-
-
+    for (auto& [key, el1] : elements1) {
+        auto el2 = elements2.at(key);
+        auto valid = el1 == el2;
+        if (!valid)
+            return false;
+    }
+    return true;
 }
-
 
 int main()
 {
@@ -54,13 +56,7 @@ int main()
     EPICSparser parser(eadl);
     parser.read(epdl);
 
-    auto data = parser.serializeElements();
-
-    
-    EPICSparser parser2(data);
-    
-    auto test = true;
-
+    auto success = test_serializer(parser);
 
     /*
     const std::uint8_t Z = 16;
@@ -68,7 +64,7 @@ int main()
 
     // write Form factor data
     std::ofstream f;
-    
+
     const auto& elements = parser.getElements();
     f.open("formfactor_test.txt");
     for (const auto& [x, v] : elements.at(Z).formFactor()) {
@@ -91,14 +87,12 @@ int main()
         f << x << ", " << v << std::endl;
     }
     f.close();
-    
+
     f.open("data.bin", std::ios::binary);
     auto data = parser.serializeElements();
     f.write(data.data(), data.size());
     f.close();
     */
-    
-    
 
     return 1;
 }
