@@ -1,4 +1,3 @@
-
 /*This file is part of DXMClib.
 
 DXMClib is free software : you can redistribute it and/or modify
@@ -17,24 +16,26 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#pragma once
 
+#include "dxmc/floating.hpp"
 #include "dxmc/material/atomicshell.hpp"
 
+#include <map>
+#include <vector>
 
+namespace dxmc {
 
-using namespace dxmc;
+template <Floating T>
+struct AtomicElement {
+    std::uint64_t Z = 0;
+    double atomicWeight = 0.0;
+    std::vector<std::pair<double, double>> coherent;
+    std::vector<std::pair<double, double>> incoherent;
+    std::vector<std::pair<double, double>> photoel;
+    std::vector<std::pair<double, double>> formFactor;
+    std::vector<std::pair<double, double>> incoherentSF;
+    std::map<std::uint64_t, AtomicShell> shells;
+};
 
-bool testatomicshell()
-{
-    AtomicShell<float> shell;
-    return true;
-}
-
-
-int main(int argc, char* argv[])
-{
-    auto success = testatomicshell();
-    if (success)
-        return EXIT_SUCCESS;
-    return EXIT_FAILURE;
 }

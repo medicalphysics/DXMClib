@@ -8,7 +8,7 @@ set(TEST_SOURCES
 #    "testtube.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
-#    "testmaterial.cpp"
+    "testmaterial.cpp"
 #    "testrandom.cpp"
 #    "testattenuationlut.cpp"
     "testitemcollection.cpp"

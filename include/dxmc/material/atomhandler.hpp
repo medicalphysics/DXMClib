@@ -1,4 +1,3 @@
-
 /*This file is part of DXMClib.
 
 DXMClib is free software : you can redistribute it and/or modify
@@ -17,24 +16,33 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#pragma once
 
+#include "dxmc/floating.hpp"
+#include "dxmc/material/atomicelement.hpp"
 #include "dxmc/material/atomicshell.hpp"
 
+#include <map>
+#include <vector>
+
+namespace dxmc {
+
+template <Floating T>
+class AtomHandler {
+
+    static std::vector<char> dataToBinary(const std::map<std::uint64_t, AtomicElement<double>>& elements) {
+
+    }
+
+    protected:
+    static fromBuffer(const std::vector<char>& buffer) 
+    {
+    }
 
 
-using namespace dxmc;
 
-bool testatomicshell()
-{
-    AtomicShell<float> shell;
-    return true;
-}
+private:
+    std::map<std::uint64_t, AtomicElement> m_elements;
+};
 
-
-int main(int argc, char* argv[])
-{
-    auto success = testatomicshell();
-    if (success)
-        return EXIT_SUCCESS;
-    return EXIT_FAILURE;
 }
