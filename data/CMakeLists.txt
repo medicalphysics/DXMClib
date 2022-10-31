@@ -1,12 +1,30 @@
 
 
 # EPICS data parser
+SET(DXMCLIB_EPICS_PHYSICSLISTS "${CMAKE_CURRENT_BINARY_DIR}/physicslists.bin" CACHE INTERNAL "Path to EPICS physicslists")
 option(DXMCLIB_BUILD_EPICS_DATA_PARSER "Build EPICS data parser" ON)
 if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
-    SET(DXMCLIB_EPICS_DATA_DIRPATH CACHE PATH "Path to directory holding EPDL2017.ALL and EADL2017.ALL in ENDL format")
+    SET(DXMCLIB_EPICS_DATA_DIRPATH ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "Path to directory holding EPDL2017.ALL and EADL2017.ALL in ENDL format")
     if(DXMCLIB_EPICS_DATA_DIRPATH)
         SET(DXMCLIB_EPICS_DATA_EPDLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EPDL2017.ALL" CACHE FILEPATH "Path to EPDL2017.ALL" FORCE)
         SET(DXMCLIB_EPICS_DATA_EADLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EADL2017.ALL" CACHE FILEPATH "Path to EADL2017.ALL" FORCE)
+
+        SET(DXMCLIB_EPICS_DOWNLOAD OFF CACHE BOOL "Download EPICS data from https://www-nds.iaea.org/epics/ if necessary.")
+
+        #CHECK IF EPICS DATAFILES EXISTS
+        if(NOT EXISTS "${DXMCLIB_EPICS_DATA_EPDLPATH}" AND "${DXMCLIB_EPICS_DOWNLOAD}" )
+            MESSAGE("Downloading EPDL")
+            FILE(DOWNLOAD "https://www-nds.iaea.org/epics/ENDL2017/EPDL2017.ALL" "${DXMCLIB_EPICS_DATA_EPDLPATH}" SHOW_PROGRESS)
+        endif()
+        if(NOT EXISTS "${DXMCLIB_EPICS_DATA_EADLPATH}" AND "${DXMCLIB_EPICS_DOWNLOAD}" )
+            MESSAGE("Downloading EADL")
+            FILE(DOWNLOAD "https://www-nds.iaea.org/epics/ENDL2017/EADL2017.ALL" "${DXMCLIB_EPICS_DATA_EADLPATH}" SHOW_PROGRESS)
+        endif()
+
+        if(NOT EXISTS "${DXMCLIB_EPICS_DATA_EADLPATH}" OR NOT EXISTS "${DXMCLIB_EPICS_DATA_EPDLPATH}")
+            message(FATAL_ERROR "Could not find data files EPDL2017.ALL or EPDL2017.ALL in ${DXMCLIB_EPICS_DATA_DIRPATH}")
+        endif()
+
         message("Using EPDL file: ${DXMCLIB_EPICS_DATA_EPDLPATH}")
         message("Using EADL file: ${DXMCLIB_EPICS_DATA_EADLPATH}")
     endif()
@@ -14,10 +32,22 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
         EPICSParser/atomicshell.cpp 
         EPICSParser/atomicelement.cpp 
         EPICSParser/epicsparser.cpp 
-        EPICSParser/main.cpp)
+        EPICSParser/main.cpp
+    )
     target_compile_definitions(EPICSparser PUBLIC EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
     target_compile_definitions(EPICSparser PUBLIC EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
-    target_include_directories(EPICSparser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/include")    
+    target_compile_definitions(EPICSparser PUBLIC PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
+    target_include_directories(EPICSparser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/include")     
+
+    add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
+        COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
+        DEPENDS EPICSparser)
+
+    add_custom_target(libdxmc_physics ALL
+        DEPENDS "${DXMCLIB_EPICS_PHYSICSLISTS}")
+    add_dependencies(libdxmc libdxmc_physics)
+    # Adding physics data to install folder
+    install(FILES ${DXMCLIB_EPICS_PHYSICSLISTS} DESTINATION bin)
 endif()
 
 

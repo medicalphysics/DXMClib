@@ -19,28 +19,26 @@ Copyright 2022 Erlend Andersen
 #include "atomicshell.hpp"
 #include "epicsparser.hpp"
 
-#include <format>
 #include <fstream>
 #include <iostream>
 #include <numbers>
 #include <string>
-
-//#include "C:\Users\ander\source\repos\medicalphysics\DXMClib\out\build\x64-Debug\data\slett.txt"
+#include <filesystem>
 
 bool test_serializer(EPICSparser& parser)
 {
     auto data = parser.serializeElements();
     EPICSparser parser2(data);
 
-    auto elements1 = parser.getElements();
-    auto elements2 = parser2.getElements();
+    auto& elements1 = parser.getElements();
+    auto& elements2 = parser2.getElements();
 
     if (elements1.size() != elements2.size()) {
         return false;
     }
 
     for (auto& [key, el1] : elements1) {
-        auto el2 = elements2.at(key);
+        auto& el2 = elements2.at(key);
         auto valid = el1 == el2;
         if (!valid)
             return false;
@@ -50,61 +48,21 @@ bool test_serializer(EPICSparser& parser)
 
 int main()
 {
-    const std::string eadl = EADLPATH;
-    const std::string epdl = EPDLPATH;
+    const std::string eadl(EADLPATH);
+    const std::string epdl(EPDLPATH);
+    const std::string outpath(PHYSICSLISTSPATH);
 
-    EPICSparser parser(eadl);
-    parser.read(epdl);
+    auto file_exists = std::filesystem::exists("helloworld.txt");
+    if (!file_exists) {
+        EPICSparser parser(eadl);
+        parser.read(epdl);
 
-    auto success = test_serializer(parser);
+        auto data = parser.serializeElements();
 
-    std::ofstream of;
-    of.open("data.bin", std::ios::binary);
-    auto data = parser.serializeElements();
-    of.write(data.data(), data.size());
-    of.close();
-
-    std::ifstream iff;
-    iff.open("data.bin", std::ios::binary);
-    std::vector<char> buffer(std::istreambuf_iterator<char>(iff), {});
-    iff.close();
-
-    EPICSparser parser2(buffer);
-
-    auto success2 = parser.getElements() == parser2.getElements();
-
-    /*
-    const std::uint8_t Z = 16;
-    const double angle = std::numbers::pi;
-
-    // write Form factor data
-    std::ofstream f;
-
-    const auto& elements = parser.getElements();
-    f.open("formfactor_test.txt");
-    for (const auto& [x, v] : elements.at(Z).formFactor()) {
-        f << x << ", " << v << std::endl;
+        std::ofstream of;
+        of.open(outpath, std::ios::binary);
+        of.write(data.data(), data.size());
+        of.close();
     }
-    f.close();
-
-    f.open("imagSF_test.txt");
-    for (const auto& [x, v] : elements.at(Z).imaginaryAnomalousSF()) {
-        f << x << ", " << v << std::endl;
-    }
-    f.close();
-    f.open("realSF_test.txt");
-    for (const auto& [x, v] : elements.at(Z).realAnomalousSF()) {
-        f << x << ", " << v << std::endl;
-    }
-    f.close();
-    f.open("SF_test.txt");
-    for (const auto& [x, v] : elements.at(Z).incoherentSF()) {
-        f << x << ", " << v << std::endl;
-    }
-    f.close();
-
-
-    */
-
-    return 1;
+    return EXIT_SUCCESS;
 }
