@@ -10,11 +10,14 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
         message("Using EPDL file: ${DXMCLIB_EPICS_DATA_EPDLPATH}")
         message("Using EADL file: ${DXMCLIB_EPICS_DATA_EADLPATH}")
     endif()
-    add_executable(EPICSparser atomicshell.cpp atomicelement.cpp epicsparser.cpp main.cpp)
+    add_executable(EPICSparser 
+        EPICSParser/atomicshell.cpp 
+        EPICSParser/atomicelement.cpp 
+        EPICSParser/epicsparser.cpp 
+        EPICSParser/main.cpp)
     target_compile_definitions(EPICSparser PUBLIC EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
     target_compile_definitions(EPICSparser PUBLIC EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
-    target_include_directories(EPICSparser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/include")
-    #target_link_libraries(EPICSparser PRIVATE libdxmc)
+    target_include_directories(EPICSparser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/include")    
 endif()
 
 
