@@ -63,6 +63,17 @@ IF(UNIX AND NOT APPLE)
     find_library(XRAYLIB NAMES libxrl libxrl-11 xrl HINTS "${XRAYLIB_INSTALL_PATH}")
 ENDIF()
 
+## setting up material library since we use same headers for both dxmclib and EPICSparser
+set(MATERIAL_HEADER_LIST 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicelement.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicshell.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomhandler.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomserializer.hpp"
+)
+
+add_library(material INTERFACE ${MATERIAL_HEADER_LIST})
+target_include_directories(material INTERFACE ${dxmclib_SOURCE_DIR}/include)
+
 set(HEADER_LIST 
     "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationinterpolator.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationlut.hpp"
@@ -84,6 +95,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicelement.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicshell.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomhandler.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomserializer.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"

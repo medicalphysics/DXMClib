@@ -18,21 +18,20 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
-
-#include <vector>
+#include <concepts>
 #include <utility>
+#include <vector>
 
 namespace dxmc {
-template <Floating T>
+template <std::floating_point T>
 struct AtomicShell {
-    std::uint64_t m_shell = 0;
-    double numberOfElectrons = 0;
-    double bindingEnergy = 0;
-    double HartreeFockOrbital_0 = 0;
-    double numberOfPhotonsPerInitVacancy = 0;
-    double energyOfPhotonsPerInitVacancy = 0;
-    std::vector<std::pair<double, double>> photoel;
+    std::uint64_t shell = 0;
+    T numberOfElectrons = 0;
+    T bindingEnergy = 0;
+    T HartreeFockOrbital_0 = 0;
+    T numberOfPhotonsPerInitVacancy = 0;
+    T energyOfPhotonsPerInitVacancy = 0;
+    std::vector<std::pair<T, T>> photoel;
 };
 
 }

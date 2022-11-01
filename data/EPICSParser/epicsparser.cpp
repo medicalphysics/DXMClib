@@ -17,7 +17,7 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "epicsparser.hpp"
-#include "serialize.hpp"
+#include "dxmc/material/atomserializer.hpp"
 
 #include <fstream>
 #include <iostream>
@@ -79,7 +79,7 @@ EPICSparser::EPICSparser(const std::string& path)
 
 EPICSparser::EPICSparser(std::vector<char>& data)
 {
-    deSerializeElements(data);
+    deserializeElements(data);
 }
 
 std::vector<double> split(const std::string& s)
@@ -93,7 +93,7 @@ std::vector<double> split(const std::string& s)
     return data;
 }
 
-void processSegments(const std::vector<DataSegment>& segments, std::map<std::uint64_t, AtomicElement>& elements)
+void processSegments(const std::vector<DataSegment>& segments, std::map<std::uint64_t, AtomicElementHandler>& elements)
 {
     for (const auto& seg : segments) {
         if (!elements.contains(seg.Z)) { // adding uniqe element
@@ -214,30 +214,18 @@ void EPICSparser::read(const std::string& path)
 
 std::vector<char> EPICSparser::serializeElements() const
 {
-    std::vector<char> buffer;
-    // writing number of elements
-    std::uint64_t n_elements = m_elements.size();
-    serialize(n_elements, buffer);
-    for (const auto& [Z, atom] : m_elements) {
-        auto el_buffer = atom.toBinary();
-        serialize(el_buffer, buffer);
+    std::map<std::uint64_t, dxmc::AtomicElement<double>> map;
+    for (const auto& [key, element] : m_elements) {
+        map[key] = element.atom();
     }
-    return buffer;
+    return dxmc::AtomSerializer::serializeAtoms(map);
 }
 
-void EPICSparser::deSerializeElements(std::vector<char>& data)
+void EPICSparser::deserializeElements(std::vector<char>& data)
 {
-    if (data.size() == 0)
-        return;
-    auto begin = &(data[0]);
-
-    std::uint64_t number_elements;
-    auto start = deserialize(number_elements, begin);
-
+    auto map = dxmc::AtomSerializer::deserializeAtoms(data);
     m_elements.clear();
-    for (std::size_t i = 0; i < number_elements; i++) {
-        AtomicElement element;
-        start = element.fromBinary(data, start);
-        m_elements[element.Z()] = element;
+    for (const auto& [key, atom] : map) {
+        m_elements[key] = AtomicElementHandler(atom);
     }
 }

@@ -20,9 +20,12 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include "dxmc/material/atomicelement.hpp"
-#include "dxmc/material/atomicshell.hpp"
+#include "dxmc/material/atomserializer.hpp"
 
+#include <filesystem>
+#include <fstream>
 #include <map>
+#include <string>
 #include <vector>
 
 namespace dxmc {
@@ -30,19 +33,91 @@ namespace dxmc {
 template <Floating T>
 class AtomHandler {
 
-    static std::vector<char> dataToBinary(const std::map<std::uint64_t, AtomicElement<double>>& elements) {
-
-    }
-
-    protected:
-    static fromBuffer(const std::vector<char>& buffer) 
+public:
+    static const AtomicElement<T>& Atom(std::uint64_t Z)
     {
+        auto& instance = Instance();
+        if (instance.m_elements.contains(Z)) {
+            return instance.m_elements.at(Z);
+        }
+        return instance.m_dummyElement;
     }
 
+    AtomHandler(const AtomHandler&) = delete;
+    void operator=(const AtomHandler&) = delete;
 
+protected:
+    static const AtomHandler& Instance()
+    {
+        static AtomHandler instance;
+        return instance;
+    }
+    AtomHandler()
+    {
+        // reading data
+        std::string datapath;
+        if (std::filesystem::exists("physicslists.bin")) {
+            datapath = "physicslists.bin";
+        } else {
+            const std::string EPICSdataBuildPath { DXMCLIB_PHYSICSLISTSPATH };
+            if (std::filesystem::exists(EPICSdataBuildPath)) {
+                datapath = EPICSdataBuildPath;
+            }
+        }
+
+        // reading buffer
+        std::ifstream buffer_file(datapath, std::ios::binary);
+        if (buffer_file.good()) {
+            std::vector<char> data(std::istreambuf_iterator<char>(buffer_file), {});
+            if constexpr (std::is_same<T, double>::value) {
+                m_elements = AtomSerializer::deserializeAtoms(data);
+            } else {
+                auto elements = AtomSerializer::deserializeAtoms(data);
+                for (const auto& [key, element] : elements) {
+                    m_elements[key] = typecastAtom(element);
+                }
+            }
+        }
+    }
+
+    static std::vector<std::pair<T, T>> typecastPairVector(const std::vector<std::pair<double, double>>& r)
+    {
+        std::vector<std::pair<T, T>> l(r.size());
+        std::transform(r.cbegin(), r.cend(), l.begin(), [](const auto& p) {
+            return std::make_pair(static_cast<T>(p.first), static_cast<T>(p.second));
+        });
+        return l;
+    }
+    static AtomicShell<T> typecastShell(const AtomicShell<double>& r)
+    {
+        AtomicShell<T> l;
+        l.shell = r.shell;
+        l.numberOfElectrons = static_cast<T>(r.numberOfElectrons);
+        l.bindingEnergy = static_cast<T>(r.bindingEnergy);
+        l.HartreeFockOrbital_0 = static_cast<T>(r.HartreeFockOrbital_0);
+        l.numberOfPhotonsPerInitVacancy = static_cast<T>(r.numberOfPhotonsPerInitVacancy);
+        l.energyOfPhotonsPerInitVacancy = static_cast<T>(r.energyOfPhotonsPerInitVacancy);
+        l.photoel = typecastPairVector(r.photoel);
+        return l;
+    }
+    static AtomicElement<T> typecastAtom(const AtomicElement<double>& r)
+    {
+        AtomicElement<T> l;
+        l.Z = r.Z;
+        l.atomicWeight = static_cast<T>(r.atomicWeight);
+        l.coherent = typecastPairVector(r.coherent);
+        l.formFactor = typecastPairVector(r.formFactor);
+        l.incoherent = typecastPairVector(r.incoherent);
+        l.photoel = typecastPairVector(r.photoel);
+        for (const auto& [key, shell] : r.shells) {
+            l.shells[key] = typecastShell(shell);
+        }
+        return l;
+    }
 
 private:
-    std::map<std::uint64_t, AtomicElement> m_elements;
+    AtomicElement<T> m_dummyElement;
+    std::map<std::uint64_t, AtomicElement<T>> m_elements;
 };
 
 }

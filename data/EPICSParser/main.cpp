@@ -15,15 +15,13 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
 Copyright 2022 Erlend Andersen
 */
-
-#include "atomicshell.hpp"
 #include "epicsparser.hpp"
 
+#include <filesystem>
 #include <fstream>
 #include <iostream>
 #include <numbers>
 #include <string>
-#include <filesystem>
 
 bool test_serializer(EPICSparser& parser)
 {
@@ -48,11 +46,11 @@ bool test_serializer(EPICSparser& parser)
 
 int main()
 {
-    const std::string eadl(EADLPATH);
-    const std::string epdl(EPDLPATH);
-    const std::string outpath(PHYSICSLISTSPATH);
+    const std::string eadl(DXMCLIB_EADLPATH);
+    const std::string epdl(DXMCLIB_EPDLPATH);
+    const std::string outpath(DXMCLIB_PHYSICSLISTSPATH);
 
-    auto file_exists = std::filesystem::exists("helloworld.txt");
+    auto file_exists = std::filesystem::exists(outpath);
     if (!file_exists) {
         EPICSparser parser(eadl);
         parser.read(epdl);
@@ -64,5 +62,6 @@ int main()
         of.write(data.data(), data.size());
         of.close();
     }
+
     return EXIT_SUCCESS;
 }

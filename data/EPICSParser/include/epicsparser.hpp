@@ -18,7 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "atomicelement.hpp"
+#include "atomicelementhandler.hpp"
 
 #include <map>
 #include <string>
@@ -30,14 +30,14 @@ public:
     EPICSparser(std::vector<char>& data);
     void read(const std::string& path);
 
-    std::map<std::uint64_t, AtomicElement>& getElements() { return m_elements; }
+    std::map<std::uint64_t, AtomicElementHandler>& getElements() { return m_elements; }
 
     std::vector<char> serializeElements() const;
-    void deSerializeElements(std::vector<char>& data);
+    void deserializeElements(std::vector<char>& data);
 
 protected:
     constexpr static std::size_t endIdx() { return 71; }
 
 private:
-    std::map<std::uint64_t, AtomicElement> m_elements;
+    std::map<std::uint64_t, AtomicElementHandler> m_elements;
 };

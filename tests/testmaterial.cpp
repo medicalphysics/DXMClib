@@ -17,23 +17,22 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
-
+#include "dxmc/material/atomhandler.hpp"
+#include "dxmc/material/atomicelement.hpp"
 #include "dxmc/material/atomicshell.hpp"
-
-
+#include "dxmc/material/atomserializer.hpp"
 
 using namespace dxmc;
 
-bool testatomicshell()
+bool atomHandler()
 {
-    AtomicShell<float> shell;
+    const auto& atom = AtomHandler<float>::Atom(6);
     return true;
 }
 
-
 int main(int argc, char* argv[])
 {
-    auto success = testatomicshell();
+    auto success = atomHandler();
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;

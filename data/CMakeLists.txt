@@ -28,16 +28,19 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
         message("Using EPDL file: ${DXMCLIB_EPICS_DATA_EPDLPATH}")
         message("Using EADL file: ${DXMCLIB_EPICS_DATA_EADLPATH}")
     endif()
-    add_executable(EPICSparser 
-        EPICSParser/atomicshell.cpp 
-        EPICSParser/atomicelement.cpp 
+    add_executable(EPICSparser         
+        EPICSParser/atomicelementhandler.cpp 
         EPICSParser/epicsparser.cpp 
-        EPICSParser/main.cpp
-    )
-    target_compile_definitions(EPICSparser PUBLIC EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
-    target_compile_definitions(EPICSparser PUBLIC EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
-    target_compile_definitions(EPICSparser PUBLIC PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
-    target_include_directories(EPICSparser PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/include")     
+        EPICSParser/main.cpp        
+    )    
+    target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
+    target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
+    target_compile_definitions(EPICSparser PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
+    target_include_directories(EPICSparser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/include)     
+    target_link_libraries(EPICSparser PRIVATE material )
+
+    ## make parsed EPICS data available to all binaries consuming dxmc on build machine
+    target_compile_definitions(libdxmc PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
 
     add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
         COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 

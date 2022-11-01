@@ -17,43 +17,36 @@ Copyright 2022 Erlend Andersen
 */
 
 #pragma once
-
-#include "atomicshell.hpp"
+#include "dxmc/material/atomicelement.hpp"
 
 #include <map>
 #include <utility>
 #include <vector>
 
-class AtomicElement {
+class AtomicElementHandler {
 public:
-    AtomicElement() {};
-    AtomicElement(std::uint64_t Z);
+    AtomicElementHandler() {};
+    AtomicElementHandler(std::uint64_t Z);
+    AtomicElementHandler(const dxmc::AtomicElement<double>& atom)
+        : m_atom(atom)
+    {
+    }
 
-    bool operator==(const AtomicElement& other) const;
+    bool operator==(const AtomicElementHandler& other) const;
 
-    void setZ(std::uint64_t Z) { m_Z = Z; }
-    void setAtomicWeight(double AW) { m_atomicWeight = AW; }
+    dxmc::AtomicElement<double> atom() const { return m_atom; }
+    void setAtom(const dxmc::AtomicElement<double>& atom) { m_atom = atom; }
 
-    std::uint64_t Z() const { return m_Z; }
-    double atomicWeight() const { return m_atomicWeight; }
+    void setZ(std::uint64_t Z) { m_atom.Z = Z; }
+    void setAtomicWeight(double AW) { m_atom.atomicWeight = AW; }
 
     void setPhotoelectricData(const std::vector<double>& data);
     void setCoherentData(const std::vector<double>& data);
     void setIncoherentData(const std::vector<double>& data);
-
     void setFormFactor(const std::vector<double>& data);
     // void setImaginaryAnomalousSF(const std::vector<double>& data);
     // void setRealAnomalousSF(const std::vector<double>& data);
     void setIncoherentSF(const std::vector<double>& data);
-
-    const auto& photoelectricData() const { return m_photoel; }
-    const auto& coherentData() const { return m_coherent; }
-    const auto& incoherentData() const { return m_incoherent; }
-
-    const auto& formFactor() const { return m_formFactor; }
-    // const auto& imaginaryAnomalousSF() const { return m_imagAnomSF; }
-    // const auto& realAnomalousSF() const { return m_realAnomSF; }
-    const auto& incoherentSF() const { return m_incoherentSF; }
 
     void setShellBindingEnergy(const std::vector<double>& data);
     void setShellPhotoelectricData(const std::uint64_t shell, const std::vector<double>& data);
@@ -61,37 +54,18 @@ public:
     void setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data);
     void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
 
-    const std::map<std::uint64_t, AtomicShell>& shells() const { return m_shells; }
-
-    std::vector<char> toBinary() const;
-
-    char* fromBinary(std::vector<char>& data, char* begin);
-
     static double momentumTransfer(double energy, double angle);
 
-    static constexpr double maxPhotonEnergy()
-    {
-        return 500.0;
-    }
+    static constexpr double maxPhotonEnergy() { return 500.0; }
     static constexpr double minPhotonEnergy() { return 1.0; }
     static constexpr double MeVTokeV() { return 1000; }
     double barnToAtt()
     {
         constexpr double u = 1.6605402;
-        return 1.0 / (u * m_atomicWeight);
+        return 1.0 / (u * m_atom.atomicWeight);
     }
 
 protected:
 private:
-    std::uint64_t m_Z = 0;
-    double m_atomicWeight = 0.0;
-    std::vector<std::pair<double, double>> m_coherent;
-    std::vector<std::pair<double, double>> m_incoherent;
-    std::vector<std::pair<double, double>> m_photoel;
-    std::vector<std::pair<double, double>> m_formFactor;
-    // std::vector<std::pair<double, double>> m_imagAnomSF;
-    // std::vector<std::pair<double, double>> m_realAnomSF;
-    std::vector<std::pair<double, double>> m_incoherentSF;
-
-    std::map<std::uint64_t, AtomicShell> m_shells;
+    dxmc::AtomicElement<double> m_atom;
 };
