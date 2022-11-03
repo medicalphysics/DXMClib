@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/material/atomicelement.hpp"
 #include "dxmc/material/atomicshell.hpp"
 #include "dxmc/material/atomserializer.hpp"
+#include "dxmc/material/material.hpp"
 
 using namespace dxmc;
 
@@ -30,9 +31,17 @@ bool atomHandler()
     return true;
 }
 
+bool testParser()
+{
+    auto test = Material2<float>::parseCompoundStr("(H2O)2");
+    return true;
+}
+
 int main(int argc, char* argv[])
 {
+    testParser();
     auto success = atomHandler();
+    success = success && testParser();
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;
