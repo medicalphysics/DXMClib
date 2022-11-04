@@ -33,7 +33,7 @@ bool atomHandler()
 
 bool testParser()
 {
-    auto test = Material2<float>::parseCompoundStr("(H2O)2");
+    auto test = Material2<float>::parseCompoundStr("Ca5(PO4)3");
     return true;
 }
 

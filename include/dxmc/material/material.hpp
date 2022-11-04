@@ -29,14 +29,26 @@ namespace dxmc {
 template <Floating T>
 class Material2 {
 
-public:
-    Material2(const std::string& compond, T density = -1)
-    {
-    }
+public:    
     Material2(std::uint64_t Z, T density = -1)
     {
     }
 
+    static std::optional<Material2<T>> byChemicalFormula(const std::string& str, T density=-1)
+    {
+        auto numberDens = parseCompoundStr(str);
+        if (numberDens.size() == 0)
+            return std::nullopt;
+
+
+
+    }
+
+    /**
+    * This function parses a chemical formula string and returns a map of elements
+    * Z and number density (not normalized). It's kinda messy but supports parentheis 
+    * in the expression. 
+    */
     static std::map<std::uint64_t, T> parseCompoundStr(const std::string& str)
     {
         const std::array<std::string, 100> S { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm" };
@@ -96,11 +108,9 @@ public:
                     }
                 }
             }
-
             begin++;
         }
         for (const auto& [el, num] : vals) {
-
             auto pos = std::find(S.begin(), S.end(), el);
             if (pos != S.end()) {
                 std::uint64_t Z = std::distance(S.begin(), pos) + 1;
