@@ -17,38 +17,43 @@ Copyright 2022 Erlend Andersen
 */
 
 #pragma once
+
+#include "dxmc/floating.hpp"
+#include "dxmc/interpolation.hpp"
+#include "dxmc/material/atomicelement.hpp"
+
 #include <algorithm>
 #include <array>
 #include <cctype>
-
-#include "dxmc/floating.hpp"
-#include "dxmc/material/atomicelement.hpp"
 
 namespace dxmc {
 
 template <Floating T>
 class Material2 {
 
-public:    
-    Material2(std::uint64_t Z, T density = -1)
+public:
+    Material2(std::uint64_t Z)
     {
+
+        auto a = AtomHandler<T>(Z);
+
+
+
+
     }
 
-    static std::optional<Material2<T>> byChemicalFormula(const std::string& str, T density=-1)
+    static std::optional<Material2<T>> byChemicalFormula(const std::string& str)
     {
         auto numberDens = parseCompoundStr(str);
         if (numberDens.size() == 0)
             return std::nullopt;
-
-
-
     }
 
     /**
-    * This function parses a chemical formula string and returns a map of elements
-    * Z and number density (not normalized). It's kinda messy but supports parentheis 
-    * in the expression. 
-    */
+     * This function parses a chemical formula string and returns a map of elements
+     * Z and number density (not normalized). It's kinda messy but supports parenthesis
+     * in the expression.
+     */
     static std::map<std::uint64_t, T> parseCompoundStr(const std::string& str)
     {
         const std::array<std::string, 100> S { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm" };
@@ -60,7 +65,6 @@ public:
         std::vector<std::pair<std::string, std::string>> vals;
         while (begin != str.end()) {
             const char l = *begin;
-            auto test = std::ispunct(40);
             if (std::isupper(l)) {
                 auto v = std::pair<std::string, std::string>();
                 v.first = std::string(&l, 1);

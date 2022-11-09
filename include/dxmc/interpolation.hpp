@@ -19,13 +19,9 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.hpp"
 
-//#define USE_EIGEN
-
 #ifdef USE_EIGEN
 #include "Eigen/Dense"
 #endif // USE_EIGEN
-
-#include <iostream>
 
 #include <algorithm>
 #include <array>
@@ -34,6 +30,7 @@ Copyright 2019 Erlend Andersen
 #include <iterator>
 #include <numeric>
 #include <type_traits>
+#include <utility>
 #include <vector>
 
 namespace dxmc {
@@ -87,6 +84,18 @@ requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
     std::advance(uppery, std::distance(xbegin, upper));
 
     return interp(*lower, *upper, *lowery, *uppery, xvalue);
+}
+template <Floating T>
+inline T interpolate(const std::vector<std::pair<T, T>>& data, T x)
+{
+    const auto val = std::make_pair(x, T { 0 });
+    auto upper = std::upper_bound(data.begin(), data.end(), val, [](const auto& lh, const auto& rh) -> bool { return lh.first < rh.first; });
+    if (upper == data.begin())
+        return upper->second;
+    if (upper == data.end())
+        return (upper - 1)->second;
+    auto lower = upper - 1;
+    return interp(lower->first, upper->first, lower->second, upper->second, x);
 }
 
 template <Floating T, int N = 30>
@@ -410,6 +419,17 @@ private:
 template <Floating T>
 class CubicLSInterpolator {
 public:
+    CubicLSInterpolator(const std::vector<std::pair<T, T>>& data, T max_rel_deviation = 0.001, bool maybe_discont = true)
+    {
+        std::vector<T> x, y;
+        x.reserve(data.size());
+        y.reserve(data.size());
+        for (const auto& p : data) {
+            x.push_back(p.first);
+            y.push_back(p.second);
+        }
+        setupSplines(x, y, max_rel_deviation, maybe_discont);
+    }
     CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
     {
         setupSplines(x, y, max_rel_deviation, maybe_discont);
