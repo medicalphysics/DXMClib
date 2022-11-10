@@ -30,13 +30,20 @@ using namespace dxmc;
 
 void testInterpolator()
 {
-    auto O = AtomHandler<double>::Atom(6);
 
-    auto intp = CubicLSInterpolator<double>(O.photoel);
+    auto O = AtomHandler<double>::Atom(82);
+
+    std::vector<double> x(O.photoel.size());
+    std::vector<double> y(O.photoel.size());
+    std::transform(O.photoel.begin(), O.photoel.end(), x.begin(), [](const auto& val) { return std::log(val.first); });
+    std::transform(O.photoel.begin(), O.photoel.end(), y.begin(), [](const auto& val) { return std::log(val.second); });
+
+    auto intp = CubicLSInterpolator<double>(x, y, 15);
 
     for (auto [e, a] : O.photoel) {
-        std::cout << e << ", " << a << ", " << intp(e) << ", " << CS_Photo(O.Z, e, nullptr) << std::endl;
+        std::cout << e << ", " << a << ", " << std::exp(intp(std::log(e))) << ", " << CS_Photo(O.Z, e, nullptr) << std::endl;
     }
+    return;
 }
 
 bool atomHandler()

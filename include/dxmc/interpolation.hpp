@@ -553,36 +553,21 @@ protected:
 
         m_data = spline.m_data;
     }
-    Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const T s) const
+
+    Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, std::size_t N = 0) const
     {
-        Spline result;
+        if (N <= 1)
+            N = std::min(x.size() / 5, std::size_t { 15 });
+        else
+            N = std::min(N, x.size() / 2);
 
-        std::vector<T> t = { x[0], x.back() };
-        T max_error = 0;
-        std::size_t max_error_ind = 0;
-        std::vector<T> x_test(x.cbegin() + 1, x.cend() - 1);
-        std::vector<T> y_test(y.cbegin() + 1, y.cend() - 1);
-
-        std::vector<T> error;
-        do {
-            result = calculateLSSplinePart(x, y, t);
-            error.resize(x_test.size());
-            std::transform(std::execution::par, x_test.cbegin(), x_test.cend(), y_test.cbegin(), error.begin(), [&](const auto x, const auto y) {
-                if (std::abs(y) > std::numeric_limits<T>::epsilon())
-                    return std::abs(evaluateSpline(x, result.m_data) / y - T { 1 });
-                else
-                    return std::abs(evaluateSpline(x, result.m_data));
-            });
-            auto max_err_it = std::max_element(error.cbegin(), error.cend());
-            max_error_ind = std::distance(error.cbegin(), max_err_it);
-            max_error = *max_err_it;
-            t.push_back(x_test[max_error_ind]);
-            std::sort(t.begin(), t.end());
-            x_test.erase(x_test.begin() + max_error_ind);
-            y_test.erase(y_test.begin() + max_error_ind);
-        } while (max_error > s);
-        return result;
+        std::vector<T> t(N);
+        for (std::size_t i = 0; i < N; i++) {
+            t[i] = x.front() + i * (x.back() - x.front()) / (N - 1);
+        }
+        return calculateLSSplinePart(x, y, t);
     }
+
     Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t) const
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
