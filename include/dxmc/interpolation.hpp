@@ -67,8 +67,8 @@ inline T logloginterp(T x[2], T y[2], U xi)
 }
 
 template <typename It, Floating T>
-requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
-    T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
+    requires std::is_same_v<typename std::iterator_traits<It>::value_type, T>
+T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
 {
     auto upper = std::upper_bound(xbegin, xend, xvalue);
     if (upper == xbegin)
@@ -138,7 +138,7 @@ protected:
 
 public:
     template <std::regular_invocable<T> F>
-    requires std::is_same<std::invoke_result_t<F, T>, T>::value
+        requires std::is_same<std::invoke_result_t<F, T>, T>::value
     CubicSplineInterpolator(const T start, const T stop, F function)
     {
         std::vector<T> y(N);
@@ -267,7 +267,8 @@ constexpr std::array<T, 20> gaussIntegrationPoints(const T start, const T stop)
 }
 
 template <Floating T, std::regular_invocable<T> F>
-requires std::is_same<std::invoke_result_t<F, T>, T>::value constexpr T gaussIntegration(const T start, const T stop, const F function)
+    requires std::is_same<std::invoke_result_t<F, T>, T>::value
+constexpr T gaussIntegration(const T start, const T stop, const F function)
 {
     // F is a class or function that can be called with a Floating type argument and will return a Floating type value
     auto function_points = gaussIntegrationPoints(start, stop);
@@ -419,7 +420,7 @@ private:
 template <Floating T>
 class CubicLSInterpolator {
 public:
-    CubicLSInterpolator(const std::vector<std::pair<T, T>>& data, T max_rel_deviation = 0.001, bool maybe_discont = true)
+    CubicLSInterpolator(const std::vector<std::pair<T, T>>& data, std::size_t n_knots = 30, bool maybe_discont = true)
     {
         std::vector<T> x, y;
         x.reserve(data.size());
@@ -428,11 +429,11 @@ public:
             x.push_back(p.first);
             y.push_back(p.second);
         }
-        setupSplines(x, y, max_rel_deviation, maybe_discont);
+        setupSplines(x, y, n_knots, maybe_discont);
     }
-    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, T max_rel_deviation = 0.001, bool maybe_discont = true)
+    CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, std::size_t n_knots = 30, bool maybe_discont = true)
     {
-        setupSplines(x, y, max_rel_deviation, maybe_discont);
+        setupSplines(x, y, n_knots, maybe_discont);
     }
 
     CubicLSInterpolator(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t, bool maybe_discont = true)
@@ -492,7 +493,8 @@ protected:
         return f1 + f2 + f3 + f4;
     }
     template <typename U>
-    requires(std::is_convertible<U, std::vector<T>>::value || std::is_convertible<U, T>::value) void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const U& t, bool maybe_discont)
+        requires(std::is_convertible<U, std::vector<T>>::value || std::is_convertible<U, std::size_t>::value)
+    void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const U& t, bool maybe_discont)
     {
         Spline spline;
         if (maybe_discont) {
@@ -561,8 +563,12 @@ protected:
         else
             N = std::min(N, x.size() / 2);
 
+        N = std::max(N, std::size_t { 2 });
+
         std::vector<T> t(N);
-        for (std::size_t i = 0; i < N; i++) {
+        t[0] = x.front();
+        t[N - 1] = x.back();
+        for (std::size_t i = 1; i < N - 1; i++) {
             t[i] = x.front() + i * (x.back() - x.front()) / (N - 1);
         }
         return calculateLSSplinePart(x, y, t);
