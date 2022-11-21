@@ -475,7 +475,7 @@ protected:
     };
     static inline T evaluateSpline(const T x, const std::vector<std::array<T, 3>>& data)
     {
-        std::array<T, 3> x_comp { x, 0, 0 };
+        const std::array<T, 3> x_comp { x, 0, 0 };
         auto it = std::upper_bound(data.cbegin() + 1, data.cend() - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });
         const auto& d1 = *it;
         const auto& d0 = *(--it);

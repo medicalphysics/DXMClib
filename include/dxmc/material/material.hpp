@@ -20,6 +20,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
+#include "dxmc/material/atomhandler.hpp"
 #include "dxmc/material/atomicelement.hpp"
 
 #include <algorithm>
@@ -34,21 +35,46 @@ class Material2 {
 public:
     Material2(std::uint64_t Z)
     {
-
         auto a = AtomHandler<T>(Z);
+    }
+    Material2(const std::map<std::size_t, T>& compositionByWeight)
+    {
+        auto weight = compositionByWeight;
+        const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
+        std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
+    }
+    static std::optional<Material2<T>> byZ(std::size_t Z)
+    {
+        if (Z > 0 && Z <= 100) {
+            std::map<std::size_t, T> w;
+            w[Z] = T { 1 };
+            return byWeight(w);
+        }
 
-
-
-
+        return std::nullopt;
+    }
+    static std::optional<Material2<T>> byWeight(const std::map<std::size_t, T>& weights)
+    {
+        auto m = constructMaterial(weights);
+        return std::nullopt;
     }
 
     static std::optional<Material2<T>> byChemicalFormula(const std::string& str)
     {
-        auto numberDens = parseCompoundStr(str);
-        if (numberDens.size() == 0)
+        auto numberDensCompound = parseCompoundStr(str);
+        if (numberDensCompound.size() == 0)
             return std::nullopt;
+        std::map<std::size_t, T> weight;
+        for (const auto [Z, numDens] : numberDensCompound) {
+            if (Z == 0 || Z > 99)
+                return std::nullopt;
+            const auto& atom = AtomHandler<T>::Atom(Z);
+            weight[Z] = numDens * atom.atomicWeight;
+        }
+        return Material2<T>::byWeight(weight);
     }
 
+protected:
     /**
      * This function parses a chemical formula string and returns a map of elements
      * Z and number density (not normalized). It's kinda messy but supports parenthesis
@@ -133,5 +159,49 @@ public:
     }
 
 private:
+    static bool constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
+    {
+        auto weight = compositionByWeight;
+        const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
+        std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
+
+        // photoel
+        std::vector<std::pair<T, T>> photoel;
+        std::vector<std::size_t> Zs;
+        for (const auto& [Z, w] : weight) {
+            const auto& a = AtomHandler<T>::Atom(Z);
+            auto begin = photoel.insert(photoel.cend(), a.photoel.cbegin(), a.photoel.cend());
+            std::for_each(begin, photoel.end(), [=](auto& p) { p.second *= w; });
+            Zs.insert(Zs.cend(), a.photoel.size(), Z);
+        }
+        for (const auto& [Z, w] : weight) {
+            const auto& a = AtomHandler<T>::Atom(Z);
+            for (std::size_t i = 0; i < photoel.size(); ++i) {
+                if (Zs[i] != Z) {
+                    photoel[i].second += w * interpolate(a.photoel, photoel[i].first);
+                }
+            }
+        }
+        std::sort(photoel.begin(), photoel.end(), [](const auto& lh, const auto& rh) {
+            if (lh.first < rh.first)
+                return true;
+            else if (lh.first == rh.first)
+                return lh.second < rh.second;
+            return false;
+        });
+        std::for_each(photoel.begin(), photoel.end(), [](auto& v) { v.first = std::log(v.first); v.second=std::log(v.second); });
+        auto erase_from = std::unique(photoel.begin(), photoel.end(), [](const auto& lh, const auto& rh) {
+            constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
+            if (lh.first == rh.first)
+                return std::abs(lh.second - rh.second) <= e;
+            else
+                return std::abs(lh.first - rh.first) <= e;
+        });
+        photoel.erase(erase_from, photoel.end());
+
+        // remove duplicates
+        auto test = CubicLSInterpolator(photoel);
+        return true;
+    }
 };
 }
