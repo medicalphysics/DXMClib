@@ -159,49 +159,89 @@ protected:
     }
 
 private:
-    static bool constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
+    enum class LUTType { photoelectric,
+        coherent,
+        incoherent };
+
+    static CubicLSInterpolator<T> constructSplineInterpolator(const std::map<std::size_t, T>& normalizedWeight, LUTType type)
     {
-        auto weight = compositionByWeight;
+        auto weight = normalizedWeight;
         const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
         std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
 
-        // photoel
-        std::vector<std::pair<T, T>> photoel;
+        std::vector<std::pair<T, T>> arr;
         std::vector<std::size_t> Zs;
         for (const auto& [Z, w] : weight) {
             const auto& a = AtomHandler<T>::Atom(Z);
-            auto begin = photoel.insert(photoel.cend(), a.photoel.cbegin(), a.photoel.cend());
-            std::for_each(begin, photoel.end(), [=](auto& p) { p.second *= w; });
-            Zs.insert(Zs.cend(), a.photoel.size(), Z);
+
+            auto getAtomArr = [&](LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
+                if (type == LUTType::photoelectric)
+                    return a.photoel;
+                else if (type == LUTType::incoherent)
+                    return a.incoherent;
+                else if (type == LUTType::coherent)
+                    return a.coherent;
+                return a.photoel;
+            };
+            const auto& atom_arr = getAtomArr(type);
+            auto begin = arr.insert(arr.cend(), atom_arr.cbegin(), atom_arr.cend());
+            std::for_each(begin, arr.end(), [=](auto& p) { p.second *= w; });
+            Zs.insert(Zs.cend(), atom_arr.size(), Z);
         }
         for (const auto& [Z, w] : weight) {
             const auto& a = AtomHandler<T>::Atom(Z);
-            for (std::size_t i = 0; i < photoel.size(); ++i) {
+            auto getAtomArr = [&](LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
+                if (type == LUTType::photoelectric)
+                    return a.photoel;
+                else if (type == LUTType::incoherent)
+                    return a.incoherent;
+                else if (type == LUTType::coherent)
+                    return a.coherent;
+                return a.photoel;
+            };
+            const auto& atom_arr = getAtomArr(type);
+            for (std::size_t i = 0; i < arr.size(); ++i) {
                 if (Zs[i] != Z) {
-                    photoel[i].second += w * interpolate(a.photoel, photoel[i].first);
+                    arr[i].second += w * interpolate(atom_arr, arr[i].first);
                 }
             }
         }
-        std::sort(photoel.begin(), photoel.end(), [](const auto& lh, const auto& rh) {
+
+        std::for_each(arr.begin(), arr.end(), [](auto& v) { v.first = std::log(v.first); v.second=std::log(v.second); });
+
+        std::sort(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
             if (lh.first < rh.first)
                 return true;
             else if (lh.first == rh.first)
                 return lh.second < rh.second;
             return false;
         });
-        std::for_each(photoel.begin(), photoel.end(), [](auto& v) { v.first = std::log(v.first); v.second=std::log(v.second); });
-        auto erase_from = std::unique(photoel.begin(), photoel.end(), [](const auto& lh, const auto& rh) {
+
+        auto erase_from = std::unique(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
             constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
             if (lh.first == rh.first)
                 return std::abs(lh.second - rh.second) <= e;
             else
                 return std::abs(lh.first - rh.first) <= e;
         });
-        photoel.erase(erase_from, photoel.end());
+        arr.erase(erase_from, arr.end());
 
-        // remove duplicates
-        auto test = CubicLSInterpolator(photoel);
+        auto interpolator = CubicLSInterpolator(arr);
+        return interpolator;
+    }
+
+    static bool constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
+    {
+
+        auto test2 = constructSplineInterpolator(compositionByWeight, LUTType::photoelectric);
         return true;
     }
+
+
+
+
+
+
+
 };
 }

@@ -473,10 +473,17 @@ protected:
         }
         std::vector<std::array<T, 3>> m_data; // m_t, m_z, m_zp
     };
+
     static inline T evaluateSpline(const T x, const std::vector<std::array<T, 3>>& data)
     {
+        return evaluateSpline(x, data.cbegin(), data.cend());
+    }
+    template <std::random_access_iterator It>
+        //requires std::is_same_v<*It, typedef std::array<T, 3>>
+    static inline T evaluateSpline(const T x, It begin, It end)
+    {
         const std::array<T, 3> x_comp { x, 0, 0 };
-        auto it = std::upper_bound(data.cbegin() + 1, data.cend() - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });
+        auto it = std::upper_bound(begin + 1, end - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });
         const auto& d1 = *it;
         const auto& d0 = *(--it);
 
