@@ -446,6 +446,35 @@ public:
         return evaluateSpline(x, m_data);
     }
 
+    const std::vector<std::array<T, 3>>& getDataTable() const { return m_data; }
+
+    static inline T evaluateSpline(const T x, const std::vector<std::array<T, 3>>& data)
+    {
+        return evaluateSpline(x, data.cbegin(), data.cend());
+    }
+
+    template <std::random_access_iterator It>
+        requires std::is_same_v<typename std::iterator_traits<It>::value_type, std::array<T, 3>>
+    static inline T evaluateSpline(const T x, It begin, It end)
+    {
+        const std::array<T, 3> x_comp { x, 0, 0 };
+        auto it = std::upper_bound(begin + 1, end - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });
+        const auto& d1 = *it;
+        const auto& d0 = *(--it);
+
+        const auto h = d1[0] - d0[0];
+        const auto u = (x - d0[0]) / h;
+        const auto v = u - 1;
+        const auto uu = u * u;
+        const auto vv = v * v;
+
+        const auto f1 = (2 * u + 1) * vv * d0[1];
+        const auto f2 = uu * (1 - 2 * v) * d1[1];
+        const auto f3 = h * u * vv * d0[2];
+        const auto f4 = h * uu * v * d1[2];
+        return f1 + f2 + f3 + f4;
+    }
+
 protected:
     struct Spline {
         Spline(const std::vector<T>& t, const std::vector<T>& p, const std::vector<T>& pz)
@@ -474,31 +503,6 @@ protected:
         std::vector<std::array<T, 3>> m_data; // m_t, m_z, m_zp
     };
 
-    static inline T evaluateSpline(const T x, const std::vector<std::array<T, 3>>& data)
-    {
-        return evaluateSpline(x, data.cbegin(), data.cend());
-    }
-    template <std::random_access_iterator It>
-        //requires std::is_same_v<*It, typedef std::array<T, 3>>
-    static inline T evaluateSpline(const T x, It begin, It end)
-    {
-        const std::array<T, 3> x_comp { x, 0, 0 };
-        auto it = std::upper_bound(begin + 1, end - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });
-        const auto& d1 = *it;
-        const auto& d0 = *(--it);
-
-        const auto h = d1[0] - d0[0];
-        const auto u = (x - d0[0]) / h;
-        const auto v = u - 1;
-        const auto uu = u * u;
-        const auto vv = v * v;
-
-        const auto f1 = (2 * u + 1) * vv * d0[1];
-        const auto f2 = uu * (1 - 2 * v) * d1[1];
-        const auto f3 = h * u * vv * d0[2];
-        const auto f4 = h * uu * v * d1[2];
-        return f1 + f2 + f3 + f4;
-    }
     template <typename U>
         requires(std::is_convertible<U, std::vector<T>>::value || std::is_convertible<U, std::size_t>::value)
     void setupSplines(const std::vector<T>& x, const std::vector<T>& y, const U& t, bool maybe_discont)
@@ -519,7 +523,7 @@ protected:
                         x_red.push_back(x[j]);
                         y_red.push_back(y[j]);
                     }
-                    if constexpr (std::is_convertible<U, T>::value) {
+                    if constexpr (std::is_convertible<U, std::size_t>::value) {
                         spline += calculateLSSplinePart(x_red, y_red, t);
                     } else {
                         std::vector<T> t_red;
@@ -543,7 +547,7 @@ protected:
                     x_red.push_back(x[j]);
                     y_red.push_back(y[j]);
                 }
-                if constexpr (std::is_convertible<U, T>::value) {
+                if constexpr (std::is_convertible<U, std::size_t>::value) {
                     spline += calculateLSSplinePart(x_red, y_red, t);
                 } else {
                     std::vector<T> t_red;

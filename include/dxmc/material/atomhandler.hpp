@@ -27,6 +27,7 @@ Copyright 2022 Erlend Andersen
 #include <map>
 #include <string>
 #include <vector>
+#include <execution>
 
 namespace dxmc {
 
@@ -83,7 +84,7 @@ protected:
     static std::vector<std::pair<T, T>> typecastPairVector(const std::vector<std::pair<double, double>>& r)
     {
         std::vector<std::pair<T, T>> l(r.size());
-        std::transform(r.cbegin(), r.cend(), l.begin(), [](const auto& p) {
+        std::transform(std::execution::par_unseq, r.cbegin(), r.cend(), l.begin(), [](const auto& p) {
             return std::make_pair(static_cast<T>(p.first), static_cast<T>(p.second));
         });
         return l;
@@ -94,6 +95,7 @@ protected:
         l.shell = r.shell;
         l.numberOfElectrons = static_cast<T>(r.numberOfElectrons);
         l.bindingEnergy = static_cast<T>(r.bindingEnergy);
+        l.kineticEnergy = static_cast<T>(r.kineticEnergy);
         l.HartreeFockOrbital_0 = static_cast<T>(r.HartreeFockOrbital_0);
         l.numberOfPhotonsPerInitVacancy = static_cast<T>(r.numberOfPhotonsPerInitVacancy);
         l.energyOfPhotonsPerInitVacancy = static_cast<T>(r.energyOfPhotonsPerInitVacancy);

@@ -33,19 +33,10 @@ template <Floating T>
 class Material2 {
 
 public:
-    Material2(std::uint64_t Z)
-    {
-        auto a = AtomHandler<T>(Z);
-    }
-    Material2(const std::map<std::size_t, T>& compositionByWeight)
-    {
-        auto weight = compositionByWeight;
-        const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
-        std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
-    }
     static std::optional<Material2<T>> byZ(std::size_t Z)
     {
-        if (Z > 0 && Z <= 100) {
+        auto a = AtomHandler<T>::Atom(Z);
+        if (a.Z == Z) {
             std::map<std::size_t, T> w;
             w[Z] = T { 1 };
             return byWeight(w);
@@ -56,7 +47,7 @@ public:
     static std::optional<Material2<T>> byWeight(const std::map<std::size_t, T>& weights)
     {
         auto m = constructMaterial(weights);
-        return std::nullopt;
+        return m;
     }
 
     static std::optional<Material2<T>> byChemicalFormula(const std::string& str)
@@ -74,7 +65,32 @@ public:
         return Material2<T>::byWeight(weight);
     }
 
+    std::array<T, 3> attenuationValues(const T energy)
+    {
+        const auto logEnergy = std::log(energy);
+        const std::array<T, 3> att = {
+            std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1])),
+            std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[1], m_attenuationTableOffset[2])),
+            std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[2], m_attenuationTableOffset[3]))
+        };
+        return att;
+    }
+    static constexpr T momentumTransfer(T energy, T angle)
+    {
+        constexpr double hc_si = 1.239841193E-6; // ev*m
+        constexpr double m2A = 1E10; // meters to Ångstrøm
+        constexpr double eV2keV = 1E-3; // eV to keV
+        constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
+        constexpr double hc_inv = 1.0 / hc;
+        return energy * std::sin(angle * 0.5) * hc_inv; // per Å
+    }
+
+
 protected:
+    Material2()
+    {
+    }
+
     /**
      * This function parses a chemical formula string and returns a map of elements
      * Z and number density (not normalized). It's kinda messy but supports parenthesis
@@ -158,20 +174,20 @@ protected:
         return parsed;
     }
 
-private:
-    enum class LUTType { photoelectric,
+    enum class LUTType {
+        photoelectric,
         coherent,
-        incoherent };
+        incoherent
+    };
 
+    // constructs a least squares spline interpolator from attenuation data from a compound
+    // This function is a bit convoluted since we want to preserve discontiuities in the interpolation
+    // But is basicly an weighted average of attenuation coefficients for each element.
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::map<std::size_t, T>& normalizedWeight, LUTType type)
     {
-        auto weight = normalizedWeight;
-        const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
-        std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
-
         std::vector<std::pair<T, T>> arr;
         std::vector<std::size_t> Zs;
-        for (const auto& [Z, w] : weight) {
+        for (const auto& [Z, w] : normalizedWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
 
             auto getAtomArr = [&](LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
@@ -188,7 +204,7 @@ private:
             std::for_each(begin, arr.end(), [=](auto& p) { p.second *= w; });
             Zs.insert(Zs.cend(), atom_arr.size(), Z);
         }
-        for (const auto& [Z, w] : weight) {
+        for (const auto& [Z, w] : normalizedWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
             auto getAtomArr = [&](LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
                 if (type == LUTType::photoelectric)
@@ -230,18 +246,40 @@ private:
         return interpolator;
     }
 
-    static bool constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
+    static std::optional<Material2<T>> constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
     {
+        for (const auto& [Z, w] : compositionByWeight) {
+            const auto& a = AtomHandler<T>::Atom(Z);
+            if (a.Z != Z)
+                return std::nullopt;
+        }
 
-        auto test2 = constructSplineInterpolator(compositionByWeight, LUTType::photoelectric);
-        return true;
+        auto weight = compositionByWeight;
+        const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
+        std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
+
+        std::array<CubicLSInterpolator<T>, 3> attenuation = {
+            constructSplineInterpolator(weight, LUTType::photoelectric),
+            constructSplineInterpolator(weight, LUTType::coherent),
+            constructSplineInterpolator(weight, LUTType::incoherent),
+        };
+        Material2 m;
+        m.m_attenuationTable.clear();
+        std::array<std::size_t, attenuation.size()> offset;
+        for (std::size_t i = 0; i < attenuation.size(); ++i) {
+            const auto& table = attenuation[i].getDataTable();
+            auto begin = m.m_attenuationTable.insert(m.m_attenuationTable.end(), table.cbegin(), table.cend());
+            offset[i] = std::distance(m.m_attenuationTable.begin(), begin);
+        }
+        for (std::size_t i = 0; i < attenuation.size(); ++i) {
+            m.m_attenuationTableOffset[i] = m.m_attenuationTable.begin() + offset[i];
+        }
+        m.m_attenuationTableOffset[attenuation.size()] = m.m_attenuationTable.end();
+        return m;
     }
 
-
-
-
-
-
-
+private:
+    std::vector<std::array<T, 3>> m_attenuationTable;
+    std::array<typename std::vector<std::array<T, 3>>::iterator, 5> m_attenuationTableOffset;
 };
 }

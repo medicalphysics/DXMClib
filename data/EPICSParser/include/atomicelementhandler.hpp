@@ -49,14 +49,16 @@ public:
     void setIncoherentSF(const std::vector<double>& data);
 
     void setShellBindingEnergy(const std::vector<double>& data);
+    void setShellKineticEnergy(const std::vector<double>& data);
     void setShellPhotoelectricData(const std::uint64_t shell, const std::vector<double>& data);
     void setShellNumberOfElectrons(const std::vector<double>& data);
     void setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data);
     void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
 
+    static constexpr double maxMomentumTransfer();
     static double momentumTransfer(double energy, double angle);
 
-    static constexpr double maxPhotonEnergy() { return 500.0; }
+    static constexpr double maxPhotonEnergy();
     static constexpr double minPhotonEnergy() { return 1.0; }
     static constexpr double MeVTokeV() { return 1000; }
     double barnToAtt()

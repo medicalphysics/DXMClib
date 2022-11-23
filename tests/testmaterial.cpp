@@ -30,7 +30,36 @@ Copyright 2022 Erlend Andersen
 using namespace dxmc;
 void testMaterial()
 {
+    auto m0 = dxmc::Material2<double>::byZ(20);
+
     auto m1 = dxmc::Material2<double>::byChemicalFormula("H2O");
+    if (m1) {
+        auto m = m1.value();
+        auto att = m.attenuationValues(60.0);
+        auto sum = std::reduce(att.cbegin(), att.cend());
+        std::cout << sum << std::endl;
+    }
+    std::map<std::uint64_t, double> w;
+    w[1] = 0.034000;
+    w[6] = 0.155000;
+    w[7] = 0.042000;
+    w[8] = 0.435000;
+    w[11] = 0.001000;
+    w[12] = 0.002000;
+    w[15] = 0.103000;
+    w[16] = 0.003000;
+    w[20] = 0.225000;
+    auto bone = dxmc::Material2<double>::byWeight(w);
+    if (bone) {
+        auto m = bone.value();
+        auto att1 = m.attenuationValues(4.038);
+        auto sum1 = std::reduce(att1.cbegin(), att1.cend());
+        auto att2 = m.attenuationValues(4.04);
+        auto sum2 = std::reduce(att2.cbegin(), att2.cend());
+        std::cout << sum1 << std::endl;
+    }
+
+
     auto m2 = dxmc::Material2<float>::byChemicalFormula("Ca5(PO4)3");
     auto m3 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
 }

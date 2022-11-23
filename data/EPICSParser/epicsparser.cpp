@@ -151,6 +151,8 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                     elements[seg.Z].setShellNumberOfElectrons(seg.data);
                 } else if (seg.I == 913) { // Binding energy
                     elements[seg.Z].setShellBindingEnergy(seg.data);
+                } else if (seg.I == 914) { // electron kinetic energy
+                    elements[seg.Z].setShellKineticEnergy(seg.data);
                 }
             }
             if (seg.C == 92) { // transition data

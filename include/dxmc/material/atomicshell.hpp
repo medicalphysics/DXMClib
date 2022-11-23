@@ -28,6 +28,7 @@ struct AtomicShell {
     std::uint64_t shell = 0;
     T numberOfElectrons = 0;
     T bindingEnergy = 0;
+    T kineticEnergy = 0;
     T HartreeFockOrbital_0 = 0;
     T numberOfPhotonsPerInitVacancy = 0;
     T energyOfPhotonsPerInitVacancy = 0;

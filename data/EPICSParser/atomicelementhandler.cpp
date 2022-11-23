@@ -18,7 +18,10 @@ Copyright 2022 Erlend Andersen
 
 #include "atomicelementhandler.hpp"
 
+#include <charconv>
 #include <cmath>
+#include <optional>
+#include <string_view>
 
 AtomicElementHandler::AtomicElementHandler(std::uint64_t Z)
 {
@@ -64,7 +67,9 @@ void AtomicElementHandler::setFormFactor(const std::vector<double>& data)
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
         const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
-        m_atom.formFactor.push_back(std::make_pair(x, f));
+        if (x <= maxMomentumTransfer()) {
+            m_atom.formFactor.push_back(std::make_pair(x, f));
+        }
     }
 }
 /*
@@ -100,7 +105,9 @@ void AtomicElementHandler::setIncoherentSF(const std::vector<double>& data)
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
         const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
-        m_atom.incoherentSF.push_back(std::make_pair(x, f));
+        if (x <= maxMomentumTransfer()) {
+            m_atom.incoherentSF.push_back(std::make_pair(x, f));
+        }
     }
 }
 
@@ -151,6 +158,18 @@ void AtomicElementHandler::setShellBindingEnergy(const std::vector<double>& data
             m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
         }
         m_atom.shells[shell].bindingEnergy = E;
+    }
+}
+
+void AtomicElementHandler::setShellKineticEnergy(const std::vector<double>& data)
+{
+    for (std::size_t i = 0; i < data.size(); i = i + 2) {
+        const auto shell = static_cast<std::uint64_t>(data[i]);
+        const auto E = data[i + 1] * MeVTokeV();
+        if (!m_atom.shells.contains(shell)) {
+            m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+        }
+        m_atom.shells[shell].kineticEnergy = E;
     }
 }
 
@@ -207,6 +226,7 @@ bool AtomicElementHandler::operator==(const AtomicElementHandler& other) const
         const auto& rshell = other.m_atom.shells.at(key);
         eq = eq && lshell.shell == rshell.shell;
         eq = eq && lshell.bindingEnergy == rshell.bindingEnergy;
+        eq = eq && lshell.kineticEnergy == rshell.kineticEnergy;
         eq = eq && lshell.energyOfPhotonsPerInitVacancy == rshell.energyOfPhotonsPerInitVacancy;
         eq = eq && lshell.HartreeFockOrbital_0 == rshell.HartreeFockOrbital_0;
         eq = eq && lshell.numberOfElectrons == rshell.numberOfElectrons;
@@ -214,6 +234,25 @@ bool AtomicElementHandler::operator==(const AtomicElementHandler& other) const
         eq = eq && lshell.photoel == rshell.photoel;
     }
     return eq;
+}
+constexpr double AtomicElementHandler::maxPhotonEnergy()
+{
+    auto to_double = [](const std::string_view s) -> std::optional<double> {
+        if (double value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
+            return value;
+        else
+            return std::nullopt;
+    };
+    return std::min(to_double(DXMCLIB_MAXENERGY).value_or(500.0), 500.0);
+}
+constexpr double AtomicElementHandler::maxMomentumTransfer()
+{
+    constexpr double hc_si = 1.239841193E-6; // ev*m
+    constexpr double m2A = 1E10; // meters to Ångstrøm
+    constexpr double eV2keV = 1E-3; // eV to keV
+    constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
+    constexpr double hc_inv = 1.0 / hc;
+    return maxPhotonEnergy() * hc_inv; // per Å
 }
 double AtomicElementHandler::momentumTransfer(double energy, double angle)
 {

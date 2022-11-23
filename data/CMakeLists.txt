@@ -25,14 +25,20 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
             message(FATAL_ERROR "Could not find data files EPDL2017.ALL or EPDL2017.ALL in ${DXMCLIB_EPICS_DATA_DIRPATH}")
         endif()
 
-        message("Using EPDL file: ${DXMCLIB_EPICS_DATA_EPDLPATH}")
-        message("Using EADL file: ${DXMCLIB_EPICS_DATA_EADLPATH}")
+        message(STATUS "Using EPDL file: ${DXMCLIB_EPICS_DATA_EPDLPATH}")
+        message(STATUS "Using EADL file: ${DXMCLIB_EPICS_DATA_EADLPATH}")
     endif()
+
+    # Option to specify max energy range
+    set(DXMCLIB_MAX_ENERGY_KEV "500" CACHE STRING "Max energy in keV for photon energies.")
+
+
     add_executable(EPICSparser         
         EPICSParser/atomicelementhandler.cpp 
         EPICSParser/epicsparser.cpp 
         EPICSParser/main.cpp        
     )    
+    target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
@@ -41,6 +47,9 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
 
     ## make parsed EPICS data available to all binaries consuming dxmc on build machine
     target_compile_definitions(libdxmc PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
+
+    ## make max energy exposed to libdxmc
+    target_compile_definitions(libdxmc PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
 
     add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
         COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
