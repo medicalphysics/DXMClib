@@ -26,6 +26,7 @@ Copyright 2022 Erlend Andersen
 #include <algorithm>
 #include <array>
 #include <cctype>
+#include <execution>
 
 namespace dxmc {
 
@@ -65,6 +66,18 @@ public:
         return Material2<T>::byWeight(weight);
     }
 
+    T formFactor(const T energy, const T angle)
+    {
+        const auto mt = momentumTransfer(energy, angle);
+        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[3], m_attenuationTableOffset[4])
+    }
+
+    T scatterFactor(const T energy, const T angle)
+    {
+        const auto mt = momentumTransfer(energy, angle);
+        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5])
+    }
+
     std::array<T, 3> attenuationValues(const T energy)
     {
         const auto logEnergy = std::log(energy);
@@ -84,7 +97,6 @@ public:
         constexpr double hc_inv = 1.0 / hc;
         return energy * std::sin(angle * 0.5) * hc_inv; // per Å
     }
-
 
 protected:
     Material2()
@@ -177,7 +189,9 @@ protected:
     enum class LUTType {
         photoelectric,
         coherent,
-        incoherent
+        incoherent,
+        formfactor,
+        scatterfactor
     };
 
     // constructs a least squares spline interpolator from attenuation data from a compound
@@ -185,37 +199,32 @@ protected:
     // But is basicly an weighted average of attenuation coefficients for each element.
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::map<std::size_t, T>& normalizedWeight, LUTType type)
     {
+        auto getAtomArr = [&](const AtomicElement<T>& atom, LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
+            if (type == LUTType::photoelectric)
+                return atom.photoel;
+            else if (type == LUTType::incoherent)
+                return atom.incoherent;
+            else if (type == LUTType::coherent)
+                return atom.coherent;
+            else if (type == LUTType::formfactor)
+                return atom.formFactor;
+            else if (type == LUTType::scatterfactor)
+                return atom.incoherentSF;
+            return atom.photoel;
+        };
+
         std::vector<std::pair<T, T>> arr;
         std::vector<std::size_t> Zs;
         for (const auto& [Z, w] : normalizedWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
-
-            auto getAtomArr = [&](LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
-                if (type == LUTType::photoelectric)
-                    return a.photoel;
-                else if (type == LUTType::incoherent)
-                    return a.incoherent;
-                else if (type == LUTType::coherent)
-                    return a.coherent;
-                return a.photoel;
-            };
-            const auto& atom_arr = getAtomArr(type);
+            const auto& atom_arr = getAtomArr(a, type);
             auto begin = arr.insert(arr.cend(), atom_arr.cbegin(), atom_arr.cend());
             std::for_each(begin, arr.end(), [=](auto& p) { p.second *= w; });
             Zs.insert(Zs.cend(), atom_arr.size(), Z);
         }
         for (const auto& [Z, w] : normalizedWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
-            auto getAtomArr = [&](LUTType type = LUTType::photoelectric) -> const std::vector<std::pair<T, T>>& {
-                if (type == LUTType::photoelectric)
-                    return a.photoel;
-                else if (type == LUTType::incoherent)
-                    return a.incoherent;
-                else if (type == LUTType::coherent)
-                    return a.coherent;
-                return a.photoel;
-            };
-            const auto& atom_arr = getAtomArr(type);
+            const auto& atom_arr = getAtomArr(a, type);
             for (std::size_t i = 0; i < arr.size(); ++i) {
                 if (Zs[i] != Z) {
                     arr[i].second += w * interpolate(atom_arr, arr[i].first);
@@ -223,8 +232,14 @@ protected:
             }
         }
 
-        std::for_each(arr.begin(), arr.end(), [](auto& v) { v.first = std::log(v.first); v.second=std::log(v.second); });
-
+        // should we do log interpolation?
+        // only for photo- coherent and incoherent attenuation data
+        if (type == LUTType::photoelectric || type == LUTType::incoherent || type == LUTType::coherent) {
+            std::for_each(std::execution::par_unseq, arr.begin(), arr.end(), [](auto& v) {
+                v.first = std::log(v.first);
+                v.second = std::log(v.second);
+            });
+        }
         std::sort(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
             if (lh.first < rh.first)
                 return true;
@@ -258,10 +273,12 @@ protected:
         const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
         std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
 
-        std::array<CubicLSInterpolator<T>, 3> attenuation = {
+        std::array<CubicLSInterpolator<T>, 5> attenuation = {
             constructSplineInterpolator(weight, LUTType::photoelectric),
             constructSplineInterpolator(weight, LUTType::coherent),
             constructSplineInterpolator(weight, LUTType::incoherent),
+            constructSplineInterpolator(weight, LUTType::formfactor),
+            constructSplineInterpolator(weight, LUTType::scatterfactor)
         };
         Material2 m;
         m.m_attenuationTable.clear();
@@ -280,6 +297,6 @@ protected:
 
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
-    std::array<typename std::vector<std::array<T, 3>>::iterator, 5> m_attenuationTableOffset;
+    std::array<typename std::vector<std::array<T, 3>>::iterator, 6> m_attenuationTableOffset;
 };
 }
