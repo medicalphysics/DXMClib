@@ -66,19 +66,20 @@ public:
         return Material2<T>::byWeight(weight);
     }
 
-    T formFactor(const T energy, const T angle)
+    inline T formFactor(const T energy, const T angle) const
     {
         const auto mt = momentumTransfer(energy, angle);
-        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[3], m_attenuationTableOffset[4])
+        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[3], m_attenuationTableOffset[4]);
     }
 
-    T scatterFactor(const T energy, const T angle)
+    inline T scatterFactor(const T energy, const T angle) const
     {
         const auto mt = momentumTransfer(energy, angle);
-        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5])
+        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]);
     }
 
-    std::array<T, 3> attenuationValues(const T energy)
+    //photo, coherent, incoherent
+    inline std::array<T, 3> attenuationValues(const T energy) const
     {
         const auto logEnergy = std::log(energy);
         const std::array<T, 3> att = {
@@ -88,7 +89,7 @@ public:
         };
         return att;
     }
-    static constexpr T momentumTransfer(T energy, T angle)
+    static T momentumTransfer(T energy, T angle)
     {
         constexpr double hc_si = 1.239841193E-6; // ev*m
         constexpr double m2A = 1E10; // meters to Ångstrøm

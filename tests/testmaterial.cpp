@@ -26,18 +26,47 @@ Copyright 2022 Erlend Andersen
 #include "xraylib.h"
 
 #include <format>
+#include <fstream>
 #include <iostream>
+#include <numbers>
 using namespace dxmc;
+
+template <typename T>
+void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy)
+{
+    std::ofstream file("material.txt");
+    file << "e,photo,coherent,incoherent,x,formfactor,scatterfactor" << std::endl;
+    constexpr auto pi = std::numbers::pi_v<T>;
+    for (auto e : energy) {
+        auto a = m.attenuationValues(e);
+        auto x = m.momentumTransfer(e, pi);
+        file << std::format("{},{},{},{},{},{},{}", e, a[0], a[1], a[2], x, m.formFactor(e, pi), m.scatterFactor(e, pi)) << std::endl;
+    }
+
+    file.close();
+}
+
 void testMaterial()
 {
     auto m0 = dxmc::Material2<double>::byZ(20);
+    if (m0) {
+        auto m = m0.value();
+        std::vector<double> e(150);
+        std::iota(e.begin(), e.end(), 1.0);
+       // writeMaterialData(m, e);
+    }
 
-    auto m1 = dxmc::Material2<double>::byChemicalFormula("H2O");
+    auto m1 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
     if (m1) {
         auto m = m1.value();
         auto att = m.attenuationValues(60.0);
         auto sum = std::reduce(att.cbegin(), att.cend());
         std::cout << sum << std::endl;
+
+        std::vector<double> e(150);
+        std::iota(e.begin(), e.end(), 1.0);
+        writeMaterialData(m, e);
+
     }
     std::map<std::uint64_t, double> w;
     w[1] = 0.034000;
@@ -58,7 +87,6 @@ void testMaterial()
         auto sum2 = std::reduce(att2.cbegin(), att2.cend());
         std::cout << sum1 << std::endl;
     }
-
 
     auto m2 = dxmc::Material2<float>::byChemicalFormula("Ca5(PO4)3");
     auto m3 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");

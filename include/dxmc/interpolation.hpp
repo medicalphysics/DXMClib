@@ -579,8 +579,16 @@ protected:
         std::vector<T> t(N);
         t[0] = x.front();
         t[N - 1] = x.back();
-        for (std::size_t i = 1; i < N - 1; i++) {
-            t[i] = x.front() + i * (x.back() - x.front()) / (N - 1);
+        const auto step = x.size() / (N - 1);
+        if (step == 0) {
+            for (std::size_t i = 1; i < N - 1; i++) {
+                t[i] = x.front() + i * (x.back() - x.front()) / (N - 1);
+            }
+        } else {
+            for (std::size_t i = 1; i < (N - 1); i++) {
+                const auto xInd = i * step;
+                t[i] = x[xInd];
+            }
         }
         return calculateLSSplinePart(x, y, t);
     }
