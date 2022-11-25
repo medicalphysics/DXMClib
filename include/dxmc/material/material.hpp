@@ -78,7 +78,7 @@ public:
         return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]);
     }
 
-    //photo, coherent, incoherent
+    // photo, coherent, incoherent
     inline std::array<T, 3> attenuationValues(const T energy) const
     {
         const auto logEnergy = std::log(energy);
@@ -256,7 +256,9 @@ protected:
             else
                 return std::abs(lh.first - rh.first) <= e;
         });
-        arr.erase(erase_from, arr.end());
+
+        if (std::distance(erase_from, arr.end()) != 0)
+            arr.erase(erase_from, arr.end());
 
         auto interpolator = CubicLSInterpolator(arr);
         return interpolator;

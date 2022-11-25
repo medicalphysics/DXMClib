@@ -22,12 +22,12 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/material/atomicelement.hpp"
 #include "dxmc/material/atomserializer.hpp"
 
+#include <execution>
 #include <filesystem>
 #include <fstream>
 #include <map>
 #include <string>
 #include <vector>
-#include <execution>
 
 namespace dxmc {
 
@@ -109,6 +109,7 @@ protected:
         l.atomicWeight = static_cast<T>(r.atomicWeight);
         l.coherent = typecastPairVector(r.coherent);
         l.formFactor = typecastPairVector(r.formFactor);
+        l.incoherentSF = typecastPairVector(r.incoherentSF);
         l.incoherent = typecastPairVector(r.incoherent);
         l.photoel = typecastPairVector(r.photoel);
         for (const auto& [key, shell] : r.shells) {

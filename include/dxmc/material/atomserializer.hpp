@@ -74,7 +74,8 @@ protected:
     }
 
     template <typename T>
-    requires(!std::is_same<T, char>::value) static void serialize(const std::vector<T>& data, std::vector<char>& buffer)
+        requires(!std::is_same<T, char>::value)
+    static void serialize(const std::vector<T>& data, std::vector<char>& buffer)
     {
         std::uint64_t size = data.size() * sizeof(T);
         serialize(size, buffer);
@@ -89,6 +90,7 @@ protected:
         serialize(shell.shell, data);
         serialize(shell.numberOfElectrons, data);
         serialize(shell.bindingEnergy, data);
+        serialize(shell.kineticEnergy, data);
         serialize(shell.HartreeFockOrbital_0, data);
         serialize(shell.numberOfPhotonsPerInitVacancy, data);
         serialize(shell.energyOfPhotonsPerInitVacancy, data);
@@ -155,6 +157,7 @@ protected:
         start = deserialize(shell.shell, start);
         start = deserialize(shell.numberOfElectrons, start);
         start = deserialize(shell.bindingEnergy, start);
+        start = deserialize(shell.kineticEnergy, start);
         start = deserialize(shell.HartreeFockOrbital_0, start);
         start = deserialize(shell.numberOfPhotonsPerInitVacancy, start);
         start = deserialize(shell.energyOfPhotonsPerInitVacancy, start);

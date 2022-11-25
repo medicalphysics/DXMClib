@@ -48,12 +48,13 @@ void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy
 
 void testMaterial()
 {
-    auto m0 = dxmc::Material2<double>::byZ(20);
+    //auto m0 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
+    auto m0 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
     if (m0) {
         auto m = m0.value();
         std::vector<double> e(150);
         std::iota(e.begin(), e.end(), 1.0);
-       // writeMaterialData(m, e);
+        writeMaterialData(m, e);
     }
 
     auto m1 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
