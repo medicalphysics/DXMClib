@@ -29,6 +29,7 @@ public:
     EPICSparser(const std::string& path);
     EPICSparser(std::vector<char>& data);
     void read(const std::string& path);
+    void readHartreeFockProfiles(const std::string& path);
 
     std::map<std::uint64_t, AtomicElementHandler>& getElements() { return m_elements; }
 

@@ -55,12 +55,15 @@ public:
     void setShellNumberOfPhotonsPerInitVacancy(const std::vector<double>& data);
     void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
 
+    void setShellHartreeFockProfile_0(std::uint64_t shell, double J);
+
     static constexpr double maxMomentumTransfer();
     static double momentumTransfer(double energy, double angle);
 
     static constexpr double maxPhotonEnergy();
     static constexpr double minPhotonEnergy() { return 1.0; }
     static constexpr double MeVTokeV() { return 1000; }
+    static constexpr double keVToMeV() { return 1.0 / MeVTokeV(); }
     double barnToAtt()
     {
         constexpr double u = 1.6605402;

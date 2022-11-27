@@ -19,8 +19,10 @@ Copyright 2022 Erlend Andersen
 #include "epicsparser.hpp"
 #include "dxmc/material/atomserializer.hpp"
 
+#include <charconv>
 #include <fstream>
 #include <iostream>
+#include <optional>
 #include <sstream>
 #include <vector>
 
@@ -212,6 +214,37 @@ void EPICSparser::read(const std::string& path)
         }
     }
     processSegments(segments, m_elements);
+}
+
+void EPICSparser::readHartreeFockProfiles(const std::string& path)
+{
+    std::ifstream stream;
+    stream.open(std::string(path));
+
+    if (stream.is_open()) {
+        std::string line;
+        std::size_t linenumber = 0;
+        while (std::getline(stream, line)) {
+            if (linenumber > 0) { // we dont read the header
+                auto start = line.data();
+                auto end = start + line.size();
+                int Z = 0;
+                int shell = 0;
+                double J = 0.0;
+                auto [ptrZ, errZ] = std::from_chars(start, end, Z);
+                if (errZ == std::errc {}) {
+                    auto [ptrS, errS] = std::from_chars(ptrZ + 1, end, shell);
+                    if (errS == std::errc {}) {
+                        auto [ptrJ, errJ] = std::from_chars(ptrS + 1, end, J);
+                        if (errJ == std::errc {}) {
+                            m_elements[Z].setShellHartreeFockProfile_0(shell, J);
+                        }
+                    }
+                }
+            }
+            linenumber++;
+        }
+    }
 }
 
 std::vector<char> EPICSparser::serializeElements() const

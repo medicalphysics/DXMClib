@@ -23,6 +23,23 @@ Copyright 2022 Erlend Andersen
 #include <optional>
 #include <string_view>
 
+std::size_t lowerIdx(const std::vector<double>& data, double limit)
+{
+    for (std::size_t i = 0; i < data.size() - 2; i = i + 2) {
+        if (data[i + 2] > limit)
+            return i;
+    }
+    return 0;
+}
+std::size_t upperIdx(const std::vector<double>& data, double limit)
+{
+    for (int i = data.size() - 2; i >= 0; i = i - 2) {
+        if (data[i - 2] < limit)
+            return i;
+    }
+    return data.size() - 2;
+}
+
 AtomicElementHandler::AtomicElementHandler(std::uint64_t Z)
 {
     m_atom.Z = Z;
@@ -30,31 +47,28 @@ AtomicElementHandler::AtomicElementHandler(std::uint64_t Z)
 
 void AtomicElementHandler::setCoherentData(const std::vector<double>& data)
 {
-    const auto N = data.size() / 2;
+    auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
+    auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
     m_atom.coherent.clear();
-    m_atom.coherent.reserve(N);
-    for (std::size_t i = 0; i < N; ++i) {
+    m_atom.coherent.reserve((end - start) / 2);
+    for (std::size_t i = start; i <= end; i = i + 2) {
         const auto ind = i * 2;
-        const double e = data[ind] * MeVTokeV();
-        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
-            const double a = data[ind + 1] * barnToAtt();
-            m_atom.coherent.push_back(std::make_pair(e, a));
-        }
+        const double e = data[i] * MeVTokeV();
+        const double a = data[i + 1] * barnToAtt();
+        m_atom.coherent.push_back(std::make_pair(e, a));
     }
     m_atom.coherent.shrink_to_fit();
 }
 void AtomicElementHandler::setIncoherentData(const std::vector<double>& data)
 {
-    const auto N = data.size() / 2;
+    auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
+    auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
     m_atom.incoherent.clear();
-    m_atom.incoherent.reserve(N);
-    for (std::size_t i = 0; i < N; ++i) {
-        const auto ind = i * 2;
-        const double e = data[ind] * MeVTokeV();
-        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
-            const double a = data[ind + 1] * barnToAtt();
-            m_atom.incoherent.push_back(std::make_pair(e, a));
-        }
+    m_atom.incoherent.reserve((end - start) / 2);
+    for (std::size_t i = start; i <= end; i = i + 2) {
+        const double e = data[i] * MeVTokeV();
+        const double a = data[i + 1] * barnToAtt();
+        m_atom.incoherent.push_back(std::make_pair(e, a));
     }
     m_atom.incoherent.shrink_to_fit();
 }
@@ -113,17 +127,14 @@ void AtomicElementHandler::setIncoherentSF(const std::vector<double>& data)
 
 void AtomicElementHandler::setPhotoelectricData(const std::vector<double>& data)
 {
-    const auto c = barnToAtt();
-    const auto N = data.size() / 2;
+    auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
+    auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
     m_atom.photoel.clear();
-    m_atom.photoel.reserve(N);
-    for (std::size_t i = 0; i < N; ++i) {
-        const auto ind = i * 2;
-        const double e = data[ind] * MeVTokeV();
-        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
-            const double a = data[ind + 1] * c;
-            m_atom.photoel.push_back(std::make_pair(e, a));
-        }
+    m_atom.photoel.reserve((end - start) / 2);
+    for (std::size_t i = start; i <= end; i = i + 2) {
+        const double e = data[i] * MeVTokeV();
+        const double a = data[i + 1] * barnToAtt();
+        m_atom.photoel.push_back(std::make_pair(e, a));
     }
     m_atom.photoel.shrink_to_fit();
 }
@@ -132,18 +143,15 @@ void AtomicElementHandler::setShellPhotoelectricData(std::uint64_t shell, const 
     if (!m_atom.shells.contains(shell)) {
         m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
     }
-
-    const auto N = data.size() / 2;
+    auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
+    auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
     std::vector<std::pair<double, double>> photoel;
-    photoel.reserve(N);
+    photoel.reserve((end - start) / 2);
 
-    for (std::size_t i = 0; i < N; ++i) {
-        const auto ind = i * 2;
-        const double e = data[ind] * MeVTokeV();
-        if (e >= minPhotonEnergy() && e <= maxPhotonEnergy()) {
-            const double a = data[ind + 1] * barnToAtt();
-            photoel.push_back(std::make_pair(e, a));
-        }
+    for (std::size_t i = start; i <= end; i = i + 2) {
+        const double e = data[i] * MeVTokeV();
+        const double a = data[i + 1] * barnToAtt();
+        photoel.push_back(std::make_pair(e, a));
     }
     photoel.shrink_to_fit();
     m_atom.shells[shell].photoel = photoel;
@@ -253,6 +261,13 @@ constexpr double AtomicElementHandler::maxMomentumTransfer()
     constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
     constexpr double hc_inv = 1.0 / hc;
     return maxPhotonEnergy() * hc_inv; // per Å
+}
+void AtomicElementHandler::setShellHartreeFockProfile_0(std::uint64_t shell, double J)
+{
+    if (!m_atom.shells.contains(shell)) {
+        m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+    }
+    m_atom.shells[shell].HartreeFockOrbital_0 = J;
 }
 double AtomicElementHandler::momentumTransfer(double energy, double angle)
 {

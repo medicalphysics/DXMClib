@@ -31,7 +31,7 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
 
     # Option to specify max energy range
     set(DXMCLIB_MAX_ENERGY_KEV "500" CACHE STRING "Max energy in keV for photon energies.")
-
+    set(DXMCLIB_MIN_ENERGY_KEV "1")
 
     add_executable(EPICSparser         
         EPICSParser/atomicelementhandler.cpp 
@@ -45,11 +45,20 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     target_include_directories(EPICSparser PRIVATE ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/include)     
     target_link_libraries(EPICSparser PRIVATE material )
 
+    ## Copying Hartree-Fock profiles for pz=0 since this data is lacking from EPICS data
+    add_custom_command(
+        TARGET EPICSparser PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/hartreeFockProfiles_0.txt
+                ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.txt
+    )
+
     ## make parsed EPICS data available to all binaries consuming dxmc on build machine
     target_compile_definitions(libdxmc PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
 
     ## make max energy exposed to libdxmc
     target_compile_definitions(libdxmc PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
+    target_compile_definitions(libdxmc PUBLIC DXMCLIB_MINENERGY="${DXMCLIB_MIN_ENERGY_KEV}")
 
     add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
         COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
