@@ -51,7 +51,6 @@ int main()
     const std::string outpath(DXMCLIB_PHYSICSLISTSPATH);
     const std::string hartreefock("hartreeFockProfiles_0.txt");
 
-
     auto file_exists = std::filesystem::exists(outpath);
     if (!file_exists) {
         EPICSparser parser(eadl);
