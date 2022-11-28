@@ -28,6 +28,8 @@ Copyright 2022 Erlend Andersen
 #include <cctype>
 #include <execution>
 
+#include <iostream>
+
 namespace dxmc {
 
 template <Floating T>
@@ -195,6 +197,72 @@ protected:
         scatterfactor
     };
 
+    static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false)
+    {
+        const auto N = std::reduce(data.cbegin(), data.cend(), std::size_t { 0 }, [](const auto lh, const auto& rh) -> std::size_t { return rh.size() + lh; });
+
+        std::vector<T> w(data.size());
+        for (std::size_t i = 0; i < data.size(); ++i) {
+            if (data.size() != weights.size())
+                w[i] = T { 1 };
+            else
+                w[i] = weights[i];
+        }
+        const auto sum_weights = std::reduce(w.cbegin(), w.cend(), T { 0 });
+        std::transform(w.cbegin(), w.cend(), w.begin(), [sum_weights](const auto& ww) { return ww / sum_weights; });
+
+        std::vector<std::pair<T, T>> arr(N);
+        std::vector<std::size_t> idx(N);
+        std::size_t start = 0;
+        for (std::size_t i = 0; i < data.size(); ++i) {
+            std::copy(std::execution::par_unseq, data[i].cbegin(), data[i].cend(), arr.begin() + start);
+            std::fill(idx.begin() + start, idx.begin() + start + data[i].size(), i);
+            start += data[i].size();
+        }
+        // applying weights for first array in data
+        std::transform(std::execution::par_unseq, arr.cbegin(), arr.cend(), idx.cbegin(), arr.begin(), [&](const auto& pair, const auto i) {
+            return std::make_pair(pair.first, pair.second * w[i]);
+        });
+
+        for (std::size_t i = 0; i < data.size(); ++i) {
+            std::transform(std::execution::par, arr.begin(), arr.end(), idx.cbegin(), arr.begin(), [&](const auto& pair, const auto index) {
+                if (index == i)
+                    return pair;
+                else
+                    return std::make_pair(pair.first, pair.second + w[i] * interpolate(data[i], pair.first));
+            });
+        }
+
+        if (loglog) {
+            std::for_each(std::execution::par_unseq, arr.begin(), arr.end(), [](auto& v) {
+                v.first = std::log(v.first);
+                v.second = std::log(v.second);
+            });
+        }
+        // sorting for generating interpolation lut
+        std::sort(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
+            if (lh.first < rh.first)
+                return true;
+            else if (lh.first == rh.first)
+                return lh.second < rh.second;
+            return false;
+        });
+
+        // erasing duplicate items
+        auto erase_from = std::unique(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
+            constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
+            if (lh.first == rh.first)
+                return std::abs(lh.second - rh.second) <= e;
+            else
+                return std::abs(lh.first - rh.first) <= e;
+        });
+        if (std::distance(erase_from, arr.end()) != 0)
+            arr.erase(erase_from, arr.end());
+
+        auto interpolator = CubicLSInterpolator(arr);
+        return interpolator;
+    }
+
     // constructs a least squares spline interpolator from attenuation data from a compound
     // This function is a bit convoluted since we want to preserve discontiuities in the interpolation
     // But is basicly an weighted average of attenuation coefficients for each element.
@@ -214,54 +282,16 @@ protected:
             return atom.photoel;
         };
 
-        std::vector<std::pair<T, T>> arr;
-        std::vector<std::size_t> Zs;
+        std::vector<std::vector<std::pair<T, T>>> data;
+        std::vector<T> weights;
         for (const auto& [Z, w] : normalizedWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
-            const auto& atom_arr = getAtomArr(a, type);
-            auto begin = arr.insert(arr.cend(), atom_arr.cbegin(), atom_arr.cend());
-            std::for_each(begin, arr.end(), [=](auto& p) { p.second *= w; });
-            Zs.insert(Zs.cend(), atom_arr.size(), Z);
+            data.push_back(getAtomArr(a, type));
+            weights.push_back(w);
         }
-        for (const auto& [Z, w] : normalizedWeight) {
-            const auto& a = AtomHandler<T>::Atom(Z);
-            const auto& atom_arr = getAtomArr(a, type);
-            for (std::size_t i = 0; i < arr.size(); ++i) {
-                if (Zs[i] != Z) {
-                    arr[i].second += w * interpolate(atom_arr, arr[i].first);
-                }
-            }
-        }
-
-        // should we do log interpolation?
-        // only for photo- coherent and incoherent attenuation data
-        if (type == LUTType::photoelectric || type == LUTType::incoherent || type == LUTType::coherent) {
-            std::for_each(std::execution::par_unseq, arr.begin(), arr.end(), [](auto& v) {
-                v.first = std::log(v.first);
-                v.second = std::log(v.second);
-            });
-        }
-        std::sort(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
-            if (lh.first < rh.first)
-                return true;
-            else if (lh.first == rh.first)
-                return lh.second < rh.second;
-            return false;
-        });
-
-        auto erase_from = std::unique(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
-            constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
-            if (lh.first == rh.first)
-                return std::abs(lh.second - rh.second) <= e;
-            else
-                return std::abs(lh.first - rh.first) <= e;
-        });
-
-        if (std::distance(erase_from, arr.end()) != 0)
-            arr.erase(erase_from, arr.end());
-
-        auto interpolator = CubicLSInterpolator(arr);
-        return interpolator;
+        const bool loglog = type == LUTType::photoelectric || type == LUTType::incoherent || type == LUTType::coherent;
+        auto lut = constructSplineInterpolator(data, weights, loglog);
+        return lut;
     }
 
     static std::optional<Material2<T>> constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
@@ -301,5 +331,10 @@ protected:
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
     std::array<typename std::vector<std::array<T, 3>>::iterator, 6> m_attenuationTableOffset;
+    std::array<T, 4> m_shellBindingEnergy = { 0, 0, 0, 0 };
+    std::array<T, 4> m_shellHartreeFock_0 = { 0, 0, 0, 0 };
+    std::array<T, 4> m_shellNumberOfElectrons = { 0, 0, 0, 0 };
+    std::array<T, 4> m_shellNumberOfPhotonsPerVacancy = { 0, 0, 0, 0 };
+    std::array<T, 4> m_shellEnergyOfPhotonsPerVacancy = { 0, 0, 0, 0 };
 };
 }
