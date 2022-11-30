@@ -31,8 +31,28 @@ Copyright 2022 Erlend Andersen
 #include <iostream>
 
 namespace dxmc {
-
 template <Floating T>
+class Material2Shell {
+public:
+    Material2Shell(const AtomicShell<T>& shell) { }
+
+private:
+    std::size_t m_shellIdx = 0;
+    T m_nElectrons = 0;
+    T m_bindingEnergy = 0;
+    T m_hartreeFockProfile_0 = 0;
+    T m_shellNumberOfPhotonsPerVacancy = 0;
+    T m_shellEnergyOfPhotonsPerVacancy = 0;
+    std::array<std::array<T, 3>, 30> m_photoProb;
+};
+template <Floating T>
+struct AttenuationValues {
+    T photoelectric;
+    T incoherent;
+    T coherent;
+    T sum() { return photoelectric + incoherent + coherent; }
+};
+template <Floating T, int N = 5>
 class Material2 {
 
 public:
@@ -44,7 +64,6 @@ public:
             w[Z] = T { 1 };
             return byWeight(w);
         }
-
         return std::nullopt;
     }
     static std::optional<Material2<T>> byWeight(const std::map<std::size_t, T>& weights)
@@ -81,15 +100,20 @@ public:
     }
 
     // photo, coherent, incoherent
-    inline std::array<T, 3> attenuationValues(const T energy) const
+    inline AttenuationValues<T> attenuationValues(const T energy) const
     {
         const auto logEnergy = std::log(energy);
-        const std::array<T, 3> att = {
+        AttenuationValues<T> att {
             std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1])),
             std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[1], m_attenuationTableOffset[2])),
             std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[2], m_attenuationTableOffset[3]))
         };
         return att;
+    }
+    inline T attenuationPhotoeletric(const T energy) const
+    {
+        const auto logEnergy = std::log(energy);
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1]));
     }
     static T momentumTransfer(T energy, T angle)
     {
@@ -114,7 +138,7 @@ protected:
     static std::map<std::uint64_t, T> parseCompoundStr(const std::string& str)
     {
         const std::array<std::string, 100> S { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm" };
-        const std::array<std::string, 11> N { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "." };
+        //        const std::array<std::string, 11> N { "0", "1", "2", "3", "4", "5", "6", "7", "8", "9", "." };
 
         std::map<std::uint64_t, T> parsed;
 
@@ -199,7 +223,7 @@ protected:
 
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false)
     {
-        const auto N = std::reduce(data.cbegin(), data.cend(), std::size_t { 0 }, [](const auto lh, const auto& rh) -> std::size_t { return rh.size() + lh; });
+        const auto Nvec = std::reduce(data.cbegin(), data.cend(), std::size_t { 0 }, [](const auto lh, const auto& rh) -> std::size_t { return rh.size() + lh; });
 
         std::vector<T> w(data.size());
         for (std::size_t i = 0; i < data.size(); ++i) {
@@ -211,8 +235,8 @@ protected:
         const auto sum_weights = std::reduce(w.cbegin(), w.cend(), T { 0 });
         std::transform(w.cbegin(), w.cend(), w.begin(), [sum_weights](const auto& ww) { return ww / sum_weights; });
 
-        std::vector<std::pair<T, T>> arr(N);
-        std::vector<std::size_t> idx(N);
+        std::vector<std::pair<T, T>> arr(Nvec);
+        std::vector<std::size_t> idx(Nvec);
         std::size_t start = 0;
         for (std::size_t i = 0; i < data.size(); ++i) {
             std::copy(std::execution::par_unseq, data[i].cbegin(), data[i].cend(), arr.begin() + start);
@@ -308,12 +332,12 @@ protected:
 
         std::array<CubicLSInterpolator<T>, 5> attenuation = {
             constructSplineInterpolator(weight, LUTType::photoelectric),
-            constructSplineInterpolator(weight, LUTType::coherent),
             constructSplineInterpolator(weight, LUTType::incoherent),
+            constructSplineInterpolator(weight, LUTType::coherent),
             constructSplineInterpolator(weight, LUTType::formfactor),
             constructSplineInterpolator(weight, LUTType::scatterfactor)
         };
-        Material2 m;
+        Material2<T> m;
         m.m_attenuationTable.clear();
         std::array<std::size_t, attenuation.size()> offset;
         for (std::size_t i = 0; i < attenuation.size(); ++i) {
@@ -325,16 +349,67 @@ protected:
             m.m_attenuationTableOffset[i] = m.m_attenuationTable.begin() + offset[i];
         }
         m.m_attenuationTableOffset[attenuation.size()] = m.m_attenuationTable.end();
+
+        createMaterialAtomicShells(m, weight);
         return m;
+    }
+    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight)
+    {
+        struct Shell {
+            std::uint64_t Z = 0;
+            std::uint64_t S = 0;
+            T weight = 0;
+            T bindingEnergy = 0;
+        };
+
+        std::vector<Shell> shells;
+        for (const auto& [Z, w] : normalizedWeight) {
+            const auto& atom = AtomHandler<T>::Atom(Z);
+            for (const auto& [S, shell] : atom.shells) {
+                shells.emplace_back(Z, S, w, shell.bindingEnergy);
+            }
+        }
+        std::sort(shells.begin(), shells.end(), [](const auto& lh, const auto& rh) {
+            return lh.bindingEnergy > rh.bindingEnergy;
+        });
+
+        std::vector<T> energies;
+        for (int i = 0; i < std::min(N, static_cast<int>(shells.size())); ++i) {
+            const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
+            std::transform(shell.photoel.cbegin(), shell.photoel.cend(), std::back_inserter(energies), [](const auto& v) { return std::log(v.first); });
+        }
+        std::sort(std::execution::unseq, energies.begin(), energies.end());
+        auto erase_from = std::unique(energies.begin(), energies.end(), [](const auto& lh, const auto& rh) {
+            constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
+            return std::abs(lh - rh) <= e;
+        });
+        if (std::distance(erase_from, energies.end()) != 0)
+            energies.erase(erase_from, energies.end());
+        std::array<std::vector<T>, N> photo;
+        for (int i = 0; i < std::min(N, static_cast<int>(shells.size())); ++i) {
+            photo[i].resize(energies.size());
+            const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
+            const auto w = normalizedWeight.at(shells[i].Z);
+            std::transform(energies.cbegin(), energies.cend(), photo[i].begin(), [&](const auto& v) {
+                const auto e = std::exp(v);
+                return w * interpolate<T, false, true>(shell.photoel, e) / material.attenuationPhotoeletric(e);
+            });
+        }
+
+        auto test = photo[0];
+        std::fill(test.begin(), test.end(), T { 0 });
+        for (int i = 0; i < test.size(); ++i)
+            for (const auto& v : photo)
+                test[i] += v[i];
+
+        
+
+        auto slett = true;
     }
 
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
     std::array<typename std::vector<std::array<T, 3>>::iterator, 6> m_attenuationTableOffset;
-    std::array<T, 4> m_shellBindingEnergy = { 0, 0, 0, 0 };
-    std::array<T, 4> m_shellHartreeFock_0 = { 0, 0, 0, 0 };
-    std::array<T, 4> m_shellNumberOfElectrons = { 0, 0, 0, 0 };
-    std::array<T, 4> m_shellNumberOfPhotonsPerVacancy = { 0, 0, 0, 0 };
-    std::array<T, 4> m_shellEnergyOfPhotonsPerVacancy = { 0, 0, 0, 0 };
+    // std::array<Material2Shell<T>, N> m_shells;
 };
 }

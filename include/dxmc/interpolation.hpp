@@ -85,15 +85,21 @@ T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
 
     return interp(*lower, *upper, *lowery, *uppery, xvalue);
 }
-template <Floating T>
+template <Floating T, bool EXTRAPOLATE_DOWN = true, bool EXTRAPOLATE_UP = true>
 inline T interpolate(const std::vector<std::pair<T, T>>& data, T x)
 {
     const auto val = std::make_pair(x, T { 0 });
     auto upper = std::upper_bound(data.begin(), data.end(), val, [](const auto& lh, const auto& rh) -> bool { return lh.first < rh.first; });
     if (upper == data.begin())
-        return upper->second;
+        if constexpr (EXTRAPOLATE_DOWN)
+            return upper->second;
+        else
+            return T { 0 };
     if (upper == data.end())
-        return (upper - 1)->second;
+        if constexpr (EXTRAPOLATE_UP)
+            return (upper - 1)->second;
+        else
+            return T { 0 };
     auto lower = upper - 1;
     return interp(lower->first, upper->first, lower->second, upper->second, x);
 }

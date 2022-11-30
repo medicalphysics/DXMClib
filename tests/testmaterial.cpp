@@ -38,7 +38,9 @@ void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy
     file << "e,photo,coherent,incoherent,x,formfactor,scatterfactor" << std::endl;
     constexpr auto pi = std::numbers::pi_v<T>;
     for (auto e : energy) {
-        auto a = m.attenuationValues(e);
+
+        auto att = m.attenuationValues(e);
+        std::array<T, 3> a = {att.photoelectric, att.coherent, att.incoherent};
         auto x = m.momentumTransfer(e, pi);
         file << std::format("{},{},{},{},{},{},{}", e, a[0], a[1], a[2], x, m.formFactor(e, pi), m.scatterFactor(e, pi)) << std::endl;
     }
@@ -61,7 +63,7 @@ void testMaterial()
     if (m1) {
         auto m = m1.value();
         auto att = m.attenuationValues(60.0);
-        auto sum = std::reduce(att.cbegin(), att.cend());
+        auto sum = att.coherent + att.incoherent + att.photoelectric;
         std::cout << sum << std::endl;
 
         std::vector<double> e(150);
@@ -83,9 +85,9 @@ void testMaterial()
     if (bone) {
         auto m = bone.value();
         auto att1 = m.attenuationValues(4.038);
-        auto sum1 = std::reduce(att1.cbegin(), att1.cend());
+        auto sum1 = att1.sum();
         auto att2 = m.attenuationValues(4.04);
-        auto sum2 = std::reduce(att2.cbegin(), att2.cend());
+        auto sum2 = att2.sum();
         std::cout << sum1 << std::endl;
     }
 
