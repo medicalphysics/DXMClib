@@ -32,27 +32,22 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 template <Floating T>
-class Material2Shell {
-public:
-    Material2Shell(const AtomicShell<T>& shell) { }
-
-private:
-    std::size_t m_shellIdx = 0;
-    T m_nElectrons = 0;
-    T m_bindingEnergy = 0;
-    T m_hartreeFockProfile_0 = 0;
-    T m_shellNumberOfPhotonsPerVacancy = 0;
-    T m_shellEnergyOfPhotonsPerVacancy = 0;
-    std::array<std::array<T, 3>, 30> m_photoProb;
+struct Material2Shell {
+    T numberOfElectrons = 0;
+    T bindingEnergy = 0;
+    T HartreeFockOrbital_0 = 0;
+    T numberOfPhotonsPerInitVacancy = 0;
+    T energyOfPhotonsPerInitVacancy = 0;
+    std::array<std::array<T, 3>, 30> photoel;
 };
 template <Floating T>
 struct AttenuationValues {
     T photoelectric;
     T incoherent;
     T coherent;
-    T sum() { return photoelectric + incoherent + coherent; }
+    T sum() const { return photoelectric + incoherent + coherent; }
 };
-template <Floating T, int N = 5>
+template <Floating T, std::size_t N = 5>
 class Material2 {
 
 public:
@@ -373,43 +368,36 @@ protected:
             return lh.bindingEnergy > rh.bindingEnergy;
         });
 
-        std::vector<T> energies;
-        for (int i = 0; i < std::min(N, static_cast<int>(shells.size())); ++i) {
+        const auto Nshells = std::min(N, shells.size());
+        for (std::size_t i = 0; i < Nshells - 1; ++i) {
             const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
-            std::transform(shell.photoel.cbegin(), shell.photoel.cend(), std::back_inserter(energies), [](const auto& v) { return std::log(v.first); });
+            std::vector<std::pair<T, T>> photolog(shell.photoel.size());
+            std::transform(std::execution::par_unseq, shell.photoel.cbegin(), shell.photoel.cend(), photolog.begin(),
+                [=](const auto& p) {
+                    return std::make_pair(std::log(p.first), std::log(p.second*shell.weight));
+                });
+            CubicLSInterpolator<T> inter(photolog, 30, false);
+
+            auto begin = inter.getDataTable().begin();
+            auto end = begin + 30;
+            auto& materialshell = material.m_shells[i];
+            std::copy(begin, end, materialshell.photoel.begin());
+            materialshell.numberOfElectrons = shell.numberOfElectrons;
+            materialshell.bindingEnergy = shell.bindingEnergy;
+            materialshell.numberOfElectrons = shell.numberOfElectrons;
+            materialshell.HartreeFockOrbital_0 = shell.HartreeFockOrbital_0;
+            materialshell.numberOfPhotonsPerInitVacancy = shell.numberOfPhotonsPerInitVacancy;
+            materialshell.energyOfPhotonsPerInitVacancy = shell.energyOfPhotonsPerInitVacancy;
         }
-        std::sort(std::execution::unseq, energies.begin(), energies.end());
-        auto erase_from = std::unique(energies.begin(), energies.end(), [](const auto& lh, const auto& rh) {
-            constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
-            return std::abs(lh - rh) <= e;
-        });
-        if (std::distance(erase_from, energies.end()) != 0)
-            energies.erase(erase_from, energies.end());
-        std::array<std::vector<T>, N> photo;
-        for (int i = 0; i < std::min(N, static_cast<int>(shells.size())); ++i) {
-            photo[i].resize(energies.size());
-            const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
-            const auto w = normalizedWeight.at(shells[i].Z);
-            std::transform(energies.cbegin(), energies.cend(), photo[i].begin(), [&](const auto& v) {
-                const auto e = std::exp(v);
-                return w * interpolate<T, false, true>(shell.photoel, e) / material.attenuationPhotoeletric(e);
-            });
-        }
 
-        auto test = photo[0];
-        std::fill(test.begin(), test.end(), T { 0 });
-        for (int i = 0; i < test.size(); ++i)
-            for (const auto& v : photo)
-                test[i] += v[i];
 
-        
 
-        auto slett = true;
     }
 
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
     std::array<typename std::vector<std::array<T, 3>>::iterator, 6> m_attenuationTableOffset;
-    // std::array<Material2Shell<T>, N> m_shells;
+    // std::array<std::array<T, 3>, N * 30> m_shellPhotoelectricAttenuation;
+    std::array<Material2Shell<T>, N> m_shells;
 };
 }
