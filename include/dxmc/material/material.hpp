@@ -38,7 +38,6 @@ struct Material2Shell {
     T HartreeFockOrbital_0 = 0;
     T numberOfPhotonsPerInitVacancy = 0;
     T energyOfPhotonsPerInitVacancy = 0;
-    std::array<std::array<T, 3>, 30> photoel;
 };
 template <Floating T>
 struct AttenuationValues {
@@ -109,6 +108,23 @@ public:
     {
         const auto logEnergy = std::log(energy);
         return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1]));
+    }
+    inline T attenuationPhotoelectricShell(std::uint8_t shell, const T energy) const
+    {
+        const std::uint8_t n_photo_shells = std::min(numberOfShells(), static_cast<std::uint8_t>(N));
+        const auto start = shell < n_photo_shells ? m_attenuationTableOffset[5 + shell] : m_attenuationTableOffset[0];
+        const auto stop = shell < n_photo_shells ? m_attenuationTableOffset[5 + shell + 1] : m_attenuationTableOffset[1];
+        const auto logEnergy = std::log(energy);
+        // prevents extrapolation to lower energies
+        return logEnergy < (*start)[0] ? T { 0 } : std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, start, stop));
+    }
+    inline std::uint8_t numberOfShells() const
+    {
+        return m_numberOfShells;
+    }
+    inline const Material2Shell<T>& materialShell(std::size_t shell) const
+    {
+        return m_shells[shell];
     }
     static T momentumTransfer(T energy, T angle)
     {
@@ -334,21 +350,25 @@ protected:
         };
         Material2<T> m;
         m.m_attenuationTable.clear();
-        std::array<std::size_t, attenuation.size()> offset;
+        std::array<std::size_t, 5 + N> offset;
         for (std::size_t i = 0; i < attenuation.size(); ++i) {
             const auto& table = attenuation[i].getDataTable();
             auto begin = m.m_attenuationTable.insert(m.m_attenuationTable.end(), table.cbegin(), table.cend());
             offset[i] = std::distance(m.m_attenuationTable.begin(), begin);
         }
-        for (std::size_t i = 0; i < attenuation.size(); ++i) {
-            m.m_attenuationTableOffset[i] = m.m_attenuationTable.begin() + offset[i];
-        }
-        m.m_attenuationTableOffset[attenuation.size()] = m.m_attenuationTable.end();
+        createMaterialAtomicShells(m, weight, offset);
 
-        createMaterialAtomicShells(m, weight);
+        for (std::size_t i = 0; i < offset.size(); ++i) {
+            if (i < 5 + std::min(std::uint8_t { N }, m.numberOfShells()))
+                m.m_attenuationTableOffset[i] = m.m_attenuationTable.begin() + offset[i];
+            else
+                m.m_attenuationTableOffset[i] = m.m_attenuationTable.end();
+        }
+        m.m_attenuationTableOffset[offset.size()] = m.m_attenuationTable.end();
+
         return m;
     }
-    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight)
+    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
     {
         struct Shell {
             std::uint64_t Z = 0;
@@ -368,20 +388,24 @@ protected:
             return lh.bindingEnergy > rh.bindingEnergy;
         });
 
-        const auto Nshells = std::min(N, shells.size());
-        for (std::size_t i = 0; i < Nshells - 1; ++i) {
+        const auto Nshells = std::min(shells.size(), N);
+        material.m_numberOfShells = static_cast<std::uint8_t>(Nshells);
+        for (std::size_t i = 0; i < Nshells; ++i) {
             const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
             std::vector<std::pair<T, T>> photolog(shell.photoel.size());
             std::transform(std::execution::par_unseq, shell.photoel.cbegin(), shell.photoel.cend(), photolog.begin(),
                 [=](const auto& p) {
-                    return std::make_pair(std::log(p.first), std::log(p.second*shell.weight));
+                    return std::make_pair(std::log(p.first), std::log(p.second * shells[i].weight));
                 });
             CubicLSInterpolator<T> inter(photolog, 30, false);
 
             auto begin = inter.getDataTable().begin();
-            auto end = begin + 30;
+            auto end = inter.getDataTable().end();
+            auto table_beg = material.m_attenuationTable.insert(material.m_attenuationTable.end(), begin, end);
+            offset[i + 5] = std::distance(material.m_attenuationTable.begin(), table_beg);
+
             auto& materialshell = material.m_shells[i];
-            std::copy(begin, end, materialshell.photoel.begin());
+
             materialshell.numberOfElectrons = shell.numberOfElectrons;
             materialshell.bindingEnergy = shell.bindingEnergy;
             materialshell.numberOfElectrons = shell.numberOfElectrons;
@@ -389,15 +413,32 @@ protected:
             materialshell.numberOfPhotonsPerInitVacancy = shell.numberOfPhotonsPerInitVacancy;
             materialshell.energyOfPhotonsPerInitVacancy = shell.energyOfPhotonsPerInitVacancy;
         }
+        // Filling remainder shell
+        if (shells.size() > Nshells) {
+            material.m_numberOfShells++;
+            const auto wsum = std::reduce(shells.cbegin() + Nshells, shells.cend(), T { 0 }, [](T r, const auto& s) { return s.weight + r; });
+            for (auto& shell : shells) {
+                shell.weight *= (shells.size() - Nshells) / wsum;
+            }
+            for (std::size_t i = Nshells; i < shells.size(); ++i) {
+                const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
+                const auto w = shells[i].weight;
+                const T mean_fac = T { 1 } / (shells.size() - Nshells);
+                auto& materialshell = material.m_shells[Nshells];
 
-
-
+                materialshell.numberOfElectrons += w * shell.numberOfElectrons;
+                materialshell.bindingEnergy += w * shell.bindingEnergy * mean_fac;
+                materialshell.HartreeFockOrbital_0 += w * shell.HartreeFockOrbital_0 * mean_fac;
+                materialshell.numberOfPhotonsPerInitVacancy += w * shell.numberOfPhotonsPerInitVacancy * mean_fac;
+                materialshell.energyOfPhotonsPerInitVacancy += w * shell.energyOfPhotonsPerInitVacancy * mean_fac;
+            }
+        }
     }
 
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
-    std::array<typename std::vector<std::array<T, 3>>::iterator, 6> m_attenuationTableOffset;
-    // std::array<std::array<T, 3>, N * 30> m_shellPhotoelectricAttenuation;
-    std::array<Material2Shell<T>, N> m_shells;
+    std::array<typename std::vector<std::array<T, 3>>::iterator, 5 + N + 1> m_attenuationTableOffset;
+    std::array<Material2Shell<T>, N + 1> m_shells;
+    std::uint8_t m_numberOfShells = 0;
 };
 }

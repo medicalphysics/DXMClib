@@ -35,14 +35,23 @@ template <typename T>
 void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy)
 {
     std::ofstream file("material.txt");
-    file << "e,photo,coherent,incoherent,x,formfactor,scatterfactor" << std::endl;
+    file << "e,photo,coherent,incoherent,x,formfactor,scatterfactor,e";
+    for (int i = 0; i < m.numberOfShells(); ++i) {
+        file << ",shell" << i;
+    }
+    file << std::endl;
     constexpr auto pi = std::numbers::pi_v<T>;
     for (auto e : energy) {
 
         auto att = m.attenuationValues(e);
-        std::array<T, 3> a = {att.photoelectric, att.coherent, att.incoherent};
+        std::array<T, 3> a = { att.photoelectric, att.coherent, att.incoherent };
         auto x = m.momentumTransfer(e, pi);
-        file << std::format("{},{},{},{},{},{},{}", e, a[0], a[1], a[2], x, m.formFactor(e, pi), m.scatterFactor(e, pi)) << std::endl;
+        file << std::format("{},{},{},{},{},{},{}", e, a[0], a[1], a[2], x, m.formFactor(e, pi), m.scatterFactor(e, pi));
+        file << "," << e;
+        for (int i = 0; i < m.numberOfShells(); ++i) {
+            file << "," << m.attenuationPhotoelectricShell(i, e);
+        }
+        file << std::endl;
     }
 
     file.close();
@@ -50,8 +59,8 @@ void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy
 
 void testMaterial()
 {
-    //auto m0 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
-    auto m0 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
+    auto m0 = dxmc::Material2<double>::byChemicalFormula("He");
+    // auto m0 = dxmc::Material2<double>::byZ(2);
     if (m0) {
         auto m = m0.value();
         std::vector<double> e(150);
@@ -69,7 +78,6 @@ void testMaterial()
         std::vector<double> e(150);
         std::iota(e.begin(), e.end(), 1.0);
         writeMaterialData(m, e);
-
     }
     std::map<std::uint64_t, double> w;
     w[1] = 0.034000;
