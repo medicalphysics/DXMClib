@@ -20,8 +20,34 @@ Copyright 2020 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include <numbers>
+#include <optional>
+#include <string_view>
 
 namespace dxmc {
+
+template <Floating T>
+constexpr T MAX_ENERGY()
+{
+    auto to_floating = [](const std::string_view s) -> T {
+        if (T value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
+            return value;
+        else
+            return T { 500 };
+    };
+    return to_floating(DXMCLIB_MAXENERGY);
+}
+
+template <Floating T>
+constexpr T MIN_ENERGY()
+{
+    auto to_floating = [](const std::string_view s) -> T {
+        if (T value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
+            return value;
+        else
+            return T { 1 };
+    };
+    return to_floating(DXMCLIB_MINENERGY);
+}
 
 template <Floating T>
 consteval T KEV_TO_ANGSTROM()

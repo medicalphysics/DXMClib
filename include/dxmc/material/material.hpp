@@ -18,6 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/material/atomhandler.hpp"
@@ -285,7 +286,7 @@ protected:
 
         // erasing duplicate items
         auto erase_from = std::unique(arr.begin(), arr.end(), [](const auto& lh, const auto& rh) {
-            constexpr auto e = std::numeric_limits<T>::epsilon() * 10;
+            constexpr auto e = std::numeric_limits<T>::epsilon() * 5;
             if (lh.first == rh.first)
                 return std::abs(lh.second - rh.second) <= e;
             else
@@ -294,7 +295,7 @@ protected:
         if (std::distance(erase_from, arr.end()) != 0)
             arr.erase(erase_from, arr.end());
 
-        auto interpolator = CubicLSInterpolator(arr);
+        auto interpolator = CubicLSInterpolator(arr, 15);
         return interpolator;
     }
 

@@ -29,6 +29,7 @@ Copyright 2022 Erlend Andersen
 #include <fstream>
 #include <iostream>
 #include <numbers>
+
 using namespace dxmc;
 
 template <typename T>
@@ -55,6 +56,40 @@ void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy
     }
 
     file.close();
+}
+template <dxmc::Floating T = double>
+bool testAtoms()
+{
+    const auto emin = dxmc::MIN_ENERGY<T>() + T { .5 };
+    const auto emax = dxmc::MAX_ENERGY<T>();
+
+    std::vector<T> earr(static_cast<std::size_t>(emax - emin));
+    std::iota(earr.begin(), earr.end(), emin);
+    bool valid = true;
+    constexpr T lim = 5;
+    for (std::size_t Z = 1; Z < 85; ++Z) {
+        const auto atom = dxmc::AtomHandler<T>::Atom(Z);
+        const auto material = dxmc::Material2<T>::byZ(Z).value();
+        for (const auto& e : earr) {
+            auto att = material.attenuationValues(e);
+            auto photo_val = dxmc::interpolate(atom.photoel, e);
+
+            valid = valid && (std::abs(att.photoelectric - photo_val) / photo_val * 100) < lim;
+            auto lne = std::log(e);
+            /*
+            auto coher_val = dxmc::interpolate(atom.coherent, e);
+            valid = valid && (std::abs(att.coherent - coher_val) / coher_val * 100) < lim;
+
+            auto incoher_val = dxmc::interpolate(atom.incoherent, e);
+            valid = valid && (std::abs(att.incoherent - incoher_val) / incoher_val * 100) < lim;
+            */
+            if (!valid) {
+                auto slett = 1;
+            }
+        }
+    }
+
+    return valid;
 }
 
 void testMaterial()
@@ -154,6 +189,7 @@ void testInterpolator()
 
 int main(int argc, char* argv[])
 {
+    auto valid = testAtoms();
     testMaterial();
     testInterpolator();
     auto success = true;

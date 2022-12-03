@@ -29,6 +29,7 @@ Copyright 2019 Erlend Andersen
 #include <execution>
 #include <iterator>
 #include <numeric>
+#include <optional>
 #include <type_traits>
 #include <utility>
 #include <vector>
@@ -530,7 +531,9 @@ protected:
                         y_red.push_back(y[j]);
                     }
                     if constexpr (std::is_convertible<U, std::size_t>::value) {
-                        spline += calculateLSSplinePart(x_red, y_red, t);
+                        auto spline_opt = calculateLSSplinePart(x_red, y_red, t);
+                        if (spline_opt)
+                            spline += spline_opt.value();
                     } else {
                         std::vector<T> t_red;
                         t_red.push_back(x[x_beg]);
@@ -546,7 +549,9 @@ protected:
             }
             // did we se any discontinuities?
             if (x_start == 0) {
-                spline = calculateLSSplinePart(x, y, t);
+                auto spline_opt = calculateLSSplinePart(x, y, t);
+                if (spline_opt)
+                    spline += spline_opt.value();
             } else {
                 std::vector<T> x_red, y_red;
                 for (std::size_t j = x_start; j < x.size(); ++j) {
@@ -554,7 +559,9 @@ protected:
                     y_red.push_back(y[j]);
                 }
                 if constexpr (std::is_convertible<U, std::size_t>::value) {
-                    spline += calculateLSSplinePart(x_red, y_red, t);
+                    auto spline_opt = calculateLSSplinePart(x_red, y_red, t);
+                    if (spline_opt)
+                        spline += spline_opt.value();
                 } else {
                     std::vector<T> t_red;
                     t_red.push_back(x[x_start]);
@@ -567,35 +574,33 @@ protected:
                 }
             }
         } else {
-            spline = calculateLSSplinePart(x, y, t);
+            auto spline_opt = calculateLSSplinePart(x, y, t);
+            if (spline_opt)
+                spline += spline_opt.value();
         }
 
         m_data = spline.m_data;
     }
 
-    Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, std::size_t N = 0) const
+    std::optional<Spline> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, std::size_t N = 0) const
     {
+        const auto Nlim = (x.size() - 1) / 3;
         if (N <= 1)
-            N = std::min(x.size() / 5, std::size_t { 15 });
-        else
-            N = std::min(N, x.size() / 2);
+            N = Nlim;
 
-        N = std::max(N, std::size_t { 2 });
+        N = std::min(N, Nlim);
+
+        if (x.size() == 0 || N < 2) {
+            return std::nullopt;
+        }
 
         std::vector<T> t(N);
         t[0] = x.front();
         t[N - 1] = x.back();
-        const auto step = x.size() / (N - 1);
-        if (step == 0) {
-            for (std::size_t i = 1; i < N - 1; i++) {
-                t[i] = x.front() + i * (x.back() - x.front()) / (N - 1);
-            }
-        } else {
-            for (std::size_t i = 1; i < (N - 1); i++) {
-                const auto xInd = i * step;
-                t[i] = x[xInd];
-            }
+        for (std::size_t i = 1; i < N - 1; i++) {
+            t[i] = x.front() + (i * (x.back() - x.front())) / (N - 1);
         }
+
         return calculateLSSplinePart(x, y, t);
     }
 
