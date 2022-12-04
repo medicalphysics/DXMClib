@@ -31,7 +31,8 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
 
     # Option to specify max energy range
     set(DXMCLIB_MAX_ENERGY_KEV "500" CACHE STRING "Max energy in keV for photon energies.")
-    set(DXMCLIB_MIN_ENERGY_KEV "1")
+    set(DXMCLIB_MIN_ENERGY_KEV "0.75")
+    set(DXMCLIB_MIN_TABLE_ENERGY_KEV "1.0")
 
     add_executable(EPICSparser         
         EPICSParser/atomicelementhandler.cpp 
@@ -39,6 +40,7 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
         EPICSParser/main.cpp        
     )    
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
+    target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MINTABLEENERGY="${DXMCLIB_MIN_TABLE_ENERGY_KEV}")
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EPDLPATH="${DXMCLIB_EPICS_DATA_EPDLPATH}")
     target_compile_definitions(EPICSparser PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")

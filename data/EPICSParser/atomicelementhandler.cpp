@@ -253,6 +253,16 @@ constexpr double AtomicElementHandler::maxPhotonEnergy()
     };
     return std::min(to_double(DXMCLIB_MAXENERGY).value_or(500.0), 500.0);
 }
+constexpr double AtomicElementHandler::minPhotonEnergy()
+{
+    auto to_double = [](const std::string_view s) -> std::optional<double> {
+        if (double value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
+            return value;
+        else
+            return std::nullopt;
+    };
+    return std::min(to_double(DXMCLIB_MINTABLEENERGY).value_or(1.0), 1.0);
+}
 constexpr double AtomicElementHandler::maxMomentumTransfer()
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m

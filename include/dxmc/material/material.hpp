@@ -233,7 +233,7 @@ protected:
         scatterfactor
     };
 
-    static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false)
+    static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false, std::size_t nknots = 15)
     {
         const auto Nvec = std::reduce(data.cbegin(), data.cend(), std::size_t { 0 }, [](const auto lh, const auto& rh) -> std::size_t { return rh.size() + lh; });
 
@@ -295,7 +295,7 @@ protected:
         if (std::distance(erase_from, arr.end()) != 0)
             arr.erase(erase_from, arr.end());
 
-        auto interpolator = CubicLSInterpolator(arr, 15);
+        auto interpolator = CubicLSInterpolator(arr, nknots, true);
         return interpolator;
     }
 
@@ -322,11 +322,40 @@ protected:
         std::vector<T> weights;
         for (const auto& [Z, w] : normalizedWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
-            data.push_back(getAtomArr(a, type));
+            if (type == LUTType::coherent) {
+                // here we are finding the highest dip, energy wise, in coherent data and introduces an discontinuity
+                auto arr = getAtomArr(a, type);
+                std::vector<T> grad(arr.size() - 1);
+                std::transform(std::execution::par, arr.cbegin(), arr.cend() - 1, arr.cbegin() + 1, grad.begin(),
+                    [](const auto& l, const auto& r) {
+                        const auto h = r.first - l.first;
+                        const auto d = r.second - l.second;
+                        return h > std::numeric_limits<T>::epsilon() * 10 ? d * l.first : T { 0 };
+                    });
+                if (grad.size() > 31) {
+                    auto max = std::max_element(grad.cbegin() + 30, grad.cend());
+                    if (*max > 0) {
+                        auto ind = std::distance(grad.cbegin(), max);
+                        arr.insert(arr.begin() + ind, std::make_pair(arr[ind].first, arr[ind - 1].second));
+                    }
+                }
+                data.push_back(arr);
+            } else {
+                data.push_back(getAtomArr(a, type));
+            }
+
             weights.push_back(w);
         }
+
         const bool loglog = type == LUTType::photoelectric || type == LUTType::incoherent || type == LUTType::coherent;
-        auto lut = constructSplineInterpolator(data, weights, loglog);
+        std::size_t nknots = 5;
+        if (type == LUTType::coherent) {
+            nknots = 10;
+        }
+        if (type == LUTType::incoherent) {
+            nknots = 10;
+        }
+        auto lut = constructSplineInterpolator(data, weights, loglog, nknots);
         return lut;
     }
 

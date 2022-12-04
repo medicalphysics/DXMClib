@@ -584,7 +584,7 @@ protected:
 
     std::optional<Spline> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, std::size_t N = 0) const
     {
-        const auto Nlim = (x.size() - 1) / 3;
+        const auto Nlim = (x.size() - 3) / 3;
         if (N <= 1)
             N = Nlim;
 

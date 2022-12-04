@@ -33,58 +33,84 @@ Copyright 2022 Erlend Andersen
 using namespace dxmc;
 
 template <typename T>
-void writeMaterialData(const dxmc::Material2<T>& m, const std::vector<T>& energy)
+void writeAtomData(std::size_t Z)
 {
     std::ofstream file("material.txt");
-    file << "e,photo,coherent,incoherent,x,formfactor,scatterfactor,e";
-    for (int i = 0; i < m.numberOfShells(); ++i) {
-        file << ",shell" << i;
-    }
-    file << std::endl;
-    constexpr auto pi = std::numbers::pi_v<T>;
+    file << "e,att,type,kind" << std ::endl;
+
+    std::vector<T> energy;
+    const T step = 0.1;
+    std::size_t it = 0;
+    do {
+        energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
+    } while (energy.back() < dxmc::MAX_ENERGY<T>());
+
+    auto m = dxmc::Material2<T>::byZ(Z).value();
+    auto a = dxmc::AtomHandler<T>::Atom(Z);
+
     for (auto e : energy) {
-
         auto att = m.attenuationValues(e);
-        std::array<T, 3> a = { att.photoelectric, att.coherent, att.incoherent };
-        auto x = m.momentumTransfer(e, pi);
-        file << std::format("{},{},{},{},{},{},{}", e, a[0], a[1], a[2], x, m.formFactor(e, pi), m.scatterFactor(e, pi));
-        file << "," << e;
-        for (int i = 0; i < m.numberOfShells(); ++i) {
-            file << "," << m.attenuationPhotoelectricShell(i, e);
-        }
-        file << std::endl;
-    }
+        file << std::format("{},{},{},{}", e, att.photoelectric, "photoelectric", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, att.coherent, "coherent", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, att.incoherent, "incoherent", "dxmc") << std::endl;
+        auto p = dxmc::interpolate(a.photoel, e);
+        file << std::format("{},{},{},{}", e, p, "photoelectric", "lin") << std::endl;
+        auto co = dxmc::interpolate(a.coherent, e);
+        file << std::format("{},{},{},{}", e, co, "coherent", "lin") << std::endl;
+        auto inco = dxmc::interpolate(a.incoherent, e);
+        file << std::format("{},{},{},{}", e, inco, "incoherent", "lin") << std::endl;
 
+        file << std::format("{},{},{},{}", e, att.incoherent - inco, "incoherent", "diff") << std::endl;
+        file << std::format("{},{},{},{}", e, att.coherent - co, "coherent", "diff") << std::endl;
+        file << std::format("{},{},{},{}", e, att.photoelectric - p, "photoelectric", "diff") << std::endl;
+
+        file << std::format("{},{},{},{}", e, (att.incoherent / inco - 1) * 100, "incoherent", "diffp") << std::endl;
+        file << std::format("{},{},{},{}", e, (att.coherent / co - 1) * 100, "coherent", "diffp") << std::endl;
+        file << std::format("{},{},{},{}", e, (att.photoelectric / p - 1) * 100, "photoelectric", "diffp") << std::endl;
+
+        auto tot = p + inco + co;
+        file << std::format("{},{},{},{}", e, tot, "total", "lin") << std::endl;
+        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, att.sum() - tot, "total", "diff") << std::endl;
+        file << std::format("{},{},{},{}", e, (att.sum() / tot - 1) * 100, "total", "diffp") << std::endl;
+    }
     file.close();
 }
 template <dxmc::Floating T = double>
 bool testAtoms()
 {
-    const auto emin = dxmc::MIN_ENERGY<T>() + T { .5 };
+    const auto emin = dxmc::MIN_ENERGY<T>();
     const auto emax = dxmc::MAX_ENERGY<T>();
 
     std::vector<T> earr(static_cast<std::size_t>(emax - emin));
     std::iota(earr.begin(), earr.end(), emin);
     bool valid = true;
-    constexpr T lim = 5;
-    for (std::size_t Z = 1; Z < 85; ++Z) {
+    constexpr T lim = 1;
+    for (std::size_t Z = 11; Z < 85; ++Z) {
         const auto atom = dxmc::AtomHandler<T>::Atom(Z);
         const auto material = dxmc::Material2<T>::byZ(Z).value();
         for (const auto& e : earr) {
             auto att = material.attenuationValues(e);
             auto photo_val = dxmc::interpolate(atom.photoel, e);
 
-            valid = valid && (std::abs(att.photoelectric - photo_val) / photo_val * 100) < lim;
+            // valid = valid && (std::abs(att.photoelectric - photo_val) / photo_val * 100) < lim;
             auto lne = std::log(e);
-            /*
+
             auto coher_val = dxmc::interpolate(atom.coherent, e);
-            valid = valid && (std::abs(att.coherent - coher_val) / coher_val * 100) < lim;
+            if (e > T { 8 }) {
+                //  valid = valid && (std::abs(att.coherent - coher_val) / coher_val * 100) < lim;
+            }
 
             auto incoher_val = dxmc::interpolate(atom.incoherent, e);
-            valid = valid && (std::abs(att.incoherent - incoher_val) / incoher_val * 100) < lim;
-            */
+            // valid = valid && (std::abs(att.incoherent - incoher_val) / incoher_val * 100) < lim;
+
+            auto att_sum = photo_val + incoher_val + coher_val;
+            auto att_sum_dxmc = att.sum();
+            valid = valid && (std::abs(att.sum() - att_sum) / att_sum * 100) < lim;
+
             if (!valid) {
-                auto slett = 1;
+                writeAtomData<T>(Z);
+                return valid;
             }
         }
     }
@@ -100,7 +126,6 @@ void testMaterial()
         auto m = m0.value();
         std::vector<double> e(150);
         std::iota(e.begin(), e.end(), 1.0);
-        writeMaterialData(m, e);
     }
 
     auto m1 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
@@ -112,7 +137,6 @@ void testMaterial()
 
         std::vector<double> e(150);
         std::iota(e.begin(), e.end(), 1.0);
-        writeMaterialData(m, e);
     }
     std::map<std::uint64_t, double> w;
     w[1] = 0.034000;
@@ -190,9 +214,9 @@ void testInterpolator()
 int main(int argc, char* argv[])
 {
     auto valid = testAtoms();
-    testMaterial();
-    testInterpolator();
-    auto success = true;
+    // testMaterial();
+    // testInterpolator();
+    auto success = valid;
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;

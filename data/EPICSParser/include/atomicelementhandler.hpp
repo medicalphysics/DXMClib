@@ -61,7 +61,7 @@ public:
     static double momentumTransfer(double energy, double angle);
 
     static constexpr double maxPhotonEnergy();
-    static constexpr double minPhotonEnergy() { return 1.0; }
+    static constexpr double minPhotonEnergy();
     static constexpr double MeVTokeV() { return 1000; }
     static constexpr double keVToMeV() { return 1.0 / MeVTokeV(); }
     double barnToAtt()
