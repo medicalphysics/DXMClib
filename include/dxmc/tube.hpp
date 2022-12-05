@@ -21,7 +21,9 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/betheHeitlerCrossSection.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
+#include "dxmc/interpolation.hpp"
 #include "dxmc/material.hpp"
+#include "dxmc/material/atomhandler.hpp"
 
 #include <algorithm>
 #include <array>
@@ -75,85 +77,45 @@ public:
         setAnodeAngle(angle * DEG_TO_RAD<T>());
     }
 
-    void addFiltrationMaterial(const Material& filtrationMaterial, T mm)
+    void addFiltrationMaterial(const std::size_t Z, const T mm)
     {
-        m_filtrationMaterials.push_back(std::make_pair(filtrationMaterial, std::abs(mm)));
+        m_filtrationMaterials[Z] = std::abs(mm);
         m_hasCachedHVL = false;
     }
-    std::vector<std::pair<Material, T>>& filtrationMaterials() { return m_filtrationMaterials; }
-    const std::vector<std::pair<Material, T>>& filtrationMaterials() const { return m_filtrationMaterials; }
+    std::map<std::size_t, T>& filtrationMaterials() { return m_filtrationMaterials; }
+    const std::map<std::size_t, T>& filtrationMaterials() const { return m_filtrationMaterials; }
 
     void setAlFiltration(T mm)
     {
-        bool hasAlFiltration = false;
-        bool alFiltrationSet = false;
-        for (auto& [material, thickness] : m_filtrationMaterials)
-            if (material.name().compare("Al") == 0)
-                if (!alFiltrationSet) {
-                    thickness = std::abs(mm);
-                    hasAlFiltration = true;
-                    alFiltrationSet = true;
-                }
-        if (!hasAlFiltration) {
-            Material al(13);
-            addFiltrationMaterial(al, std::abs(mm));
-        }
+        addFiltrationMaterial(13, mm);
     }
     void setCuFiltration(T mm)
     {
-        bool hasCuFiltration = false;
-        bool cuFiltrationSet = false;
-        for (auto& [material, thickness] : m_filtrationMaterials)
-            if (material.name().compare("Cu") == 0)
-                if (!cuFiltrationSet) {
-                    thickness = std::abs(mm);
-                    hasCuFiltration = true;
-                    cuFiltrationSet = true;
-                }
-        if (!hasCuFiltration) {
-            Material cu(29);
-            addFiltrationMaterial(cu, std::abs(mm));
-        }
+        addFiltrationMaterial(29, mm);
     }
     void setSnFiltration(T mm)
     {
-        bool hasSnFiltration = false;
-        bool snFiltrationSet = false;
-        for (auto& [material, thickness] : m_filtrationMaterials)
-            if (material.name().compare("Sn") == 0)
-                if (!snFiltrationSet) {
-                    thickness = std::abs(mm);
-                    hasSnFiltration = true;
-                    snFiltrationSet = true;
-                }
-        if (!hasSnFiltration) {
-            Material sn(50);
-            addFiltrationMaterial(sn, std::abs(mm));
-        }
+        addFiltrationMaterial(50, mm);
     }
+
+    T filtration(std::size_t Z) const
+    {
+        if (m_filtrationMaterials.contains(Z))
+            return m_filtrationMaterials.at(Z);
+        return T { 0 };
+    }
+
     T AlFiltration() const
     {
-        for (auto& [material, thickness] : m_filtrationMaterials) {
-            if (material.name().compare("Al") == 0)
-                return thickness;
-        }
-        return T { 0 };
+        return filtration(13);
     }
     T CuFiltration() const
     {
-        for (auto& [material, thickness] : m_filtrationMaterials) {
-            if (material.name().compare("Cu") == 0)
-                return thickness;
-        }
-        return T { 0 };
+        return filtration(29);
     }
     T SnFiltration() const
     {
-        for (auto& [material, thickness] : m_filtrationMaterials) {
-            if (material.name().compare("Sn") == 0)
-                return thickness;
-        }
-        return T { 0 };
+        return filtration(50);
     }
 
     void clearFiltrationMaterials() { m_filtrationMaterials.clear(); }
@@ -253,10 +215,21 @@ protected:
     }
     void filterSpecter(const std::vector<T>& energies, std::vector<T>& specter) const
     {
-        for (auto const& [material, mm] : m_filtrationMaterials) {
+        for (auto const& [Z, mm] : m_filtrationMaterials) {
             const T cm = mm * T { 0.1 }; // for mm -> cm
-            std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), energies.cbegin(), specter.begin(),
-                [&, material = material](const auto n, const auto e) -> T { return n * std::exp(-material.getTotalAttenuation(e) * material.standardDensity() * cm); });
+            const auto& atom = AtomHandler<T>::Atom(Z);
+
+            auto p = interpolate(atom.photoel, energies);
+            auto in = interpolate(atom.incoherent, energies);
+            auto co = interpolate(atom.coherent, energies);
+            std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), in.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
+            std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), co.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
+            std::for_each(std::execution::par_unseq, p.begin(), p.end(), [&](auto& el) { el *= (atom.standardDensity * mm); });
+
+            std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), p.cbegin(), specter.begin(),
+                [&](const auto n, const auto el) -> T {
+                    return n * std::exp(-el);
+                });
         }
     }
     void normalizeSpecter(std::vector<T>& specter) const
@@ -270,12 +243,15 @@ protected:
         auto energy = getEnergy();
         auto specter = getSpecter(energy);
 
-        Material al(13);
+        const auto& Al = AtomHandler<T>::Atom(13);
+
         std::vector<T> att(energy.size());
-        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.begin(), [&](auto e) -> T {
-            const T dens = static_cast<T>(al.standardDensity());
-            const T att = static_cast<T>(al.getTotalAttenuation(e));
-            return att * dens;
+        std::transform(std::execution::par, energy.cbegin(), energy.cend(), att.begin(), [&](const auto e) -> T {
+            const auto p = interpolate(Al.photoel, e);
+            const auto in = interpolate(Al.incoherent, e);
+            const auto co = interpolate(Al.coherent, e);
+            const auto dens = Al.standardDensity;
+            return (p + in + co) * dens;
         });
 
         T x { 0.5 };
@@ -285,7 +261,6 @@ protected:
             g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), T { 0 }, std::plus<T>(), [=](auto s, auto a) -> T { return s * std::exp(-a * x); });
             step = g - T { 0.5 };
             x = x + step;
-
         } while (std::abs(step) > T { 0.01 });
 
         return x * T { 10.0 }; // cm -> mm
@@ -295,6 +270,6 @@ private:
     T m_voltage, m_energyResolution, m_anodeAngle;
     T m_cachedHVL = 0;
     bool m_hasCachedHVL = false;
-    std::vector<std::pair<Material, T>> m_filtrationMaterials;
+    std::map<std::size_t, T> m_filtrationMaterials;
 };
 }

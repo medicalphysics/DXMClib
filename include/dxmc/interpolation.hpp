@@ -105,6 +105,26 @@ inline T interpolate(const std::vector<std::pair<T, T>>& data, T x)
     return interp(lower->first, upper->first, lower->second, upper->second, x);
 }
 
+template <Floating T>
+inline std::vector<T> interpolate(const std::vector<std::pair<T, T>>& data, const std::vector<T>& x)
+{
+    std::vector<T> y(x.size());
+    if (data.size() < 4) {
+        for (std::size_t i = 0; i < x.size(); ++i)
+            y[i] = interpolate(data, x[i]);
+        return y;
+    }
+    auto upper = data.cbegin() + 1;
+    auto dStop = data.cend() - 1;
+    for (std::size_t i = 0; i < x.size(); ++i) {
+        while (x[i] < upper->first && upper != dStop)
+            ++upper;
+        const auto lower = upper - 1;
+        y[i] = interp(lower->first, upper->first, lower->second, upper->second, x[i]);
+    }
+    return y;
+}
+
 template <Floating T, int N = 30>
 class CubicSplineInterpolator {
 private:

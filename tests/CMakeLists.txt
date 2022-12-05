@@ -5,7 +5,7 @@ set(TEST_SOURCES
     "testdxmclib.cpp"
     "testtriangulatedmesh.cpp"
 #    "testkdtree.cpp"
-#    "testtube.cpp"
+    "testtube.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
     "testmaterial.cpp"

@@ -20,7 +20,8 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
-#include "dxmc/material.hpp"
+#include "dxmc/interpolation.hpp"
+#include "dxmc/material/atomhandler.hpp"
 
 #include <algorithm>
 #include <cmath>
@@ -319,7 +320,7 @@ namespace BetheHeitlerCrossSection {
 
     // END ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN END
 
-    constexpr int TUNGSTEN_ATOMIC_NUMBER = 74;
+    constexpr std::size_t TUNGSTEN_ATOMIC_NUMBER = 74;
     template <Floating T>
     constexpr T FINE_STRUCTURE_CONSTANT()
     {
@@ -368,7 +369,13 @@ namespace BetheHeitlerCrossSection {
     template <Floating T>
     T betheHeitlerSpectra(const T T0, const T hv, const T takeoffAngle)
     {
-        const T tungstenTotAtt = Material::getTotalAttenuation(TUNGSTEN_ATOMIC_NUMBER, hv);
+
+        const auto& tungsten = AtomHandler<T>::Atom(TUNGSTEN_ATOMIC_NUMBER);
+        const auto photo = interpolate(tungsten.photoel, hv);
+        const auto coherent = interpolate(tungsten.coherent, hv);
+        const auto incoherent = interpolate(tungsten.incoherent, hv);
+
+        const auto tungstenTotAtt = photo + coherent + incoherent;
         constexpr auto xmax = T { 14.0 };
         constexpr auto umax = T { 1.0 };
         constexpr auto xstep = T { 0.1 };

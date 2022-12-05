@@ -22,6 +22,7 @@ Copyright 2020 Erlend Andersen
 #include <numbers>
 #include <optional>
 #include <string_view>
+#include <charconv>
 
 namespace dxmc {
 
