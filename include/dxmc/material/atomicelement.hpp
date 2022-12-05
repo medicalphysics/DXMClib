@@ -30,6 +30,7 @@ template <std::floating_point T>
 struct AtomicElement {
     std::uint64_t Z = 0;
     T atomicWeight = 0;
+    T standardDensity = 0;
     std::vector<std::pair<T, T>> coherent;
     std::vector<std::pair<T, T>> incoherent;
     std::vector<std::pair<T, T>> photoel;

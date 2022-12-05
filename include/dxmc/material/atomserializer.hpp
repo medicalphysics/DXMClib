@@ -106,6 +106,7 @@ protected:
         std::vector<char> data;
         serialize(atom.Z, data);
         serialize(atom.atomicWeight, data);
+        serialize(atom.standardDensity, data);
         serialize(atom.coherent, data);
         serialize(atom.incoherent, data);
         serialize(atom.photoel, data);
@@ -170,6 +171,7 @@ protected:
         auto start = deserialize(size, begin);
         start = deserialize(atom.Z, start);
         start = deserialize(atom.atomicWeight, start);
+        start = deserialize(atom.standardDensity, start);
         start = deserialize(atom.coherent, start);
         start = deserialize(atom.incoherent, start);
         start = deserialize(atom.photoel, start);
