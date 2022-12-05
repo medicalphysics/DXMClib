@@ -103,6 +103,28 @@ public:
         };
         return att;
     }
+    // photo, coherent, incoherent
+    std::vector<AttenuationValues<T>> attenuationValues(const std::vector<T>& energy) const
+    {
+        std::vector<AttenuationValues<T>> att(energy.size());
+        std::transform(std::execution::par_unseq, energy.cbegin, energy.cend(), att.begin(), [&](const auto e) {
+            const auto logEnergy = std::log(energy);
+            AttenuationValues<T> a {
+                std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1])),
+                std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[1], m_attenuationTableOffset[2])),
+                std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[2], m_attenuationTableOffset[3]))
+            };
+            return a; });
+        return att;
+    }
+    inline std::vector<AttenuationValues<T>> totalAttenuationValue(const std::vector<T>& energy) const
+    {
+        auto att = attenuationValues(energy);
+        std::vector<T> sum(att.size());
+        std::transform(std::execution::par_unseq, att.cbegin(), att.cend(), sum.begin(), [](const auto& a) { return a.sum(); });
+        return sum;
+    }
+
     inline T attenuationPhotoeletric(const T energy) const
     {
         const auto logEnergy = std::log(energy);
@@ -335,7 +357,6 @@ protected:
                         max_binding_energy = binding_energy - 5;
                     }
                 }
-
                 data.push_back(arr);
             } else {
                 data.push_back(getAtomArr(a, type));

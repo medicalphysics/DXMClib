@@ -101,7 +101,7 @@ bool testAtomAttenuation()
     std::iota(earr.begin(), earr.end(), emin);
     bool valid = true;
     constexpr T lim = 2;
-    for (std::size_t Z = 1; Z < 85; ++Z) {
+    for (std::size_t Z = 13; Z < 85; ++Z) {
         const auto atom = dxmc::AtomHandler<T>::Atom(Z);
         const auto material = dxmc::Material2<T>::byZ(Z).value();
         for (const auto& e : earr) {
@@ -130,6 +130,7 @@ bool testAtomAttenuation()
             auto sf_dx = material.scatterFactor(e, dxmc::PI_VAL<T>());
             valid = valid && (std::abs(sf_dx / sf_lin) - 1) * 100 < 20;
 
+            writeAtomData<T>(Z);
             if (!valid) {
                 writeAtomData<T>(Z);
                 return valid;

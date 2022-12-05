@@ -22,7 +22,6 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
-#include "dxmc/material.hpp"
 #include "dxmc/material/atomhandler.hpp"
 
 #include <algorithm>
@@ -240,29 +239,29 @@ protected:
 
     T calculatemmAlHalfValueLayer() const
     {
-        auto energy = getEnergy();
-        auto specter = getSpecter(energy);
+        const auto energy = getEnergy();
+        const auto specter = getSpecter(energy);
 
         const auto& Al = AtomHandler<T>::Atom(13);
 
-        std::vector<T> att(energy.size());
-        std::transform(std::execution::par, energy.cbegin(), energy.cend(), att.begin(), [&](const auto e) -> T {
-            const auto p = interpolate(Al.photoel, e);
-            const auto in = interpolate(Al.incoherent, e);
-            const auto co = interpolate(Al.coherent, e);
-            const auto dens = Al.standardDensity;
-            return (p + in + co) * dens;
-        });
+        const auto photo = interpolate(Al.photoel, energy);
+        const auto incoherent = interpolate(Al.incoherent, energy);
+        const auto coherent = interpolate(Al.coherent, energy);
+        auto att = addVectors(photo, incoherent, coherent);
 
-        T x { 0.5 };
+        const auto dens = Al.standardDensity;
+        std::for_each(std::execution::par_unseq, att.begin(), att.end(), [=](auto& a) { a *= dens; });
+
+        // Boosted gradient decent for finding half value layer
+        T x { 0.8 };
         T step { 1 };
-        T g;
-        do {
-            g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), T { 0 }, std::plus<T>(), [=](auto s, auto a) -> T { return s * std::exp(-a * x); });
-            step = g - T { 0.5 };
+        int iter = 0;
+        while (std::abs(step) > T { 0.005 }) {
+            const auto g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), T { 0 }, std::plus<T>(), [=](auto s, auto a) -> T { return s * std::exp(-a * x); });
+            step = (g - T { 0.5 }) * std::max(5 - iter, 1);
             x = x + step;
-        } while (std::abs(step) > T { 0.01 });
-
+            ++iter;
+        }
         return x * T { 10.0 }; // cm -> mm
     }
 

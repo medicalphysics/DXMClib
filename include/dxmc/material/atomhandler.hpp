@@ -107,6 +107,7 @@ protected:
         AtomicElement<T> l;
         l.Z = r.Z;
         l.atomicWeight = static_cast<T>(r.atomicWeight);
+        l.standardDensity = static_cast<T>(r.standardDensity);
         l.coherent = typecastPairVector(r.coherent);
         l.formFactor = typecastPairVector(r.formFactor);
         l.incoherentSF = typecastPairVector(r.incoherentSF);

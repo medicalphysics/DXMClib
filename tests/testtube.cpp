@@ -17,10 +17,15 @@ bool testHalfLayerCalculation()
     t.setAlFiltration(9.0);
     auto e = t.getEnergy();
     auto s = t.getSpecter(e);
-    Material al(13);
-    std::vector<T> att(e.size());
-    std::transform(e.cbegin(), e.cend(), att.begin(), [&](auto e) -> T {
-        return static_cast<T>(al.standardDensity()) * static_cast<T>(al.getTotalAttenuation(e));
+    const auto& al = AtomHandler<T>::Atom(13);
+
+    auto p = interpolate(al.photoel, e);
+    auto i = interpolate(al.incoherent, e);
+    auto c = interpolate(al.coherent, e);
+    auto att = addVectors(p, i, c);
+
+    std::transform(att.cbegin(), att.cend(), att.begin(), [&](auto a) -> T {
+        return a * al.standardDensity;
     });
 
     const auto mmHVL = t.mmAlHalfValueLayer();
@@ -49,7 +54,7 @@ void printSpecter()
 
 int main(int argc, char* argv[])
 {
-    printSpecter<float>();
+    //    printSpecter<float>();
     bool success = testHalfLayerCalculation<float>();
     if (success)
         return EXIT_SUCCESS;

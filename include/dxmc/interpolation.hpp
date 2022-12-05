@@ -117,12 +117,33 @@ inline std::vector<T> interpolate(const std::vector<std::pair<T, T>>& data, cons
     auto upper = data.cbegin() + 1;
     auto dStop = data.cend() - 1;
     for (std::size_t i = 0; i < x.size(); ++i) {
-        while (x[i] < upper->first && upper != dStop)
+        while (x[i] > upper->first && upper != dStop)
             ++upper;
         const auto lower = upper - 1;
         y[i] = interp(lower->first, upper->first, lower->second, upper->second, x[i]);
     }
     return y;
+}
+
+// Variadic template to add vectors of equal size
+template <Floating T>
+std::vector<T> addVectors(const std::vector<T>& f, const std::vector<T>& l)
+{
+    auto res = f;
+    std::transform(std::execution::par_unseq, l.cbegin(), l.end(), res.cbegin(), res.begin(), std::plus<T>());
+    return res;
+}
+template <Floating T>
+std::vector<T> addVectors(std::vector<T>& f, const std::vector<T>& l)
+{
+    std::transform(std::execution::par_unseq, l.cbegin(), l.end(), f.cbegin(), f.begin(), std::plus<T>());
+    return f;
+}
+template <Floating T, typename... args>
+std::vector<T> addVectors(const std::vector<T>& f, const std::vector<T>& l, args... other)
+{
+    auto res = addVectors(f, l);
+    return addVectors(res, other...);
 }
 
 template <Floating T, int N = 30>
