@@ -226,6 +226,7 @@ bool AtomicElementHandler::operator==(const AtomicElementHandler& other) const
     eq = eq && m_atom.incoherent == other.m_atom.incoherent;
     eq = eq && m_atom.incoherentSF == other.m_atom.incoherentSF;
     eq = eq && m_atom.formFactor == other.m_atom.formFactor;
+    eq = eq && m_atom.standardDensity == other.m_atom.standardDensity;
 
     for (const auto& [key, shell] : m_atom.shells) {
         if (!other.m_atom.shells.contains(key))
@@ -278,6 +279,10 @@ void AtomicElementHandler::setShellHartreeFockProfile_0(std::uint64_t shell, dou
         m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
     }
     m_atom.shells[shell].HartreeFockOrbital_0 = J;
+}
+void AtomicElementHandler::setStandardDensity(double dens)
+{
+    m_atom.standardDensity = dens;
 }
 double AtomicElementHandler::momentumTransfer(double energy, double angle)
 {

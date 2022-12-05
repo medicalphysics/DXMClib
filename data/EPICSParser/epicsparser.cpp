@@ -246,6 +246,33 @@ void EPICSparser::readHartreeFockProfiles(const std::string& path)
         }
     }
 }
+void EPICSparser::readStandardDensities(const std::string& path)
+{
+    std::ifstream stream;
+    stream.open(std::string(path));
+
+    if (stream.is_open()) {
+        std::string line;
+        std::size_t linenumber = 0;
+        while (std::getline(stream, line)) {
+            if (linenumber > 0) { // we dont read the header
+                auto start = line.data();
+                auto end = start + line.size();
+                int Z = 0;
+                double dens = 0;
+
+                auto [ptrZ, errZ] = std::from_chars(start, end, Z);
+                if (errZ == std::errc {}) {
+                    auto [ptrD, errD] = std::from_chars(ptrZ + 1, end, dens);
+                    if (errD == std::errc {}) {
+                        m_elements[Z].setStandardDensity(dens);
+                    }
+                }
+            }
+            linenumber++;
+        }
+    }
+}
 
 std::vector<char> EPICSparser::serializeElements() const
 {

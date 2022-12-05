@@ -56,6 +56,7 @@ public:
     void setShellEnergyOfPhotonsPerInitVacancy(const std::vector<double>& data);
 
     void setShellHartreeFockProfile_0(std::uint64_t shell, double J);
+    void setStandardDensity(double dens);
 
     static constexpr double maxMomentumTransfer();
     static double momentumTransfer(double energy, double angle);

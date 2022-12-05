@@ -49,13 +49,15 @@ int main()
     const std::string eadl(DXMCLIB_EADLPATH);
     const std::string epdl(DXMCLIB_EPDLPATH);
     const std::string outpath(DXMCLIB_PHYSICSLISTSPATH);
-    const std::string hartreefock("hartreeFockProfiles_0.txt");
+    const std::string hartreefock("hartreeFockProfiles_0.csv");
+    const std::string standardensities("standarddensities.csv");
 
     auto file_exists = std::filesystem::exists(outpath);
     if (!file_exists) {
         EPICSparser parser(eadl);
         parser.read(epdl);
         parser.readHartreeFockProfiles(hartreefock);
+        parser.readStandardDensities(standardensities);
 
         auto data = parser.serializeElements();
 

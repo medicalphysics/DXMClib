@@ -51,9 +51,17 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     add_custom_command(
         TARGET EPICSparser PRE_BUILD
         COMMAND ${CMAKE_COMMAND} -E copy
-                ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/hartreeFockProfiles_0.txt
-                ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.txt
+                ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/hartreeFockProfiles_0.csv
+                ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.csv
     )
+    ## Copying standard densities for all elements up to 92
+    add_custom_command(
+        TARGET EPICSparser PRE_BUILD
+        COMMAND ${CMAKE_COMMAND} -E copy
+                ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/standarddensities.csv
+                ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv
+    )
+
 
     ## make parsed EPICS data available to all binaries consuming dxmc on build machine
     target_compile_definitions(libdxmc PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
