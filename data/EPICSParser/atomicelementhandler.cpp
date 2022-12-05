@@ -81,7 +81,7 @@ void AtomicElementHandler::setFormFactor(const std::vector<double>& data)
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
         const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
-        if (x <= maxMomentumTransfer()) {
+        if (x <= maxMomentumTransfer() && x > 0.0) {
             m_atom.formFactor.push_back(std::make_pair(x, f));
         }
     }
@@ -119,7 +119,7 @@ void AtomicElementHandler::setIncoherentSF(const std::vector<double>& data)
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
         const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
-        if (x <= maxMomentumTransfer()) {
+        if (x <= maxMomentumTransfer() && x > 0.0) {
             m_atom.incoherentSF.push_back(std::make_pair(x, f));
         }
     }

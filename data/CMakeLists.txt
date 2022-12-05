@@ -30,8 +30,8 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     endif()
 
     # Option to specify max energy range
-    set(DXMCLIB_MAX_ENERGY_KEV "500" CACHE STRING "Max energy in keV for photon energies.")
-    set(DXMCLIB_MIN_ENERGY_KEV "0.75")
+    set(DXMCLIB_MAX_ENERGY_KEV "500.0" CACHE STRING "Max energy in keV for photon energies.")
+    set(DXMCLIB_MIN_ENERGY_KEV "1.0")
     set(DXMCLIB_MIN_TABLE_ENERGY_KEV "1.0")
 
     add_executable(EPICSparser         

@@ -29,8 +29,6 @@ Copyright 2022 Erlend Andersen
 #include <cctype>
 #include <execution>
 
-#include <iostream>
-
 namespace dxmc {
 template <Floating T>
 struct Material2Shell {
@@ -84,14 +82,14 @@ public:
 
     inline T formFactor(const T energy, const T angle) const
     {
-        const auto mt = momentumTransfer(energy, angle);
-        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[3], m_attenuationTableOffset[4]);
+        const auto mt = std::log(momentumTransfer(energy, angle));
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
     }
 
     inline T scatterFactor(const T energy, const T angle) const
     {
-        const auto mt = momentumTransfer(energy, angle);
-        return CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]);
+        const auto mt = std::log(momentumTransfer(energy, angle));
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
     }
 
     // photo, coherent, incoherent
@@ -325,36 +323,38 @@ protected:
             if (type == LUTType::coherent) {
                 // here we are finding the highest dip, energy wise, in coherent data and introduces an discontinuity
                 auto arr = getAtomArr(a, type);
-                std::vector<T> grad(arr.size() - 1);
-                std::transform(std::execution::par, arr.cbegin(), arr.cend() - 1, arr.cbegin() + 1, grad.begin(),
-                    [](const auto& l, const auto& r) {
-                        const auto h = r.first - l.first;
-                        const auto d = r.second - l.second;
-                        return h > std::numeric_limits<T>::epsilon() * 10 ? d * l.first : T { 0 };
-                    });
-                if (grad.size() > 31) {
-                    auto max = std::max_element(grad.cbegin() + 30, grad.cend());
-                    if (*max > 0) {
-                        auto ind = std::distance(grad.cbegin(), max);
-                        arr.insert(arr.begin() + ind, std::make_pair(arr[ind].first, arr[ind - 1].second));
+                auto max_binding_energy = MAX_ENERGY<T>();
+                for (const auto& [sidx, shell] : a.shells) {
+                    const auto binding_energy = shell.bindingEnergy;
+                    if (max_binding_energy > MIN_ENERGY<T>() && binding_energy < max_binding_energy) {
+                        auto pos = std::upper_bound(arr.begin(), arr.end(), shell.bindingEnergy, [](const auto v, const auto& el) { return v < el.first; });
+                        if (pos != arr.end() && pos != arr.cbegin()) {
+                            auto prev = pos - 1;
+                            arr.insert(pos, std::make_pair(prev->first, pos->second));
+                        }
+                        max_binding_energy = binding_energy - 5;
                     }
                 }
+
                 data.push_back(arr);
             } else {
                 data.push_back(getAtomArr(a, type));
             }
 
             weights.push_back(w);
-        }
+        };
 
-        const bool loglog = type == LUTType::photoelectric || type == LUTType::incoherent || type == LUTType::coherent;
-        std::size_t nknots = 5;
-        if (type == LUTType::coherent) {
+        std::size_t nknots = 10;
+        if (type == LUTType::photoelectric) {
+            nknots = 5;
+        } else if (type == LUTType::coherent) {
+            nknots = 7;
+        } else if (type == LUTType::incoherent) {
             nknots = 10;
+        } else if (type == LUTType::scatterfactor) {
+            nknots = 15;
         }
-        if (type == LUTType::incoherent) {
-            nknots = 10;
-        }
+        constexpr auto loglog = true;
         auto lut = constructSplineInterpolator(data, weights, loglog, nknots);
         return lut;
     }

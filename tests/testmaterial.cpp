@@ -73,40 +73,62 @@ void writeAtomData(std::size_t Z)
         file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, att.sum() - tot, "total", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (att.sum() / tot - 1) * 100, "total", "diffp") << std::endl;
+
+        auto x = m.momentumTransfer(e, dxmc::PI_VAL<T>());
+        auto ff = dxmc::interpolate(a.formFactor, x);
+        file << std::format("{},{},{},{}", e, ff, "formfactor", "lin") << std::endl;
+        auto ff_dx = m.formFactor(e, dxmc::PI_VAL<T>());
+        file << std::format("{},{},{},{}", e, ff_dx, "formfactor", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, ff_dx - ff, "formfactor", "diff") << std::endl;
+        file << std::format("{},{},{},{}", e, (ff_dx / ff - 1) * 100, "formfactor", "diffp") << std::endl;
+
+        auto sf = dxmc::interpolate(a.incoherentSF, x);
+        file << std::format("{},{},{},{}", e, sf, "scatterfactor", "lin") << std::endl;
+        auto sf_dx = m.scatterFactor(e, dxmc::PI_VAL<T>());
+        file << std::format("{},{},{},{}", e, sf_dx, "scatterfactor", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, sf_dx - sf, "scatterfactor", "diff") << std::endl;
+        file << std::format("{},{},{},{}", e, (sf_dx / sf - 1) * 100, "scatterfactor", "diffp") << std::endl;
     }
     file.close();
 }
 template <dxmc::Floating T = double>
-bool testAtoms()
+bool testAtomAttenuation()
 {
-    const auto emin = dxmc::MIN_ENERGY<T>();
+    const auto emin = dxmc::MIN_ENERGY<T>() + 1;
     const auto emax = dxmc::MAX_ENERGY<T>();
 
     std::vector<T> earr(static_cast<std::size_t>(emax - emin));
     std::iota(earr.begin(), earr.end(), emin);
     bool valid = true;
-    constexpr T lim = 1;
-    for (std::size_t Z = 11; Z < 85; ++Z) {
+    constexpr T lim = 2;
+    for (std::size_t Z = 1; Z < 85; ++Z) {
         const auto atom = dxmc::AtomHandler<T>::Atom(Z);
         const auto material = dxmc::Material2<T>::byZ(Z).value();
         for (const auto& e : earr) {
             auto att = material.attenuationValues(e);
             auto photo_val = dxmc::interpolate(atom.photoel, e);
 
-            // valid = valid && (std::abs(att.photoelectric - photo_val) / photo_val * 100) < lim;
+            valid = valid && (std::abs(att.photoelectric - photo_val) / photo_val * 100) < lim;
             auto lne = std::log(e);
 
             auto coher_val = dxmc::interpolate(atom.coherent, e);
-            if (e > T { 8 }) {
-                //  valid = valid && (std::abs(att.coherent - coher_val) / coher_val * 100) < lim;
-            }
+            valid = valid && (std::abs(att.coherent - coher_val) / coher_val * 100) < 100;
 
             auto incoher_val = dxmc::interpolate(atom.incoherent, e);
-            // valid = valid && (std::abs(att.incoherent - incoher_val) / incoher_val * 100) < lim;
+            valid = valid && (std::abs(att.incoherent - incoher_val) / incoher_val * 100) < lim;
 
             auto att_sum = photo_val + incoher_val + coher_val;
             auto att_sum_dxmc = att.sum();
             valid = valid && (std::abs(att.sum() - att_sum) / att_sum * 100) < lim;
+
+            auto x = material.momentumTransfer(e, dxmc::PI_VAL<T>());
+            auto ff_lin = dxmc::interpolate(atom.formFactor, x);
+            auto ff_dx = material.formFactor(e, dxmc::PI_VAL<T>());
+            valid = valid && (std::abs(ff_dx / ff_lin) - 1) * 100 < 20;
+
+            auto sf_lin = dxmc::interpolate(atom.incoherentSF, x);
+            auto sf_dx = material.scatterFactor(e, dxmc::PI_VAL<T>());
+            valid = valid && (std::abs(sf_dx / sf_lin) - 1) * 100 < 20;
 
             if (!valid) {
                 writeAtomData<T>(Z);
@@ -213,7 +235,7 @@ void testInterpolator()
 
 int main(int argc, char* argv[])
 {
-    auto valid = testAtoms();
+    auto valid = testAtomAttenuation();
     // testMaterial();
     // testInterpolator();
     auto success = valid;
