@@ -2,6 +2,7 @@
 
 
 set(TEST_SOURCES 
+    "testworld.cpp"
     "testdxmclib.cpp"
     "testtriangulatedmesh.cpp"
 #    "testkdtree.cpp"
