@@ -37,43 +37,40 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <typename U>
-concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<typename U::Type, 3> vec)
-{
-    typename U::Type;
-    Floating<typename U::Type>;
-    u <=> u;
-    u.translate(vec);
-    {
-        u.intersect(p)
-        } -> std::same_as<std::optional<typename U::Type>>;
+concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<typename U::Type, 3> vec) {
+                         typename U::Type;
+                         Floating<typename U::Type>;
+                         u <=> u;
+                         u.translate(vec);
+                         {
+                             u.intersect(p)
+                             } -> std::same_as<std::optional<typename U::Type>>;
 
-    {
-        u.center()
-        } -> std::same_as<std::array<typename U::Type, 3>>;
+                         {
+                             u.center()
+                             } -> std::same_as<std::array<typename U::Type, 3>>;
 
-    {
-        u.AABB()
-        } -> std::same_as<std::array<typename U::Type, 6>>;
-}
-|| requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p, std::array<typename std::remove_pointer<U>::type::Type, 3> vec)
-{
-    typename std::remove_pointer<U>::type::Type;
-    Floating<typename std::remove_pointer<U>::type::Type>;
-    u <=> u;
+                         {
+                             u.AABB()
+                             } -> std::same_as<std::array<typename U::Type, 6>>;
+                     } || requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p, std::array<typename std::remove_pointer<U>::type::Type, 3> vec) {
+                              typename std::remove_pointer<U>::type::Type;
+                              Floating<typename std::remove_pointer<U>::type::Type>;
+                              u <=> u;
 
-    u->translate(vec);
-    {
-        u->intersect(p)
-        } -> std::same_as<std::optional<typename std::remove_pointer<U>::type::Type>>;
+                              u->translate(vec);
+                              {
+                                  u->intersect(p)
+                                  } -> std::same_as<std::optional<typename std::remove_pointer<U>::type::Type>>;
 
-    {
-        u->center()
-        } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 3>>;
+                              {
+                                  u->center()
+                                  } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 3>>;
 
-    {
-        u->AABB()
-        } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 6>>;
-};
+                              {
+                                  u->AABB()
+                                  } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 6>>;
+                          };
 
 template <KDTreeType U>
 class KDTree {

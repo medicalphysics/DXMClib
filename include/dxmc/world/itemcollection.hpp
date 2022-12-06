@@ -38,7 +38,8 @@ public:
     }
 
     template <typename U>
-    requires std::is_base_of<BaseObject<T>, U>::value void addItem(std::shared_ptr<U> item)
+        requires std::is_base_of<BaseObject<T>, U>::value
+    void addItem(std::shared_ptr<U> item)
     {
         if (item) {
             // making sure we add an unique object

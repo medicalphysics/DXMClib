@@ -129,11 +129,11 @@ public:
 
         const auto t = vectormath::dot(v1v3, qvec) * invDet;
         if constexpr (FORWARD == 1)
-            return t > T { 0 } ? std::make_optional(t) : std::nullopt;
+            return t > T { 0 } ? t : std::nullopt;
         else if constexpr (FORWARD == -1)
-            return t < T { 0 } ? std::make_optional(t) : std::nullopt;
+            return t < T { 0 } ? t : std::nullopt;
         else
-            return std::make_optional(t);
+            return t;
     }
 
 private:

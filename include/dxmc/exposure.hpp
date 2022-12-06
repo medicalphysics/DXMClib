@@ -255,11 +255,8 @@ public:
     void setHeelFilter(const HeelFilter<T>* filter) { m_heelFilter = filter; }
     void setMonoenergeticPhotonEnergy(T energy)
     {
-        if (energy > T { 500.0 })
-            energy = T { 500.0 };
-        if (energy < T { 0.0 })
-            energy = T { 0.0 };
-        m_monoenergeticPhotonEnergy = energy;
+        energy = std::min(MAX_ENERGY<T>(), energy);
+        m_monoenergeticPhotonEnergy = std::max(MIN_ENERGY<T>(), energy);
     }
 
     void setNumberOfHistories(std::size_t nHistories) { m_nHistories = nHistories; }
