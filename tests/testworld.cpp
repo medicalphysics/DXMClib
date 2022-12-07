@@ -46,10 +46,20 @@ bool testCTDIPhantom()
     return valid;
 }
 
+template <dxmc::Floating T>
+bool testItemCollection()
+{
+    return false;
+}
+
 int main(int argc, char* argv[])
 {
     auto success = testCTDIPhantom<float>();
     success = success && testCTDIPhantom<double>();
+
+    success = success && testItemCollection<float>();
+    success = success && testItemCollection<double>();
+
     if (success)
         return EXIT_SUCCESS;
     else

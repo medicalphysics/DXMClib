@@ -48,15 +48,15 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     target_link_libraries(EPICSparser PRIVATE material )
 
     ## Copying Hartree-Fock profiles for pz=0 since this data is lacking from EPICS data
-    add_custom_command(
-        TARGET EPICSparser PRE_BUILD
+    add_custom_command(TARGET EPICSparser PRE_BUILD
+        COMMENT "Copying hartreeFockProfiles_0.csv to ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.csv"
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/hartreeFockProfiles_0.csv
                 ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.csv
     )
     ## Copying standard densities for all elements up to 92
-    add_custom_command(
-        TARGET EPICSparser PRE_BUILD
+    add_custom_command(TARGET EPICSparser PRE_BUILD
+        COMMENT "Copying standarddensities.csv to ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv"
         COMMAND ${CMAKE_COMMAND} -E copy
                 ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/standarddensities.csv
                 ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv

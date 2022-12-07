@@ -33,9 +33,9 @@ Copyright 2022 Erlend Andersen
 using namespace dxmc;
 
 template <typename T>
-void writeAtomData(std::size_t Z)
+void writeAtomTestData(std::size_t Z)
 {
-    std::ofstream file("material.txt");
+    std::ofstream file("atomTestData.csv");
     file << "e,att,type,kind" << std ::endl;
 
     std::vector<T> energy;
@@ -129,15 +129,13 @@ bool testAtomAttenuation()
             auto sf_lin = dxmc::interpolate(atom.incoherentSF, x);
             auto sf_dx = material.scatterFactor(e, dxmc::PI_VAL<T>());
             valid = valid && (std::abs(sf_dx / sf_lin) - 1) * 100 < 20;
-
-            writeAtomData<T>(Z);
+             
             if (!valid) {
-                writeAtomData<T>(Z);
+                writeAtomTestData<T>(Z);
                 return valid;
             }
         }
     }
-
     return valid;
 }
 
