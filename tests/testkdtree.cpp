@@ -17,8 +17,10 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/world/kdtree.hpp"
+#include "dxmc/world/statickdtree.hpp"
 #include "dxmc/world/triangle.hpp"
 #include "dxmc/world/triangulatedmesh.hpp"
+#include "dxmc/world/ctdiphantom.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -116,6 +118,7 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
     file.write((char*)buffer.data(), buffer.size() * sizeof(T));
     file.close();
 }
+
 
 int main(int argc, char* argv[])
 {
