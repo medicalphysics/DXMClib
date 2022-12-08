@@ -18,6 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/particle.hpp"
 #include "dxmc/world/ctdiphantom.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -48,7 +49,7 @@ bool testCTDIPhantom()
 
 template <dxmc::Floating T>
 bool testItemCollection()
-{Men 
+{
     return false;
 }
 

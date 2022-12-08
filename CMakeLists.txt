@@ -92,6 +92,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/baseobject.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/statickdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangle.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicelement.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicshell.hpp"
