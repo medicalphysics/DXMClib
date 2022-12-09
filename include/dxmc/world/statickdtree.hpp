@@ -29,8 +29,25 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <typename T, typename U>
-concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
+template <class Specialization, template <typename> class TemplateClass,
+    typename... PartialSpecialisation>
+concept Specializes = requires(Specialization s) {
+                          []<typename... TemplateArgs>(
+                              TemplateClass<PartialSpecialisation..., TemplateArgs...>&) {}(s);
+                      };
+
+template <typename T>
+struct TreeObject {
+};
+
+template <Specializes<TreeObject> T>
+class B { };
+
+/*
+template <typename U>
+concept StaticKDTreeType = requires(U u) {
+    u.translate;
+
                               // Floating<T>;
                                //u <=> u;
                                u.translate(vec);
@@ -45,7 +62,7 @@ concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
                                {
                                    u.AABB()
                                    } -> std::same_as<std::array< T, 6>>;
-                           */ };
+                            };
 
 template <typename T, typename... Ts>
 concept same_as_any = (... or std::same_as<T, Ts>);
@@ -58,7 +75,7 @@ struct Test {
     float num;
     U obj;
 };
-
+*/
 
 /*
 template <Floating T, StaticKDTreeType<T>... Us>
