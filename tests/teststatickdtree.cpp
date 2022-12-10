@@ -26,16 +26,11 @@ bool teststatickdtree()
     dxmc::CTDIPhantom<T> ph1;
     dxmc::CTDIPhantom<T> ph2(8, { 20, 20, 20 }, 8);
 
+    dxmc::KDTree<T, dxmc::TreeObject<T>> tree;
 
+    dxmc::TreeObject<T> treeItem;
 
-
-    auto test = dxmc::Test(T { 1 }, ph1);
-
-
-    //dxmc::StaticKDTree<T, dxmc::CTDIPhantom<T>> tree(8);
-    //tree.insert(ph1);
-    //tree.insert(ph2);
-
+    tree.insert(treeItem);
 
     return false;
 }

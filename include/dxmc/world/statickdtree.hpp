@@ -29,19 +29,33 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <class Specialization, template <typename> class TemplateClass,
-    typename... PartialSpecialisation>
-concept Specializes = requires(Specialization s) {
-                          []<typename... TemplateArgs>(
-                              TemplateClass<PartialSpecialisation..., TemplateArgs...>&) {}(s);
-                      };
+
+template <typename U, typename T>
+concept KDTreeType = requires(U u, T t) {
+                       u.intersect;
+                       {
+                           u.intersect(t)
+                           } -> std::same_as<T>;
+                   };
+template<typename U, typename... Us>
+concept AnyKDTreeType = (... or std::same_as<U, Us>);
+
 
 template <typename T>
 struct TreeObject {
+    T intersect(T i) { return i + 1; }
 };
 
-template <Specializes<TreeObject> T>
-class B { };
+
+template <typename T, KDTreeType<T>... Us>
+class KDTree {
+public:
+    template <AnyKDTreeType<Us> U>    
+    void insert(U item) {
+        std::get<std::vector<U>>(m_data).push_back(item);
+    }
+    std::tuple<std::vector<Us>...> m_data;    
+};
 
 /*
 template <typename U>
@@ -64,41 +78,5 @@ concept StaticKDTreeType = requires(U u) {
                                    } -> std::same_as<std::array< T, 6>>;
                             };
 
-template <typename T, typename... Ts>
-concept same_as_any = (... or std::same_as<T, Ts>);
-
-
-template <StaticKDTreeType U>
-struct Test {
-    Test(float n, U o):num(n),obj(o) {
-    }
-    float num;
-    U obj;
-};
 */
-
-/*
-template <Floating T, StaticKDTreeType<T>... Us>
-//template <Floating T, typename... Us>
-class StaticKDTree {
-public:
-    StaticKDTree(std::int_fast32_t max_depth = 8)
-        : m_maxDepth(max_depth)
-    {
-    }
-    //template <typename U, typename... Us>
-    template <typename U>
-        requires(std::same_as<U, Us>)
-    void insert(U value)
-    {
-        std::get<std::vector<U>>(m_objects).push_back(value);
-    }
-
-protected:
-private:
-    std::int_fast32_t m_maxDepth = 0;
-    std::tuple<std::vector<Us>...> m_objects;
-};
-*/
-
 }
