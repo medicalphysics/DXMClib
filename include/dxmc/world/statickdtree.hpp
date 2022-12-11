@@ -29,54 +29,37 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-
 template <typename U, typename T>
-concept KDTreeType = requires(U u, T t) {
-                       u.intersect;
-                       {
-                           u.intersect(t)
-                           } -> std::same_as<T>;
-                   };
-template<typename U, typename... Us>
+concept KDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
+                         Floating<T>;
+                         //u <=> u;
+                         { u.intersect(p) } -> std::same_as<std::optional<T>>;
+                         {
+                             u.center()
+                             } -> std::convertible_to<std::array<T, 3>>;
+                         {
+                             u.AABB()
+                             } -> std::convertible_to<std::array<T, 6>>;
+                     };
+template <typename U, typename... Us>
 concept AnyKDTreeType = (... or std::same_as<U, Us>);
 
 
-template <typename T>
-struct TreeObject {
-    T intersect(T i) { return i + 1; }
-};
 
 
-template <typename T, KDTreeType<T>... Us>
+
+
+template <Floating T, KDTreeType<T>... Us>
 class KDTree {
 public:
-    template <AnyKDTreeType<Us> U>    
-    void insert(U item) {
+    template <AnyKDTreeType<Us...> U>
+    void insert(U item)
+    {
         std::get<std::vector<U>>(m_data).push_back(item);
     }
-    std::tuple<std::vector<Us>...> m_data;    
+
+private:
+    std::tuple<std::vector<Us>...> m_data;
 };
 
-/*
-template <typename U>
-concept StaticKDTreeType = requires(U u) {
-    u.translate;
-
-                              // Floating<T>;
-                               //u <=> u;
-                               u.translate(vec);
-                               /* {
-                                   u.intersect(p)
-                                   } -> std::same_as<std::optional<T>>;
-
-                               {
-                                   u.center()
-                                   } -> std::same_as<std::array< T, 3>>;
-
-                               {
-                                   u.AABB()
-                                   } -> std::same_as<std::array< T, 6>>;
-                            };
-
-*/
 }

@@ -18,6 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/world/ctdiphantom.hpp"
 #include "dxmc/world/statickdtree.hpp"
+#include "dxmc/world/triangle.hpp"
 
 template <typename T>
 bool teststatickdtree()
@@ -26,11 +27,19 @@ bool teststatickdtree()
     dxmc::CTDIPhantom<T> ph1;
     dxmc::CTDIPhantom<T> ph2(8, { 20, 20, 20 }, 8);
 
-    dxmc::KDTree<T, dxmc::TreeObject<T>> tree;
+    dxmc::KDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
+    //dxmc::KDTree<T, dxmc::Triangle<T>> tree;
 
-    dxmc::TreeObject<T> treeItem;
 
-    tree.insert(treeItem);
+    std::array<T, 9> vertices = { 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+
+    dxmc::Triangle<T> tri(vertices.data());
+
+    
+
+    tree.insert(tri);
+    tree.insert(ph1);
+    
 
     return false;
 }
