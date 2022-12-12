@@ -18,52 +18,55 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/world/baseobject.hpp"
+#include "dxmc/floating.hpp"
+#include "dxmc/vectormath.hpp"
+#include "dxmc/particle.hpp"
+#include "dxmc/dxmcrandom.hpp"
 
+#include <optional>
 #include <execution>
 #include <limits>
 
 namespace dxmc {
 
 template <Floating T>
-class CTDIPhantom final : public BaseObject<T> {
+class CTDIPhantom {
 public:
     CTDIPhantom(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 }, T height = T { 15 })
         : m_radius(radius)
-        , m_height(height)
+        , m_halfheight(height * T { 0.5 })
+        , m_center(pos)
     {
-        for (std::size_t i = 0; i < 2; ++i) {
-            this->m_aabb[i] = pos[i] - m_radius;
-            this->m_aabb[i + 3] = pos[i] + m_radius;
-        }
-        this->m_aabb[2] = pos[2] - m_height * T { 0.5 };
-        this->m_aabb[5] = pos[2] + m_height * T { 0.5 };
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<T, 3>& dist)
     {
+        m_center = vectormath::add(m_center, dist);
     }
-    std::array<T, 3> center() const override
+    const std::array<T, 3>& center() const
     {
-        const auto& b = this->m_aabb;
-        std::array<T, 3> center {
-            (b[0] + b[3]) * T { 0.5 },
-            (b[1] + b[4]) * T { 0.5 },
-            (b[2] + b[5]) * T { 0.5 }
-        };
-        return center;
+        return m_center;
     }
 
-    std::optional<T> intersect(const Particle<T>& p) const override
+    std::array<T, 6> AABB() const
+    {
+        std::array<T, 3> llc = vectormath::add(m_center, -m_radius);
+        llc[2] = m_center[2] - m_halfheight;
+        std::array<T, 3> urc = vectormath::add(m_center, m_radius);
+        urc[2] = m_center[2] + m_halfheight;
+        return vectormath::join(llc, urc);
+    }
+
+    std::optional<T> intersect(const Particle<T>& p) const
     {
         constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
         return intersectCylinder(p, center(), m_radius, this->m_aabb[2], this->m_aabb[5], tbox);
     }
-    std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
+    std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
     {
         return intersectCylinder(p, center(), m_radius, this->m_aabb[2], this->m_aabb[5], tbox);
     }
-    T transport(Particle<T>& p, RandomState& state) override
+    T transport(Particle<T>& p, RandomState& state)
     {
         return 0;
     }
@@ -130,7 +133,8 @@ protected:
 
 private:
     T m_radius = 0;
-    T m_height = 0;
+    T m_halfheight = 0;
+    std::array<T, 3> m_center;
 };
 
 }

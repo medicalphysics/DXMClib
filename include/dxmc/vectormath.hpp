@@ -89,6 +89,19 @@ namespace vectormath {
         std::array<T, 3> r { v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2] };
         return r;
     }
+    template<Floating T>
+    inline auto add( std::array<T, 3> v1, T v2)
+    {
+        v1[0] += v2;
+        v1[1] += v2;
+        v1[2] += v2;
+        return v1;
+    }
+    template <Floating T>
+    inline auto add(T v2 , const std::array<T, 3>& v1)
+    {
+        return add(v1, v2); 
+    }
     template <Floating T>
     inline std::array<T, 3> subtract(const std::array<T, 3>& v1, const std::array<T, 3>& v2)
     {

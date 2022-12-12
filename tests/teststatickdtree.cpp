@@ -23,23 +23,27 @@ Copyright 2022 Erlend Andersen
 template <typename T>
 bool teststatickdtree()
 {
+    bool success = true;
+
+    dxmc::KDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
+
+    std::array<T, 9> vertices = { 0, 0, 0, 1, 0, 0, 0, 0, 1 };
+    dxmc::Triangle<T> tri(vertices.data());
 
     dxmc::CTDIPhantom<T> ph1;
     dxmc::CTDIPhantom<T> ph2(8, { 20, 20, 20 }, 8);
 
-    dxmc::KDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
-    //dxmc::KDTree<T, dxmc::Triangle<T>> tree;
-
-
-    std::array<T, 9> vertices = { 0, 0, 0, 1, 0, 0, 0, 0, 1 };
-
-    dxmc::Triangle<T> tri(vertices.data());
-
-    
-
+    // adding objects
     tree.insert(tri);
     tree.insert(ph1);
-    
+    tree.insert(ph2);
+
+    // translate all objects
+    std::array<T, 3> trans { 1, 1, 1 };
+    tree.translate(trans);
+
+    // calculate aabb
+    auto aabb = tree.AABB();
 
     return false;
 }
