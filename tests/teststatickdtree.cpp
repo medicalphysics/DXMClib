@@ -45,6 +45,8 @@ bool teststatickdtree()
     // calculate aabb
     auto aabb = tree.AABB();
 
+    //calculate center
+    auto center = tree.center();
     return false;
 }
 
