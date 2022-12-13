@@ -51,7 +51,7 @@ template <Floating T, KDTreeType<T>... Us>
 class KDTreeNode {
 public:
     KDTreeNode() { }
-    KDTreeNode(const std::tuple<std::vector<Us*>...>& data, std::array<std::vector<std::uint_fast32_t>, std::tuple_size_v<std::tuple<std::vector<Us>...>>> idx)
+    KDTreeNode(const std::tuple<std::vector<Us>...>& data, std::array<std::vector<std::uint_fast32_t>, std::tuple_size_v<std::tuple<std::vector<Us>...>>> idx)
     {
     }
 
@@ -120,8 +120,7 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
-    std::tuple<std::vector<Us>...> m_data {};
-
+    std::tuple<std::vector<Us>...>* m_data_ptr =nullptr;
     std::unique_ptr<KDTreeNode<T, Us...>> m_left = nullptr;
     std::unique_ptr<KDTreeNode<T, Us...>> m_right = nullptr;    
 };
@@ -129,27 +128,31 @@ private:
 template <Floating T, KDTreeType<T>... Us>
 class KDTree {
 public:
-    void build()
+    void buildTree()
     {
-        std::tuple<std::vector<Us>...> data_ptr;
-        /*
+        std::tuple<std::vector<Us*>...> data_ptr;
+        
         auto func = [&data_ptr](auto& objects) -> void {
-            for (auto& obj : objects)
-
+            for (std::size_t i = 0; i < objects.size(); ++i) {
+                std::get<>()
+            }
         };
         std::apply([this, &trans_func](auto&... objects) {
             (trans_func(objects), ...);
         },
             m_data);
-            */
+           
 
         KDTreeNode<T, Us...> m_node;
     }
-
+    void clearTree() {
+        m_node.clear();
+    }
     template <AnyKDTreeType<Us...> U>
     void insert(U item)
     {
         std::get<std::vector<U>>(m_data).push_back(item);
+        clearTree();
     }
     void translate(const std::array<T, 3>& vec)
     {
@@ -161,6 +164,7 @@ public:
             (trans_func(objects), ...);
         },
             m_data);
+        clearTree();
     }
     std::array<T, 3> center() const
     {
