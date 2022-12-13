@@ -26,6 +26,7 @@ Copyright 2022 Erlend Andersen
 #include <optional>
 #include <tuple>
 #include <vector>
+#include <memory>
 
 namespace dxmc {
 
@@ -49,8 +50,19 @@ concept AnyKDTreeType = (... or std::same_as<U, Us>);
 template <Floating T, KDTreeType<T>... Us>
 class KDTreeNode {
 public:
-    KDTreeNode(std::tuple<std::vector<Us*>...> data)
+    KDTreeNode() { }
+    KDTreeNode(const std::tuple<std::vector<Us*>...>& data, std::array<std::vector<std::uint_fast32_t>, std::tuple_size_v<std::tuple<std::vector<Us>...>>> idx)
     {
+    }
+
+    void clear() {
+        if (m_left)
+            m_left->clear();
+        if (m_right)
+            m_right->clear();
+        m_data.clear();
+        m_left = nullptr;
+        m_right = nullptr;
     }
 
 protected:
@@ -108,9 +120,10 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
-    std::tuple<std::vector<Us*>...> m_data {};
-    std::optional<KDTreeNode<T, Us...>> m_left = std::nullopt;
-    std::optional<KDTreeNode<T, Us...>> m_right = std::nullopt;
+    std::tuple<std::vector<Us>...> m_data {};
+
+    std::unique_ptr<KDTreeNode<T, Us...>> m_left = nullptr;
+    std::unique_ptr<KDTreeNode<T, Us...>> m_right = nullptr;    
 };
 
 template <Floating T, KDTreeType<T>... Us>
@@ -118,7 +131,7 @@ class KDTree {
 public:
     void build()
     {
-        std::tuple<std::vector<Us*>...> data_ptr;
+        std::tuple<std::vector<Us>...> data_ptr;
         /*
         auto func = [&data_ptr](auto& objects) -> void {
             for (auto& obj : objects)
@@ -166,8 +179,10 @@ public:
         },
             m_data);
 
-        for (std::size_t i = 0; i < cnt.size(); ++i)
-            cnt[i] /= count;
+        if (count > 0) {
+            for (std::size_t i = 0; i < cnt.size(); ++i)
+                cnt[i] /= count;
+        }
         return cnt;
     }
     std::array<T, 6> AABB() const

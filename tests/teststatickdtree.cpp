@@ -23,6 +23,9 @@ Copyright 2022 Erlend Andersen
 template <typename T>
 bool teststatickdtree()
 {
+
+    dxmc::KDTreeNode<T, dxmc::Triangle<T>> node;
+
     bool success = true;
 
     dxmc::KDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
@@ -45,7 +48,7 @@ bool teststatickdtree()
     // calculate aabb
     auto aabb = tree.AABB();
 
-    //calculate center
+    // calculate center
     auto center = tree.center();
     return false;
 }
