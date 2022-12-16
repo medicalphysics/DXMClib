@@ -23,10 +23,12 @@ Copyright 2022 Erlend Andersen
 
 #include <array>
 #include <concepts>
+#include <memory>
+#include <numeric>
 #include <optional>
 #include <tuple>
+#include <variant>
 #include <vector>
-#include <memory>
 
 namespace dxmc {
 
@@ -51,45 +53,78 @@ template <Floating T, KDTreeType<T>... Us>
 class KDTreeNode {
 public:
     KDTreeNode() { }
-    KDTreeNode(const std::tuple<std::vector<Us>...>& data, std::array<std::vector<std::uint_fast32_t>, std::tuple_size_v<std::tuple<std::vector<Us>...>>> idx)
+    KDTreeNode(const std::vector<std::variant<Us...>>& data)
+    {                
+        buildTree(data);
+    }
+    KDTreeNode(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx)
     {
+        buildTree(data, idx);
     }
 
-    void clear() {
+    void clear()
+    {
         if (m_left)
             m_left->clear();
         if (m_right)
             m_right->clear();
-        m_data.clear();
+        m_idx.clear();
         m_left = nullptr;
         m_right = nullptr;
     }
 
+    void buildTree(const std::vector<std::variant<Us...>>& data)
+    {
+        std::vector<std::size_t> idx(data.size());
+        std::iota(idx.begin(), idx.end(), std::size_t { 0 });
+        buildTree(data, idx);
+    }
+    void buildTree(const std::vector<std::variant<Us...>>& data, std::vector<std::size_t>& idx)
+    {
+        if (data.size() == 0)
+            return;
+
+        // finding aabb
+        std::array<T, 6> aabb {
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::max(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::lowest(),
+        };
+        for (const auto& v : data) {
+            std::array<T, 6> aabb_obj = std::visit([&aabb](const auto& obj) -> std::array<T, 6> { return obj.AABB(); }, v);
+            for (std::size_t i = 0; i < 3; ++i) {
+                aabb[i] = std::min(aabb[i], aabb_obj[i]);
+            }
+            for (std::size_t i = 3; i < 6; ++i) {
+                aabb[i] = std::max(aabb[i], aabb_obj[i]);
+            }
+        }
+
+        const std::array<T, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
+
+        m_D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
+
+        // finding split
+        std::sort(idx.begin(), idx.end(), [&](auto lh, auto rh) {
+            auto func = [&](const auto& obj) -> T { return obj.center()[m_D]; };
+            const auto lh_value = std::visit(func, data[lh]);
+            const auto rh_value = std::visit(func, data[rh]);
+            return lh_value < rh_value;
+        });
+        m_plane = 0;
+    }
+
 protected:
+    template <AnyKDTreeType<Us...> U>
     static int figureOfMerit(const std::tuple<std::vector<Us*>...>& data, const T planesep, std::atomic_uint_fast32_t D)
     {
-        int fom = 0;
-        int shared = 0;
-
-        auto func = [&](const auto& objects) -> void {
-            for (auto obj : objects) {
-                const auto side = KDTreeNode<T, Us...>::planeSide(obj, planesep, D);
-                fom += side;
-                if (side == 0) {
-                    shared++;
-                }
-            }
-        };
-        std::apply([&func](auto&... objects) {
-            (func(objects), ...);
-        },
-            data);
-
-        return std::abs(fom) + shared;
     }
 
     template <AnyKDTreeType<Us...> U>
-    static int planeSide(const U* obj, const T plane, std::uint_fast32_t D)
+    static int planeSide(const U obj, const T plane, std::uint_fast32_t D)
     {
         T max = std::numeric_limits<T>::lowest();
         T min = std::numeric_limits<T>::max();
@@ -120,68 +155,55 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
-    std::tuple<std::vector<Us>...>* m_data_ptr =nullptr;
+    std::vector<std::size_t> m_idx;
     std::unique_ptr<KDTreeNode<T, Us...>> m_left = nullptr;
-    std::unique_ptr<KDTreeNode<T, Us...>> m_right = nullptr;    
+    std::unique_ptr<KDTreeNode<T, Us...>> m_right = nullptr;
 };
 
 template <Floating T, KDTreeType<T>... Us>
 class KDTree {
 public:
-    void buildTree()
-    {
-        std::tuple<std::vector<Us*>...> data_ptr;
-        
-        auto func = [&data_ptr](auto& objects) -> void {
-            for (std::size_t i = 0; i < objects.size(); ++i) {
-                std::get<>()
-            }
-        };
-        std::apply([this, &trans_func](auto&... objects) {
-            (trans_func(objects), ...);
-        },
-            m_data);
-           
 
-        KDTreeNode<T, Us...> m_node;
+    void build()
+    {
+        m_node.buildTree(m_data);
     }
-    void clearTree() {
-        m_node.clear();
-    }
+
     template <AnyKDTreeType<Us...> U>
     void insert(U item)
     {
-        std::get<std::vector<U>>(m_data).push_back(item);
-        clearTree();
+        m_data.emplace_back(std::variant<Us...>(item));
     }
+    template <AnyKDTreeType<Us...> U>
+    void insert(const std::vector<U>& items)
+    {
+        for (const auto& item : items) {
+            m_data.emplace_back(std::variant<Us...>(item));
+        }
+    }
+
     void translate(const std::array<T, 3>& vec)
     {
-        auto trans_func = [&](auto& objects) -> void {
-            for (auto& obj : objects)
-                obj.translate(vec);
-        };
-        std::apply([this, &trans_func](auto&... objects) {
-            (trans_func(objects), ...);
-        },
-            m_data);
-        clearTree();
+        for (auto& v : m_data) {
+            std::visit(
+                [&vec](auto&& obj) {
+                    obj.translate(vec);
+                },
+                v);
+        }
     }
+
     std::array<T, 3> center() const
     {
         std::array<T, 3> cnt { 0, 0, 0 };
         std::size_t count = 0;
-        auto center_func = [&](auto& objects) -> void {
-            for (auto& obj : objects) {
-                auto obj_cnt = obj.center();
-                count++;
-                for (std::size_t i = 0; i < cnt.size(); ++i)
-                    cnt[i] += obj_cnt[i];
+
+        for (auto& v : m_data) {
+            auto c = std::visit([&cnt, &count](auto&& obj) -> std::array<T, 3> { return obj.center(); }, v);
+            for (std::size_t i = 0; i < 3; ++i) {
+                cnt[i] += c[i];
             }
-        };
-        std::apply([this, &center_func](auto&... objects) {
-            (center_func(objects), ...);
-        },
-            m_data);
+        }
 
         if (count > 0) {
             for (std::size_t i = 0; i < cnt.size(); ++i)
@@ -200,24 +222,24 @@ public:
             std::numeric_limits<T>::lowest()
         };
 
-        auto aabb_func = [&aabb](auto& objects) -> void {
-            for (auto& obj : objects) {
+        for (auto& v : m_data) {
+            auto c = std::visit([&aabb](const auto& obj) -> std::array<T, 6> {
                 auto aabb_obj = obj.AABB();
-                for (std::size_t i = 0; i < 3; ++i)
+                for (std::size_t i = 0; i < 3; ++i) {
                     aabb[i] = std::min(aabb[i], aabb_obj[i]);
-                for (std::size_t i = 3; i < 6; ++i)
+                }
+                for (std::size_t i = 3; i < 6; ++i) {
                     aabb[i] = std::max(aabb[i], aabb_obj[i]);
-            }
-        };
-        std::apply([this, &aabb_func](auto&... objects) {
-            (aabb_func(objects), ...);
-        },
-            m_data);
+                }
+                return aabb_obj;
+            },
+                v);
+        }
         return aabb;
     }
 
 private:
-    std::tuple<std::vector<Us>...> m_data {};
+    std::vector<std::variant<Us...>> m_data;
     KDTreeNode<T, Us...> m_node;
 };
 

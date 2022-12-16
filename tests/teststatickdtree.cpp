@@ -24,7 +24,7 @@ template <typename T>
 bool teststatickdtree()
 {
 
-    dxmc::KDTreeNode<T, dxmc::Triangle<T>> node;
+    //dxmc::KDTreeNode<T, dxmc::Triangle<T>> node;
 
     bool success = true;
 
@@ -50,6 +50,7 @@ bool teststatickdtree()
 
     // calculate center
     auto center = tree.center();
+    tree.build();
     return false;
 }
 
