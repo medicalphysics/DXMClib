@@ -24,7 +24,7 @@ template <typename T>
 bool teststatickdtree()
 {
 
-    //dxmc::KDTreeNode<T, dxmc::Triangle<T>> node;
+    // dxmc::KDTreeNode<T, dxmc::Triangle<T>> node;
 
     bool success = true;
 
@@ -34,7 +34,7 @@ bool teststatickdtree()
     dxmc::Triangle<T> tri(vertices.data());
 
     dxmc::CTDIPhantom<T> ph1;
-    dxmc::CTDIPhantom<T> ph2(8, { 20, 20, 20 }, 8);
+    dxmc::CTDIPhantom<T> ph2(8, { 40, 40, 40 }, 15);
 
     // adding objects
     tree.insert(tri);
