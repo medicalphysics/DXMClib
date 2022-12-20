@@ -20,6 +20,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <array>
 #include <concepts>
@@ -72,7 +73,12 @@ public:
         m_left = nullptr;
         m_right = nullptr;
     }
-
+    std::size_t depth() const
+    {
+        if (m_left)
+            return std::max(m_left->depth(), m_right->depth()) + 1;
+        return 0;
+    }
     void buildTree(const std::vector<std::variant<Us...>>& data, std::size_t max_depth = 8)
     {
         std::vector<std::size_t> idx(data.size());
@@ -133,7 +139,92 @@ public:
         }
     }
 
+    std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
+    {
+        const auto& inter = intersectAABB(particle, aabb);
+        if (inter) {
+            const std::array<T, 2> tbox_min { std::min((*inter)[0], tbox[0]), std::min((*inter)[1], tbox[1]) };
+            return intersect(data, particle, tbox_min);
+        } else
+            return std::nullopt;
+    }
+    std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    {
+        const auto& inter = intersectAABB(particle, aabb);
+        return inter ? intersect(data, particle, *inter) : std::nullopt;
+    }
+    std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    {
+        if (!m_left) { // this is a leaf
+            // intersect triangles between tbox and return;
+            T t = std::numeric_limits<T>::max();
+            auto func = [&particle](const auto& obj) -> std::optional<T> { return obj.intersect(particle); };
+            for (const auto i : m_idx) {
+                const auto t_cand = std::visit(func, data[i]);
+                if (t_cand) {
+                    t = std::min(t, *t_cand);
+                }
+            }
+            return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
+        }
+
+        // test for parallell beam
+        if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
+            const auto hit_left = m_left->intersect(data, particle, tbox);
+            const auto hit_right = m_right->intersect(data, particle, tbox);
+            if (hit_left && hit_right)
+                return std::min(hit_left, hit_right);
+            if (!hit_left)
+                return hit_right;
+            return hit_left;
+        }
+
+        const auto* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        const auto* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+
+        const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
+
+        if (t <= tbox[0]) {
+            // back only
+            return back->intersect(data, particle, tbox);
+        } else if (t >= tbox[1]) {
+            // front only
+            return front->intersect(data, particle, tbox);
+        }
+
+        // both directions (start with front)
+        const std::array<T, 2> t_front { tbox[0], t };
+        const auto hit = front->intersect(data, particle, t_front);
+        if (hit) {
+            if (*hit <= t) {
+                return hit;
+            }
+        }
+        const std::array<T, 2> t_back { t, tbox[1] };
+        return back->intersect(data, particle, t_back);
+    }
+
 protected:
+    static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
+    {
+        std::array<T, 2> t {
+            std::numeric_limits<T>::lowest(),
+            std::numeric_limits<T>::max()
+        };
+        for (std::size_t i = 0; i < 3; i++) {
+            if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
+                const auto d_inv = T { 1 } / p.dir[i];
+                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
+                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
+                const auto t_min_cand = std::min(t1, t2);
+                const auto t_max_cand = std::max(t1, t2);
+                t[0] = std::max(t[0], t_min_cand);
+                t[1] = std::min(t[1], t_max_cand);
+            }
+        }
+        return t[0] > t[1] ? std::nullopt : std::make_optional(t);
+    }
+
     static T planeSplit(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx, std::uint_fast32_t D)
     {
         // mean split
@@ -161,7 +252,7 @@ protected:
         */
     }
 
-    static int figureOfMerit(const std::vector<std::variant<Us...>>& objects, std::vector<std::size_t>& idx, std::uint_fast32_t D, T planesep)
+    static int figureOfMerit(const std::vector<std::variant<Us...>>& objects, const std::vector<std::size_t>& idx, std::uint_fast32_t D, T planesep)
     {
         int fom = 0;
         int shared = 0;
@@ -220,12 +311,21 @@ public:
     void build()
     {
         m_node.buildTree(m_data);
+        m_aabb = AABB();
     }
-
+    void clear()
+    {
+        m_node.clear();
+    }
+    std::size_t depth() const
+    {
+        return m_node.depth();
+    }
     template <AnyKDTreeType<Us...> U>
     void insert(U item)
     {
         m_data.emplace_back(std::variant<Us...>(item));
+        clear();
     }
     template <AnyKDTreeType<Us...> U>
     void insert(const std::vector<U>& items)
@@ -233,6 +333,7 @@ public:
         for (const auto& item : items) {
             m_data.emplace_back(std::variant<Us...>(item));
         }
+        clear();
     }
 
     void translate(const std::array<T, 3>& vec)
@@ -244,6 +345,7 @@ public:
                 },
                 v);
         }
+        clear();
     }
 
     std::array<T, 3> center() const
@@ -291,7 +393,13 @@ public:
         return aabb;
     }
 
+    std::optional<T> intersect(const Particle<T>& particle) const
+    {
+        return m_node.intersect(m_data, particle, m_aabb);
+    }
+
 private:
+    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_data;
     KDTreeNode<T, Us...> m_node;
 };

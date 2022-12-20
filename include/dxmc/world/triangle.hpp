@@ -31,9 +31,9 @@ namespace dxmc {
 
 template <Floating T>
 class Triangle {
-    
+
 public:
-    using Type=T;
+    using Type = T;
     Triangle(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third)
     {
         m_vertices[0] = first;
@@ -106,7 +106,7 @@ public:
         const auto& v1 = m_vertices[0];
         const auto& v2 = m_vertices[1];
         const auto& v3 = m_vertices[2];
-        
+
         const std::array<T, 3> v1v2 { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
         const std::array<T, 3> v1v3 { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
         const auto& pvec = vectormath::cross(particle.dir, v1v3);
@@ -129,16 +129,15 @@ public:
 
         const auto t = vectormath::dot(v1v3, qvec) * invDet;
         if constexpr (FORWARD == 1)
-            return t > T { 0 } ? t : std::nullopt;
+            return t > T { 0 } ? std::make_optional(t) : std::nullopt;
         else if constexpr (FORWARD == -1)
-            return t < T { 0 } ? t : std::nullopt;
+            return t < T { 0 } ? std::make_optional(t) : std::nullopt;
         else
-            return t;
+            return std::make_optional(t);
     }
 
 private:
     std::array<std::array<T, 3>, 3> m_vertices;
-    
 };
 /*
 template <Floating T>

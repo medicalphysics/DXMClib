@@ -153,6 +153,7 @@ install(FILES ${HEADER_LIST} DESTINATION include)
 add_subdirectory(data)
 
 # Testing
+OPTION(BUILD_TESTING "Build tests" ON)
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
     add_subdirectory(tests)
 endif()

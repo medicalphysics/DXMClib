@@ -18,14 +18,14 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
-#include "dxmc/vectormath.hpp"
-#include "dxmc/particle.hpp"
 #include "dxmc/dxmcrandom.hpp"
+#include "dxmc/floating.hpp"
+#include "dxmc/particle.hpp"
+#include "dxmc/vectormath.hpp"
 
-#include <optional>
 #include <execution>
 #include <limits>
+#include <optional>
 
 namespace dxmc {
 
@@ -60,11 +60,11 @@ public:
     std::optional<T> intersect(const Particle<T>& p) const
     {
         constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
-        return intersectCylinder(p, center(), m_radius, this->m_aabb[2], this->m_aabb[5], tbox);
+        return intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, tbox);
     }
     std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
     {
-        return intersectCylinder(p, center(), m_radius, this->m_aabb[2], this->m_aabb[5], tbox);
+        return intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, tbox);
     }
     T transport(Particle<T>& p, RandomState& state)
     {
@@ -74,31 +74,36 @@ public:
 protected:
     static std::optional<T> intersectCylinder(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T zStart, const T zStop, const std::array<T, 2>& tbox)
     {
-        const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
-        const auto d0 = p.pos[0] - center[0];
-        const auto d1 = p.pos[1] - center[1];
-        const auto b = T { 2 } * (p.dir[0] * d0 + p.dir[1] * d1);
-        const auto c = d0 * d0 + d1 * d1 - radii * radii;
-        const auto det = b * b - T { 4 } * a * c;
 
         std::array<std::optional<T>, 4> t_cand;
 
+        // double for precision, may get errors using float
+        // Fix later numerical stable squared solver???
+        const auto a = static_cast<double>(p.dir[0]) * static_cast<double>(p.dir[0]) + static_cast<double>(p.dir[1]) * static_cast<double>(p.dir[1]);
+        const auto dx = static_cast<double>(p.pos[0]) - static_cast<double>(center[0]);
+        const auto dy = static_cast<double>(p.pos[1]) - static_cast<double>(center[1]);
+        const auto b = 2 * (dx * static_cast<double>(p.dir[0]) + dy * static_cast<double>(p.dir[1]));
+        const auto c = dx * dx + dy * dy - static_cast<double>(radii) * static_cast<double>(radii);
+        const auto det = b * b - 4 * a * c;
+
         // no intersection to 2d circle, treats tangents as no intersection
-        if (det <= std::numeric_limits<T>::epsilon()) {
+        if (det < T { 0 } || std::abs(a) <= std::numeric_limits<T>::epsilon()) {
             // test if we intersect end discs
             t_cand[0] = std::nullopt;
             t_cand[1] = std::nullopt;
         } else {
             const auto sqrt_det = std::sqrt(det);
-            const auto den = T { 0.5 } / a;
-            const auto t1 = (-b - sqrt_det) * den;
+            const auto den = double { 0.5 } / a;
+            const auto x1 = b > 0 ? (-b - sqrt_det) * den : (-b + sqrt_det) * den;
+            const T t1 = static_cast<T>(x1);
             if (tbox[0] < t1 && t1 < tbox[1]) {
                 const auto int_pointZ = p.pos[2] + p.dir[2] * t1;
                 const auto valid = zStart < int_pointZ && int_pointZ < zStop;
                 if (valid)
                     t_cand[0] = t1;
             }
-            const auto t2 = (-b + sqrt_det) * den;
+            const auto x2 = c / (a * x1);
+            const T t2 = static_cast<T>(x2);
             if (tbox[0] < t2 && t2 < tbox[1]) {
                 const auto int_pointZ = p.pos[2] + p.dir[2] * t2;
                 const auto valid = zStart < int_pointZ && int_pointZ < zStop;
@@ -115,7 +120,10 @@ protected:
                 return lh;
             return rh;
         });
-        return t;
+        if (t)
+            return t;
+        else
+            return std::nullopt;
     }
     static std::optional<T> intersectDisc(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T z, const std::array<T, 2>& tbox)
     {
