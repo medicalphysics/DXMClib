@@ -99,8 +99,8 @@ public:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
         };
-        for (const auto& v : data) {
-            std::array<T, 6> aabb_obj = std::visit([&aabb](const auto& obj) -> std::array<T, 6> { return obj.AABB(); }, v);
+        for (const auto& i : idx) {
+            std::array<T, 6> aabb_obj = std::visit([&aabb](const auto& obj) -> std::array<T, 6> { return obj.AABB(); }, data[i]);
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(aabb[i], aabb_obj[i]);
             }
@@ -111,17 +111,16 @@ public:
 
         const std::array<T, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
 
-        const auto D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
-        m_D = D;
+        m_D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
 
         // finding split
-        const auto median_split = planeSplit(data, idx, m_D);
-        const auto fom = figureOfMerit(data, idx, m_D, median_split);
+        const auto plane_split = planeSplit(data, idx, m_D);
+        const auto fom = figureOfMerit(data, idx, m_D, plane_split);
 
         if (fom == idx.size() || max_depth <= 1 || idx.size() <= 1) {
             m_idx = idx;
         } else {
-            m_plane = median_split;
+            m_plane = plane_split;
             std::vector<std::size_t> left, right;
 
             auto func = [=](const auto& o) -> int {

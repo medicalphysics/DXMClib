@@ -109,19 +109,19 @@ bool teststatickdtree()
     std::array<T, 9> vertices = { 0, 0, 0, 10, 0, 0, 0, 0, 10 };
     dxmc::Triangle<T> tri(vertices.data());
 
-    for (std::size_t i = 0; i < 3; ++i) {
-        for (std::size_t j = 0; j < 3; ++j) {
-            for (std::size_t k = 0; k < 3; ++k) {
+    for (int i = -1; i < 2; ++i) {
+        for (int j = -1; j < 2; ++j) {
+            for (int k = -1; k < 2; ++k) {
                 constexpr T step = 80;
                 std::array<T, 3> pos { step * i, step * j, step * k };
                 dxmc::CTDIPhantom<T> ph { 16, pos, 15 };
-                //            tree.insert(ph);
+                tree.insert(ph);
             }
         }
     }
 
-    dxmc::CTDIPhantom<T> ph { 16, { 0, 0, 0 }, 32 };
-    tree.insert(ph);
+    //dxmc::CTDIPhantom<T> ph { 16, { 0, 0, 0 }, 32 };
+    //tree.insert(ph);
 
     // translate all objects
     std::array<T, 3> trans { 1, 1, 1 };
@@ -133,9 +133,10 @@ bool teststatickdtree()
     // calculate center
     auto center = tree.center();
     tree.build();
+    auto depth = tree.depth();
 
     // std::array<T, 3> camera { 900, 1000, 800 };
-    std::array<T, 3> camera { 1000, 1000, 00 };
+    std::array<T, 3> camera { 1000, 1000, 1000 };
     auto time = create_image(tree, camera);
     std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << std::endl;
     return true;
