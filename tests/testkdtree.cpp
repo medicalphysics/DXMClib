@@ -17,10 +17,9 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/world/kdtree.hpp"
-#include "dxmc/world/statickdtree.hpp"
 #include "dxmc/world/triangle.hpp"
 #include "dxmc/world/triangulatedmesh.hpp"
-#include "dxmc/world/ctdiphantom.hpp"
+// #include "dxmc/world/ctdiphantom.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -83,7 +82,7 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
     std::iota(idx.begin(), idx.end(), 0);
 
     auto triangles = mesh.getTriangles();
-    dxmc::KDTree<dxmc::Triangle<T>> kdtree(triangles, depth);
+    dxmc::KDTreeNode<T, dxmc::Triangle<T>> kdtree(triangles, depth);
     const auto aabb = kdtree.AABB();
 
     const T dx = (aabb[1 + 3] - aabb[1]) / Nx;
@@ -119,7 +118,6 @@ void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6
     file.close();
 }
 
-
 int main(int argc, char* argv[])
 {
 
@@ -143,8 +141,8 @@ int main(int argc, char* argv[])
     for (auto& t : triangles)
         triangles_ptr.push_back(&t);
 
-    auto kdtree = dxmc::KDTree(triangles);
-    auto kdtree_ptr = dxmc::KDTree(triangles_ptr);
+    auto kdtree = dxmc::KDTreeNode<double, dxmc::Triangle<double>>(triangles);
+    auto kdtree_ptr = dxmc::KDTreeNode<double, dxmc::Triangle<double>*>(triangles_ptr);
     const auto& kdtree_m = mesh.kdtree();
 
     // test_ptr(kdtree);

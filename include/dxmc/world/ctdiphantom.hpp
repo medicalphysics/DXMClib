@@ -74,7 +74,6 @@ public:
 protected:
     static std::optional<T> intersectCylinder(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T zStart, const T zStop, const std::array<T, 2>& tbox)
     {
-
         std::array<std::optional<T>, 4> t_cand;
 
         // double for precision, may get errors using float

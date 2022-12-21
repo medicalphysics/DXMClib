@@ -37,49 +37,45 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <typename U>
-concept KDTreeType = requires(U u, Particle<typename U::Type> p, std::array<typename U::Type, 3> vec) {
-                         typename U::Type;
-                         Floating<typename U::Type>;
+template <typename U, typename T>
+concept KDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
+                         Floating<T>;
                          u <=> u;
                          u.translate(vec);
                          {
                              u.intersect(p)
-                             } -> std::same_as<std::optional<typename U::Type>>;
+                             } -> std::same_as<std::optional<T>>;
 
                          {
                              u.center()
-                             } -> std::same_as<std::array<typename U::Type, 3>>;
+                             } -> std::same_as<std::array<T, 3>>;
 
                          {
                              u.AABB()
-                             } -> std::same_as<std::array<typename U::Type, 6>>;
-                     } || requires(U u, Particle<typename std::remove_pointer<U>::type::Type> p, std::array<typename std::remove_pointer<U>::type::Type, 3> vec) {
-                              typename std::remove_pointer<U>::type::Type;
-                              Floating<typename std::remove_pointer<U>::type::Type>;
-                              u <=> u;
+                             } -> std::same_as<std::array<T, 6>>;
+                     } || requires(U u, Particle<T> p, std::array<T, 3> vec) {
+                              Floating<T>;
+                              *u <=> *u;
 
                               u->translate(vec);
                               {
                                   u->intersect(p)
-                                  } -> std::same_as<std::optional<typename std::remove_pointer<U>::type::Type>>;
+                                  } -> std::same_as<std::optional<T>>;
 
                               {
                                   u->center()
-                                  } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 3>>;
+                                  } -> std::same_as<std::array<T, 3>>;
 
                               {
                                   u->AABB()
-                                  } -> std::same_as<std::array<typename std::remove_pointer<U>::type::Type, 6>>;
+                                  } -> std::same_as<std::array<T, 6>>;
                           };
 
-template <KDTreeType U>
-class KDTree {
+template <Floating T, KDTreeType<T> U>
+class KDTreeNode {
 public:
-    using T = typename std::remove_pointer<U>::type::Type;
-    using Type = T;
-    KDTree() {};
-    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 8)
+    KDTreeNode() {};
+    KDTreeNode(std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
         if (triangles.size() == 0)
             return;
@@ -139,8 +135,8 @@ public:
                 if (side >= 0)
                     right.push_back(triangle);
             }
-            m_left = std::make_unique<KDTree<U>>(left, max_depth - 1);
-            m_right = std::make_unique<KDTree<U>>(right, max_depth - 1);
+            m_left = std::make_unique<KDTreeNode<T, U>>(left, max_depth - 1);
+            m_right = std::make_unique<KDTreeNode<T, U>>(right, max_depth - 1);
         }
     }
     std::array<T, 6> AABB() const
@@ -235,8 +231,8 @@ public:
             return hit_left;
         }
 
-        const KDTree<U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        const KDTree<U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        const KDTreeNode<T, U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        const KDTreeNode<T, U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -394,9 +390,48 @@ private:
     T m_plane = 0;
     std::vector<U> m_triangles;
 
-    std::unique_ptr<KDTree<U>> m_left = nullptr;
-    std::unique_ptr<KDTree<U>> m_right = nullptr;
-    friend class KDTree<U>;
+    std::unique_ptr<KDTreeNode<T, U>> m_left = nullptr;
+    std::unique_ptr<KDTreeNode<T, U>> m_right = nullptr;
+    friend class KDTreeNode<T, U>;
+};
+
+template <Floating T, KDTreeType<T> U>
+class KDTree {
+public:
+    // KDTree() {};
+    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 8)
+    {
+        m_node = KDTreeNode<T, U>(triangles, max_depth);
+        m_aabb = m_node.AABB();
+    }
+    std::size_t depth() const
+    {
+        return m_node.depth();
+    }
+
+    void translate(const std::array<T, 3>& vec)
+    {
+        m_node.translate(vec);
+    }
+
+    std::array<T, 3> center() const
+    {
+        std::array<T, 3> center { (m_aabb[0] + m_aabb[3]) / 2, (m_aabb[1] + m_aabb[4]) / 2, (m_aabb[2] + m_aabb[5]) / 2 };
+        return center;
+    }
+    std::array<T, 6> AABB() const
+    {
+        return m_node.AABB();
+    }
+
+    std::optional<T> intersect(const Particle<T>& particle) const
+    {
+        return m_node.intersect(particle, m_aabb);
+    }
+
+private:
+    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    KDTreeNode<T, U> m_node;
 };
 
 }

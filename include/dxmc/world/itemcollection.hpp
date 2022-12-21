@@ -51,7 +51,7 @@ public:
                 raw_values.reserve(m_items.size());
                 for (auto& i : m_items)
                     raw_values.push_back(i.get());
-                m_kdtree = KDTree(raw_values);
+                m_kdtree = KDTreeNode(raw_values);
                 this->m_aabb = m_kdtree.AABB();
             }
         }
@@ -89,7 +89,7 @@ public:
 protected:
 private:
     std::vector<std::shared_ptr<BaseObject<T>>> m_items;
-    KDTree<BaseObject<T>*> m_kdtree;
+    KDTreeNode<BaseObject<T>*> m_kdtree;
 };
 
 }

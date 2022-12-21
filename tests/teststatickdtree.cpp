@@ -19,13 +19,14 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/ctdiphantom.hpp"
 #include "dxmc/world/statickdtree.hpp"
 #include "dxmc/world/triangle.hpp"
+#include "dxmc/world/triangulatedmesh.hpp"
 
 #include <chrono>
 #include <fstream>
 #include <iostream>
 
 template <typename T, typename U>
-auto create_image(const U& tree, const std::array<T, 3>& camera_pos, bool print = true)
+auto create_image(const std::string& name, const U& tree, const std::array<T, 3>& camera_pos, bool print = true)
 {
     const std::int64_t Nx = 512;
     const std::int64_t Ny = 512;
@@ -80,7 +81,7 @@ auto create_image(const U& tree, const std::array<T, 3>& camera_pos, bool print 
     if (print) {
         std::cout << "Intersect time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;
         std::ofstream file;
-        file.open("intersect.bin", std::ios::out | std::ios::binary);
+        file.open(name, std::ios::out | std::ios::binary);
         file.write((char*)buffer.data(), buffer.size() * sizeof(T));
         file.close();
     }
@@ -97,14 +98,38 @@ std::array<T, 3> neg_center(const std::array<T, 6>& aabb)
 }
 
 template <typename T>
+void benchmark()
+{
+    auto reader = dxmc::STLReader<T>("bunny.stl");
+    auto triangles = reader();
+
+    dxmc::StaticKDTree<T, dxmc::Triangle<T>,dxmc::CTDIPhantom<T>, dxmc::TriangulatedMesh<T>> static_tree;
+    static_tree.insert(triangles);
+    static_tree.build();
+
+    dxmc::KDTree<T, dxmc::Triangle<T>> tree(triangles);
+
+    std::vector<dxmc::Triangle<T>*> triangles_ptr;
+    for (std::size_t i = 0; i < triangles.size(); ++i)
+        triangles_ptr.push_back(&triangles[i]);
+
+    dxmc::KDTree<T, dxmc::Triangle<T>*> tree_ptr(triangles_ptr);
+
+
+    std::array<T, 3> camera { 1000, 1000, 1000 };
+
+    auto time = create_image("tree.bin", tree, camera);
+    auto time_ptr = create_image("treeptr.bin", tree_ptr, camera);
+    auto time_static = create_image("statictree.bin", static_tree, camera);
+}
+
+template <typename T>
 bool teststatickdtree()
 {
 
-    // dxmc::KDTreeNode<T, dxmc::Triangle<T>> node;
-
     bool success = true;
 
-    dxmc::KDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
+    dxmc::StaticKDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
 
     std::array<T, 9> vertices = { 0, 0, 0, 10, 0, 0, 0, 0, 10 };
     dxmc::Triangle<T> tri(vertices.data());
@@ -136,17 +161,19 @@ bool teststatickdtree()
     auto depth = tree.depth();
 
     // std::array<T, 3> camera { 900, 1000, 800 };
-    std::array<T, 3> camera { 1000, 1000, 1000 };
-    auto time = create_image(tree, camera);
+    std::array<T, 3> camera { 900, 800, 1000 };
+    auto time = create_image("simple.bin", tree, camera);
     std::cout << " Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << std::endl;
     return true;
 }
 
 int main()
 {
-
-    auto success = teststatickdtree<float>();
-    // success = success && teststatickdtree<double>();
+    benchmark<float>();
+    benchmark<double>();
+    // auto success = teststatickdtree<float>();
+    //  success = success && teststatickdtree<double>();
+    bool success = true;
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;

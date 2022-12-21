@@ -31,9 +31,7 @@ namespace dxmc {
 
 template <Floating T>
 class Triangle {
-
 public:
-    using Type = T;
     Triangle(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third)
     {
         m_vertices[0] = first;

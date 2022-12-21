@@ -269,7 +269,7 @@ public:
         setData(triangles, max_tree_dept);
     }
 
-    const KDTree<Triangle<T>>& kdtree() const
+    const KDTreeNode<T, Triangle<T>>& kdtree() const
     {
         return m_kdtree;
     }
@@ -286,7 +286,7 @@ public:
 
     void setData(std::vector<Triangle<T>> triangles, const std::size_t max_tree_dept)
     {
-        m_kdtree = KDTree(triangles, max_tree_dept);
+        m_kdtree = KDTreeNode<T, Triangle<T>>(triangles, max_tree_dept);
         this->m_aabb = m_kdtree.AABB();
     }
     std::array<T, 3> center() const override
@@ -318,6 +318,6 @@ public:
     }
 
 private:
-    KDTree<Triangle<T>> m_kdtree;
+    KDTreeNode<T, Triangle<T>> m_kdtree;
 };
 }

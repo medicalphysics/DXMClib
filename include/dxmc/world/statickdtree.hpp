@@ -34,31 +34,31 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <typename U, typename T>
-concept KDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
-                         Floating<T>;
-                         u.translate(vec);
-                         {
-                             u.intersect(p)
-                             } -> std::same_as<std::optional<T>>;
-                         {
-                             u.center()
-                             } -> std::convertible_to<std::array<T, 3>>;
-                         {
-                             u.AABB()
-                             } -> std::convertible_to<std::array<T, 6>>;
-                     };
+concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
+                               Floating<T>;
+                               u.translate(vec);
+                               {
+                                   u.intersect(p)
+                                   } -> std::same_as<std::optional<T>>;
+                               {
+                                   u.center()
+                                   } -> std::convertible_to<std::array<T, 3>>;
+                               {
+                                   u.AABB()
+                                   } -> std::convertible_to<std::array<T, 6>>;
+                           };
 template <typename U, typename... Us>
 concept AnyKDTreeType = (... or std::same_as<U, Us>);
 
-template <Floating T, KDTreeType<T>... Us>
-class KDTreeNode {
+template <Floating T, StaticKDTreeType<T>... Us>
+class StaticKDTreeNode {
 public:
-    KDTreeNode() { }
-    KDTreeNode(const std::vector<std::variant<Us...>>& data, std::size_t max_depth = 8)
+    StaticKDTreeNode() { }
+    StaticKDTreeNode(const std::vector<std::variant<Us...>>& data, std::size_t max_depth = 8)
     {
         buildTree(data, max_depth);
     }
-    KDTreeNode(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx, std::size_t max_depth = 8)
+    StaticKDTreeNode(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx, std::size_t max_depth = 8)
     {
         buildTree(data, idx, max_depth);
     }
@@ -124,7 +124,7 @@ public:
             std::vector<std::size_t> left, right;
 
             auto func = [=](const auto& o) -> int {
-                return KDTreeNode<T, Us...>::planeSide(o, m_plane, m_D);
+                return StaticKDTreeNode<T, Us...>::planeSide(o, m_plane, m_D);
             };
             for (const auto i : idx) {
                 const auto side = std::visit(func, data[i]);
@@ -133,8 +133,8 @@ public:
                 if (side >= 0)
                     right.push_back(i);
             }
-            m_left = std::make_unique<KDTreeNode<T, Us...>>(data, left, max_depth - 1);
-            m_right = std::make_unique<KDTreeNode<T, Us...>>(data, right, max_depth - 1);
+            m_left = std::make_unique<StaticKDTreeNode<T, Us...>>(data, left, max_depth - 1);
+            m_right = std::make_unique<StaticKDTreeNode<T, Us...>>(data, right, max_depth - 1);
         }
     }
 
@@ -256,7 +256,7 @@ protected:
         int fom = 0;
         int shared = 0;
         auto func = [planesep, D](const auto& o) -> int {
-            return KDTreeNode<T, Us...>::planeSide(o, planesep, D);
+            return StaticKDTreeNode<T, Us...>::planeSide(o, planesep, D);
         };
         for (const auto& i : idx) {
             const auto side = std::visit(func, objects[i]);
@@ -300,16 +300,16 @@ private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
     std::vector<std::size_t> m_idx;
-    std::unique_ptr<KDTreeNode<T, Us...>> m_left = nullptr;
-    std::unique_ptr<KDTreeNode<T, Us...>> m_right = nullptr;
+    std::unique_ptr<StaticKDTreeNode<T, Us...>> m_left = nullptr;
+    std::unique_ptr<StaticKDTreeNode<T, Us...>> m_right = nullptr;
 };
 
-template <Floating T, KDTreeType<T>... Us>
-class KDTree {
+template <Floating T, StaticKDTreeType<T>... Us>
+class StaticKDTree {
 public:
-    void build()
+    void build(std::size_t max_depth = 8)
     {
-        m_node.buildTree(m_data);
+        m_node.buildTree(m_data, max_depth);
         m_aabb = AABB();
     }
     void clear()
@@ -400,7 +400,7 @@ public:
 private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_data;
-    KDTreeNode<T, Us...> m_node;
+    StaticKDTreeNode<T, Us...> m_node;
 };
 
 }
