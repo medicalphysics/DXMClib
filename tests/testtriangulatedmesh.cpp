@@ -174,12 +174,12 @@ int main(int argc, char* argv[])
     std::cout << success << std::endl;
 
     // auto reader = dxmc::STLReader<double>("bunny.stl");
-    //  auto reader = dxmc::STLReader<double>("bunny_low.stl");
-    //  auto reader = dxmc::STLReader<double>("duck.stl");
-    // const auto triangles = reader();
+    auto reader = dxmc::STLReader<double>("bunny_low.stl");
+    // auto reader = dxmc::STLReader<double>("duck.stl");
+    const auto triangles = reader();
 
     // const auto triangles = getBox<double>();
-    const auto triangles = getPyramid<double>();
+    // const auto triangles = getPyramid<double>();
 
     dxmc::TriangulatedMesh<double> mesh(triangles, 9);
 
@@ -189,7 +189,7 @@ int main(int argc, char* argv[])
     // mesh.translate(dist);
     auto aabb = mesh.AABB();
 
-    std::array<double, 3> pos { 500.0, 500.0, -250.0 };
+    std::array<double, 3> pos { -600, 500, 400.0 };
     create_image(mesh, pos, true);
 
     // benchmark(triangles);

@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/baseobject.hpp"
+#include "dxmc/world/kdtree.hpp"
 #include "dxmc/world/triangle.hpp"
 
 #include <algorithm>
@@ -267,7 +268,12 @@ public:
         auto triangles = reader(path);
         setData(triangles, max_tree_dept);
     }
-    const KDTree<Triangle<T>>& kdtree() const { return m_kdtree; }
+
+    const KDTree<Triangle<T>>& kdtree() const
+    {
+        return m_kdtree;
+    }
+
     std::vector<Triangle<T>> getTriangles() const
     {
         return m_kdtree.items();
@@ -287,7 +293,7 @@ public:
     {
         std::array<T, 3> center { 0, 0, 0 };
         const auto triangles = getTriangles();
-        std::for_each(triangles.cbegin(), triangles.cend(), [&](const auto& tri) {
+        std::for_each(std::execution::unseq, triangles.cbegin(), triangles.cend(), [&](const auto& tri) {
             const auto c = tri.center();
             for (std::size_t i = 0; i < 3; ++i) {
                 center[i] += c[i];

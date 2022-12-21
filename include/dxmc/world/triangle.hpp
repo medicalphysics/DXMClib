@@ -139,25 +139,4 @@ public:
 private:
     std::array<std::array<T, 3>, 3> m_vertices;
 };
-/*
-template <Floating T>
-std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
-{
-    std::array<T, 2> t {
-        std::numeric_limits<T>::lowest(),
-        std::numeric_limits<T>::max()
-    };
-    for (std::size_t i = 0; i < 3; i++) {
-        if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
-            const auto d_inv = T { 1 } / p.dir[i];
-            const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
-            const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-            const auto t_min_cand = std::min(t1, t2);
-            const auto t_max_cand = std::max(t1, t2);
-            t[0] = std::max(t[0], t_min_cand);
-            t[1] = std::min(t[1], t_max_cand);
-        }
-    }
-    return t[0] > t[1] ? std::nullopt : std::make_optional(t);
-}*/
 }

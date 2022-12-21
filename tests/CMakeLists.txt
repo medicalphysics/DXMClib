@@ -4,7 +4,7 @@ ENABLE_TESTING()
 set(TEST_SOURCES 
     "testworld.cpp"
 #    "testdxmclib.cpp"
-#    "testtriangulatedmesh.cpp"
+    "testtriangulatedmesh.cpp"
     "testkdtree.cpp"
     "teststatickdtree.cpp"
 #    "testtube.cpp"

@@ -120,8 +120,8 @@ bool teststatickdtree()
         }
     }
 
-    //dxmc::CTDIPhantom<T> ph { 16, { 0, 0, 0 }, 32 };
-    //tree.insert(ph);
+    // dxmc::CTDIPhantom<T> ph { 16, { 0, 0, 0 }, 32 };
+    // tree.insert(ph);
 
     // translate all objects
     std::array<T, 3> trans { 1, 1, 1 };
