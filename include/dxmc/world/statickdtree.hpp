@@ -309,6 +309,7 @@ class StaticKDTree {
 public:
     void build(std::size_t max_depth = 8)
     {
+        std::sort(m_data.begin(), m_data.end(), [](const auto& lh, const auto& rh) { return lh.index() < rh.index(); });
         m_node.buildTree(m_data, max_depth);
         m_aabb = AABB();
     }

@@ -109,6 +109,13 @@ namespace vectormath {
         return r;
     }
 
+    template<Floating T>
+    inline std::array<T, 3> scale(const std::array<T, 3>& v, T s)
+    {
+        std::array res { v[0] * s, v[1] * s, v[2] * s };
+        return res;
+    }
+
     template <Floating T>
     inline T dot(const T v1[3], const T v2[3]) noexcept
     {

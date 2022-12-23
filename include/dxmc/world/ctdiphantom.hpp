@@ -23,7 +23,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 
-#include <execution>
 #include <limits>
 #include <optional>
 

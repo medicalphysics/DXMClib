@@ -17,6 +17,7 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/world/ctdiphantom.hpp"
+#include "dxmc/world/sphere.hpp"
 #include "dxmc/world/statickdtree.hpp"
 #include "dxmc/world/triangle.hpp"
 #include "dxmc/world/triangulatedmesh.hpp"
@@ -103,7 +104,7 @@ void benchmark()
     auto reader = dxmc::STLReader<T>("bunny.stl");
     auto triangles = reader();
 
-    dxmc::StaticKDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>, dxmc::TriangulatedMesh<T>> static_tree;
+    dxmc::StaticKDTree<T, dxmc::Triangle<T>> static_tree;
     static_tree.insert(triangles);
     static_tree.build();
 
@@ -128,7 +129,7 @@ bool teststatickdtree()
 
     bool success = true;
 
-    dxmc::StaticKDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>> tree;
+    dxmc::StaticKDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>, dxmc::Sphere<T>> tree;
 
     std::array<T, 9> vertices = { 0, 0, 0, 10, 0, 0, 0, 0, 10 };
     dxmc::Triangle<T> tri(vertices.data());
@@ -140,6 +141,10 @@ bool teststatickdtree()
                 std::array<T, 3> pos { step * i, step * j, step * k };
                 dxmc::CTDIPhantom<T> ph { 16, pos, 15 };
                 tree.insert(ph);
+                T offset = 160 + 32;
+                pos[0] += offset;
+                dxmc::Sphere<T> sphere(16, pos);
+                tree.insert(sphere);
             }
         }
     }
@@ -168,11 +173,11 @@ bool teststatickdtree()
 
 int main()
 {
-    // benchmark<float>();
-    // benchmark<double>();
+    benchmark<float>();
+    benchmark<double>();
     auto success = teststatickdtree<float>();
     success = success && teststatickdtree<double>();
-    // bool success = true;
+    //  bool success = true;
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;
