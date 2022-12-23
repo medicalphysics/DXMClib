@@ -103,7 +103,7 @@ void benchmark()
     auto reader = dxmc::STLReader<T>("bunny.stl");
     auto triangles = reader();
 
-    dxmc::StaticKDTree<T, dxmc::Triangle<T>,dxmc::CTDIPhantom<T>, dxmc::TriangulatedMesh<T>> static_tree;
+    dxmc::StaticKDTree<T, dxmc::Triangle<T>, dxmc::CTDIPhantom<T>, dxmc::TriangulatedMesh<T>> static_tree;
     static_tree.insert(triangles);
     static_tree.build();
 
@@ -114,7 +114,6 @@ void benchmark()
         triangles_ptr.push_back(&triangles[i]);
 
     dxmc::KDTree<T, dxmc::Triangle<T>*> tree_ptr(triangles_ptr);
-
 
     std::array<T, 3> camera { 1000, 1000, 1000 };
 
@@ -169,11 +168,11 @@ bool teststatickdtree()
 
 int main()
 {
-    benchmark<float>();
-    benchmark<double>();
-    // auto success = teststatickdtree<float>();
-    //  success = success && teststatickdtree<double>();
-    bool success = true;
+    // benchmark<float>();
+    // benchmark<double>();
+    auto success = teststatickdtree<float>();
+    success = success && teststatickdtree<double>();
+    // bool success = true;
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;

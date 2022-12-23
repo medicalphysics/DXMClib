@@ -74,56 +74,74 @@ public:
 protected:
     static std::optional<T> intersectCylinder(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T zStart, const T zStop, const std::array<T, 2>& tbox)
     {
-        std::array<std::optional<T>, 4> t_cand;
+        bool has_value = false;
+        T t_min;
 
-        // double for precision, may get errors using float
-        // Fix later numerical stable squared solver???
-        const auto a = static_cast<double>(p.dir[0]) * static_cast<double>(p.dir[0]) + static_cast<double>(p.dir[1]) * static_cast<double>(p.dir[1]);
-        const auto dx = static_cast<double>(p.pos[0]) - static_cast<double>(center[0]);
-        const auto dy = static_cast<double>(p.pos[1]) - static_cast<double>(center[1]);
-        const auto b = 2 * (dx * static_cast<double>(p.dir[0]) + dy * static_cast<double>(p.dir[1]));
-        const auto c = dx * dx + dy * dy - static_cast<double>(radii) * static_cast<double>(radii);
-        const auto det = b * b - 4 * a * c;
-
-        // no intersection to 2d circle, treats tangents as no intersection
-        if (det < T { 0 } || std::abs(a) <= std::numeric_limits<T>::epsilon()) {
-            // test if we intersect end discs
-            t_cand[0] = std::nullopt;
-            t_cand[1] = std::nullopt;
-        } else {
-            const auto sqrt_det = std::sqrt(det);
-            const auto den = double { 0.5 } / a;
-            const auto x1 = b > 0 ? (-b - sqrt_det) * den : (-b + sqrt_det) * den;
-            const T t1 = static_cast<T>(x1);
-            if (tbox[0] < t1 && t1 < tbox[1]) {
-                const auto int_pointZ = p.pos[2] + p.dir[2] * t1;
-                const auto valid = zStart < int_pointZ && int_pointZ < zStop;
-                if (valid)
-                    t_cand[0] = t1;
-            }
-            const auto x2 = c / (a * x1);
-            const T t2 = static_cast<T>(x2);
-            if (tbox[0] < t2 && t2 < tbox[1]) {
-                const auto int_pointZ = p.pos[2] + p.dir[2] * t2;
-                const auto valid = zStart < int_pointZ && int_pointZ < zStop;
-                if (valid)
-                    t_cand[1] = t2;
+        // Nummerical stable cylindar ray intersection (not stable enought) should attempt to normalize d to unity
+        const auto dx = p.dir[0];
+        const auto dy = p.dir[1];
+        const auto a = dx * dx + dy * dy;
+        if (std::abs(a) > std::numeric_limits<T>::epsilon()) {
+            // ray not parallell to z axis
+            const auto fx = p.pos[0] - center[0];
+            const auto fy = p.pos[1] - center[1];
+            const auto b = -(fx * dx + fy * dy);
+            const auto ba = b / a;
+            const auto p1x = fx + ba * dx;
+            const auto p1y = fy + ba * dy;
+            const auto r2 = radii * radii;
+            const auto det = r2 - (p1x * p1x + p1y * p1y);
+            if (det > T { 0 }) {
+                // line intersect 2d sphere
+                const auto c = fx * fx + fy * fy - r2;
+                const int sign = (T { 0 } < b) - (b < T { 0 });
+                const auto q = b + sign * std::sqrt(a * det);
+                if (c > T { 0 }) {
+                    // ray starts outside sphere
+                    if (b > T { 0 }) {
+                        // ray starts before sphere
+                        const auto t_cand = c / q;
+                        if (tbox[0] < t_cand && t_cand < tbox[1]) {
+                            const auto int_pointZ = p.pos[2] + p.dir[2] * t_cand;
+                            const auto valid = zStart < int_pointZ && int_pointZ < zStop;
+                            if (valid) {
+                                t_min = c / q;
+                                has_value = true;
+                            }
+                        }
+                    }
+                } else {
+                    // ray is inside
+                    const auto t_cand = q / a;
+                    if (tbox[0] < t_cand && t_cand < tbox[1]) {
+                        // intersection is forward
+                        const auto int_pointZ = p.pos[2] + p.dir[2] * t_cand;
+                        const auto valid = zStart < int_pointZ && int_pointZ < zStop;
+                        if (valid) {
+                            t_min = t_cand;
+                            has_value = true;
+                        }
+                    }
+                }
             }
         }
-        t_cand[2] = intersectDisc(p, center, radii, zStart, tbox);
-        t_cand[3] = intersectDisc(p, center, radii, zStop, tbox);
-        auto t = std::reduce(std::execution::unseq, t_cand.begin() + 1, t_cand.end(), t_cand[0], [](const std::optional<T>& lh, const std::optional<T>& rh) -> std::optional<T> {
-            if (lh && rh)
-                return lh < rh ? lh : rh;
-            else if (lh)
-                return lh;
-            return rh;
-        });
-        if (t)
-            return t;
-        else
-            return std::nullopt;
+
+        const auto t_disc1 = intersectDisc(p, center, radii, zStart, tbox);
+        if (t_disc1) {
+            const auto t_cand = t_disc1.value();
+            t_min = has_value ? std::min(t_min, t_cand) : t_cand;
+            has_value = true;
+        }
+        const auto t_disc2 = intersectDisc(p, center, radii, zStop, tbox);
+        if (t_disc2) {
+            const auto t_cand = t_disc2.value();
+            t_min = has_value ? std::min(t_min, t_cand) : t_cand;
+            has_value = true;
+        }
+
+        return has_value ? std::make_optional(t_min) : std::nullopt;
     }
+
     static std::optional<T> intersectDisc(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T z, const std::array<T, 2>& tbox)
     {
         if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
