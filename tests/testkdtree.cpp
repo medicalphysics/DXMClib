@@ -16,159 +16,128 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#include "dxmc/world/ctdiphantom.hpp"
 #include "dxmc/world/kdtree.hpp"
-#include "dxmc/world/triangle.hpp"
-#include "dxmc/world/triangulatedmesh.hpp"
-// #include "dxmc/world/ctdiphantom.hpp"
+#include "dxmc/world/sphere.hpp"
+#include "dxmc/world/triangulatedmesh/triangulatedmesh.hpp"
 
 #include <chrono>
 #include <fstream>
 #include <iostream>
 
-template <typename U>
-void test_ptr(U& kdtree, const std::size_t depth = 8)
+template <typename T, typename U>
+auto create_image(const std::string& name, const U& tree, const std::array<T, 3>& camera_pos, bool print = true)
 {
-    using T = typename U::Type;
-    const std::size_t Nx = 512;
-    const std::size_t Ny = 512;
-    const std::size_t axis = 0;
+    const std::int64_t Nx = 512;
+    const std::int64_t Ny = 512;
 
     std::vector<T> buffer(Nx * Ny, 0);
     std::vector<std::size_t> idx(buffer.size());
     std::iota(idx.begin(), idx.end(), 0);
 
-    const auto aabb = kdtree.AABB();
+    const auto aabb = tree.AABB();
+    const std::array<T, 3> aabb_center = { (aabb[0] + aabb[3]) / 2, (aabb[1] + aabb[4]) / 2, (aabb[2] + aabb[5]) / 2 };
+    const std::array<T, 3> aabb_extent = { (aabb[3] - aabb[0]), (aabb[4] - aabb[1]), (aabb[5] - aabb[3]) };
 
-    const T dx = (aabb[1 + 3] - aabb[1]) / Nx;
-    const T dy = (aabb[2 + 3] - aabb[2]) / Ny;
+    auto dir = dxmc::vectormath::subtract(aabb_center, camera_pos);
+    dxmc::vectormath::normalize(dir);
+    auto collapse_dim = dxmc::vectormath::argmax3(dir);
+
+    std::array<T, 3> dx = { 1, 0, 0 };
+    std::array<T, 3> dy = { 0, 1, 0 };
+    std::array<T, 3> dz = { 0, 0, 1 };
+    std::array<T, 3> cm_canditates { dxmc::vectormath::dot(dx, dir), dxmc::vectormath::dot(dy, dir), dxmc::vectormath::dot(dz, dir) };
+    const std::array<T, 3> c1 = dxmc::vectormath::argmax3(cm_canditates) == 0 ? dxmc::vectormath::cross(dir, dz) : dxmc::vectormath::cross(dir, dx);
+    const std::array<T, 3> c2 = dxmc::vectormath::cross(dir, c1);
+
+    const std::array<T, 3> aabb_p1 { aabb[0], aabb[1], aabb[2] };
+    const std::array<T, 3> aabb_p2 { aabb[3], aabb[4], aabb[5] };
+
+    const T FOV = dxmc::vectormath::lenght(dxmc::vectormath::subtract(aabb_p1, aabb_p2));
 
     const auto t0 = std::chrono::high_resolution_clock::now();
+    std::transform(std::execution::par_unseq, idx.cbegin(), idx.cend(), buffer.begin(), [&](const auto i) {
+        const std::int64_t y = i / Nx;
+        const std::int64_t x = i - y * Nx;
+        const T dx = (FOV / Nx) * (Nx / 2 - x);
+        const T dy = (FOV / Nx) * (Ny / 2 - y);
 
-    std::transform(std::execution::par, idx.cbegin(), idx.cend(), buffer.begin(), [&](const auto i) {
-        const std::size_t y = i / Ny;
-        const std::size_t x = i - y * Ny;
-
-        const std::array<T, 3> plane { 0, aabb[1] + dx * x, aabb[2] + dy * y };
+        std::array<T, 3> target;
+        for (std::size_t j = 0; j < 3; ++j) {
+            target[j] = aabb_center[j] + c1[j] * dx + c2[j] * dy;
+        }
 
         dxmc::Particle<T> p;
-        p.pos = { -1000, 0, 0 };
-        for (std::size_t j = 0; j < 3; ++j) {
-            p.dir[j] = plane[j] - p.pos[j];
-        }
+        p.pos = camera_pos;
+        p.dir = dxmc::vectormath::subtract(target, camera_pos);
+
         dxmc::vectormath::normalize(p.dir);
 
-        const auto intersection = kdtree.intersect(p, aabb);
-
-        return intersection ? *intersection : 0;
+        const auto intersection = tree.intersect(p, aabb);
+        if (intersection.item)
+            return intersection.intersection;
+        return T { 0 };
     });
     const auto t1 = std::chrono::high_resolution_clock::now();
-    std::cout << "KDTree depth: " << kdtree.depth();
-    std::cout << "    Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;
-    std::ofstream file;
-    file.open("intersect.bin", std::ios::out | std::ios::binary);
-    file.write((char*)buffer.data(), buffer.size() * sizeof(T));
-    file.close();
+    if (print) {
+        std::cout << "Intersect time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;
+        std::ofstream file;
+        file.open(name, std::ios::out | std::ios::binary);
+        file.write((char*)buffer.data(), buffer.size() * sizeof(T));
+        file.close();
+    }
+    return t1 - t0;
 }
 
 template <typename T>
-void testGeom(const dxmc::TriangulatedMesh<T>& mesh, const std::size_t depth = 6)
+bool testkdtree(const std::size_t depth = 6)
 {
-    const std::size_t Nx = 64;
-    const std::size_t Ny = 64;
-    const std::size_t axis = 0;
+    // build world
+    constexpr bool mesh = false;
 
-    std::vector<T> buffer(Nx * Ny, 0);
-    std::vector<std::size_t> idx(buffer.size());
-    std::iota(idx.begin(), idx.end(), 0);
-
-    auto triangles = mesh.getTriangles();
-    dxmc::KDTreeNode<T, dxmc::Triangle<T>> kdtree(triangles, depth);
-    const auto aabb = kdtree.AABB();
-
-    const T dx = (aabb[1 + 3] - aabb[1]) / Nx;
-    const T dy = (aabb[2 + 3] - aabb[2]) / Ny;
-
-    const auto t0 = std::chrono::high_resolution_clock::now();
-
-    std::transform(std::execution::par, idx.cbegin(), idx.cend(), buffer.begin(), [&](const auto i) {
-        const std::size_t y = i / Ny;
-        const std::size_t x = i - y * Ny;
-
-        const std::array<T, 3> plane { 0, aabb[1] + dx * x, aabb[2] + dy * y };
-
-        dxmc::Particle<T> p;
-        p.pos = { -1000, 0, 0 };
+    std::vector<dxmc::CTDIPhantom<T>> ctdi(9);
+    std::vector<dxmc::Sphere<T>> sphere(9);
+    std::vector<const dxmc::WorldItemBase<T>*> items;
+    for (std::size_t i = 0; i < 3; ++i) {
         for (std::size_t j = 0; j < 3; ++j) {
-            p.dir[j] = plane[j] - p.pos[j];
+            const auto ind = i * 3 + j;
+            constexpr T offset = 40;
+            std::array<T, 3> pos { i * offset, j * offset, -20 };
+            ctdi[ind].translate(pos);
+            pos[2] = 20;
+            sphere[ind].translate(pos);
+
+            items.push_back(&(ctdi[ind]));
+            items.push_back(&(sphere[ind]));
         }
-        dxmc::vectormath::normalize(p.dir);
+    }
 
-        const auto intersection = kdtree.intersect(p, aabb);
-        const auto intersection2 = mesh.intersect(p);
+    if (mesh) {
+        dxmc::TriangulatedMesh<T> mesh("bunny_low.stl");
+        items.push_back(&mesh);
 
-        return intersection ? *intersection : 0;
-    });
-    const auto t1 = std::chrono::high_resolution_clock::now();
-    std::cout << "KDTree depth: " << kdtree.depth();
-    std::cout << "    Time: " << std::chrono::duration_cast<std::chrono::milliseconds>(t1 - t0).count() << std::endl;
-    std::ofstream file;
+        std::array<T, 3> pos { 0, 0, 70 };
+        mesh.translate(pos);
+        dxmc::KDTree<T> tree(items);
 
-    file.open("intersect.bin", std::ios::out | std::ios::binary);
-    file.write((char*)buffer.data(), buffer.size() * sizeof(T));
-    file.close();
+        std::array<T, 3> camera { -300, -100, 50 };
+        create_image("kdtree.bin", tree, camera, true);
+
+    } else {
+
+        dxmc::KDTree<T> tree(items);
+        std::array<T, 3> camera { -300, -100, 50 };
+        create_image("kdtree.bin", tree, camera, true);
+    }
+    return true;
 }
 
 int main(int argc, char* argv[])
 {
+    auto success = testkdtree<float>();
+    success = success && testkdtree<double>();
 
-    dxmc::TriangulatedMesh<double> mesh("bunny_low.stl");
-
-    dxmc::Particle<double> p;
-    p.pos = { 0, 0, 0 };
-    p.dir = { 1, 0, 0 };
-    dxmc::vectormath::normalize(p.dir);
-
-    const auto aabb_p = mesh.AABB();
-    std::array<double, 3> dist;
-    for (std::size_t i = 0; i < 3; ++i)
-        dist[i] = -(aabb_p[i] + aabb_p[i + 3]) * 0.5;
-    mesh.translate(dist);
-    const auto aabb = mesh.AABB();
-
-    auto triangles = mesh.getTriangles();
-
-    std::vector<dxmc::Triangle<double>*> triangles_ptr;
-    for (auto& t : triangles)
-        triangles_ptr.push_back(&t);
-
-    auto kdtree = dxmc::KDTreeNode<double, dxmc::Triangle<double>>(triangles);
-    auto kdtree_ptr = dxmc::KDTreeNode<double, dxmc::Triangle<double>*>(triangles_ptr);
-    const auto& kdtree_m = mesh.kdtree();
-
-    // test_ptr(kdtree);
-    // test_ptr(kdtree_ptr);
-
-    std::cout << "KDTree depth : " << kdtree.depth() << std::endl;
-
-    const auto aabb_k = kdtree.AABB();
-
-    auto res = kdtree.intersect(p, aabb);
-    if (res)
-        std::cout << "Intersect KDTree: " << *res << std::endl;
-
-    // brute
-    double bh_min = std::numeric_limits<double>::max();
-    double bh_max = std::numeric_limits<double>::lowest();
-    for (const auto& t : triangles) {
-        auto h = t.intersect<0>(p);
-        if (h) {
-            bh_min = std::min(*h, bh_min);
-            bh_max = std::max(*h, bh_max);
-        }
-    }
-    std::cout << "Brute force hits: " << bh_min << ", " << bh_max << std::endl;
-
-    testGeom(mesh, 5);
-
-    return EXIT_SUCCESS;
+    if (success)
+        return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }

@@ -13,30 +13,18 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #pragma once
 
 #include "dxmc/floating.hpp"
-#include "dxmc/particle.hpp"
-#include "dxmc/vectormath.hpp"
-#include "dxmc/world/baseobject.hpp"
-#include "dxmc/world/kdtree.hpp"
-#include "dxmc/world/triangle.hpp"
+#include "dxmc/world/triangulatedmesh/triangle.hpp"
 
-#include <algorithm>
-#include <array>
-#include <execution>
 #include <fstream>
-#include <limits>
-#include <numeric>
-#include <optional>
 #include <string>
-#include <vector>
 
 namespace dxmc {
-
 template <Floating T>
 class STLReader {
 public:
@@ -177,7 +165,6 @@ protected:
 
     std::vector<Triangle<T>> readSTLfileASCII(const std::string& path)
     {
-
         auto processLine = [](const std::string& line) -> std::optional<std::array<T, 3>> {
             auto words = stringSplit(line, ' ');
             if (words.size() < 4)
@@ -249,75 +236,4 @@ private:
     std::string m_filePath;
 };
 
-template <Floating T>
-class TriangulatedMesh final : public BaseObject<T> {
-public:
-    TriangulatedMesh()
-        : BaseObject<T>()
-    {
-    }
-    TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
-        : BaseObject<T>()
-    {
-        setData(triangles, max_tree_dept);
-    }
-    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
-        : BaseObject<T>()
-    {
-        STLReader<T> reader;
-        auto triangles = reader(path);
-        setData(triangles, max_tree_dept);
-    }
-
-    const KDTreeNode<T, Triangle<T>>& kdtree() const
-    {
-        return m_kdtree;
-    }
-
-    std::vector<Triangle<T>> getTriangles() const
-    {
-        return m_kdtree.items();
-    }
-    void translate(const std::array<T, 3>& dist) override
-    {
-        m_kdtree.translate(dist);
-        this->m_aabb = m_kdtree.AABB();
-    }
-
-    void setData(std::vector<Triangle<T>> triangles, const std::size_t max_tree_dept)
-    {
-        m_kdtree = KDTreeNode<T, Triangle<T>>(triangles, max_tree_dept);
-        this->m_aabb = m_kdtree.AABB();
-    }
-    std::array<T, 3> center() const override
-    {
-        std::array<T, 3> center { 0, 0, 0 };
-        const auto triangles = getTriangles();
-        std::for_each(std::execution::unseq, triangles.cbegin(), triangles.cend(), [&](const auto& tri) {
-            const auto c = tri.center();
-            for (std::size_t i = 0; i < 3; ++i) {
-                center[i] += c[i];
-            }
-        });
-        for (std::size_t i = 0; i < 3; ++i) {
-            center[i] /= triangles.size();
-        }
-        return center;
-    }
-    std::optional<T> intersect(const Particle<T>& p) const override
-    {
-        return m_kdtree.intersect(p, this->m_aabb);
-    }
-    std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
-    {
-        return m_kdtree.intersect(p, this->m_aabb, tbox);
-    }
-    T transport(Particle<T>& p, RandomState& state) override
-    {
-        return 0;
-    }
-
-private:
-    KDTreeNode<T, Triangle<T>> m_kdtree;
-};
 }

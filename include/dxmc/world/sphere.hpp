@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -29,40 +30,48 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class Sphere {
+class Sphere final : public WorldItemBase<T> {
 public:
     Sphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
-        : m_radius(radius)
+        : WorldItemBase<T>()
+        , m_radius(radius)
         , m_center(pos)
     {
     }
 
-    void translate(const std::array<T, 3>& dist)
+    void translate(const std::array<T, 3>& dist) override
     {
         m_center = vectormath::add(m_center, dist);
     }
-    const std::array<T, 3>& center() const
+    std::array<T, 3> center() const override
     {
         return m_center;
     }
 
-    std::array<T, 6> AABB() const
+    std::array<T, 6> AABB() const override
     {
         std::array<T, 3> llc = vectormath::add(m_center, -m_radius);
         std::array<T, 3> urc = vectormath::add(m_center, m_radius);
         return vectormath::join(llc, urc);
     }
-
-    std::optional<T> intersect(const Particle<T>& p) const
+    IntersectionResult<T>
+    intersect(const Particle<T>& p) const override
     {
         constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
-        return intersectSphere(p, m_center, m_radius, tbox);
+        return intersect(p, tbox);
     }
-    std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
+    IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
     {
-        return intersectSphere(p, m_center, m_radius, tbox);
+
+        const auto t = intersectSphere(p, m_center, m_radius, tbox);
+        IntersectionResult<T> res;
+        if (t) {
+            res.item = this;
+            res.intersection = t.value();
+        }
+        return res;
     }
-    T transport(Particle<T>& p, RandomState& state)
+    T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;
     }

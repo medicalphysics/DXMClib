@@ -1,6 +1,6 @@
 
 
-#include "dxmc/world/triangulatedmesh.hpp"
+#include "dxmc/world/triangulatedmesh/triangulatedmesh.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -55,8 +55,8 @@ auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& cam
         dxmc::vectormath::normalize(p.dir);
 
         const auto intersection = object.intersect(p);
-
-        return intersection ? *intersection : 0;
+        
+        return intersection.item ? intersection.intersection : 0;
     });
     const auto t1 = std::chrono::high_resolution_clock::now();
     if (print) {
@@ -164,7 +164,7 @@ bool testPyramid()
     p.pos = pos;
     p.dir = dir;
     auto hit = mesh.intersect(p);
-    return hit ? true : false;
+    return hit.item ? true : false;
 }
 
 int main(int argc, char* argv[])

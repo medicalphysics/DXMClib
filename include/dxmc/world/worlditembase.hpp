@@ -17,14 +17,11 @@ Copyright 2022 Erlend Andersen
 */
 
 #pragma once
-
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 
-#include <array>
 #include <optional>
-#include <vector>
 
 namespace dxmc {
 
@@ -32,13 +29,29 @@ template <Floating T>
 struct ResultObject {
 };
 
+// Forward declaration
 template <Floating T>
-class BaseObject {
-public:
-    using Type = T;
+class WorldItemBase;
 
+template <Floating T>
+struct IntersectionResult {
+    const WorldItemBase<T> * item = nullptr;
+    T intersection = 0;
+};
+
+template <Floating T>
+class WorldItemBase {
+public:
+    virtual void translate(const std::array<T, 3>& dist) = 0;
+    virtual std::array<T, 3> center() const = 0;
+    virtual std::array<T, 6> AABB() const = 0;
+    virtual IntersectionResult<T> intersect(const Particle<T>& p) const = 0;
+    virtual IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const = 0;
+    virtual T transport(Particle<T>& p, RandomState& state) = 0;
+
+protected:
     template <int FORWARD = 1>
-    std::optional<T> intersectAABB(const Particle<T>& p) const
+    static std::optional<T> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
     {
         std::array<T, 2> t {
             std::numeric_limits<T>::lowest(),
@@ -47,8 +60,8 @@ public:
         for (std::size_t i = 0; i < 3; i++) {
             if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
                 const auto d_inv = T { 1 } / p.dir[i];
-                const auto t1 = (m_aabb[i] - p.pos[i]) * d_inv;
-                const auto t2 = (m_aabb[i + 3] - p.pos[i]) * d_inv;
+                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
+                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
                 const auto t_min_cand = std::min(t1, t2);
                 const auto t_max_cand = std::max(t1, t2);
                 t[0] = std::max(t[0], t_min_cand);
@@ -77,15 +90,7 @@ public:
             }
         }
     }
-    virtual void translate(const std::array<T, 3>& dist) = 0;
-    virtual std::array<T, 3> center() const = 0;
-    const std::array<T, 6>& AABB() const { return m_aabb; }
-    virtual std::optional<T> intersect(const Particle<T>& p) const = 0;
-    virtual std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const = 0;
-    virtual T transport(Particle<T>& p, RandomState& state) = 0;
 
-protected:
-    std::array<T, 6> m_aabb { -1, -1, -1, 1, 1, 1 }; // min min min max max max
     ResultObject<T> m_result;
 
 private:

@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -29,10 +30,11 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class CTDIPhantom {
+class CTDIPhantom final : public WorldItemBase<T> {
 public:
     CTDIPhantom(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 }, T height = T { 15 })
-        : m_radius(radius)
+        : WorldItemBase<T>()
+        , m_radius(radius)
         , m_halfheight(height * T { 0.5 })
         , m_center(pos)
     {
@@ -42,7 +44,7 @@ public:
     {
         m_center = vectormath::add(m_center, dist);
     }
-    const std::array<T, 3>& center() const
+    std::array<T, 3> center() const
     {
         return m_center;
     }
@@ -56,14 +58,20 @@ public:
         return vectormath::join(llc, urc);
     }
 
-    std::optional<T> intersect(const Particle<T>& p) const
+    IntersectionResult<T> intersect(const Particle<T>& p) const
     {
         constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
-        return intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, tbox);
+        return intersect(p, tbox);
     }
-    std::optional<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
+    IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
     {
-        return intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, tbox);
+        const auto intersection = intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, tbox);
+        IntersectionResult<T> res;
+        if (intersection) {
+            res.item = this;
+            res.intersection = intersection.value();
+        }
+        return res;
     }
     T transport(Particle<T>& p, RandomState& state)
     {

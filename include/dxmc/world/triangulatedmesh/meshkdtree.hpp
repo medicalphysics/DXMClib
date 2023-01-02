@@ -13,41 +13,47 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #pragma once
 
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
-#include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditembase.hpp"
 
-#include <algorithm>
 #include <array>
-#include <cmath>
-#include <concepts>
-#include <execution>
-#include <iterator>
-#include <memory>
-#include <numeric>
 #include <optional>
 #include <vector>
+#include <memory>
+#include <execution>
+#include <algorithm>
 
 namespace dxmc {
 
-template <Floating T>
-class KDTree {
-    friend class KDTree<T>;
+template <typename U, typename T>
+concept MeshKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
+                             Floating<T>;
+                             u <=> u;
+                             u.translate(vec);
+                             {
+                                 u.intersect(p)
+                                 } -> std::same_as<std::optional<T>>;
+                             {
+                                 u.center()
+                                 } -> std::same_as<std::array<T, 3>>;
+                             {
+                                 u.AABB()
+                                 } -> std::same_as<std::array<T, 6>>;
+                         };
+
+template <Floating T, MeshKDTreeType<T> U>
+class MeshKDTree {
 public:
-    KDTree() {};
-    KDTree(const std::vector<const WorldItemBase<T>*>& items, const std::size_t max_depth = 8)
+    MeshKDTree() {};
+    MeshKDTree(const std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
-        if (items.size() < 2) {
-            for (const auto& item : items)
-                m_items.push_back(item);
+        if (triangles.size() == 0)
             return;
-        }
         // finding aabb
         std::array<T, 6> aabb {
             std::numeric_limits<T>::max(),
@@ -57,9 +63,10 @@ public:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
         };
-        for (const auto& item : items) {
+        for (const auto& tri : triangles) {
             std::array<T, 6> aabb_tri;
-            aabb_tri = item->AABB();
+
+            aabb_tri = tri.AABB();
 
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(aabb[i], aabb_tri[i]);
@@ -72,25 +79,25 @@ public:
 
         m_D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
 
-        const auto split = planeSplit(items);
+        const auto split = planeSplit(triangles);
 
-        const auto fom = figureOfMerit(items, split);
+        const auto fom = figureOfMerit(triangles, split);
 
-        if (fom == items.size() || max_depth <= 1 || items.size() <= 1) {
-            m_items = items;
+        if (fom == triangles.size() || max_depth <= 1 || triangles.size() <= 1) {
+            m_triangles = triangles;
         } else {
             m_plane = split;
-            std::vector<const WorldItemBase<T>*> left;
-            std::vector<const WorldItemBase<T>*> right;
-            for (const auto& item : items) {
-                const auto side = planeSide(item, m_plane, m_D);
+            std::vector<U> left;
+            std::vector<U> right;
+            for (const auto& triangle : triangles) {
+                const auto side = planeSide(triangle, m_plane, m_D);
                 if (side <= 0)
-                    left.push_back(item);
+                    left.push_back(triangle);
                 if (side >= 0)
-                    right.push_back(item);
+                    right.push_back(triangle);
             }
-            m_left = std::make_unique<KDTree<T>>(left, max_depth - 1);
-            m_right = std::make_unique<KDTree<T>>(right, max_depth - 1);
+            m_left = std::make_unique<MeshKDTree<T, U>>(left, max_depth - 1);
+            m_right = std::make_unique<MeshKDTree<T, U>>(right, max_depth - 1);
         }
     }
     std::array<T, 6> AABB() const
@@ -112,9 +119,9 @@ public:
         depth_iterator(teller);
         return teller;
     }
-    std::vector<const WorldItemBase<T>*> items() const
+    std::vector<U> items() const
     {
-        std::vector<const WorldItemBase<T>*> all;
+        std::vector<U> all;
         item_iterator(all);
         std::sort(all.begin(), all.end());
         auto last = std::unique(all.begin(), all.end());
@@ -128,20 +135,17 @@ public:
             m_left->translate(dist);
             m_right->translate(dist);
         } else {
-            std::for_each(std::execution::par_unseq, m_items.begin(), m_items.end(), [&](auto& tri) {
-                tri->translate(dist);
+            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+                tri.translate(dist);
             });
         }
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto& inter = intersectAABB(particle, aabb);
-        return inter ? intersect(particle, *inter) : IntersectionResult<T> {};
+        return inter ? intersect(particle, *inter) : std::nullopt;
     }
-
-protected:
-    // delete this?
     std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
     {
         const auto& inter = intersectAABB(particle, aabb);
@@ -152,39 +156,34 @@ protected:
             return std::nullopt;
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+protected:
+    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
-
-            IntersectionResult<T> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
-            for (const auto& item : m_items) {
-                const auto t_cand = item->intersect(particle);
-                if (t_cand.item) {
-                    if (greaterOrEqual(t_cand.intersection, tbox[0]) && lessOrEqual(t_cand.intersection, tbox[1])) {
-                        if (t_cand.intersection < res.intersection) {
-                            res = t_cand;
-                        }
-                    }
+            T t = std::numeric_limits<T>::max();
+            for (const U& triangle : m_triangles) {
+                const auto t_cand = triangle.intersect(particle);
+                if (t_cand) {
+                    t = std::min(t, *t_cand);
                 }
             }
-            return res;
-            // return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
+            return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
         }
 
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
             const auto hit_left = m_left->intersect(particle, tbox);
             const auto hit_right = m_right->intersect(particle, tbox);
-            if (hit_left.item && hit_right.item)
-                return hit_left.intersection < hit_right.intersection ? hit_left : hit_right;
-            if (!hit_left.item)
+            if (hit_left && hit_right)
+                return std::min(hit_left, hit_right);
+            if (!hit_left)
                 return hit_right;
             return hit_left;
         }
 
-        const KDTree<T>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        const KDTree<T>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        const MeshKDTree<T, U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        const MeshKDTree<T, U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -199,15 +198,14 @@ protected:
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
         const auto hit = front->intersect(particle, t_front);
-        if (hit.item) {
-            if (hit.intersection <= t) {
+        if (hit) {
+            if (*hit <= t) {
                 return hit;
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
     }
-
     static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
     {
         std::array<T, 2> t {
@@ -228,17 +226,16 @@ protected:
         return t[0] > t[1] ? std::nullopt : std::make_optional(t);
     }
 
-    T planeSplit(const std::vector<const WorldItemBase<T>*>& items) const
+    T planeSplit(const std::vector<U>& triangles) const
     {
-        const auto N = items.size();
+        const auto N = triangles.size();
         std::vector<T> vals;
         vals.reserve(N);
 
-        for (const auto& item : items) {
-            const auto v = item->center()[m_D];
+        for (const auto& triangle : triangles) {
+            const auto v = triangle.center()[m_D];
             vals.push_back(v);
         }
-
         std::sort(vals.begin(), vals.end());
 
         if (N % 2 == 1) {
@@ -248,12 +245,12 @@ protected:
         }
     }
 
-    int figureOfMerit(const std::vector<const WorldItemBase<T>*>& items, const T planesep) const
+    int figureOfMerit(const std::vector<U>& triangles, const T planesep) const
     {
         int fom = 0;
         int shared = 0;
-        for (const auto& item : items) {
-            const auto side = planeSide(item, planesep, m_D);
+        for (const auto& triangle : triangles) {
+            const auto side = planeSide(triangle, planesep, m_D);
             fom += side;
             if (side == 0) {
                 shared++;
@@ -261,12 +258,12 @@ protected:
         }
         return std::abs(fom) + shared;
     }
-    static int planeSide(const WorldItemBase<T>* triangle, const T plane, const unsigned int D)
+    static std::int_fast8_t planeSide(const U& triangle, const T plane, const std::uint_fast32_t D)
     {
         T max = std::numeric_limits<T>::lowest();
         T min = std::numeric_limits<T>::max();
 
-        const auto& aabb = triangle->AABB();
+        const auto& aabb = triangle.AABB();
         min = aabb[D];
         max = aabb[D + 3];
 
@@ -284,20 +281,20 @@ protected:
         if (m_left)
             m_left->depth_iterator(teller);
     }
-    void item_iterator(std::vector<const WorldItemBase<T>*>& all) const
+    void item_iterator(std::vector<U>& all) const
     {
         if (m_left) {
             m_left->item_iterator(all);
             m_right->item_iterator(all);
         } else {
-            std::copy(m_items.cbegin(), m_items.cend(), std::back_inserter(all));
+            std::copy(m_triangles.cbegin(), m_triangles.cend(), std::back_inserter(all));
         }
     }
     void AABB_iterator(std::array<T, 6>& aabb) const
     {
         if (!m_left) {
-            for (const auto& item : m_items) {
-                const auto aabb_tri = item->AABB();
+            for (const auto& tri : m_triangles) {
+                const auto aabb_tri = tri.AABB();
                 for (std::size_t i = 0; i < 3; ++i) {
                     aabb[i] = std::min(aabb[i], aabb_tri[i]);
                 }
@@ -327,50 +324,10 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
-    std::vector<const WorldItemBase<T>*> m_items;
-
-    std::unique_ptr<KDTree<T>> m_left = nullptr;
-    std::unique_ptr<KDTree<T>> m_right = nullptr;
+    std::vector<U> m_triangles;
+    std::unique_ptr<MeshKDTree<T, U>> m_left = nullptr;
+    std::unique_ptr<MeshKDTree<T, U>> m_right = nullptr;
+    friend class MeshKDTree<T, U>;
 };
 
-/*
-template <Floating T, KDTreeType<T> U>
-class KDTree {
-public:
-    // KDTree() {};
-    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 8)
-    {
-        m_node = KDTreeNode<T, U>(triangles, max_depth);
-        m_aabb = m_node.AABB();
-    }
-    std::size_t depth() const
-    {
-        return m_node.depth();
-    }
-
-    void translate(const std::array<T, 3>& vec)
-    {
-        m_node.translate(vec);
-    }
-
-    std::array<T, 3> center() const
-    {
-        std::array<T, 3> center { (m_aabb[0] + m_aabb[3]) / 2, (m_aabb[1] + m_aabb[4]) / 2, (m_aabb[2] + m_aabb[5]) / 2 };
-        return center;
-    }
-    std::array<T, 6> AABB() const
-    {
-        return m_node.AABB();
-    }
-
-    std::optional<T> intersect(const Particle<T>& particle) const
-    {
-        return m_node.intersect(particle, m_aabb);
-    }
-
-private:
-    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    KDTreeNode<T, U> m_node;
-};
-*/
 }

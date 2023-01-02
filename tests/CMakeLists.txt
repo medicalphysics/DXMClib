@@ -7,6 +7,7 @@ set(TEST_SOURCES
     "testtriangulatedmesh.cpp"
     "testkdtree.cpp"
     "teststatickdtree.cpp"
+    "testworlditembase.cpp"
 #    "testtube.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
