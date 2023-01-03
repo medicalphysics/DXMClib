@@ -23,14 +23,24 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditembase.hpp"
 
-namespace dxmc {
-template <Floating T>
-class World2 final : public WorldItemBase<T> {
+#include <concepts>
 
+namespace dxmc {
+
+template <typename U, typename T>
+concept WorldItemType = std::derived_from<WorldItemBase<T>, U>;
+
+template <typename U, typename... Us>
+concept AnyWorldItemType = (... or std::same_as<U, Us>);
+
+template <Floating T, WorldItemType<T>... Us>
+class World2 {
+public:
     World2()
-        : WorldItemBase<T>()
     {
     }
-};
 
+private:
+    std::tuple<std::vector<Us>...> m_items;
+};
 }
