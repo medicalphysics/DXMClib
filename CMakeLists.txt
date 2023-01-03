@@ -94,6 +94,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh/stlreader.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh/meshkdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditembase.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/world.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/statickdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh/triangle.hpp"
