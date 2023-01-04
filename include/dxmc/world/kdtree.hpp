@@ -39,6 +39,7 @@ namespace dxmc {
 template <Floating T>
 class KDTree {
     friend class KDTree<T>;
+
 public:
     KDTree() {};
     KDTree(const std::vector<const WorldItemBase<T>*>& items, const std::size_t max_depth = 8)
@@ -207,22 +208,57 @@ protected:
         const std::array<T, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
     }
-
+    static bool inPlaneBox(const std::array<T, 3>& pos, const std::array<T, 6>& aabb, const std::uint_fast8_t axis)
+    {
+        bool inside = true;
+        for (std::uint_fast8_t i = 0; i < 3; ++i) {
+            if (i != axis) {
+                inside = inside && aabb[i] >= pos[i] && pos[i] <= aabb[i + 3];
+            }
+        }
+        return inside;
+    }
     static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
     {
         std::array<T, 2> t {
-            std::numeric_limits<T>::lowest(),
+            T { 0 },
             std::numeric_limits<T>::max()
         };
-        for (std::size_t i = 0; i < 3; i++) {
+        for (std::uint_fast8_t i = 0; i < 3; i++) {
             if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
                 const auto d_inv = T { 1 } / p.dir[i];
-                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
-                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-                const auto t_min_cand = std::min(t1, t2);
-                const auto t_max_cand = std::max(t1, t2);
-                t[0] = std::max(t[0], t_min_cand);
-                t[1] = std::min(t[1], t_max_cand);
+
+                if (p.pos[i] < aabb[i]) {
+                    const auto t_cand = (aabb[i] - p.pos[i]) * d_inv;
+                    const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                    if (inPlaneBox(npos, aabb, i)) {
+                        t[0] = std::max(t[0], t_cand);
+                        t[1] = std::min(t[1], t_cand);
+                    }
+                } else if (p.pos[i] > aabb[i + 3]) {
+                    const auto t_cand = (aabb[i + 3] - p.pos[i]) * d_inv;
+                    const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                    if (inPlaneBox(npos, aabb, i)) {
+                        t[0] = std::max(t[0], t_cand);
+                        t[1] = std::min(t[1], t_cand);
+                    }
+                } else {
+                    if (p.dir[i] > T { 0 }) {
+                        const auto t_cand = (aabb[i + 3] - p.pos[i]) * d_inv;
+                        const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                        if (inPlaneBox(npos, aabb, i)) {
+                            t[0] = std::max(t[0], t_cand);
+                            t[1] = std::min(t[1], t_cand);
+                        }
+                    } else {
+                        const auto t_cand = (aabb[i] - p.pos[i]) * d_inv;
+                        const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                        if (inPlaneBox(npos, aabb, i)) {
+                            t[0] = std::max(t[0], t_cand);
+                            t[1] = std::min(t[1], t_cand);
+                        }
+                    }
+                }
             }
         }
         return t[0] > t[1] ? std::nullopt : std::make_optional(t);

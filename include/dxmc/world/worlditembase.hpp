@@ -21,8 +21,8 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 
-#include <optional>
 #include <algorithm>
+#include <optional>
 
 namespace dxmc {
 
@@ -36,7 +36,7 @@ class WorldItemBase;
 
 template <Floating T>
 struct IntersectionResult {
-    const WorldItemBase<T> * item = nullptr;
+    const WorldItemBase<T>* item = nullptr;
     T intersection = 0;
 };
 
@@ -51,6 +51,17 @@ public:
     virtual T transport(Particle<T>& p, RandomState& state) = 0;
 
 protected:
+    static bool inPlaneBox(const std::array<T, 3>& pos, const std::array<T, 6>& aabb, const std::uint_fast8_t axis)
+    {
+        bool inside = true;
+        for (std::uint_fast8_t i = 0; i < 3; ++i) {
+            if (i != axis) {
+                inside = inside && aabb[i] >= pos[i] && pos[i] <= aabb[i + 3];
+            }
+        }
+        return inside;
+    }
+
     template <int FORWARD = 1>
     static std::optional<T> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
     {
@@ -58,15 +69,42 @@ protected:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::max()
         };
-        for (std::size_t i = 0; i < 3; i++) {
+
+        for (std::uint_fast8_t i = 0; i < 3; i++) {
             if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
                 const auto d_inv = T { 1 } / p.dir[i];
-                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
-                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-                const auto [t_min_cand,t_max_cand] = std::minmax(t1, t2);
-                
-                t[0] = std::max(t[0], t_min_cand);
-                t[1] = std::min(t[1], t_max_cand);
+
+                if (p.pos[i] < aabb[i]) {
+                    const auto t_cand = (aabb[i] - p.pos[i]) * d_inv;
+                    const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                    if (inPlaneBox(npos, aabb, i)) {
+                        t[0] = std::max(t[0], t_cand);
+                        t[1] = std::min(t[1], t_cand);
+                    }
+                } else if (p.pos[i] > aabb[i + 3]) {
+                    const auto t_cand = (aabb[i + 3] - p.pos[i]) * d_inv;
+                    const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                    if (inPlaneBox(npos, aabb, i)) {
+                        t[0] = std::max(t[0], t_cand);
+                        t[1] = std::min(t[1], t_cand);
+                    }
+                } else {
+                    if (p.dir[i] > T { 0 }) {
+                        const auto t_cand = (aabb[i + 3] - p.pos[i]) * d_inv;
+                        const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                        if (inPlaneBox(npos, aabb, i)) {
+                            t[0] = std::max(t[0], t_cand);
+                            t[1] = std::min(t[1], t_cand);
+                        }
+                    } else {
+                        const auto t_cand = (aabb[i] - p.pos[i]) * d_inv;
+                        const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
+                        if (inPlaneBox(npos, aabb, i)) {
+                            t[0] = std::max(t[0], t_cand);
+                            t[1] = std::min(t[1], t_cand);
+                        }
+                    }
+                }
             }
         }
         if (t[0] > t[1])

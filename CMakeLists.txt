@@ -90,6 +90,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/itemcollection.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/ctdiphantom.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/sphere.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/box.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh/triangulatedmesh.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh/stlreader.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/triangulatedmesh/meshkdtree.hpp"
