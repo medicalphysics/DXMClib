@@ -22,6 +22,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditembase.hpp"
+#include "dxmc/world/kdtree.hpp"
 
 #include <concepts>
 
@@ -40,7 +41,16 @@ public:
     {
     }
 
+    template< AnyWorldItemType<Us...> U>
+    void addItem(U item)
+    {
+        std::get<std::vector<U>>(m_items).push_back(item); 
+
+    }
+
+
 private:
     std::tuple<std::vector<Us>...> m_items;
+    KDTree<T> m_kdtree;
 };
 }
