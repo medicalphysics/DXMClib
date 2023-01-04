@@ -21,15 +21,17 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditembase.hpp"
 #include "dxmc/world/kdtree.hpp"
+#include "dxmc/world/worlditembase.hpp"
 
 #include <concepts>
+#include <tuple>
+#include <vector>
 
 namespace dxmc {
 
 template <typename U, typename T>
-concept WorldItemType = std::derived_from<WorldItemBase<T>, U>;
+concept WorldItemType = (std::derived_from<U, WorldItemBase<T>>);
 
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
@@ -41,15 +43,50 @@ public:
     {
     }
 
-    template< AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<Us...> U>
     void addItem(U item)
     {
-        std::get<std::vector<U>>(m_items).push_back(item); 
-
+        std::get<std::vector<U>>(m_items).push_back(item);
     }
 
+    template <AnyWorldItemType<Us...> U>
+    const auto& getItems() const
+    {
+        return std::get<std::vector<U>>(m_items);
+    }
+
+    void build()
+    {
+        auto ptrs = itemPointers();
+        m_kdtree = KDTree(ptrs);
+        m_aabb = m_kdtree.AABB();
+    }
+
+    auto intersect(const Particle<T>& p) const
+    {
+        return m_kdtree.intersect(p, m_aabb);
+    }
+
+    // protected:
+    std::vector<const WorldItemBase<T>*> itemPointers() const
+    {
+        std::vector<const WorldItemBase<T>*> ptrs;
+
+        auto iter = [&ptrs](const auto& v) {
+            for (const auto& item : v)
+                ptrs.push_back(&item);
+        };
+
+        std::apply([&iter](const auto&... vec) {
+            (iter(vec), ...);
+        },
+            m_items);
+
+        return ptrs;
+    }
 
 private:
+    std::array<T, 6> m_aabb;
     std::tuple<std::vector<Us>...> m_items;
     KDTree<T> m_kdtree;
 };

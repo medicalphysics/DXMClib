@@ -149,12 +149,12 @@ public:
     }
     static T momentumTransfer(T energy, T angle)
     {
-        constexpr double hc_si = 1.239841193E-6; // ev*m
-        constexpr double m2A = 1E10; // meters to Ångstrøm
-        constexpr double eV2keV = 1E-3; // eV to keV
-        constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
-        constexpr double hc_inv = 1.0 / hc;
-        return energy * std::sin(angle * 0.5) * hc_inv; // per Å
+        constexpr T hc_si = 1.239841193E-6; // ev*m
+        constexpr T m2A = 1E10; // meters to Ångstrøm
+        constexpr T eV2keV = 1E-3; // eV to keV
+        constexpr T hc = hc_si * m2A * eV2keV; // kev*Å
+        constexpr T hc_inv = T { 1 } / hc;
+        return energy * std::sin(angle * T { 0.5 }) * hc_inv; // per Å
     }
 
 protected:

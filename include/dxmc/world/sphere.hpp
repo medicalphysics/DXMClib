@@ -54,15 +54,13 @@ public:
         std::array<T, 3> urc = vectormath::add(m_center, m_radius);
         return vectormath::join(llc, urc);
     }
-    IntersectionResult<T>
-    intersect(const Particle<T>& p) const override
+    IntersectionResult<T> intersect(const Particle<T>& p) const override
     {
         constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
         return intersect(p, tbox);
     }
     IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
     {
-
         const auto t = intersectSphere(p, m_center, m_radius, tbox);
         IntersectionResult<T> res;
         if (t) {

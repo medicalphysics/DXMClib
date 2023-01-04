@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 
 #include <optional>
+#include <algorithm>
 
 namespace dxmc {
 
@@ -62,8 +63,8 @@ protected:
                 const auto d_inv = T { 1 } / p.dir[i];
                 const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
                 const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-                const auto t_min_cand = std::min(t1, t2);
-                const auto t_max_cand = std::max(t1, t2);
+                const auto [t_min_cand,t_max_cand] = std::minmax(t1, t2);
+                
                 t[0] = std::max(t[0], t_min_cand);
                 t[1] = std::min(t[1], t_max_cand);
             }

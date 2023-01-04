@@ -16,9 +16,10 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
-
-#include "dxmc/world/world.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/ctdiphantom.hpp"
+#include "dxmc/world/sphere.hpp"
+#include "dxmc/world/world.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -27,8 +28,26 @@ Copyright 2022 Erlend Andersen
 template <dxmc::Floating T>
 bool testWorld()
 {
+    dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>> world;
 
+    dxmc::CTDIPhantom<T> ctdi;
+    dxmc::Sphere<T> sphere(32, { 50, 50, 50 });
+    world.addItem(ctdi);
+    world.addItem(sphere);
+    auto v = world.itemPointers();
 
+    for (auto it : v) {
+        auto k = it->AABB();
+    }
+    world.build();
+
+    dxmc::Particle<T> p {
+        .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 }
+    };
+
+    auto res = world.intersect(p);
+
+    return false;
 }
 
 int main(int argc, char* argv[])
