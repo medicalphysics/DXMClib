@@ -706,7 +706,7 @@ protected:
         if (isInside)
             return true;
 
-        auto amin = std::numeric_limits<T>::min();
+        auto amin = std::numeric_limits<T>::lowest();
         auto amax = std::numeric_limits<T>::max();
 
         const auto& extent = world.matrixExtentSafe();
