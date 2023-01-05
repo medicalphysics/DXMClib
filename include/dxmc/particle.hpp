@@ -44,5 +44,12 @@ struct Particle {
      * @brief Photon relative weight.
      */
     T weight;
+
+    inline void translate(const T dist) {
+        pos[0] += dir[0] * dist;
+        pos[1] += dir[1] * dist;
+        pos[2] += dir[2] * dist;
+    }
+
 };
 }

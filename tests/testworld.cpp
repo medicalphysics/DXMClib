@@ -17,6 +17,7 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/box.hpp"
 #include "dxmc/world/ctdiphantom.hpp"
 #include "dxmc/world/sphere.hpp"
 #include "dxmc/world/world.hpp"
@@ -28,18 +29,21 @@ Copyright 2022 Erlend Andersen
 template <dxmc::Floating T>
 bool testWorld()
 {
-    dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>> world;
+    dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>, dxmc::Box<T>> world;
 
     dxmc::CTDIPhantom<T> ctdi;
     dxmc::Sphere<T> sphere(32, { 50, 50, 50 });
+    dxmc::Box<T> box;
+    box.translate({ 50, 0, -50 });
+
     world.addItem(ctdi);
     world.addItem(sphere);
-    auto v = world.itemPointers();
+    world.addItem(box);
 
-    for (auto it : v) {
-        auto k = it->AABB();
-    }
     world.build();
+
+    std::array<T, 3> trans { 5, 5, 5 };
+    
 
     dxmc::Particle<T> p {
         .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 }

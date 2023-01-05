@@ -97,7 +97,7 @@ bool testkdtree(const std::size_t depth = 6)
 
     std::vector<dxmc::CTDIPhantom<T>> ctdi(9);
     std::vector<dxmc::Sphere<T>> sphere(9);
-    std::vector<const dxmc::WorldItemBase<T>*> items;
+    std::vector<dxmc::WorldItemBase<T>*> items;
     for (std::size_t i = 0; i < 3; ++i) {
         for (std::size_t j = 0; j < 3; ++j) {
             const auto ind = i * 3 + j;
@@ -127,6 +127,10 @@ bool testkdtree(const std::size_t depth = 6)
 
         dxmc::KDTree<T> tree(items);
         std::array<T, 3> camera { -300, -100, 50 };
+
+        std::array<T, 3> trans { 5, 5, 5 };
+        tree.translate(trans);
+
         create_image("kdtree.bin", tree, camera, true);
     }
     return true;

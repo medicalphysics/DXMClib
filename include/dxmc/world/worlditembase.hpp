@@ -115,17 +115,17 @@ protected:
                     return std::min(t[0], t[1]);
                 } else {
                     const auto t_cand = std::max(t[0], t[1]);
-                    return t_cand < T { 0 } ? std::nullopt : t_cand;
+                    return t_cand < T { 0 } ? std::nullopt : std::make_optional(t_cand);
                 }
             } else if constexpr (FORWARD == -1) {
                 if (t[0] <= T { 0 } && t[1] <= T { 0 }) {
                     return std::max(t[0], t[1]);
                 } else {
                     const auto t_cand = std::min(t[0], t[1]);
-                    return t_cand > T { 0 } ? std::nullopt : t_cand;
+                    return t_cand > T { 0 } ? std::nullopt : std::make_optional(t_cand);
                 }
             } else {
-                return std::abs(t[0]) < std::abs(t[1]) ? t[0] : t[1];
+                return std::abs(t[0]) < std::abs(t[1]) ? std::make_optional(t[0]) : std::make_optional(t[1]);
             }
         }
     }

@@ -61,13 +61,13 @@ public:
     }
     IntersectionResult<T> intersect(const Particle<T>& p) const override
     {
-        const auto t = intersectAABB(p, m_aabb);
+        auto t = WorldItemBase<T>::intersectAABB(p, m_aabb);
         IntersectionResult<T> res { .item = t ? this : nullptr, .intersection = t ? t.value() : T { 0 } };
         return res;
     }
     IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
     {
-        const auto t = intersectAABB(p, m_center, m_radius, tbox);
+        const auto t = WorldItemBase<T>::intersectAABB(p, m_aabb);
         IntersectionResult<T> res;
         if (t) {
             if (t.value() >= tbox[0] && t.value() <= tbox[1]) {

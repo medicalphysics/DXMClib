@@ -23,6 +23,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/kdtree.hpp"
 #include "dxmc/world/worlditembase.hpp"
+#include "dxmc/dxmcrandom.hpp"
 
 #include <concepts>
 #include <tuple>
@@ -57,7 +58,7 @@ public:
 
     void build()
     {
-        auto ptrs = itemPointers();
+        auto ptrs = getItemPointers();
         m_kdtree = KDTree(ptrs);
         m_aabb = m_kdtree.AABB();
     }
@@ -66,27 +67,30 @@ public:
     {
         return m_kdtree.intersect(p, m_aabb);
     }
-
-    // protected:
-    std::vector<const WorldItemBase<T>*> itemPointers() const
+    void transport(Particle<T>& p, RandomState& state)
     {
-        std::vector<const WorldItemBase<T>*> ptrs;
+    }
+    protected:
+    std::vector<WorldItemBase<T>*> getItemPointers()
+    {
+        std::vector< WorldItemBase<T>*> ptrs;
 
-        auto iter = [&ptrs](const auto& v) {
-            for (const auto& item : v)
+        auto iter = [&ptrs](auto& v) {
+            for ( auto& item : v)
                 ptrs.push_back(&item);
         };
 
-        std::apply([&iter](const auto&... vec) {
+        std::apply([&iter](auto&... vec) {
             (iter(vec), ...);
         },
             m_items);
 
         return ptrs;
     }
+    
 
 private:
-    std::array<T, 6> m_aabb;
+    std::array<T, 6> m_aabb = {0,0,0,0,0,0};
     std::tuple<std::vector<Us>...> m_items;
     KDTree<T> m_kdtree;
 };

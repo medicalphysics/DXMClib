@@ -42,7 +42,7 @@ class KDTree {
 
 public:
     KDTree() {};
-    KDTree(const std::vector<const WorldItemBase<T>*>& items, const std::size_t max_depth = 8)
+    KDTree(std::vector<WorldItemBase<T>*>& items, const std::size_t max_depth = 8)
     {
         if (items.size() < 2) {
             for (const auto& item : items)
@@ -81,8 +81,8 @@ public:
             m_items = items;
         } else {
             m_plane = split;
-            std::vector<const WorldItemBase<T>*> left;
-            std::vector<const WorldItemBase<T>*> right;
+            std::vector<WorldItemBase<T>*> left;
+            std::vector<WorldItemBase<T>*> right;
             for (const auto& item : items) {
                 const auto side = planeSide(item, m_plane, m_D);
                 if (side <= 0)
@@ -113,9 +113,9 @@ public:
         depth_iterator(teller);
         return teller;
     }
-    std::vector<const WorldItemBase<T>*> items() const
+    std::vector<WorldItemBase<T>*> items() const
     {
-        std::vector<const WorldItemBase<T>*> all;
+        std::vector<WorldItemBase<T>*> all;
         item_iterator(all);
         std::sort(all.begin(), all.end());
         auto last = std::unique(all.begin(), all.end());
@@ -264,7 +264,7 @@ protected:
         return t[0] > t[1] ? std::nullopt : std::make_optional(t);
     }
 
-    T planeSplit(const std::vector<const WorldItemBase<T>*>& items) const
+    T planeSplit(const std::vector<WorldItemBase<T>*>& items) const
     {
         const auto N = items.size();
         std::vector<T> vals;
@@ -284,7 +284,7 @@ protected:
         }
     }
 
-    int figureOfMerit(const std::vector<const WorldItemBase<T>*>& items, const T planesep) const
+    int figureOfMerit(const std::vector<WorldItemBase<T>*>& items, const T planesep) const
     {
         int fom = 0;
         int shared = 0;
@@ -297,7 +297,7 @@ protected:
         }
         return std::abs(fom) + shared;
     }
-    static int planeSide(const WorldItemBase<T>* triangle, const T plane, const unsigned int D)
+    static int planeSide(WorldItemBase<T>* triangle, const T plane, const unsigned int D)
     {
         T max = std::numeric_limits<T>::lowest();
         T min = std::numeric_limits<T>::max();
@@ -363,7 +363,7 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
-    std::vector<const WorldItemBase<T>*> m_items;
+    std::vector<WorldItemBase<T>*> m_items;
 
     std::unique_ptr<KDTree<T>> m_left = nullptr;
     std::unique_ptr<KDTree<T>> m_right = nullptr;
