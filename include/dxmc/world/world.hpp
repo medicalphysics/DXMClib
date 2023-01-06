@@ -18,12 +18,13 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
+#include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/kdtree.hpp"
 #include "dxmc/world/worlditembase.hpp"
-#include "dxmc/dxmcrandom.hpp"
 
 #include <concepts>
 #include <tuple>
@@ -41,6 +42,7 @@ template <Floating T, WorldItemType<T>... Us>
 class World2 {
 public:
     World2()
+        : m_fillMaterial(Material2<T>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
@@ -64,19 +66,46 @@ public:
     }
 
     auto intersect(const Particle<T>& p) const
-    {
+    {        
         return m_kdtree.intersect(p, m_aabb);
     }
     void transport(Particle<T>& p, RandomState& state)
     {
+        if (!pointInsideAABB(p.pos, m_aabb)) {
+            //transport particle to aabb
+            const auto t= intersectAABB(p.pos, m_aabb);
+            if (t) {
+                p.pos = vectormath::add(p.pos, vectormath::scale(p.dir, std::nextafter(t.value(), std::numeric_limits<T>::max())));
+            }            
+        }
+        bool continueSampling = true;
+        T attenuationTotalInv = T { 1 } / m_fillMaterial.attenuationValues(p.energy).sum();
+        do {
+            const auto r1 = state.randomUniform<T>();
+            const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
+
+            //where do we hit an object
+            auto intersection = m_kdtree.intersect();
+
+
+        } while (continueSampling);
     }
-    protected:
+
+protected:
+    static bool pointInsideAABB(const std::array<T, 3>& p, const std::array<T, 6>& aabb)
+    {
+        bool inside = aabb[0] <= p[0] && p[0] <= aabb[3];
+        inside = inside && aabb[1] <= p[1] && p[1] <= aabb[4];
+        inside = inside && aabb[2] <= p[2] && p[2] <= aabb[5];
+        return inside;
+    }
+    
     std::vector<WorldItemBase<T>*> getItemPointers()
     {
-        std::vector< WorldItemBase<T>*> ptrs;
+        std::vector<WorldItemBase<T>*> ptrs;
 
         auto iter = [&ptrs](auto& v) {
-            for ( auto& item : v)
+            for (auto& item : v)
                 ptrs.push_back(&item);
         };
 
@@ -87,11 +116,11 @@ public:
 
         return ptrs;
     }
-    
 
 private:
-    std::array<T, 6> m_aabb = {0,0,0,0,0,0};
+    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::tuple<std::vector<Us>...> m_items;
     KDTree<T> m_kdtree;
+    Material2<T> m_fillMaterial;
 };
 }

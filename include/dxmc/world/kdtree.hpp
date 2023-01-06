@@ -141,18 +141,6 @@ public:
         return inter ? intersect(particle, *inter) : IntersectionResult<T> {};
     }
 
-protected:
-    // delete this?
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
-    {
-        const auto& inter = intersectAABB(particle, aabb);
-        if (inter) {
-            const std::array<T, 2> tbox_min { std::min((*inter)[0], tbox[0]), std::min((*inter)[1], tbox[1]) };
-            return intersect(particle, tbox_min);
-        } else
-            return std::nullopt;
-    }
-
     IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
@@ -208,6 +196,8 @@ protected:
         const std::array<T, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
     }
+
+protected:
     static bool inPlaneBox(const std::array<T, 3>& pos, const std::array<T, 6>& aabb, const std::uint_fast8_t axis)
     {
         bool inside = true;
@@ -218,12 +208,16 @@ protected:
         }
         return inside;
     }
+    template<int FORWARD = 1>
     static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
     {
-        std::array<T, 2> t {
-            T { 0 },
-            std::numeric_limits<T>::max()
-        };
+        auto t = []() ->std::array<T, 2>{
+            if constexpr (FORWARD == 1)
+                return std::array { T { 0 }, std::numeric_limits<T>::max() };
+            else
+                return std::array { std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max() };        
+        }();
+
         for (std::uint_fast8_t i = 0; i < 3; i++) {
             if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
                 const auto d_inv = T { 1 } / p.dir[i];

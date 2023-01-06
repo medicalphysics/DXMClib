@@ -47,7 +47,6 @@ struct AttenuationValues {
 };
 template <Floating T, std::size_t N = 5>
 class Material2 {
-
 public:
     static std::optional<Material2<T>> byZ(std::size_t Z)
     {
@@ -78,6 +77,19 @@ public:
             weight[Z] = numDens * atom.atomicWeight;
         }
         return Material2<T>::byWeight(weight);
+    }
+
+    static std::optional<Material2<T>> byNistName(const std::string& name)
+    {
+
+        const std::map<std::string, std::map<std::size_t, T>> nist {
+            { "Air, Dry (near sea level)", { { 6, 0.000124f }, { 7, 0.755268f }, { 8, 0.231781f }, { 18, 0.012827f } } },
+            { "Water, Liquid", { { 1, 0.111898f }, { 8, 0.888102f } } }
+        };
+        if (nist.contains(name)) {
+            return byWeight(nist.at(name));
+        } 
+        return std::nullopt;
     }
 
     inline T formFactor(const T energy, const T angle) const
