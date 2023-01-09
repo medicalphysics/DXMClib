@@ -137,7 +137,7 @@ public:
 
     IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
-        const auto& inter = intersectAABB(particle, aabb);
+        const auto& inter = WorldItemBase<T>::intersectAABB(particle, aabb);
         return inter ? intersect(particle, *inter) : IntersectionResult<T> {};
     }
 
@@ -198,66 +198,6 @@ public:
     }
 
 protected:
-    static bool inPlaneBox(const std::array<T, 3>& pos, const std::array<T, 6>& aabb, const std::uint_fast8_t axis)
-    {
-        bool inside = true;
-        for (std::uint_fast8_t i = 0; i < 3; ++i) {
-            if (i != axis) {
-                inside = inside && aabb[i] >= pos[i] && pos[i] <= aabb[i + 3];
-            }
-        }
-        return inside;
-    }
-    template<int FORWARD = 1>
-    static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
-    {
-        auto t = []() ->std::array<T, 2>{
-            if constexpr (FORWARD == 1)
-                return std::array { T { 0 }, std::numeric_limits<T>::max() };
-            else
-                return std::array { std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max() };        
-        }();
-
-        for (std::uint_fast8_t i = 0; i < 3; i++) {
-            if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
-                const auto d_inv = T { 1 } / p.dir[i];
-
-                if (p.pos[i] < aabb[i]) {
-                    const auto t_cand = (aabb[i] - p.pos[i]) * d_inv;
-                    const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
-                    if (inPlaneBox(npos, aabb, i)) {
-                        t[0] = std::max(t[0], t_cand);
-                        t[1] = std::min(t[1], t_cand);
-                    }
-                } else if (p.pos[i] > aabb[i + 3]) {
-                    const auto t_cand = (aabb[i + 3] - p.pos[i]) * d_inv;
-                    const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
-                    if (inPlaneBox(npos, aabb, i)) {
-                        t[0] = std::max(t[0], t_cand);
-                        t[1] = std::min(t[1], t_cand);
-                    }
-                } else {
-                    if (p.dir[i] > T { 0 }) {
-                        const auto t_cand = (aabb[i + 3] - p.pos[i]) * d_inv;
-                        const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
-                        if (inPlaneBox(npos, aabb, i)) {
-                            t[0] = std::max(t[0], t_cand);
-                            t[1] = std::min(t[1], t_cand);
-                        }
-                    } else {
-                        const auto t_cand = (aabb[i] - p.pos[i]) * d_inv;
-                        const auto npos = vectormath::add(p.pos, vectormath::scale(p.dir, t_cand));
-                        if (inPlaneBox(npos, aabb, i)) {
-                            t[0] = std::max(t[0], t_cand);
-                            t[1] = std::min(t[1], t_cand);
-                        }
-                    }
-                }
-            }
-        }
-        return t[0] > t[1] ? std::nullopt : std::make_optional(t);
-    }
-
     T planeSplit(const std::vector<WorldItemBase<T>*>& items) const
     {
         const auto N = items.size();
@@ -363,44 +303,4 @@ private:
     std::unique_ptr<KDTree<T>> m_right = nullptr;
 };
 
-/*
-template <Floating T, KDTreeType<T> U>
-class KDTree {
-public:
-    // KDTree() {};
-    KDTree(std::vector<U>& triangles, const std::size_t max_depth = 8)
-    {
-        m_node = KDTreeNode<T, U>(triangles, max_depth);
-        m_aabb = m_node.AABB();
-    }
-    std::size_t depth() const
-    {
-        return m_node.depth();
-    }
-
-    void translate(const std::array<T, 3>& vec)
-    {
-        m_node.translate(vec);
-    }
-
-    std::array<T, 3> center() const
-    {
-        std::array<T, 3> center { (m_aabb[0] + m_aabb[3]) / 2, (m_aabb[1] + m_aabb[4]) / 2, (m_aabb[2] + m_aabb[5]) / 2 };
-        return center;
-    }
-    std::array<T, 6> AABB() const
-    {
-        return m_node.AABB();
-    }
-
-    std::optional<T> intersect(const Particle<T>& particle) const
-    {
-        return m_node.intersect(particle, m_aabb);
-    }
-
-private:
-    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    KDTreeNode<T, U> m_node;
-};
-*/
 }

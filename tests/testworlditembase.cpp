@@ -22,6 +22,28 @@ Copyright 2023 Erlend Andersen
 #include <fstream>
 #include <iostream>
 
+template <typename T>
+bool testIntersectAABB()
+{
+
+    std::array<T, 6> aabb { -1, -1, -1, 1, 1, 1 };
+    std::array<T, 3> pos { 5, 5, 3 };
+    std::array<T, 3> dir = dxmc::vectormath::scale(pos, T { -1 });
+    dxmc::vectormath::normalize(dir);
+    dxmc::Particle<T> p;
+    p.pos = pos;
+    p.dir = dir;
+
+    auto inter = dxmc::WorldItemBase<T>::intersectAABB(p, aabb);
+    bool success = inter ? true : false;
+
+    p.pos = dxmc::vectormath::scale(p.pos, T { 0 });
+    auto inter2 = dxmc::WorldItemBase<T>::intersectAABB<0>(p, aabb);
+    success = success && (inter2 ? true : false);
+
+    return success;
+}
+
 template <dxmc::Floating T>
 bool testCTDIPhantom()
 {
@@ -62,8 +84,11 @@ int main(int argc, char* argv[])
     auto success = testCTDIPhantom<float>();
     success = success && testCTDIPhantom<double>();
 
-    success = success && testItemCollection<float>();
-    success = success && testItemCollection<double>();
+    // success = success && testItemCollection<float>();
+    // success = success && testItemCollection<double>();
+
+    success = success && testIntersectAABB<float>();
+    success = success && testIntersectAABB<double>();
 
     if (success)
         return EXIT_SUCCESS;

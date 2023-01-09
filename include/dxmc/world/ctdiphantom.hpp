@@ -51,17 +51,21 @@ public:
 
     std::array<T, 6> AABB() const
     {
-        std::array<T, 3> llc = vectormath::add(m_center, -m_radius);
-        llc[2] = m_center[2] - m_halfheight;
-        std::array<T, 3> urc = vectormath::add(m_center, m_radius);
-        urc[2] = m_center[2] + m_halfheight;
-        return vectormath::join(llc, urc);
+        std::array aabb {
+            m_center[0] - m_radius,
+            m_center[1] - m_radius,
+            m_center[2] - m_halfheight,
+            m_center[0] + m_radius,
+            m_center[1] + m_radius,
+            m_center[2] + m_halfheight
+        };
+        return aabb;
     }
 
     IntersectionResult<T> intersect(const Particle<T>& p) const
     {
-        constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
-        return intersect(p, tbox);
+        const auto tbox = intersectAABB(p, AABB());
+        return tbox ? intersect(p, *tbox) : IntersectionResult<T> {};
     }
     IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
     {
