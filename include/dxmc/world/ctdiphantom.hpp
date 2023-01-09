@@ -64,7 +64,7 @@ public:
 
     IntersectionResult<T> intersect(const Particle<T>& p) const
     {
-        const auto tbox = intersectAABB(p, AABB());
+        const auto tbox = WorldItemBase<T>::intersectAABB(p, AABB());
         return tbox ? intersect(p, *tbox) : IntersectionResult<T> {};
     }
     IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const

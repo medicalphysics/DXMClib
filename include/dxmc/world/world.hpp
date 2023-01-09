@@ -66,26 +66,38 @@ public:
     }
 
     auto intersect(const Particle<T>& p) const
-    {        
+    {
         return m_kdtree.intersect(p, m_aabb);
     }
     void transport(Particle<T>& p, RandomState& state)
     {
         if (!pointInsideAABB(p.pos, m_aabb)) {
-            //transport particle to aabb
-            const auto t= intersectAABB(p.pos, m_aabb);
+            // transport particle to aabb
+            const auto t = WorldItemBase<T>::intersectAABB(p, m_aabb);
             if (t) {
-                p.pos = vectormath::add(p.pos, vectormath::scale(p.dir, std::nextafter(t.value(), std::numeric_limits<T>::max())));
-            }            
+                p.translate(std::nextafter(t.value()[0], std::numeric_limits<T>::max()));                
+            }
         }
         bool continueSampling = true;
-        T attenuationTotalInv = T { 1 } / m_fillMaterial.attenuationValues(p.energy).sum();
+        T attenuationTotalInv = T { 1 } / (m_fillMaterial.attenuationValues(p.energy).sum()*m_fillMaterialDensity);
         do {
             const auto r1 = state.randomUniform<T>();
             const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
 
-            //where do we hit an object
-            auto intersection = m_kdtree.intersect();
+            // where do we hit an object
+            auto intersection = m_kdtree.intersect(p, m_aabb);
+
+
+            if (intersection.valid()) {
+                if (intersection.intersection <= stepLenght) {
+                    p.translate(std::nextafter(intersection.intersection, std::numeric_limits<T>::max()));
+                    intersection.item->transport(p, state);
+                } else {
+                    p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
+                }
+            } else {
+                p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
+            }
 
 
         } while (continueSampling);
@@ -99,7 +111,7 @@ protected:
         inside = inside && aabb[2] <= p[2] && p[2] <= aabb[5];
         return inside;
     }
-    
+
     std::vector<WorldItemBase<T>*> getItemPointers()
     {
         std::vector<WorldItemBase<T>*> ptrs;
@@ -122,5 +134,6 @@ private:
     std::tuple<std::vector<Us>...> m_items;
     KDTree<T> m_kdtree;
     Material2<T> m_fillMaterial;
+    T m_fillMaterialDensity = T { 0.001225 };
 };
 }

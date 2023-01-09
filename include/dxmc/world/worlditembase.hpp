@@ -38,6 +38,11 @@ template <Floating T>
 struct IntersectionResult {
     const WorldItemBase<T>* item = nullptr;
     T intersection = 0;
+    
+    bool valid const
+    {
+        return item != nullptr;
+    }
 };
 
 template <Floating T>
@@ -70,9 +75,8 @@ public:
         }
         return t[0] > t[1] ? std::nullopt : std::make_optional(t);
     }
-    protected:
-        
 
-    private:
-    };
+protected:
+private:
+};
 }

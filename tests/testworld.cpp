@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/ctdiphantom.hpp"
 #include "dxmc/world/sphere.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/dxmcrandom.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -50,6 +51,9 @@ bool testWorld()
     };
 
     auto res = world.intersect(p);
+
+    dxmc::RandomState rand;
+    world.transport(p, rand);
 
     return false;
 }

@@ -65,7 +65,7 @@ public:
         IntersectionResult<T> res;
         if (t) {
             res.item = this;
-            res.intersection = *t[0] < T { 0 } ? *t[1] : *t[0];
+            res.intersection = (*t)[0] < T { 0 } ? (*t)[1] : (*t)[0];
         }
         return res;
     }
