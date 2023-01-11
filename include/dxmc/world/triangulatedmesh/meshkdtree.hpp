@@ -21,12 +21,12 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 
+#include <algorithm>
 #include <array>
+#include <execution>
+#include <memory>
 #include <optional>
 #include <vector>
-#include <memory>
-#include <execution>
-#include <algorithm>
 
 namespace dxmc {
 
@@ -50,7 +50,28 @@ template <Floating T, MeshKDTreeType<T> U>
 class MeshKDTree {
 public:
     MeshKDTree() {};
+    MeshKDTree(MeshKDTree<T, U>& other) = delete;
+    MeshKDTree(const MeshKDTree<T, U>& other) = delete;
+
+    MeshKDTree(MeshKDTree<T, U>&& other)
+    {
+        m_D = other.m_D;
+        m_plane = other.m_plane;
+        m_triangles = other.m_triangles;
+        if (other.m_left) {
+            m_left = std::unique_ptr(std::move(other.m_left));
+        }
+        if (other.m_right) {
+            m_right = std::unique_ptr(std::move(other.m_right));
+        }
+    }
+
     MeshKDTree(const std::vector<U>& triangles, const std::size_t max_depth = 8)
+    {
+        setData(triangles, max_depth);
+    }
+
+    void setData(const std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
         if (triangles.size() == 0)
             return;
@@ -85,6 +106,8 @@ public:
 
         if (fom == triangles.size() || max_depth <= 1 || triangles.size() <= 1) {
             m_triangles = triangles;
+            m_left = nullptr;
+            m_right = nullptr;
         } else {
             m_plane = split;
             std::vector<U> left;
@@ -146,15 +169,6 @@ public:
         const auto& inter = intersectAABB(particle, aabb);
         return inter ? intersect(particle, *inter) : std::nullopt;
     }
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
-    {
-        const auto& inter = intersectAABB(particle, aabb);
-        if (inter) {
-            const std::array<T, 2> tbox_min { std::min((*inter)[0], tbox[0]), std::min((*inter)[1], tbox[1]) };
-            return intersect(particle, tbox_min);
-        } else
-            return std::nullopt;
-    }
 
 protected:
     std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
@@ -206,18 +220,22 @@ protected:
         const std::array<T, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
     }
+    template <int FORWARD = 1>
     static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
     {
-        std::array<T, 2> t {
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::max()
-        };
+        auto t = []() -> std::array<T, 2> {
+            if constexpr (FORWARD == 1)
+                return std::array { T { 0 }, std::numeric_limits<T>::max() };
+            else
+                return std::array { std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max() };
+        }();
+
         for (std::size_t i = 0; i < 3; i++) {
             if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
                 const auto d_inv = T { 1 } / p.dir[i];
                 const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
                 const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-                const auto [t_min_cand,t_max_cand] = std::minmax(t1, t2);                
+                const auto [t_min_cand, t_max_cand] = std::minmax(t1, t2);
                 t[0] = std::max(t[0], t_min_cand);
                 t[1] = std::min(t[1], t_max_cand);
             }

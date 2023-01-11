@@ -16,12 +16,13 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#include "dxmc/dxmcrandom.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/box.hpp"
 #include "dxmc/world/ctdiphantom.hpp"
 #include "dxmc/world/sphere.hpp"
+#include "dxmc/world/triangulatedmesh/triangulatedmesh.hpp"
 #include "dxmc/world/world.hpp"
-#include "dxmc/dxmcrandom.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -30,7 +31,7 @@ Copyright 2022 Erlend Andersen
 template <dxmc::Floating T>
 bool testWorld()
 {
-    dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>, dxmc::Box<T>> world;
+    dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>, dxmc::Box<T>, dxmc::TriangulatedMesh<T>> world;
 
     dxmc::CTDIPhantom<T> ctdi;
     dxmc::Sphere<T> sphere(32, { 50, 50, 50 });
@@ -41,14 +42,20 @@ bool testWorld()
     world.addItem(sphere);
     world.addItem(box);
 
+    if (true) {
+        dxmc::TriangulatedMesh<T> mesh("bunny_low.stl");
+        world.addItem(std::move(mesh));
+    }
+
     world.build();
 
     std::array<T, 3> trans { 5, 5, 5 };
-    
 
     dxmc::Particle<T> p {
         .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 }
     };
+    p.energy = T { 60.0 };
+    p.weight = T { 1 };
 
     auto res = world.intersect(p);
 

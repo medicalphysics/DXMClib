@@ -37,6 +37,17 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
+struct IntersectionResult {
+    WorldItemBase<T>* item = nullptr;
+    T intersection = 0;
+
+    bool valid() const
+    {
+        return item != nullptr;
+    }
+};
+
+template <Floating T>
 class KDTree {
     friend class KDTree<T>;
 
@@ -135,24 +146,25 @@ public:
         }
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb)
     {
         const auto& inter = WorldItemBase<T>::intersectAABB(particle, aabb);
         return inter ? intersect(particle, *inter) : IntersectionResult<T> {};
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox)
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
 
             IntersectionResult<T> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
-            for (const auto& item : m_items) {
+            for (auto& item : m_items) {
                 const auto t_cand = item->intersect(particle);
-                if (t_cand.item) {
-                    if (greaterOrEqual(t_cand.intersection, tbox[0]) && lessOrEqual(t_cand.intersection, tbox[1])) {
-                        if (t_cand.intersection < res.intersection) {
-                            res = t_cand;
+                if (t_cand) {
+                    if (greaterOrEqual(*t_cand, tbox[0]) && lessOrEqual(*t_cand, tbox[1])) {
+                        if (*t_cand < res.intersection) {
+                            res.intersection = *t_cand;
+                            res.item = item;
                         }
                     }
                 }
@@ -172,8 +184,8 @@ public:
             return hit_left;
         }
 
-        const KDTree<T>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        const KDTree<T>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        KDTree<T>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        KDTree<T>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 

@@ -62,21 +62,14 @@ public:
         return aabb;
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& p) const
+    std::optional<T> intersect(const Particle<T>& p) const
     {
         const auto tbox = WorldItemBase<T>::intersectAABB(p, AABB());
-        return tbox ? intersect(p, *tbox) : IntersectionResult<T> {};
+        if (tbox)
+            return intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, *tbox);
+        return std::nullopt;
     }
-    IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const
-    {
-        const auto intersection = intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, tbox);
-        IntersectionResult<T> res;
-        if (intersection) {
-            res.item = this;
-            res.intersection = intersection.value();
-        }
-        return res;
-    }
+
     T transport(Particle<T>& p, RandomState& state)
     {
         return 0;
@@ -85,8 +78,7 @@ public:
 protected:
     static std::optional<T> intersectCylinder(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T zStart, const T zStop, const std::array<T, 2>& tbox)
     {
-        bool has_value = false;
-        T t_min;
+        std::optional<T> t_min;
 
         // Nummerical stable cylindar ray intersection (not stable enought) should attempt to normalize d to unity
         const auto dx = p.dir[0];
@@ -116,8 +108,7 @@ protected:
                             const auto int_pointZ = p.pos[2] + p.dir[2] * t_cand;
                             const auto valid = zStart < int_pointZ && int_pointZ < zStop;
                             if (valid) {
-                                t_min = c / q;
-                                has_value = true;
+                                t_min = t_cand;
                             }
                         }
                     }
@@ -130,7 +121,6 @@ protected:
                         const auto valid = zStart < int_pointZ && int_pointZ < zStop;
                         if (valid) {
                             t_min = t_cand;
-                            has_value = true;
                         }
                     }
                 }
@@ -139,18 +129,14 @@ protected:
 
         const auto t_disc1 = intersectDisc(p, center, radii, zStart, tbox);
         if (t_disc1) {
-            const auto t_cand = t_disc1.value();
-            t_min = has_value ? std::min(t_min, t_cand) : t_cand;
-            has_value = true;
-        }
-        const auto t_disc2 = intersectDisc(p, center, radii, zStop, tbox);
-        if (t_disc2) {
-            const auto t_cand = t_disc2.value();
-            t_min = has_value ? std::min(t_min, t_cand) : t_cand;
-            has_value = true;
+            t_min = t_min ? std::min(t_min, t_disc1) : t_disc1;
         }
 
-        return has_value ? std::make_optional(t_min) : std::nullopt;
+        const auto t_disc2 = intersectDisc(p, center, radii, zStop, tbox);
+        if (t_disc2) {
+            t_min = t_min ? std::min(t_min, t_disc2) : t_disc2;
+        }
+        return t_min;
     }
 
     static std::optional<T> intersectDisc(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T z, const std::array<T, 2>& tbox)
@@ -162,7 +148,7 @@ protected:
             const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
             const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
             if (xz * xz + yz * yz < radii * radii)
-                return tz;
+                return std::make_optional(tz);
         }
         return std::nullopt;
     }

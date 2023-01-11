@@ -59,27 +59,15 @@ public:
     {
         return m_aabb;
     }
-    IntersectionResult<T> intersect(const Particle<T>& p) const override
+    std::optional<T> intersect(const Particle<T>& p) const override
     {
         const auto t = WorldItemBase<T>::intersectAABB<0>(p, m_aabb);
-        IntersectionResult<T> res;
         if (t) {
-            res.item = this;
-            res.intersection = (*t)[0] < T { 0 } ? (*t)[1] : (*t)[0];
+            return (*t)[0] < T { 0 } ? std::make_optional((*t)[1]) : std::make_optional((*t)[0]);
         }
-        return res;
+        return std::nullopt;
     }
-    IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
-    {
-        auto res = intersect(p);
-        if (res.item) {
-            if (res.intersection < tbox[0] || res.intersection > tbox[1]) {
-                res.item = nullptr;
-                res.intersection = T { 0 };
-            }
-        }
-        return res;
-    }
+
     T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;

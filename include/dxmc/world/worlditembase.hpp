@@ -22,27 +22,40 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <optional>
 
 namespace dxmc {
 
 template <Floating T>
-struct ResultObject {
-};
-
-// Forward declaration
-template <Floating T>
-class WorldItemBase;
-
-template <Floating T>
-struct IntersectionResult {
-    const WorldItemBase<T>* item = nullptr;
-    T intersection = 0;
-    
-    bool valid const
+class ResultObject {
+public:
+    ResultObject(std::size_t N = 1)
     {
-        return item != nullptr;
+        m_nEvents.resize(N, 0);
+        m_energyImparted.resize(N, T { 0 });
+        m_energyImpartedSquared.resize(N, T { 0 });
     }
+    void scoreEnergy(T energy, std::size_t idx = 0)
+    {
+        {
+            auto aref = std::atomic_ref(m_energyImparted[idx]);
+            aref.fetch_add(energy);
+        }
+        {
+            auto aref = std::atomic_ref(m_energyImpartedSquared[idx]);
+            aref.fetch_add(energy * energy);
+        }
+        {
+            auto aref = std::atomic_ref(m_nEvents[idx]);
+            ++aref;
+        }
+    }
+
+private:
+    std::vector<std::uint64_t> m_nEvents;
+    std::vector<T> m_energyImparted;
+    std::vector<T> m_energyImpartedSquared;
 };
 
 template <Floating T>
@@ -51,8 +64,7 @@ public:
     virtual void translate(const std::array<T, 3>& dist) = 0;
     virtual std::array<T, 3> center() const = 0;
     virtual std::array<T, 6> AABB() const = 0;
-    virtual IntersectionResult<T> intersect(const Particle<T>& p) const = 0;
-    virtual IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const = 0;
+    virtual std::optional<T> intersect(const Particle<T>& p) const = 0;
     virtual T transport(Particle<T>& p, RandomState& state) = 0;
 
     template <int FORWARD = 1>

@@ -47,9 +47,15 @@ public:
     }
 
     template <AnyWorldItemType<Us...> U>
-    void addItem(U item)
+    void addItem(U& item)
     {
         std::get<std::vector<U>>(m_items).push_back(item);
+    }
+
+    template <AnyWorldItemType<Us...> U>
+    void addItem(U&& item)
+    {
+        std::get<std::vector<U>>(m_items).push_back(std::move(item));
     }
 
     template <AnyWorldItemType<Us...> U>
@@ -65,42 +71,60 @@ public:
         m_aabb = m_kdtree.AABB();
     }
 
-    auto intersect(const Particle<T>& p) const
+    auto intersect(const Particle<T>& p)
     {
         return m_kdtree.intersect(p, m_aabb);
     }
     void transport(Particle<T>& p, RandomState& state)
     {
+
+        bool continueSampling = true;
+        bool updateAttenuation = false;
+
         if (!pointInsideAABB(p.pos, m_aabb)) {
             // transport particle to aabb
             const auto t = WorldItemBase<T>::intersectAABB(p, m_aabb);
             if (t) {
-                p.translate(std::nextafter(t.value()[0], std::numeric_limits<T>::max()));                
+                p.translate(std::nextafter(t.value()[0], std::numeric_limits<T>::max()));
+            } else {
+                continueSampling = false;
             }
         }
-        bool continueSampling = true;
-        T attenuationTotalInv = T { 1 } / (m_fillMaterial.attenuationValues(p.energy).sum()*m_fillMaterialDensity);
-        do {
+
+        T attenuationTotalInv = T { 1 } / (m_fillMaterial.attenuationValues(p.energy).sum() * m_fillMaterialDensity);
+
+        while (continueSampling) {
+            if (updateAttenuation) {
+                attenuationTotalInv = T { 1 } / (m_fillMaterial.attenuationValues(p.energy).sum() * m_fillMaterialDensity);
+            }
+
             const auto r1 = state.randomUniform<T>();
             const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
             auto intersection = m_kdtree.intersect(p, m_aabb);
+            const auto intersectionLenght = intersection.valid() ? intersection.intersection : std::numeric_limits<T>::max();
 
-
-            if (intersection.valid()) {
-                if (intersection.intersection <= stepLenght) {
-                    p.translate(std::nextafter(intersection.intersection, std::numeric_limits<T>::max()));
-                    intersection.item->transport(p, state);
-                } else {
-                    p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
-                }
+            if (intersectionLenght < stepLenght) {
+                p.translate(std::nextafter(intersectionLenght, std::numeric_limits<T>::max()));
+                intersection.item->transport(p, state);
             } else {
                 p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
+                if (pointInsideAABB(p.pos, m_aabb)) {
+                    const auto att = m_fillMaterial.attenuationValues(p.energy);
+                    const auto r2 = state.randomUniform<T>(att.sum());
+                    if (r2 < att.photoelectric) {
+
+                    } else if (r2 < (att.photoelectric + att.incoherent)) {
+
+                    } else {
+                    }
+
+                } else {
+                    continueSampling = false;
+                }
             }
-
-
-        } while (continueSampling);
+        }
     }
 
 protected:
@@ -135,5 +159,6 @@ private:
     KDTree<T> m_kdtree;
     Material2<T> m_fillMaterial;
     T m_fillMaterialDensity = T { 0.001225 };
+    ResultObject<T> m_dose;
 };
 }

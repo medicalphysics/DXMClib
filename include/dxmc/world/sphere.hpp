@@ -50,25 +50,24 @@ public:
 
     std::array<T, 6> AABB() const override
     {
-        std::array<T, 3> llc = vectormath::add(m_center, -m_radius);
-        std::array<T, 3> urc = vectormath::add(m_center, m_radius);
-        return vectormath::join(llc, urc);
+        std::array<T, 6> aabb {
+            m_center[0] - m_radius,
+            m_center[1] - m_radius,
+            m_center[2] - m_radius,
+            m_center[0] + m_radius,
+            m_center[1] + m_radius,
+            m_center[2] + m_radius
+        };
+        return aabb;
     }
-    IntersectionResult<T> intersect(const Particle<T>& p) const override
+    std::optional<T> intersect(const Particle<T>& p) const override
     {
-        constexpr std::array<T, 2> tbox { 0, std::numeric_limits<T>::max() };
-        return intersect(p, tbox);
+        const auto tbox = WorldItemBase<T>::intersectAABB(p, AABB());
+        if (tbox)
+            return intersectSphere(p, m_center, m_radius, *tbox);
+        return std::nullopt;
     }
-    IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
-    {
-        const auto t = intersectSphere(p, m_center, m_radius, tbox);
-        IntersectionResult<T> res;
-        if (t) {
-            res.item = this;
-            res.intersection = t.value();
-        }
-        return res;
-    }
+
     T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;

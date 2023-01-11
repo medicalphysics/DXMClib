@@ -68,7 +68,7 @@ public:
 
     void setData(std::vector<Triangle<T>> triangles, const std::size_t max_tree_dept)
     {
-        m_kdtree = MeshKDTree<T, Triangle<T>>(triangles, max_tree_dept);
+        m_kdtree.setData(triangles, max_tree_dept);
         m_aabb = m_kdtree.AABB();
     }
     std::array<T, 3> center() const override
@@ -86,26 +86,11 @@ public:
         }
         return center;
     }
-    IntersectionResult<T> intersect(const Particle<T>& p) const override
+    std::optional<T> intersect(const Particle<T>& p) const override
     {
-        const auto t = m_kdtree.intersect(p, m_aabb);
-        IntersectionResult<T> res;
-        if (t) {
-            res.item = this;
-            res.intersection = t.value();
-        }
-        return res;
+        return m_kdtree.intersect(p, m_aabb);
     }
-    IntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 2>& tbox) const override
-    {
-        const auto t = m_kdtree.intersect(p, m_aabb, tbox);
-        IntersectionResult<T> res;
-        if (t) {
-            res.item = this;
-            res.intersection = t.value();
-        }
-        return res;
-    }
+
     T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;
