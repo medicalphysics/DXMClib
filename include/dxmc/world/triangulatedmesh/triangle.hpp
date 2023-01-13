@@ -51,6 +51,7 @@ public:
             }
     }
     auto operator<=>(const Triangle<T>& other) const = default;
+    
     void translate(const std::array<T, 3>& dist)
     {
         std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
@@ -59,6 +60,15 @@ public:
             }
         });
     }
+    void scale(T scale)
+    {
+        std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
+            for (std::size_t i = 0; i < 3; ++i) {
+                vert[i] *= scale;
+            }
+        });
+    }
+    
     const std::array<std::array<T, 3>, 3>& vertices() const
     {
         return m_vertices;

@@ -31,10 +31,11 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <typename U, typename T>
-concept MeshKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
+concept MeshKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec, T scale) {
                              Floating<T>;
                              u <=> u;
                              u.translate(vec);
+                             u.scale(scale);
                              {
                                  u.intersect(p)
                                  } -> std::same_as<std::optional<T>>;

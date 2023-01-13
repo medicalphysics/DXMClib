@@ -50,6 +50,16 @@ public:
         auto triangles = reader(path);
         setData(triangles, max_tree_dept);
     }
+    TriangulatedMesh(const std::string& path, T scale, const std::size_t max_tree_dept = 8)
+        : WorldItemBase<T>()
+    {
+        STLReader<T> reader;
+        auto triangles = reader(path);
+        std::for_each(std::execution::par_unseq, triangles.begin(), triangles.end(), [=](auto& tri) {
+            tri.scale(scale);
+        });
+        setData(triangles, max_tree_dept);
+    }
 
     const MeshKDTree<T, Triangle<T>>& kdtree() const
     {
