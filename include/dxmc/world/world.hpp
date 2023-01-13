@@ -70,6 +70,11 @@ public:
         m_kdtree = KDTree(ptrs);
         m_aabb = m_kdtree.AABB();
     }
+    
+    const std::array<T, 6>& AABB() const
+    {
+        return m_aabb;
+    }
 
     auto intersect(const Particle<T>& p)
     {
@@ -124,6 +129,7 @@ public:
                     continueSampling = false;
                 }
             }
+            continueSampling = false;
         }
     }
 
