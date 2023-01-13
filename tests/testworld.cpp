@@ -126,7 +126,7 @@ bool testWorld()
     dxmc::RandomState rand;
     world.transport(p, rand);
 
-    std::array<T, 3> camera { 0,-500,00 };
+    std::array<T, 3> camera { 0, -500, 00 };
     create_image(world, camera, true);
 
     return false;
