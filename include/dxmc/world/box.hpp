@@ -37,6 +37,14 @@ public:
         , m_aabb(aabb)
     {
     }
+    Box(T aabb_size)
+        : WorldItemBase<T>()
+    {
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] = -std::abs(aabb_size);
+            m_aabb[i + 3] = std::abs(aabb_size);
+        }
+    }
 
     void translate(const std::array<T, 3>& dist) override
     {
