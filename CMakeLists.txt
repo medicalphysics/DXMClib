@@ -84,6 +84,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/progressbar.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/source.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/transport.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/interactions.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp"

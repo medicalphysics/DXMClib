@@ -88,20 +88,23 @@ public:
         };
         if (nist.contains(name)) {
             return byWeight(nist.at(name));
-        } 
+        }
         return std::nullopt;
     }
 
-    inline T formFactor(const T energy, const T angle) const
+    inline T formFactor(const T momentumTransfer) const
     {
-        const auto mt = std::log(momentumTransfer(energy, angle));
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
+    }
+    inline T cumFormFactorSquared(const T momentumTransfer) const
+    {
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[5], m_attenuationTableOffset[6]));
     }
 
-    inline T scatterFactor(const T energy, const T angle) const
+    inline T scatterFactor(const T momentumTransfer) const
     {
-        const auto mt = std::log(momentumTransfer(energy, angle));
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(mt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
+
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
     }
 
     // photo, coherent, incoherent
@@ -161,12 +164,16 @@ public:
     }
     static T momentumTransfer(T energy, T angle)
     {
+        return momentumTransferMax(energy) * std::sin(angle * T { 0.5 }); // per Å
+    }
+    static constexpr T momentumTransferMax(T energy)
+    {
         constexpr T hc_si = 1.239841193E-6; // ev*m
         constexpr T m2A = 1E10; // meters to Ångstrøm
         constexpr T eV2keV = 1E-3; // eV to keV
         constexpr T hc = hc_si * m2A * eV2keV; // kev*Å
         constexpr T hc_inv = T { 1 } / hc;
-        return energy * std::sin(angle * T { 0.5 }) * hc_inv; // per Å
+        return energy * hc_inv; // per Å
     }
 
 protected:
@@ -261,7 +268,8 @@ protected:
         coherent,
         incoherent,
         formfactor,
-        scatterfactor
+        scatterfactor,
+        cumformfactorsquared
     };
 
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false, std::size_t nknots = 15)
@@ -346,6 +354,7 @@ protected:
                 return atom.formFactor;
             else if (type == LUTType::scatterfactor)
                 return atom.incoherentSF;
+
             return atom.photoel;
         };
 
@@ -369,6 +378,19 @@ protected:
                     }
                 }
                 data.push_back(arr);
+            } else if (type == LUTType::cumformfactorsquared) {
+                // if type is cumformfactor squared, we cumulative integrate squared of the form factor
+                auto arr = getAtomArr(a, LUTType::formfactor);
+                std::vector<std::pair<T, T>> ffsqr;
+                ffsqr.resize(arr.size());
+                ffsqr[0].first = arr[0].first;
+                ffsqr[0].second = arr[0].second * arr[0].second;
+                for (std::size_t i = 1; i < ffsqr.size(); ++i) {
+                    const auto delta = arr[i].first - arr[i - 1].first;
+                    ffsqr[i].first = arr[i].first;
+                    ffsqr[i].second = (arr[i].second * arr[i].second) / delta + ffsqr[i - 1].second;
+                }
+                data.push_back(ffsqr);
             } else {
                 data.push_back(getAtomArr(a, type));
             }
@@ -403,16 +425,17 @@ protected:
         const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
         std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
 
-        std::array<CubicLSInterpolator<T>, 5> attenuation = {
+        std::array<CubicLSInterpolator<T>, 6> attenuation = {
             constructSplineInterpolator(weight, LUTType::photoelectric),
             constructSplineInterpolator(weight, LUTType::incoherent),
             constructSplineInterpolator(weight, LUTType::coherent),
             constructSplineInterpolator(weight, LUTType::formfactor),
-            constructSplineInterpolator(weight, LUTType::scatterfactor)
+            constructSplineInterpolator(weight, LUTType::scatterfactor),
+            constructSplineInterpolator(weight, LUTType::cumformfactorsquared)
         };
         Material2<T> m;
         m.m_attenuationTable.clear();
-        std::array<std::size_t, 5 + N> offset;
+        std::array<std::size_t, attenuation.size() + N> offset;
         for (std::size_t i = 0; i < attenuation.size(); ++i) {
             const auto& table = attenuation[i].getDataTable();
             auto begin = m.m_attenuationTable.insert(m.m_attenuationTable.end(), table.cbegin(), table.cend());
@@ -421,7 +444,7 @@ protected:
         createMaterialAtomicShells(m, weight, offset);
 
         for (std::size_t i = 0; i < offset.size(); ++i) {
-            if (i < 5 + std::min(std::uint8_t { N }, m.numberOfShells()))
+            if (i < attenuation.size() + std::min(std::uint8_t { N }, m.numberOfShells()))
                 m.m_attenuationTableOffset[i] = m.m_attenuationTable.begin() + offset[i];
             else
                 m.m_attenuationTableOffset[i] = m.m_attenuationTable.end();
@@ -430,7 +453,7 @@ protected:
 
         return m;
     }
-    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
+    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 6 + N>& offset)
     {
         struct Shell {
             std::uint64_t Z = 0;
@@ -464,7 +487,7 @@ protected:
             auto begin = inter.getDataTable().begin();
             auto end = inter.getDataTable().end();
             auto table_beg = material.m_attenuationTable.insert(material.m_attenuationTable.end(), begin, end);
-            offset[i + 5] = std::distance(material.m_attenuationTable.begin(), table_beg);
+            offset[i + 6] = std::distance(material.m_attenuationTable.begin(), table_beg);
 
             auto& materialshell = material.m_shells[i];
 
@@ -499,7 +522,7 @@ protected:
 
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
-    std::array<typename std::vector<std::array<T, 3>>::iterator, 5 + N + 1> m_attenuationTableOffset;
+    std::array<typename std::vector<std::array<T, 3>>::iterator, 6 + N + 1> m_attenuationTableOffset;
     std::array<Material2Shell<T>, N + 1> m_shells;
     std::uint8_t m_numberOfShells = 0;
 };

@@ -20,6 +20,7 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
+#include "dxmc/interactions.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -70,7 +71,7 @@ public:
         m_kdtree = KDTree(ptrs);
         m_aabb = m_kdtree.AABB();
     }
-    
+
     const std::array<T, 6>& AABB() const
     {
         return m_aabb;

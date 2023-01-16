@@ -77,14 +77,14 @@ void writeAtomTestData(std::size_t Z)
         auto x = m.momentumTransfer(e, dxmc::PI_VAL<T>());
         auto ff = dxmc::interpolate(a.formFactor, x);
         file << std::format("{},{},{},{}", e, ff, "formfactor", "lin") << std::endl;
-        auto ff_dx = m.formFactor(e, dxmc::PI_VAL<T>());
+        auto ff_dx = m.formFactor(x);
         file << std::format("{},{},{},{}", e, ff_dx, "formfactor", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, ff_dx - ff, "formfactor", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (ff_dx / ff - 1) * 100, "formfactor", "diffp") << std::endl;
 
         auto sf = dxmc::interpolate(a.incoherentSF, x);
         file << std::format("{},{},{},{}", e, sf, "scatterfactor", "lin") << std::endl;
-        auto sf_dx = m.scatterFactor(e, dxmc::PI_VAL<T>());
+        auto sf_dx = m.scatterFactor(x);
         file << std::format("{},{},{},{}", e, sf_dx, "scatterfactor", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, sf_dx - sf, "scatterfactor", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (sf_dx / sf - 1) * 100, "scatterfactor", "diffp") << std::endl;
@@ -123,13 +123,13 @@ bool testAtomAttenuation()
 
             auto x = material.momentumTransfer(e, dxmc::PI_VAL<T>());
             auto ff_lin = dxmc::interpolate(atom.formFactor, x);
-            auto ff_dx = material.formFactor(e, dxmc::PI_VAL<T>());
+            auto ff_dx = material.formFactor(x);
             valid = valid && (std::abs(ff_dx / ff_lin) - 1) * 100 < 20;
 
             auto sf_lin = dxmc::interpolate(atom.incoherentSF, x);
-            auto sf_dx = material.scatterFactor(e, dxmc::PI_VAL<T>());
+            auto sf_dx = material.scatterFactor(x);
             valid = valid && (std::abs(sf_dx / sf_lin) - 1) * 100 < 20;
-             
+
             if (!valid) {
                 writeAtomTestData<T>(Z);
                 return valid;
@@ -144,14 +144,14 @@ void testMaterial()
     auto m0 = dxmc::Material2<double>::byChemicalFormula("He");
     // auto m0 = dxmc::Material2<double>::byZ(2);
     if (m0) {
-        auto m = m0.value();
+        auto& m = m0.value();
         std::vector<double> e(150);
         std::iota(e.begin(), e.end(), 1.0);
     }
 
     auto m1 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
     if (m1) {
-        auto m = m1.value();
+        auto& m = m1.value();
         auto att = m.attenuationValues(60.0);
         auto sum = att.coherent + att.incoherent + att.photoelectric;
         std::cout << sum << std::endl;
@@ -171,7 +171,7 @@ void testMaterial()
     w[20] = 0.225000;
     auto bone = dxmc::Material2<double>::byWeight(w);
     if (bone) {
-        auto m = bone.value();
+        auto& m = bone.value();
         auto att1 = m.attenuationValues(4.038);
         auto sum1 = att1.sum();
         auto att2 = m.attenuationValues(4.04);
@@ -190,7 +190,7 @@ void testInterpolator()
 {
 
     for (std::size_t i = 1; i <= 83; i++) {
-        auto O = AtomHandler<double>::Atom(i);
+        auto& O = AtomHandler<double>::Atom(i);
         std::vector<double> x(O.photoel.size());
         std::vector<double> y(O.photoel.size());
         std::transform(O.photoel.begin(), O.photoel.end(), x.begin(), [](const auto& val) { return std::log(val.first); });
@@ -209,7 +209,7 @@ void testInterpolator()
             binding_e.push_back(shell.bindingEnergy);
         }
 
-        for (auto [e, a] : O.photoel) {
+        for (auto& [e, a] : O.photoel) {
             auto bindingIdx = std::find(binding_e.cbegin(), binding_e.cend(), e);
             if (bindingIdx == binding_e.cend()) {
                 auto ai = std::exp(intp(std::log(e)));
