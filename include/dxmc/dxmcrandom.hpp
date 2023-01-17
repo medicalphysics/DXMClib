@@ -332,57 +332,10 @@ private:
 // class for numerical inverse transform of analytical probability density functions (pdfs)
 template <Floating T, int N = 20>
 class RITA {
-private:
-    std::array<T, N> m_x;
-    std::array<T, N> m_e;
-    std::array<T, N> m_b;
-    std::array<T, N> m_a;
-
-protected:
-    template <typename F>
-    static T simpson_integral(const T start, const T stop, F pdf)
-    {
-        const T h = (stop - start) / 50;
-        T result = pdf(start) + pdf(stop);
-        for (std::size_t i = 1; i < 50; ++i) {
-            const T prod = i % 2 == 0 ? 2 : 4; // prod is 2 when i is even else 4
-            result += prod * pdf(start + h * i);
-        }
-        return h * result / 3;
-    }
-
-    T integral_p_bar(std::size_t index) const
-    {
-
-        const T bi = m_b[index];
-        const T ai = m_a[index];
-        const T xi = m_x[index];
-        const T xii = m_x[index + 1];
-
-        auto p = [=, *this](const T x) -> T {
-            T n;
-            if (x == xi) {
-                n = 0;
-            } else if (x == xii) {
-                n = 1;
-            } else {
-                const T t = (x - xi) / (xii - xi);
-                const T f = (1 + ai + bi - ai * t) / (2 * bi * t);
-                const T nom = 1 + ai + bi - ai * t;
-                const T l = 1 - std::sqrt(1 - (4 * bi * t * t) / (nom * nom));
-                n = f * l;
-            }
-            const T upper = (1 + ai * n * bi * n * n);
-            const T lower = (1 + ai + bi) * (1 - bi * n * n);
-            const T res = upper * (m_e[index + 1] - m_e[index]) / (lower * (xii - xi));
-            return res;
-        };
-        return simpson_integral(xi, xii, p);
-    }
 
 public:
     template <std::regular_invocable<T> F>
-    requires std::is_same<std::invoke_result_t<F, T>, T>::value
+        requires std::is_same<std::invoke_result_t<F, T>, T>::value
     RITA(const T min, const T max, F pdf)
     {
         struct param {
@@ -498,5 +451,52 @@ public:
         } while (res > maxValue);
         return res;
     }
+
+protected:
+    template <typename F>
+    static T simpson_integral(const T start, const T stop, F pdf)
+    {
+        const T h = (stop - start) / 50;
+        T result = pdf(start) + pdf(stop);
+        for (std::size_t i = 1; i < 50; ++i) {
+            const T prod = i % 2 == 0 ? 2 : 4; // prod is 2 when i is even else 4
+            result += prod * pdf(start + h * i);
+        }
+        return h * result / 3;
+    }
+
+    T integral_p_bar(std::size_t index) const
+    {
+        const T bi = m_b[index];
+        const T ai = m_a[index];
+        const T xi = m_x[index];
+        const T xii = m_x[index + 1];
+
+        auto p = [=, *this](const T x) -> T {
+            T n;
+            if (x == xi) {
+                n = 0;
+            } else if (x == xii) {
+                n = 1;
+            } else {
+                const T t = (x - xi) / (xii - xi);
+                const T f = (1 + ai + bi - ai * t) / (2 * bi * t);
+                const T nom = 1 + ai + bi - ai * t;
+                const T l = 1 - std::sqrt(1 - (4 * bi * t * t) / (nom * nom));
+                n = f * l;
+            }
+            const T upper = (1 + ai * n * bi * n * n);
+            const T lower = (1 + ai + bi) * (1 - bi * n * n);
+            const T res = upper * (m_e[index + 1] - m_e[index]) / (lower * (xii - xi));
+            return res;
+        };
+        return simpson_integral(xi, xii, p);
+    }
+
+private:
+    std::array<T, N> m_x;
+    std::array<T, N> m_e;
+    std::array<T, N> m_b;
+    std::array<T, N> m_a;
 };
 }
