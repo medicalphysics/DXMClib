@@ -332,7 +332,6 @@ private:
 // class for numerical inverse transform of analytical probability density functions (pdfs)
 template <Floating T, int N = 20>
 class RITA {
-
 public:
     template <std::regular_invocable<T> F>
         requires std::is_same<std::invoke_result_t<F, T>, T>::value
