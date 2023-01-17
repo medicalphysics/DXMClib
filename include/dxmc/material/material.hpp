@@ -81,7 +81,6 @@ public:
 
     static std::optional<Material2<T>> byNistName(const std::string& name)
     {
-
         const std::map<std::string, std::map<std::size_t, T>> nist {
             { "Air, Dry (near sea level)", { { 6, 0.000124f }, { 7, 0.755268f }, { 8, 0.231781f }, { 18, 0.012827f } } },
             { "Water, Liquid", { { 1, 0.111898f }, { 8, 0.888102f } } }
@@ -103,7 +102,6 @@ public:
 
     inline T scatterFactor(const T momentumTransfer) const
     {
-
         return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
     }
 
