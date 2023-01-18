@@ -242,10 +242,9 @@ public:
 };
 
 template <Floating T>
-std::vector<T> trapz(const std::vector<T>& f,
-    const std::vector<T>& x)
+std::vector<T> trapz(const std::vector<T>& f, const std::vector<T>& x)
 {
-    std::vector<T> integ(f.size(), 0);
+    std::vector<T> integ(f.size());
     integ[0] = T { 0.0 };
     for (std::size_t i = 1; i < f.size(); ++i) {
         integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
