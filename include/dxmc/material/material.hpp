@@ -267,7 +267,6 @@ protected:
         incoherent,
         formfactor,
         scatterfactor,
-        cumformfactorsquared
     };
 
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false, std::size_t nknots = 15)
@@ -376,19 +375,6 @@ protected:
                     }
                 }
                 data.push_back(arr);
-            } else if (type == LUTType::cumformfactorsquared) {
-                // if type is cumformfactor squared, we cumulative integrate squared of the form factor
-                auto arr = getAtomArr(a, LUTType::formfactor);
-                std::vector<std::pair<T, T>> ffsqr;
-                ffsqr.resize(arr.size());
-                ffsqr[0].first = arr[0].first;
-                ffsqr[0].second = arr[0].second * arr[0].second;
-                for (std::size_t i = 1; i < ffsqr.size(); ++i) {
-                    const auto delta = arr[i].first - arr[i - 1].first;
-                    ffsqr[i].first = arr[i].first;
-                    ffsqr[i].second = (arr[i].second * arr[i].second) / delta + ffsqr[i - 1].second;
-                }
-                data.push_back(ffsqr);
             } else {
                 data.push_back(getAtomArr(a, type));
             }
@@ -423,13 +409,12 @@ protected:
         const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
         std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
 
-        std::array<CubicLSInterpolator<T>, 6> attenuation = {
+        std::array<CubicLSInterpolator<T>, 5> attenuation = {
             constructSplineInterpolator(weight, LUTType::photoelectric),
             constructSplineInterpolator(weight, LUTType::incoherent),
             constructSplineInterpolator(weight, LUTType::coherent),
             constructSplineInterpolator(weight, LUTType::formfactor),
             constructSplineInterpolator(weight, LUTType::scatterfactor),
-            constructSplineInterpolator(weight, LUTType::cumformfactorsquared)
         };
         Material2<T> m;
         m.m_attenuationTable.clear();
@@ -451,7 +436,7 @@ protected:
 
         return m;
     }
-    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 6 + N>& offset)
+    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
     {
         struct Shell {
             std::uint64_t Z = 0;
@@ -485,7 +470,7 @@ protected:
             auto begin = inter.getDataTable().begin();
             auto end = inter.getDataTable().end();
             auto table_beg = material.m_attenuationTable.insert(material.m_attenuationTable.end(), begin, end);
-            offset[i + 6] = std::distance(material.m_attenuationTable.begin(), table_beg);
+            offset[i + 5] = std::distance(material.m_attenuationTable.begin(), table_beg);
 
             auto& materialshell = material.m_shells[i];
 

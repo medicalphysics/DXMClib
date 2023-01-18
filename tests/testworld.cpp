@@ -132,8 +132,24 @@ bool testWorld()
     return false;
 }
 
+
+template<typename T >
+void testsampling()
+{
+    //auto f = [](T x) { return std::exp(- x*x / 2) / (std::sqrt(2*std::numbers::pi_v<T>)); };
+    auto f = [](T x) { return std::exp( -x ) ; };
+    dxmc::CPDFSampling samp(T { 0 }, T { 3 }, f);
+    dxmc::RandomState state;
+
+
+
+
+
+}
+
 int main(int argc, char* argv[])
 {
+    testsampling<double>();
     auto success = true;
     success = success && testWorld<double>();
     // success = success && testWorld<float>();

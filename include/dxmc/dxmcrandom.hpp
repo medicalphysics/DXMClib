@@ -329,6 +329,125 @@ private:
     std::vector<T> m_energies;
 };
 
+template <Floating T, std::size_t N = 20>
+class CPDFSampling {
+public:
+    template <std::regular_invocable<T> F>
+        requires std::is_same<std::invoke_result_t<F, T>, T>::value
+    CPDFSampling(T xmin, T xmax, const F& pdf)
+    {
+        std::size_t n_start = N / 3;
+
+        std::vector<T> points(n_start);
+        for (std::size_t i = 0; i < n_start; ++i) {
+            points[i] = xmin + i * (xmax - xmin) / (n_start - 1);
+        }
+
+        while (points.size() != N) {
+            auto grid = buildGrid(points, pdf);
+            std::vector<T> error(grid.size() - 1);
+            for (std::size_t i = 0; i < grid.size() - 1; ++i) {
+                const T est = integrateGrid(grid[i], grid[i + 1]);
+                const auto inter = simpson_integral(points[i], points[i + 1], pdf);
+                error[i] = std::abs(est - inter);
+            }
+            auto max = std::max_element(error.cbegin(), error.cend());
+            const auto idx = std::distance(error.cbegin(), max);
+            auto g0 = grid.cbegin() + idx;
+            auto g1 = g0 + 1;
+            const T new_point = g0->x + (g1->x - g0->x) * 0.5;
+            points.insert(points.cbegin() + idx + 1, new_point);
+        }
+
+        auto grid = buildGrid(points, pdf);
+        std::copy(grid.cbegin(), grid.cend(), m_grid.begin());
+    }
+    T operator()(RandomState& state) const
+    {
+        const T r1 = state.randomUniform<T>(m_grid[N - 1].e);
+        auto pos1 = std::upper_bound(m_grid.cbegin() + 1, m_grid.cend() - 1, r1, [](const auto& element, const auto num) -> bool { return element.x < num; });
+        auto pos0 = pos1 - 1;
+
+        const auto v = r1 - pos0->e;
+        const auto delta = pos1->e - pos0->e;
+
+        const auto nom = (1 + pos0->a + pos0->b) * delta * v;
+        const auto den = delta * delta + pos0->a * delta * v + pos0->b * v * v;
+        return pos0->x + nom * (pos1->x - pos0->x) / den;
+    }
+
+protected:
+    struct GridEl {
+        T x = 0;
+        T e = 0;
+        T a = 0;
+        T b = 0;
+    };
+
+    // calcluate p from points
+    static T integrateGrid(const GridEl& g0, const GridEl& g1, std::size_t Nsteps = 50)
+    {
+        T sum = 0;
+        const T step = (g1.x - g0.x) / (Nsteps - 1);
+        for (std::size_t i = 1; i < Nsteps; ++i) {
+            const T x = g0.x + step * i;
+            const auto t = (x - g0.x) / (g1.x - g0.x);
+            const auto a = g0.a;
+            const auto b = g0.b;
+            const auto p1 = 1 + a + b - a * t;
+            const auto n = p1 / (2 * b * t) * (1 - std::sqrt(1 - (4 * b * t * t) / (p1 * p1)));
+
+            const auto r1 = 1 + a * n + b * n * n;
+            const auto r2 = (1 + a + b) * (1 - b * n * n);
+
+            sum += r1 * r1 * (g1.e - g0.e) / (r2 * (g1.x - g0.x));
+        }
+        return sum * step;
+    }
+    template <typename F>
+    static std::vector<GridEl> buildGrid(const std::vector<T> points, const F& pdf)
+    {
+        // cumulative prob (unnormalized)
+        std::vector<T> e(points.size());
+        e[0] = pdf(points[0]);
+        for (std::size_t i = 1; i < e.size(); ++i) {
+            const auto x0 = points[i - 1];
+            const auto x1 = points[i];
+            e[i] = e[i - 1] + simpson_integral(x0, x1, pdf);
+        }
+
+        std::vector<GridEl> grid;
+
+        for (std::size_t i = 0; i < points.size() - 1; ++i) {
+
+            const T ex = (e[i + 1] - e[i]) / (points[i + 1] - points[i]);
+            const T b = T { 1 } - ex * ex / (pdf(points[i]) * pdf(points[i + 1]));
+            const T a = ex / pdf(points[i]) - b - T { 1 };
+            grid.push_back({ points[i], e[i], a, b });
+        }
+        grid.push_back({ points.back(), e.back(), T { 0 }, T { 0 } });
+
+        return grid;
+    }
+
+    template <typename F, int Nsimp = 51>
+    static T simpson_integral(T x0, T x1, const F& pdf)
+    {
+        const T h = (x1 - x0) / (Nsimp - 1);
+        const T p1 = pdf(x0) + pdf(x1);
+        T p2 = 0;
+        for (std::size_t i = 1; i < Nsimp - 1; i += 2)
+            p2 += pdf(x0 + i * h);
+        T p3 = 0;
+        for (std::size_t i = 2; i < Nsimp - 2; i += 2)
+            p3 += pdf(x0 + i * h);
+        return h * (p1 + 4 * p2 + 2 * p3) / T { 3 };
+    }
+
+private:
+    std::array<GridEl, N> m_grid;
+};
+
 // class for numerical inverse transform of analytical probability density functions (pdfs)
 template <Floating T, int N = 20>
 class RITA {
