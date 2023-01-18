@@ -332,11 +332,13 @@ private:
 template <Floating T, std::size_t N = 20>
 class CPDFSampling {
 public:
+    CPDFSampling() = default;
+
     template <std::regular_invocable<T> F>
         requires std::is_same<std::invoke_result_t<F, T>, T>::value
     CPDFSampling(T xmin, T xmax, const F& pdf)
     {
-        std::size_t n_start = N / 3;
+        std::size_t n_start = N / 2;
 
         std::vector<T> points(n_start);
         for (std::size_t i = 0; i < n_start; ++i) {
@@ -364,8 +366,8 @@ public:
     }
     T operator()(RandomState& state) const
     {
-        const T r1 = state.randomUniform<T>(m_grid[N - 1].e);
-        auto pos1 = std::upper_bound(m_grid.cbegin() + 1, m_grid.cend() - 1, r1, [](const auto& element, const auto num) -> bool { return element.x < num; });
+        const T r1 = state.randomUniform<T>(m_grid[0].e, m_grid[N - 1].e);
+        auto pos1 = std::upper_bound(m_grid.cbegin() + 1, m_grid.cend() - 1, r1, [](const auto num, const auto& element) -> bool { return num < element.e; });
         auto pos0 = pos1 - 1;
 
         const auto v = r1 - pos0->e;
@@ -373,7 +375,8 @@ public:
 
         const auto nom = (1 + pos0->a + pos0->b) * delta * v;
         const auto den = delta * delta + pos0->a * delta * v + pos0->b * v * v;
-        return pos0->x + nom * (pos1->x - pos0->x) / den;
+        const auto res = pos0->x + nom * (pos1->x - pos0->x) / den;
+        return res;
     }
 
 protected:
@@ -449,6 +452,7 @@ private:
 };
 
 // class for numerical inverse transform of analytical probability density functions (pdfs)
+//[[deprecated("Use CPDFSampling instead")]]
 template <Floating T, int N = 20>
 class RITA {
 public:

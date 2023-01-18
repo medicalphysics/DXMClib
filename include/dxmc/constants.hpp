@@ -19,17 +19,17 @@ Copyright 2020 Erlend Andersen
 #pragma once
 
 #include "dxmc/floating.hpp"
+#include <charconv>
 #include <numbers>
 #include <optional>
 #include <string_view>
-#include <charconv>
 
 namespace dxmc {
 
 template <Floating T>
 constexpr T MAX_ENERGY()
 {
-    auto to_floating = [](const std::string_view s) -> T {
+    constexpr auto to_floating = [](const std::string_view s) -> T {
         if (T value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
             return value;
         else

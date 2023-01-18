@@ -7,6 +7,7 @@
 #include <chrono>
 #include <cmath>
 #include <iostream>
+#include <numbers>
 #include <numeric>
 #include <vector>
 
@@ -80,7 +81,7 @@ void testUniformRange()
     std::cout << "Testing random uniform double range\nNominal count, PCG count, Difference\n";
     for (auto t : pcg) {
         const auto diff = t * N * 100.0 / S - 100.0;
-        //assert(std::abs(diff) < 5.0);
+        // assert(std::abs(diff) < 5.0);
         std::cout << S / N << ", " << t << ", " << diff << "\n";
     }
 
@@ -187,13 +188,62 @@ void testRita()
     assert(rms < 0.001);
 }
 
+template <typename T>
+bool testCPDFdist(bool print = false)
+{
+    auto f = [](T x) { return std::exp(-(x * x) / 2) / (std::sqrt(2 * std::numbers::pi_v<T>)); };
+    const T xmin = -3;
+    const T xmax = 3;
+    const std::size_t N = 50;
+    dxmc::CPDFSampling samp(xmin, xmax, f);
+    dxmc::RandomState state;
+    std::vector<T> hist(N, T { 0 });
+    const auto step = (xmax - xmin) / (N);
+    constexpr std::size_t Nsamp = 1E7;
+
+    for (std::size_t i = 0; i < Nsamp; ++i) {
+        const T x = samp(state);
+        const auto idx = static_cast<std::size_t>((x - xmin) / step);
+        hist[idx] += 1;
+    }
+    std::for_each(hist.begin(), hist.end(), [](auto& h) { h /= Nsamp; });
+
+    auto func = hist;
+    T func_sum = 0;
+    for (std::size_t i = 0; i < hist.size(); ++i) {
+        const auto x = xmin + step * i + step / 2;
+        const auto p = f(x);
+        func_sum += p;
+        func[i] = p;
+    }
+    std::for_each(func.begin(), func.end(), [&](auto& p) { p /= func_sum; });
+
+    std::vector<T> error(hist.size(), 0);
+
+    if (print)
+        std::cout << "x, sampled PDF, analytical pdf" << std::endl;
+
+    T maxError = 0;
+    for (std::size_t i = 0; i < hist.size(); ++i) {
+        const auto x = xmin + step * i + step / 2;
+        error[i] = std::abs(hist[i] - func[i]);
+        if (print)
+            std::cout << x << ", " << hist[i] << ", " << func[i] << std::endl;
+        maxError = std::max(error[i], maxError);
+    }
+    return maxError < T { 0.01 };
+}
+
 int main(int argc, char* argv[])
 {
-    //testrandomInteger();
+    bool success = true;
+    success = success && testCPDFdist<double>();
+    success = success && testCPDFdist<float>();
+    // testrandomInteger();
     testUniform<double>();
     testUniform<float>();
-    //testUniformRange();
-    //testUniformIndex();
-    //testRita<float>();
+    // testUniformRange();
+    // testUniformIndex();
+    testRita<float>();
     return 0;
 }

@@ -19,6 +19,7 @@ Copyright 2022 Erlend Andersen
 #pragma once
 
 #include "dxmc/constants.hpp"
+#include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/material/atomhandler.hpp"
@@ -94,10 +95,6 @@ public:
     inline T formFactor(const T momentumTransfer) const
     {
         return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
-    }
-    inline T cumFormFactorSquared(const T momentumTransfer) const
-    {
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[5], m_attenuationTableOffset[6]));
     }
 
     inline T scatterFactor(const T momentumTransfer) const
@@ -434,8 +431,24 @@ protected:
         }
         m.m_attenuationTableOffset[offset.size()] = m.m_attenuationTable.end();
 
+        // creating lookuptable for sampling of formfactor
+        generateFormFactorInverseSampling(m);
+
         return m;
     }
+    static void generateFormFactorInverseSampling(Material2<T>& material)
+    {
+        const T qmax = Material2<T>::momentumTransferMax(MAX_ENERGY<T>());
+
+        auto func = [&material](T qsquared) -> T {
+            const auto q = std::sqrt(qsquared);
+            const auto f = material.formFactor(q);
+            return f * f;
+        }
+
+        fortsett her æææøø
+    }
+
     static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
     {
         struct Shell {
@@ -505,7 +518,8 @@ protected:
 
 private:
     std::vector<std::array<T, 3>> m_attenuationTable;
-    std::array<typename std::vector<std::array<T, 3>>::iterator, 6 + N + 1> m_attenuationTableOffset;
+    std::array<typename std::vector<std::array<T, 3>>::iterator, 5 + N + 1> m_attenuationTableOffset;
+    CPDFSampling<T, 20> m_formFactorInvSamp;
     std::array<Material2Shell<T>, N + 1> m_shells;
     std::uint8_t m_numberOfShells = 0;
 };

@@ -12,7 +12,7 @@ set(TEST_SOURCES
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
     "testmaterial.cpp"
-#    "testrandom.cpp"
+    "testrandom.cpp"
 #    "testattenuationlut.cpp"
 #    "testitemcollection.cpp"
 #    "testvectormath.cpp"
