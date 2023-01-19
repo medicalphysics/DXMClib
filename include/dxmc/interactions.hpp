@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/constants.hpp"
+#include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
@@ -48,13 +49,14 @@ namespace interactions {
             // see http://rcwww.kek.jp/research/egs/egs5_manual/slac730-150228.pdf
 
             // finding qmax
-            const auto qmax = m_attenuationLut.momentumTransferMax(particle.energy);
+            const auto qmax = material.momentumTransferMax(particle.energy);
             const auto qmax_squared = qmax * qmax;
 
             T cosAngle;
             do {
-                const auto q_squared = m_attenuationLut.momentumTransferFromFormFactor(materialIdx, qmax_squared, state);
-                cosAngle = m_attenuationLut.cosAngle(particle.energy, q_squared);
+                const auto q_squared = material.sampleSquaredMomentumTransferFromFormFactorSquared(qmax_squared, state);
+                cosAngle = T { 1 } - 2 * q_squared / qmax_squared;
+
             } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
             const auto theta = std::acos(cosAngle);
@@ -63,7 +65,7 @@ namespace interactions {
         }
     }
 
-    template <int Lowenergycorrection>
+    /* template <int Lowenergycorrection>
     T comptonScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
@@ -247,6 +249,6 @@ namespace interactions {
         particle.energy *= e;
         return E - particle.energy;
     }
-
+    */
 }
 }

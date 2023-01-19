@@ -94,12 +94,19 @@ public:
 
     inline T formFactor(const T momentumTransfer) const
     {
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
+        const auto logmomt = std::log(momentumTransfer);
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
+    }
+
+    inline T sampleSquaredMomentumTransferFromFormFactorSquared(T qsquared_max, RandomState& state) const
+    {
+        return m_formFactorInvSamp(qsquared_max, state);
     }
 
     inline T scatterFactor(const T momentumTransfer) const
     {
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(momentumTransfer, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
+        const auto logmomt = std::log(momentumTransfer);
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
     }
 
     // photo, coherent, incoherent
@@ -431,7 +438,7 @@ protected:
         }
         m.m_attenuationTableOffset[offset.size()] = m.m_attenuationTable.end();
 
-        // creating lookuptable for sampling of formfactor
+        // creating lookuptable for inverse sampling of formfactor
         generateFormFactorInverseSampling(m);
 
         return m;
@@ -444,9 +451,9 @@ protected:
             const auto q = std::sqrt(qsquared);
             const auto f = material.formFactor(q);
             return f * f;
-        }
+        };
 
-        fortsett her æææøø
+        material.m_formFactorInvSamp = CPDFSampling<T, 20>(T { 0 }, qmax * qmax, func);
     }
 
     static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
