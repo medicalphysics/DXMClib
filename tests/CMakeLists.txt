@@ -8,6 +8,7 @@ set(TEST_SOURCES
     "testkdtree.cpp"
     "teststatickdtree.cpp"
     "testworlditembase.cpp"
+    "testinteractions.cpp"
 #    "testtube.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
