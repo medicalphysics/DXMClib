@@ -32,15 +32,15 @@ namespace interactions {
     void rayleightScatter(Particle<T>& particle, const Material2<T>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 0) {
-            bool reject = true;
+            bool reject;
             T theta;
-            while (reject) {
+            do {
                 constexpr T extreme = (4 * std::numbers::sqrt2_v<T>) / (3 * std::numbers::sqrt3_v<T>);
                 const auto r1 = state.randomUniform<T>(T { 0 }, extreme);
                 theta = state.randomUniform(T { 0 }, PI_VAL<T>());
                 const auto sinang = std::sin(theta);
                 reject = r1 > ((2 - sinang * sinang) * sinang);
-            }
+            } while (reject);
             // calc angle and add randomly 90 degrees since dist i symetrical
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
             vectormath::peturb<T>(particle.dir, theta, phi);
@@ -55,8 +55,7 @@ namespace interactions {
             T cosAngle;
             do {
                 const auto q_squared = material.sampleSquaredMomentumTransferFromFormFactorSquared(qmax_squared, state);
-                cosAngle = T { 1 } - 2 * q_squared / qmax_squared;
-
+                cosAngle = T { 1 } - 2 * q_squared / qmax_squared;                
             } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
             const auto theta = std::acos(cosAngle);

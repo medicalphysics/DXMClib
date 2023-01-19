@@ -92,6 +92,12 @@ public:
         return std::nullopt;
     }
 
+    inline T scatterFactor(const T momentumTransfer) const
+    {
+        const auto logmomt = std::log(momentumTransfer);
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
+    }
+
     inline T formFactor(const T momentumTransfer) const
     {
         const auto logmomt = std::log(momentumTransfer);
@@ -101,12 +107,6 @@ public:
     inline T sampleSquaredMomentumTransferFromFormFactorSquared(T qsquared_max, RandomState& state) const
     {
         return m_formFactorInvSamp(qsquared_max, state);
-    }
-
-    inline T scatterFactor(const T momentumTransfer) const
-    {
-        const auto logmomt = std::log(momentumTransfer);
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
     }
 
     // photo, coherent, incoherent
@@ -395,6 +395,8 @@ protected:
             nknots = 10;
         } else if (type == LUTType::scatterfactor) {
             nknots = 15;
+        } else if (type == LUTType::formfactor) {
+            nknots = 15;
         }
         constexpr auto loglog = true;
         auto lut = constructSplineInterpolator(data, weights, loglog, nknots);
@@ -446,14 +448,14 @@ protected:
     static void generateFormFactorInverseSampling(Material2<T>& material)
     {
         const T qmax = Material2<T>::momentumTransferMax(MAX_ENERGY<T>());
-
+        constexpr T qmin = T { 0.001 };
         auto func = [&material](T qsquared) -> T {
             const auto q = std::sqrt(qsquared);
             const auto f = material.formFactor(q);
             return f * f;
         };
 
-        material.m_formFactorInvSamp = CPDFSampling<T, 20>(T { 0 }, qmax * qmax, func);
+        material.m_formFactorInvSamp = CPDFSampling<T, 20>(qmin * qmin, qmax * qmax, func);
     }
 
     static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
