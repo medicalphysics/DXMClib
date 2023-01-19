@@ -3,7 +3,6 @@
 
 #include <algorithm>
 #include <array>
-#include <cassert>
 #include <chrono>
 #include <cmath>
 #include <iostream>
@@ -20,7 +19,7 @@ inline bool isEqual(double a, double b)
 }
 
 template <typename T>
-void testUniform()
+bool testUniform()
 {
     constexpr std::size_t S = 1e8;
     constexpr std::size_t N = 100;
@@ -29,169 +28,109 @@ void testUniform()
 
     RandomState state;
 
-    T maxVal = 0;
     const auto start = std::chrono::high_resolution_clock::now();
     for (std::size_t i = 0; i < S; ++i) {
         const auto r = state.randomUniform<T>();
-        maxVal = std::max(r, maxVal);
-        const auto t = static_cast<std::size_t>(r * N);
-        if (t == N)
-            pcg[t - 1]++;
-        else
-            pcg[t]++;
-    }
-    const auto end = std::chrono::high_resolution_clock::now();
-
-    std::cout << "Testing random uniform\nNominal count, PCG count, Difference\n";
-    std::cout << "Max value is 1, obtained max value is " << maxVal << "\n";
-    for (auto t : pcg) {
-        const auto diff = t * N * 100.0 / S - 100.0;
-        assert(std::abs(diff) < 5.0);
-        std::cout << S / N << ", " << t << ", " << diff << "\n";
-    }
-
-    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) << "\n";
-    assert(std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) == S);
-
-    auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-    std::cout << "PCG time: " << pcg_time.count() << std::endl;
-}
-
-void testUniformRange()
-{
-    constexpr std::size_t S = 1e8;
-    constexpr std::size_t N = 100;
-    std::array<std::size_t, N> pcg;
-    pcg.fill(0);
-
-    RandomState state;
-
-    constexpr double r1 = 5.0;
-    constexpr double r2 = 10.0;
-
-    const auto start = std::chrono::high_resolution_clock::now();
-    for (std::size_t i = 0; i < S; ++i) {
-        const auto t = state.randomUniform(r1, r2);
-        const auto idx = static_cast<std::size_t>(N * ((t - r1) / (r2 - r1)));
-        pcg[idx]++;
-    }
-    const auto end = std::chrono::high_resolution_clock::now();
-
-    std::cout << "Testing random uniform double range\nNominal count, PCG count, Difference\n";
-    for (auto t : pcg) {
-        const auto diff = t * N * 100.0 / S - 100.0;
-        // assert(std::abs(diff) < 5.0);
-        std::cout << S / N << ", " << t << ", " << diff << "\n";
-    }
-
-    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) << "\n";
-    assert(std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) == S);
-
-    auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-    std::cout << "PCG time: " << pcg_time.count() << std::endl;
-}
-
-void testrandomInteger(std::uint8_t max = 128)
-{
-    std::vector<std::size_t> vals(max, 0);
-    RandomState state;
-
-    std::size_t test = 4;
-    state.randomInteger32BitCapped(test);
-
-    for (std::size_t i = 0; i < max * 1e6; ++i) {
-        const auto ind = state.randomInteger(max);
-        vals[ind]++;
-    }
-    for (std::size_t i = 0; i < vals.size(); ++i) {
-        std::cout << i << ", " << vals[i] << "\n";
-    }
-    auto mean = std::accumulate(vals.cbegin(), vals.cend(), 0.0) / max;
-    auto var = std::transform_reduce(vals.cbegin(), vals.cend(), 0.0, std::plus<>(), [=](auto v) {
-        const auto vd = static_cast<double>(v);
-        const auto diff = vd - mean;
-        return diff * diff;
-    }) / (max - 1);
-    std::cout << mean << ", " << var << ", " << std::sqrt(var) << "\n";
-    assert(mean > var / 2);
-}
-void testUniformIndex()
-{
-    constexpr std::size_t S = 1e8;
-    constexpr std::size_t N = 100;
-    std::array<std::size_t, N> pcg;
-    pcg.fill(0);
-
-    RandomState state;
-
-    const auto start = std::chrono::high_resolution_clock::now();
-    for (std::size_t i = 0; i < S; ++i) {
-        const auto t = state.randomUniform(N);
-        assert(t < N);
+        const auto t = static_cast<std::size_t>(std::nextafter(r * N, T { 0 }));
         pcg[t]++;
     }
     const auto end = std::chrono::high_resolution_clock::now();
 
-    std::cout << "Testing random index\nNominal count, PCG count, Difference\n";
+    // check total number
+    const auto pcg_sum = std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 });
+    bool success = pcg_sum == S;
+
+    T max_deviation = 0;
     for (auto t : pcg) {
         const auto diff = t * N * 100.0 / S - 100.0;
-        assert(std::abs(diff) < 5.0);
-        std::cout << S / N << ", " << t << ", " << diff << "\n";
+        // deviation i percent
+        const auto dev = (static_cast<T>(t) * N) / static_cast<T>(S) - T { 1 };
+        max_deviation = std::max(std::abs(dev), max_deviation);
     }
-
-    std::cout << "Counted random numbers: " << std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) << "\n";
-    assert(std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 }) == S);
+    // max deviation is less than 0.5 %
+    success = success && max_deviation * T { 100 } < T { 0.5 };
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-
-    std::cout << "PCG time: " << pcg_time.count() << std::endl;
+    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::cout << msg << " Test random uniform, time: " << pcg_time.count() << "ms" << std::endl;
+    return success;
 }
 
 template <typename T>
-void testRita()
+bool testUniformRange()
 {
+    constexpr std::size_t S = 1e8;
+    constexpr std::size_t N = 100;
+    std::array<std::size_t, N> pcg;
+    pcg.fill(0);
 
-    auto pdf = [](const T e) -> T { return e * e; };
-
-    T min = 0;
-    T max = 50;
-    constexpr std::size_t steps = 150;
-    std::vector<T> vals;
-    for (std::size_t i = 0; i < steps; ++i) {
-        vals.push_back(min + (max - min) * i / (steps - 1));
-    }
-
-    RITA<T, steps * 2> r(min, max, pdf);
     RandomState state;
-    std::vector<T> hist(steps, 0);
-    std::size_t nsamp = 1E7;
-    for (std::size_t i = 0; i < nsamp; ++i) {
-        const T v = r(state);
-        const auto ind = (v - min) * (steps - 1) / (max - min);
-        ++hist[static_cast<std::size_t>(ind)];
+
+    constexpr T r1 = 5;
+    constexpr T r2 = 10;
+
+    const auto start = std::chrono::high_resolution_clock::now();
+    for (std::size_t i = 0; i < S; ++i) {
+        const auto t = state.randomUniform(r1, r2);
+        const auto idx = static_cast<std::size_t>(std::nextafter(N * ((t - r1) / (r2 - r1)), T { 0 }));
+        pcg[idx]++;
     }
-    T rms = 0;
-    std::cout << "RITA test, RITA, ANA" << std::endl;
-    for (int i = 0; i < steps; ++i) {
-        const T ana = i * i / (T { steps } * steps * steps) * 3;
-        std::cout << i << ", " << hist[i] / nsamp << ", " << ana << std::endl;
-        if (i > 0 && i < steps - 2) {
-            const T diff = hist[i] / nsamp - ana;
-            rms += diff * diff;
-        }
+    const auto end = std::chrono::high_resolution_clock::now();
+
+    // check total number
+    const auto pcg_sum = std::accumulate(pcg.cbegin(), pcg.cend(), std::size_t { 0 });
+    bool success = pcg_sum == S;
+
+    T max_deviation = 0;
+    for (auto t : pcg) {
+        const auto diff = t * N * 100.0 / S - 100.0;
+        // deviation i percent
+        const auto dev = (static_cast<T>(t) * N) / static_cast<T>(S) - T { 1 };
+        max_deviation = std::max(std::abs(dev), max_deviation);
     }
-    rms /= steps - 2;
-    rms = std::sqrt(rms);
-    std::cout << "RMS: " << rms << std::endl;
-    assert(rms < 0.001);
+    // max deviation is less than 0.5 %
+    success = success && max_deviation * T { 100 } < T { 0.5 };
+
+    auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::cout << msg << " Test random uniform range, time: " << pcg_time.count() << "ms" << std::endl;
+    return success;
+}
+
+bool testrandomInteger(std::uint8_t max = 128)
+{
+    std::vector<std::size_t> vals(max, 0);
+    RandomState state;
+    const std::size_t S = 1E6 * max;
+
+    const auto start = std::chrono::high_resolution_clock::now();
+    for (std::size_t i = 0; i < S; ++i) {
+        const auto ind = state.randomInteger(max);
+        vals[ind]++;
+    }
+    const auto end = std::chrono::high_resolution_clock::now();
+    auto sum = std::accumulate(vals.cbegin(), vals.cend(), std::size_t { 0 });
+
+    bool success = sum == S;
+
+    double max_diff = 0;
+    for (auto n : vals) {
+        const auto per_n = static_cast<double>(S) / max;
+        const auto diff = static_cast<double>(n) / per_n - 1;
+        max_diff = std::max(std::abs(diff), max_diff);
+    }
+    success = success && max_diff * 100 < 1.0;
+
+    auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::cout << msg << " Test random uniform index, time: " << pcg_time.count() << "ms" << std::endl;
+    return success;
 }
 
 template <typename T>
 bool testCPDFdist(bool print = false)
 {
-    auto f = [](T x) { return std::exp(-(x * x) / 2) / (std::sqrt(2 * std::numbers::pi_v<T>)); };
+    auto f = [](T x) { return std::exp(-(x * x) / 2); };
     const T xmin = -3;
     const T xmax = 3;
     const std::size_t N = 50;
@@ -201,11 +140,13 @@ bool testCPDFdist(bool print = false)
     const auto step = (xmax - xmin) / (N);
     constexpr std::size_t Nsamp = 1E7;
 
+    const auto start = std::chrono::high_resolution_clock::now();
     for (std::size_t i = 0; i < Nsamp; ++i) {
         const T x = samp(state);
-        const auto idx = static_cast<std::size_t>((x - xmin) / step);
+        const auto idx = static_cast<std::size_t>(std::nextafter((x - xmin) / step, T { 0 }));
         hist[idx] += 1;
     }
+    const auto end = std::chrono::high_resolution_clock::now();
     std::for_each(hist.begin(), hist.end(), [](auto& h) { h /= Nsamp; });
 
     auto func = hist;
@@ -231,19 +172,28 @@ bool testCPDFdist(bool print = false)
             std::cout << x << ", " << hist[i] << ", " << func[i] << std::endl;
         maxError = std::max(error[i], maxError);
     }
-    return maxError < T { 0.01 };
+    auto success = maxError < T { 0.01 };
+
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
+    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::cout << msg << " Test Gaussian analytical pdf, time: " << time.count() << "ms" << std::endl;
+    return success;
 }
 
 int main(int argc, char* argv[])
 {
+    std::cout << "Testing random number generator:" << std::endl;
+
     bool success = true;
+    success = success && testrandomInteger();
+    success = success && testUniform<double>();
+    success = success && testUniform<float>();
+    success = success && testUniformRange<double>();
+    success = success && testUniformRange<float>();
     success = success && testCPDFdist<double>();
     success = success && testCPDFdist<float>();
-    // testrandomInteger();
-    testUniform<double>();
-    testUniform<float>();
-    // testUniformRange();
-    // testUniformIndex();
-    testRita<float>();
-    return 0;
+
+    if (success)
+        return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }
