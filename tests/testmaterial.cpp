@@ -14,7 +14,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #include "dxmc/material/atomhandler.hpp"

@@ -173,8 +173,8 @@ bool teststatickdtree()
 
 int main()
 {
-    benchmark<float>();
-    benchmark<double>();
+    // benchmark<float>();
+    // benchmark<double>();
     auto success = teststatickdtree<float>();
     success = success && teststatickdtree<double>();
     //  bool success = true;

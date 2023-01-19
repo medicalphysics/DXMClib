@@ -55,7 +55,7 @@ auto create_image(dxmc::TriangulatedMesh<T>& object, const std::array<T, 3>& cam
         dxmc::vectormath::normalize(p.dir);
 
         const auto intersection = object.intersect(p);
-        
+
         return intersection.item ? intersection.intersection : 0;
     });
     const auto t1 = std::chrono::high_resolution_clock::now();
@@ -191,7 +191,7 @@ int main(int argc, char* argv[])
 
     std::array<double, 3> pos { -600, 500, 400.0 };
     create_image(mesh, pos, true);
-
-    // benchmark(triangles);
-    return EXIT_SUCCESS;
+    if (success)
+        return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }
