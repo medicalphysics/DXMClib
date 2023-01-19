@@ -37,7 +37,9 @@ def testAtom():
         ax = plt.subplot(133)
         sns.lineplot(data=dff, x='e', y='att', hue='kind', hue_order=['diffp',], ax=ax)
         plt.xscale('log')
-        plt.xlim(xmin, xmax)        
+        plt.xlim(xmin, xmax)   
+        
+        plt.tight_layout()
         plt.show()
         
     sns.relplot(data=df, x='e', y='att', hue='type', col='kind', hue_order=['photoelectric', 'coherent', 'incoherent', 'total'], 
@@ -45,6 +47,7 @@ def testAtom():
     plt.yscale('log')
     plt.xscale('log')
     plt.xlim(xmin,xmax)    
+    plt.tight_layout()
     plt.show()    
 
 

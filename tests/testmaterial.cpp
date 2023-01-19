@@ -23,8 +23,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/material/atomserializer.hpp"
 #include "dxmc/material/material.hpp"
 
-#include "xraylib.h"
-
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -39,7 +37,7 @@ void writeAtomTestData(std::size_t Z)
     file << "e,att,type,kind" << std ::endl;
 
     std::vector<T> energy;
-    const T step = 0.1;
+    const T step = 0.5;
     std::size_t it = 0;
     do {
         energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
@@ -74,7 +72,7 @@ void writeAtomTestData(std::size_t Z)
         file << std::format("{},{},{},{}", e, att.sum() - tot, "total", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (att.sum() / tot - 1) * 100, "total", "diffp") << std::endl;
 
-        auto x = m.momentumTransfer(e, dxmc::PI_VAL<T>());
+        auto x = m.momentumTransferMax(e);
         auto ff = dxmc::interpolate(a.formFactor, x);
         file << std::format("{},{},{},{}", e, ff, "formfactor", "lin") << std::endl;
         auto ff_dx = m.formFactor(x);
@@ -121,7 +119,7 @@ bool testAtomAttenuation()
             auto att_sum_dxmc = att.sum();
             valid = valid && (std::abs(att.sum() - att_sum) / att_sum * 100) < lim;
 
-            auto x = material.momentumTransfer(e, dxmc::PI_VAL<T>());
+            auto x = material.momentumTransferMax(e);
             auto ff_lin = dxmc::interpolate(atom.formFactor, x);
             auto ff_dx = material.formFactor(x);
             valid = valid && (std::abs(ff_dx / ff_lin) - 1) * 100 < 20;
@@ -139,105 +137,13 @@ bool testAtomAttenuation()
     return valid;
 }
 
-void testMaterial()
-{
-    auto m0 = dxmc::Material2<double>::byChemicalFormula("He");
-    // auto m0 = dxmc::Material2<double>::byZ(2);
-    if (m0) {
-        auto& m = m0.value();
-        std::vector<double> e(150);
-        std::iota(e.begin(), e.end(), 1.0);
-    }
-
-    auto m1 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
-    if (m1) {
-        auto& m = m1.value();
-        auto att = m.attenuationValues(60.0);
-        auto sum = att.coherent + att.incoherent + att.photoelectric;
-        std::cout << sum << std::endl;
-
-        std::vector<double> e(150);
-        std::iota(e.begin(), e.end(), 1.0);
-    }
-    std::map<std::uint64_t, double> w;
-    w[1] = 0.034000;
-    w[6] = 0.155000;
-    w[7] = 0.042000;
-    w[8] = 0.435000;
-    w[11] = 0.001000;
-    w[12] = 0.002000;
-    w[15] = 0.103000;
-    w[16] = 0.003000;
-    w[20] = 0.225000;
-    auto bone = dxmc::Material2<double>::byWeight(w);
-    if (bone) {
-        auto& m = bone.value();
-        auto att1 = m.attenuationValues(4.038);
-        auto sum1 = att1.sum();
-        auto att2 = m.attenuationValues(4.04);
-        auto sum2 = att2.sum();
-        std::cout << sum1 << std::endl;
-    }
-
-    auto m2 = dxmc::Material2<float>::byChemicalFormula("Ca5(PO4)3");
-    auto m3 = dxmc::Material2<double>::byChemicalFormula("Ca5(PO4)3");
-}
-void testShell()
-{
-}
-
-void testInterpolator()
-{
-
-    for (std::size_t i = 1; i <= 83; i++) {
-        auto& O = AtomHandler<double>::Atom(i);
-        std::vector<double> x(O.photoel.size());
-        std::vector<double> y(O.photoel.size());
-        std::transform(O.photoel.begin(), O.photoel.end(), x.begin(), [](const auto& val) { return std::log(val.first); });
-        std::transform(O.photoel.begin(), O.photoel.end(), y.begin(), [](const auto& val) { return std::log(val.second); });
-
-        auto intp = CubicLSInterpolator<double>(x, y, 20);
-
-        double max_error_int = 0;
-        double max_error_lib = 0;
-        std::size_t ind = 0;
-        std::size_t ind_max = 0;
-        std::size_t ind_max_lib = 0;
-
-        std::vector<double> binding_e;
-        for (const auto& [sidx, shell] : O.shells) {
-            binding_e.push_back(shell.bindingEnergy);
-        }
-
-        for (auto& [e, a] : O.photoel) {
-            auto bindingIdx = std::find(binding_e.cbegin(), binding_e.cend(), e);
-            if (bindingIdx == binding_e.cend()) {
-                auto ai = std::exp(intp(std::log(e)));
-                auto ei = CS_Photo(O.Z, e, nullptr);
-                if (std::abs(ai / a - 1) > max_error_int)
-                    ind_max = ind;
-                if (std::abs(ei / a - 1) > max_error_lib)
-                    ind_max_lib = ind;
-                max_error_int = std::max(std::abs(ai / a - 1), max_error_int);
-                max_error_lib = std::max(std::abs(ei / a - 1), max_error_lib);
-            }
-            ind++;
-        }
-        auto s = std::format("{}: Max Error :{}  xlib: {}  at {} and {} of {}", O.Z, max_error_int, max_error_lib, ind_max, ind_max_lib, ind);
-        std::cout << s << std::endl;
-        // for (auto [e, a] : O.photoel) {
-        //    std::cout << e << ", " << a << ", " << std::exp(intp(std::log(e))) << ", " << CS_Photo(O.Z, e, nullptr) << std::endl;
-        //}
-    }
-    return;
-}
-
 int main(int argc, char* argv[])
 {
-    auto valid = testAtomAttenuation();
-    // testMaterial();
-    // testInterpolator();
-    auto success = valid;
+    auto success = true;
+    success = success && testAtomAttenuation();
+
+    // writeAtomTestData<double>(13);
+
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;
