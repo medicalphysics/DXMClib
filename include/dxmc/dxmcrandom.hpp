@@ -393,7 +393,7 @@ public:
             const auto nom = (1 + pos0->a + pos0->b) * delta * v;
             const auto den = delta * delta + pos0->a * delta * v + pos0->b * v * v;
             res = pos0->x + nom * (pos1->x - pos0->x) / den;
-        } while (res <= max_x);
+        } while (res > max_x);
         return res;
     }
 
