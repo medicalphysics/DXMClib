@@ -26,7 +26,10 @@ def testAtom():
         _ = plt.figure(figsize=(9, 3), dpi=300)
         plt.title(t)
         ax = plt.subplot(131)
-        sns.lineplot(data=dff, x='e', y='att', hue='kind', hue_order=['dxmc','lin'], ax=ax)
+        hue_att = ['dxmc','lin']
+        if t in ['scatterfactor', 'formfactor']:
+            hue_att += ["xlib",]
+        sns.lineplot(data=dff, x='e', y='att', hue='kind', hue_order=hue_att, ax=ax)
         plt.yscale('log')
         plt.xscale('log')
         plt.xlim(xmin, xmax)

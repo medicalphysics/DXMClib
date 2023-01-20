@@ -23,6 +23,8 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/atomserializer.hpp"
 #include "dxmc/material/material.hpp"
 
+#include "xraylib.h"
+
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -77,6 +79,8 @@ void writeAtomTestData(std::size_t Z)
         file << std::format("{},{},{},{}", e, ff, "formfactor", "lin") << std::endl;
         auto ff_dx = m.formFactor(x);
         file << std::format("{},{},{},{}", e, ff_dx, "formfactor", "dxmc") << std::endl;
+        T ff_xlib = FF_Rayl(Z, x, nullptr);
+        file << std::format("{},{},{},{}", e, ff_xlib, "formfactor", "xlib") << std::endl;
         file << std::format("{},{},{},{}", e, ff_dx - ff, "formfactor", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (ff_dx / ff - 1) * 100, "formfactor", "diffp") << std::endl;
 
@@ -84,6 +88,8 @@ void writeAtomTestData(std::size_t Z)
         file << std::format("{},{},{},{}", e, sf, "scatterfactor", "lin") << std::endl;
         auto sf_dx = m.scatterFactor(x);
         file << std::format("{},{},{},{}", e, sf_dx, "scatterfactor", "dxmc") << std::endl;
+        T sf_xlib = SF_Compt(Z, x, nullptr);
+        file << std::format("{},{},{},{}", e, sf_xlib, "scatterfactor", "xlib") << std::endl;
         file << std::format("{},{},{},{}", e, sf_dx - sf, "scatterfactor", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (sf_dx / sf - 1) * 100, "scatterfactor", "diffp") << std::endl;
     }
@@ -142,7 +148,7 @@ int main(int argc, char* argv[])
     auto success = true;
     success = success && testAtomAttenuation();
 
-    // writeAtomTestData<double>(13);
+    writeAtomTestData<double>(13);
 
     if (success)
         return EXIT_SUCCESS;

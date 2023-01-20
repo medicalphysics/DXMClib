@@ -168,6 +168,12 @@ public:
     {
         return momentumTransferMax(energy) * std::sin(angle * T { 0.5 }); // per Å
     }
+
+    static T momentumTransferCosAngle(T energy, T cosAngle)
+    {
+        return momentumTransferMax(energy) * std::sqrt((1 - cosAngle) * T { 0.5 }); // per Å
+    }
+
     static constexpr T momentumTransferMax(T energy)
     {
         constexpr T hc_si = 1.239841193E-6; // ev*m

@@ -55,7 +55,7 @@ namespace interactions {
             T cosAngle;
             do {
                 const auto q_squared = material.sampleSquaredMomentumTransferFromFormFactorSquared(qmax_squared, state);
-                cosAngle = T { 1 } - 2 * q_squared / qmax_squared;                
+                cosAngle = T { 1 } - 2 * q_squared / qmax_squared;
             } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
             const auto theta = std::acos(cosAngle);
@@ -64,12 +64,54 @@ namespace interactions {
         }
     }
 
-    /* template <int Lowenergycorrection>
-    T comptonScatter(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
+    template <Floating T, int Lowenergycorrection>
+    T comptonScatter(Particle<T>& particle, const Material2<T>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
     {
+        if constexpr (Lowenergycorrection < 2) {
+
+            const auto k = particle.energy / ELECTRON_REST_MASS<T>();
+            const auto emin = 1 / (1 + 2 * k);
+            constexpr T emax = 1;
+
+            // const auto gmax = 1 / emin + emin;
+            const auto gmaxInv = emin / (1 + emin * emin);
+
+            T e, cosTheta;
+            bool rejected;
+            do {
+                const auto r1 = state.randomUniform<T>();
+                e = r1 + (1 - r1) * emin;
+
+                const auto t = (1 - e) / (k * e);
+                const auto sinThetaSqr = t * (2 - t);
+                cosTheta = 1 - t;
+
+                const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
+                if constexpr (Lowenergycorrection == 1) {
+                    const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
+                    const auto scatterFactor = material.scatterFactor(q);
+                    // normalize scatterfactor
+                    rejected = state.randomUniform<T>() * 13 > (g * scatterFactor);
+                } else {
+                    rejected = state.randomUniform<T>() > g;
+                }
+            } while (rejected);
+
+            const auto theta = std::acos(cosTheta);
+            const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
+            vectormath::peturb<T>(particle.dir, theta, phi);
+
+            const auto E = particle.energy;
+            particle.energy *= e;
+            return E - particle.energy;
+        } else {
+            return T { 0 };
+        }
+
+        /*
         if constexpr (Lowenergycorrection == 2) {
             return comptonScatterNRC(particle, materialIdx, state);
         } else {
@@ -103,9 +145,9 @@ namespace interactions {
             vectormath::peturb<T>(particle.dir, theta, phi);
             particle.energy *= e;
             return E - particle.energy;
-        }
+        }*/
     }
-
+    /*
     T comptonScatterNRC(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
     {
 
