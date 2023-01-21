@@ -58,7 +58,7 @@ public:
     void setShellHartreeFockProfile_0(std::uint64_t shell, double J);
     void setStandardDensity(double dens);
 
-    static constexpr double maxMomentumTransfer();
+    static constexpr double momentumTransferMax();
     static double momentumTransfer(double energy, double angle);
 
     static constexpr double maxPhotonEnergy();

@@ -81,7 +81,7 @@ void AtomicElementHandler::setFormFactor(const std::vector<double>& data)
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
         const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
-        if (x <= maxMomentumTransfer() && x > 0.0) {
+        if (x <= momentumTransferMax() && x > 0.0) {
             m_atom.formFactor.push_back(std::make_pair(x, f));
         }
     }
@@ -119,7 +119,7 @@ void AtomicElementHandler::setIncoherentSF(const std::vector<double>& data)
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
         const auto x = data[i] * 1E6; // for units of per Å
         const auto f = data[i + 1];
-        if (x <= maxMomentumTransfer() && x > 0.0) {
+        if (x <= momentumTransferMax() && x > 0.0) {
             m_atom.incoherentSF.push_back(std::make_pair(x, f));
         }
     }
@@ -264,15 +264,7 @@ constexpr double AtomicElementHandler::minPhotonEnergy()
     };
     return std::min(to_double(DXMCLIB_MINTABLEENERGY).value_or(1.0), 1.0);
 }
-constexpr double AtomicElementHandler::maxMomentumTransfer()
-{
-    constexpr double hc_si = 1.239841193E-6; // ev*m
-    constexpr double m2A = 1E10; // meters to Ångstrøm
-    constexpr double eV2keV = 1E-3; // eV to keV
-    constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
-    constexpr double hc_inv = 1.0 / hc;
-    return maxPhotonEnergy() * hc_inv; // per Å
-}
+
 void AtomicElementHandler::setShellHartreeFockProfile_0(std::uint64_t shell, double J)
 {
     if (!m_atom.shells.contains(shell)) {
@@ -284,6 +276,15 @@ void AtomicElementHandler::setStandardDensity(double dens)
 {
     m_atom.standardDensity = dens;
 }
+constexpr double AtomicElementHandler::momentumTransferMax()
+{
+    constexpr double hc_si = 1.239841193E-6; // ev*m
+    constexpr double m2A = 1E10; // meters to Ångstrøm
+    constexpr double eV2keV = 1E-3; // eV to keV
+    constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
+    constexpr double hc_inv = 1.0 / hc;
+    return 2 * maxPhotonEnergy() * hc_inv; // per Å
+}
 double AtomicElementHandler::momentumTransfer(double energy, double angle)
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m
@@ -291,5 +292,5 @@ double AtomicElementHandler::momentumTransfer(double energy, double angle)
     constexpr double eV2keV = 1E-3; // eV to keV
     constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
     constexpr double hc_inv = 1.0 / hc;
-    return energy * std::sin(angle * 0.5) * hc_inv; // per Å
+    return 2 * energy * std::sin(angle * 0.5) * hc_inv; // per Å
 }
