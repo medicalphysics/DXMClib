@@ -92,6 +92,8 @@ public:
         return std::nullopt;
     }
 
+    inline T effectiveZ() const { return m_effectiveZ; }
+
     inline T scatterFactor(const T momentumTransfer) const
     {
         const auto logmomt = std::log(momentumTransfer);
@@ -316,6 +318,12 @@ protected:
         }
 
         if (loglog) {
+            // removing zero and negative items
+            auto last = std::remove_if(arr.begin(), arr.end(), [](const auto pair) -> bool {
+                return pair.first <= T { 0 };
+            });
+            arr.erase(last, arr.end());
+
             std::for_each(std::execution::par_unseq, arr.begin(), arr.end(), [](auto& v) {
                 v.first = std::log(v.first);
                 v.second = std::log(v.second);
@@ -429,6 +437,8 @@ protected:
             constructSplineInterpolator(weight, LUTType::scatterfactor),
         };
         Material2<T> m;
+        m.m_effectiveZ = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto z, const auto& pair) { return z + pair.first * pair.second; });
+
         m.m_attenuationTable.clear();
         std::array<std::size_t, attenuation.size() + N> offset;
         for (std::size_t i = 0; i < attenuation.size(); ++i) {
@@ -532,6 +542,7 @@ protected:
     }
 
 private:
+    T m_effectiveZ = 0;
     std::vector<std::array<T, 3>> m_attenuationTable;
     std::array<typename std::vector<std::array<T, 3>>::iterator, 5 + N + 1> m_attenuationTableOffset;
     CPDFSampling<T, 20> m_formFactorInvSamp;

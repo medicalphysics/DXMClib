@@ -53,6 +53,11 @@ void writeAtomTestData(std::size_t Z)
         file << std::format("{},{},{},{}", e, att.photoelectric, "photoelectric", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, att.coherent, "coherent", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, att.incoherent, "incoherent", "dxmc") << std::endl;
+
+        file << std::format("{},{},{},{}", e, CS_Photo(Z, e, nullptr), "photoelectric", "xlib") << std::endl;
+        file << std::format("{},{},{},{}", e, CS_Rayl(Z, e, nullptr), "coherent", "xlib") << std::endl;
+        file << std::format("{},{},{},{}", e, CS_Compt(Z, e, nullptr), "incoherent", "xlib") << std::endl;
+
         auto p = dxmc::interpolate(a.photoel, e);
         file << std::format("{},{},{},{}", e, p, "photoelectric", "lin") << std::endl;
         auto co = dxmc::interpolate(a.coherent, e);
@@ -70,6 +75,8 @@ void writeAtomTestData(std::size_t Z)
 
         auto tot = p + inco + co;
         file << std::format("{},{},{},{}", e, tot, "total", "lin") << std::endl;
+        file << std::format("{},{},{},{}", e, CS_Total(Z, e, nullptr), "total", "xlib") << std::endl;
+        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
         file << std::format("{},{},{},{}", e, att.sum() - tot, "total", "diff") << std::endl;
         file << std::format("{},{},{},{}", e, (att.sum() / tot - 1) * 100, "total", "diffp") << std::endl;

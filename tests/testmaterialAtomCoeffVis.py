@@ -26,9 +26,7 @@ def testAtom():
         _ = plt.figure(figsize=(9, 3), dpi=300)
         plt.title(t)
         ax = plt.subplot(131)
-        hue_att = ['dxmc','lin']
-        if t in ['scatterfactor', 'formfactor']:
-            hue_att += ["xlib",]
+        hue_att = ['dxmc', 'lin', 'xlib']        
         sns.lineplot(data=dff, x='e', y='att', hue='kind', hue_order=hue_att, ax=ax)
         plt.yscale('log')
         plt.xscale('log')
@@ -46,7 +44,7 @@ def testAtom():
         plt.show()
         
     sns.relplot(data=df, x='e', y='att', hue='type', col='kind', hue_order=['photoelectric', 'coherent', 'incoherent', 'total'], 
-                col_order=['dxmc','lin'], kind='line')
+                col_order=['dxmc', 'lin', 'xlib'], kind='line')
     plt.yscale('log')
     plt.xscale('log')
     plt.xlim(xmin,xmax)    

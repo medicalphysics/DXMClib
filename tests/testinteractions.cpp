@@ -164,6 +164,8 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     auto material_opt = dxmc::Material2<T>::byZ(Z);
     auto material = material_opt.value();
 
+    auto atom = dxmc::AtomHandler<T>::Atom(Z);
+
     constexpr std::array<T, 3> dir = { 0, 0, 1 };
     dxmc::Particle<T> particle;
     particle.pos = { 0, 0, 0 };
@@ -202,14 +204,17 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
         std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy, &material](const auto xv) {
             const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
             const auto sinThetaSqr = 1 - cosTheta * cosTheta;
-            const auto q = material.momentumTransferCosAngle(energy, xv);
+            const auto q = material.momentumTransferCosAngle(energy, cosTheta);
             const auto scatterFactor = material.scatterFactor(q);
             return (1 / xv + xv) * (1 - xv * sinThetaSqr / (1 + xv * xv)) * scatterFactor;
         });
-        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [Z, energy](const auto xv) {
+        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [Z, energy, &material](const auto xv) {
             const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
             const auto theta = std::acos(cosTheta);
             return static_cast<T>(DCS_Compt(Z, energy, theta, nullptr));
+            // const auto q = material.momentumTransferCosAngle(energy, cosTheta);
+            // const auto scatterFactor = material.scatterFactor(q);
+            // return static_cast<T>(DCS_KN(energy, theta, nullptr))*scatterFactor;
         });
     }
     const auto y_ana_sum = std::reduce(y_ana.cbegin(), y_ana.cend(), T { 0 });
@@ -217,7 +222,7 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     const auto y_xraylib_sum = std::reduce(y_xraylib.cbegin(), y_xraylib.cend(), T { 0 });
     std::for_each(y_xraylib.begin(), y_xraylib.end(), [y_xraylib_sum](auto& yv) { yv /= y_xraylib_sum; });
 
-    for (std::size_t i = 0; i < y.size(); ++i) {
+    for (std::size_t i = 0; i < y.size() - 1; ++i) {
         const auto diff = std::abs(y[i] / y_ana[i] - 1);
         success = success && diff < T { 0.05 };
     }
@@ -246,13 +251,16 @@ int main()
 {
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
-    // success = success && testIncoherent<double, 0>(13, 50., false);
-    success = success && testIncoherent<double, 1>(13, 50., true);
 
     success = success && testCoherent<double, 1>(13, 5.0, false);
     success = success && testCoherent<float, 1>(13, 5.0, false);
     success = success && testCoherent<double, 0>(13, 5.0, false);
     success = success && testCoherent<float, 0>(13, 5.0, false);
+
+    success = success && testIncoherent<double, 0>(13, 50., false);
+    success = success && testIncoherent<float, 0>(13, 50., false);
+    success = success && testIncoherent<double, 1>(13, 50., false);
+    success = success && testIncoherent<float, 1>(13, 50., false);
 
     if (success)
         return EXIT_SUCCESS;

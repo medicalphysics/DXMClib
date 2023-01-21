@@ -81,6 +81,7 @@ namespace interactions {
 
             T e, cosTheta;
             bool rejected;
+            const auto effZInv = T { 1 } / material.effectiveZ();
             do {
                 const auto r1 = state.randomUniform<T>();
                 e = r1 + (1 - r1) * emin;
@@ -94,7 +95,7 @@ namespace interactions {
                     const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
                     const auto scatterFactor = material.scatterFactor(q);
                     // normalize scatterfactor
-                    rejected = state.randomUniform<T>() * 13 > (g * scatterFactor);
+                    rejected = state.randomUniform<T>() > (g * scatterFactor * effZInv);
                 } else {
                     rejected = state.randomUniform<T>() > g;
                 }
