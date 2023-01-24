@@ -157,9 +157,7 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     bool success = true;
     constexpr std::size_t N = 1E6;
 
-    const auto emin = dxmc::ELECTRON_REST_MASS<T>() / (dxmc::ELECTRON_REST_MASS<T>() + 2 * energy);
-
-    Histogram hist(emin, T { 1 }, 90);
+    Histogram hist(T { -1 }, T { 1 }, 90);
 
     auto material_opt = dxmc::Material2<T>::byZ(Z);
     auto material = material_opt.value();
@@ -178,9 +176,8 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     for (std::size_t i = 0; i < N; ++i) {
         particle.dir = dir;
         particle.energy = energy;
-        const auto e_energy = dxmc::interactions::comptonScatter<T, type>(particle, material, state);
-        const auto e = particle.energy / energy;
-        hist(e);
+        dxmc::interactions::comptonScatter<T, type>(particle, material, state);
+        hist(dxmc::vectormath::dot(particle.dir, dir));
     }
     const auto tend = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
@@ -188,39 +185,46 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     const auto [x, y] = hist.plotData();
     std::vector<T> y_ana(x.size(), 0);
     std::vector<T> y_xraylib(x.size(), 0);
-    // analytical
+
     if constexpr (type == 0) {
-        std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy](const auto xv) {
-            const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
-            const auto sinThetaSqr = 1 - cosTheta * cosTheta;
-            return (1 / xv + xv) * (1 - xv * sinThetaSqr / (1 + xv * xv));
+        std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy](const auto cosangle) {
+            const auto k = energy / dxmc::ELECTRON_REST_MASS<T>();
+            const auto kc = k / (1 + k * (1 - cosangle));
+            const auto e = kc / k;
+            const auto sinangleSqr = 1 - cosangle * cosangle;
+            const auto KN = e * e * (e + 1 / e - sinangleSqr);
+            return KN;
         });
-        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [energy](const auto xv) {
-            const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
-            const auto theta = std::acos(cosTheta);
+        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [energy](const auto cosangle) {
+            const auto theta = std::acos(cosangle);
             return static_cast<T>(DCS_KN(energy, theta, nullptr));
         });
     } else if constexpr (type == 1) {
-        std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy, &material](const auto xv) {
-            const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
-            const auto sinThetaSqr = 1 - cosTheta * cosTheta;
-            const auto q = material.momentumTransferCosAngle(energy, cosTheta);
-            const auto scatterFactor = material.scatterFactor(q);
-            return (1 / xv + xv) * (1 - xv * sinThetaSqr / (1 + xv * xv)) * scatterFactor;
+        std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy, &material](const auto cosangle) {
+            const auto k = energy / dxmc::ELECTRON_REST_MASS<T>();
+            const auto kc = k / (1 + k * (1 - cosangle));
+            const auto e = kc / k;
+            const auto sinangleSqr = 1 - cosangle * cosangle;
+            const auto KN = e * e * (e + 1 / e - sinangleSqr);
+            const auto q = material.momentumTransferCosAngle(energy, cosangle);
+            return KN * material.scatterFactor(q);
         });
-        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [Z, energy, &material](const auto xv) {
-            const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
-            const auto theta = std::acos(cosTheta);
+        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [Z, energy, &material](const auto cosangle) {
+            const auto theta = std::acos(cosangle);
+            const auto q = material.momentumTransferCosAngle(energy, cosangle);
             return static_cast<T>(DCS_Compt(Z, energy, theta, nullptr));
-            // const auto q = material.momentumTransferCosAngle(energy, cosTheta);
-            // const auto scatterFactor = material.scatterFactor(q);
-            // return static_cast<T>(DCS_KN(energy, theta, nullptr))*scatterFactor;
         });
     }
     const auto y_ana_sum = std::reduce(y_ana.cbegin(), y_ana.cend(), T { 0 });
     std::for_each(y_ana.begin(), y_ana.end(), [y_ana_sum](auto& yv) { yv /= y_ana_sum; });
     const auto y_xraylib_sum = std::reduce(y_xraylib.cbegin(), y_xraylib.cend(), T { 0 });
     std::for_each(y_xraylib.begin(), y_xraylib.end(), [y_xraylib_sum](auto& yv) { yv /= y_xraylib_sum; });
+
+    std::vector<T> x_ang(x.size(), 0);
+    std::transform(x.cbegin(), x.cend(), x_ang.begin(), [energy](const auto xv) {
+        const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
+        return std::acos(cosTheta);
+    });
 
     for (std::size_t i = 0; i < y.size() - 1; ++i) {
         const auto diff = std::abs(y[i] / y_ana[i] - 1);

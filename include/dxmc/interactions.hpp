@@ -70,47 +70,44 @@ namespace interactions {
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
     {
-        if constexpr (Lowenergycorrection < 2) {
+        const auto k = particle.energy / ELECTRON_REST_MASS<T>();
+        const auto emin = 1 / (1 + 2 * k);
 
-            const auto k = particle.energy / ELECTRON_REST_MASS<T>();
-            const auto emin = 1 / (1 + 2 * k);
-            constexpr T emax = 1;
+        const auto gmaxInv = emin / (1 + emin * emin);
 
-            // const auto gmax = 1 / emin + emin;
-            const auto gmaxInv = emin / (1 + emin * emin);
+        T e, cosTheta;
+        bool rejected;
+        do {
+            const auto r1 = state.randomUniform<T>();
+            e = r1 + (1 - r1) * emin;
 
-            T e, cosTheta;
-            bool rejected;
-            const auto effZInv = T { 1 } / material.effectiveZ();
-            do {
-                const auto r1 = state.randomUniform<T>();
-                e = r1 + (1 - r1) * emin;
+            const auto t = std::min((1 - e) / (k * e), T { 2 }); // to prevent rounding errors with t > 2 (better way?)
 
-                const auto t = (1 - e) / (k * e);
-                const auto sinThetaSqr = t * (2 - t);
-                cosTheta = 1 - t;
+            cosTheta = 1 - t;
+            const auto sinThetaSqr = 1 - cosTheta * cosTheta;
 
-                const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
-                if constexpr (Lowenergycorrection == 1) {
-                    const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
-                    const auto scatterFactor = material.scatterFactor(q);
-                    // normalize scatterfactor
-                    rejected = state.randomUniform<T>() > (g * scatterFactor * effZInv);
-                } else {
-                    rejected = state.randomUniform<T>() > g;
-                }
-            } while (rejected);
+            const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
+            if constexpr (Lowenergycorrection == 0) {
+                rejected = state.randomUniform<T>() > g;
+            } else { // Livermore and IA process
+                const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
+                const auto scatterFactor = material.scatterFactor(q);
+                // normalize scatterfactor
+                rejected = state.randomUniform<T>(material.effectiveZ()) > (g * scatterFactor);
+            }
+        } while (rejected);
 
-            const auto theta = std::acos(cosTheta);
-            const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            vectormath::peturb<T>(particle.dir, theta, phi);
-
-            const auto E = particle.energy;
-            particle.energy *= e;
-            return E - particle.energy;
-        } else {
-            return T { 0 };
+        if constexpr (Lowenergycorrection == 2) { // only IA process
+            estimate electron shell anf doppler broadening here
         }
+
+        const auto theta = std::acos(cosTheta);
+        const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
+        vectormath::peturb<T>(particle.dir, theta, phi);
+
+        const auto E = particle.energy;
+        particle.energy *= e;
+        return E - particle.energy;
 
         /*
         if constexpr (Lowenergycorrection == 2) {
