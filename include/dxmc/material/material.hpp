@@ -33,6 +33,7 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 template <Floating T>
 struct Material2Shell {
+    T numberOfElectronsFraction = 0;
     T numberOfElectrons = 0;
     T bindingEnergy = 0;
     T HartreeFockOrbital_0 = 0;
@@ -49,7 +50,7 @@ struct AttenuationValues {
 template <Floating T, std::size_t N = 5>
 class Material2 {
 public:
-    static std::optional<Material2<T>> byZ(std::size_t Z)
+    static std::optional<Material2<T, N>> byZ(std::size_t Z)
     {
         auto a = AtomHandler<T>::Atom(Z);
         if (a.Z == Z) {
@@ -59,13 +60,13 @@ public:
         }
         return std::nullopt;
     }
-    static std::optional<Material2<T>> byWeight(const std::map<std::size_t, T>& weights)
+    static std::optional<Material2<T, N>> byWeight(const std::map<std::size_t, T>& weights)
     {
         auto m = constructMaterial(weights);
         return m;
     }
 
-    static std::optional<Material2<T>> byChemicalFormula(const std::string& str)
+    static std::optional<Material2<T, N>> byChemicalFormula(const std::string& str)
     {
         auto numberDensCompound = parseCompoundStr(str);
         if (numberDensCompound.size() == 0)
@@ -77,10 +78,10 @@ public:
             const auto& atom = AtomHandler<T>::Atom(Z);
             weight[Z] = numDens * atom.atomicWeight;
         }
-        return Material2<T>::byWeight(weight);
+        return Material2<T, N>::byWeight(weight);
     }
 
-    static std::optional<Material2<T>> byNistName(const std::string& name)
+    static std::optional<Material2<T, N>> byNistName(const std::string& name)
     {
         const std::map<std::string, std::map<std::size_t, T>> nist {
             { "Air, Dry (near sea level)", { { 6, 0.000124f }, { 7, 0.755268f }, { 8, 0.231781f }, { 18, 0.012827f } } },
@@ -223,7 +224,7 @@ protected:
                     const char l1 = *endP;
                     if (l1 == ')') {
                         std::string strP(startP, endP);
-                        auto parseP = Material2<T>::parseCompoundStr(strP);
+                        auto parseP = Material2<T, N>::parseCompoundStr(strP);
                         auto endPdig = endP + 1;
                         T w = 1;
                         std::string str_w;
@@ -417,7 +418,7 @@ protected:
         return lut;
     }
 
-    static std::optional<Material2<T>> constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
+    static std::optional<Material2<T, N>> constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
     {
         for (const auto& [Z, w] : compositionByWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
@@ -436,7 +437,7 @@ protected:
             constructSplineInterpolator(weight, LUTType::formfactor),
             constructSplineInterpolator(weight, LUTType::scatterfactor),
         };
-        Material2<T> m;
+        Material2<T, N> m;
         m.m_effectiveZ = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto z, const auto& pair) { return z + pair.first * pair.second; });
 
         m.m_attenuationTable.clear();
@@ -461,9 +462,9 @@ protected:
 
         return m;
     }
-    static void generateFormFactorInverseSampling(Material2<T>& material)
+    static void generateFormFactorInverseSampling(Material2<T, N>& material)
     {
-        const T qmax = Material2<T>::momentumTransferMax(MAX_ENERGY<T>());
+        const T qmax = Material2<T, N>::momentumTransferMax(MAX_ENERGY<T>());
         constexpr T qmin = T { 0.001 };
         auto func = [&material](T qsquared) -> T {
             const auto q = std::sqrt(qsquared);
@@ -474,7 +475,7 @@ protected:
         material.m_formFactorInvSamp = CPDFSampling<T, 20>(qmin * qmin, qmax * qmax, func);
     }
 
-    static void createMaterialAtomicShells(Material2<T>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
+    static void createMaterialAtomicShells(Material2<T, N>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
     {
         struct Shell {
             std::uint64_t Z = 0;
@@ -494,6 +495,8 @@ protected:
             return lh.bindingEnergy > rh.bindingEnergy;
         });
 
+        const auto sum_weight = std::reduce(shells.cbegin(), shells.cend(), T { 0 }, [](T r, const auto& s) { return s.weight + r; });
+
         const auto Nshells = std::min(shells.size(), N);
         material.m_numberOfShells = static_cast<std::uint8_t>(Nshells);
         for (std::size_t i = 0; i < Nshells; ++i) {
@@ -512,9 +515,9 @@ protected:
 
             auto& materialshell = material.m_shells[i];
 
+            materialshell.numberOfElectronsFraction = shells[i].weight * shell.numberOfElectrons / sum_weight;
             materialshell.numberOfElectrons = shell.numberOfElectrons;
             materialshell.bindingEnergy = shell.bindingEnergy;
-            materialshell.numberOfElectrons = shell.numberOfElectrons;
             materialshell.HartreeFockOrbital_0 = shell.HartreeFockOrbital_0;
             materialshell.numberOfPhotonsPerInitVacancy = shell.numberOfPhotonsPerInitVacancy;
             materialshell.energyOfPhotonsPerInitVacancy = shell.energyOfPhotonsPerInitVacancy;
@@ -522,23 +525,25 @@ protected:
         // Filling remainder shell
         if (shells.size() > Nshells) {
             material.m_numberOfShells++;
-            const auto wsum = std::reduce(shells.cbegin() + Nshells, shells.cend(), T { 0 }, [](T r, const auto& s) { return s.weight + r; });
-            for (auto& shell : shells) {
-                shell.weight *= (shells.size() - Nshells) / wsum;
-            }
+            auto& materialshell = material.m_shells[Nshells];
+            const T mean_fac = T { 1 } / (shells.size() - Nshells);
             for (std::size_t i = Nshells; i < shells.size(); ++i) {
                 const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
                 const auto w = shells[i].weight;
-                const T mean_fac = T { 1 } / (shells.size() - Nshells);
-                auto& materialshell = material.m_shells[Nshells];
 
-                materialshell.numberOfElectrons += w * shell.numberOfElectrons;
-                materialshell.bindingEnergy += w * shell.bindingEnergy * mean_fac;
-                materialshell.HartreeFockOrbital_0 += w * shell.HartreeFockOrbital_0 * mean_fac;
-                materialshell.numberOfPhotonsPerInitVacancy += w * shell.numberOfPhotonsPerInitVacancy * mean_fac;
-                materialshell.energyOfPhotonsPerInitVacancy += w * shell.energyOfPhotonsPerInitVacancy * mean_fac;
+                materialshell.numberOfElectronsFraction += shell.numberOfElectrons * w / sum_weight;
+                materialshell.numberOfElectrons += mean_fac * shell.numberOfElectrons;
+                materialshell.HartreeFockOrbital_0 += w * shell.HartreeFockOrbital_0 * mean_fac / sum_weight;
+                materialshell.numberOfPhotonsPerInitVacancy += w * shell.numberOfPhotonsPerInitVacancy * mean_fac / sum_weight;
+                materialshell.energyOfPhotonsPerInitVacancy += w * shell.energyOfPhotonsPerInitVacancy * mean_fac / sum_weight;
             }
+
+            materialshell.bindingEnergy = 0;
         }
+
+        // normalize number og electrons fraction
+        const auto sumElFraction = std::reduce(material.m_shells.cbegin(), material.m_shells.cend(), T { 0 }, [](T r, const auto& s) { return r + s.numberOfElectronsFraction; });
+        std::for_each(material.m_shells.begin(), material.m_shells.end(), [sumElFraction](auto& s) { s.numberOfElectronsFraction /= sumElFraction; });
     }
 
 private:
