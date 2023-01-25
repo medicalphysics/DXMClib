@@ -64,12 +64,23 @@ namespace interactions {
         }
     }
 
-    template <Floating T, int Lowenergycorrection, int Nshells>
-    T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
-    // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
-    // and
-    // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
+    template <Floating T, int Nshells>
+    T comptonScatterIA(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     {
+        const auto E = particle.energy;
+        std::uint_fast32_t shellIdx = 0;
+        const auto r1 = state.randomUniform<T>();
+        while (material.shell(shellIdx).numberOfElectronsFraction < r1) {
+            ++shellIdx;
+        }
+
+        const auto& shell = material.shell(shellIdx);
+
+        if (shell.bindingEnergy < particle.energy) {
+            // we reject interaction
+            return T { 0 };
+        }
+
         const auto k = particle.energy / ELECTRON_REST_MASS<T>();
         const auto emin = 1 / (1 + 2 * k);
 
@@ -80,270 +91,125 @@ namespace interactions {
         do {
             const auto r1 = state.randomUniform<T>();
             e = r1 + (1 - r1) * emin;
-
             const auto t = std::min((1 - e) / (k * e), T { 2 }); // to prevent rounding errors with t > 2 (better way?)
-
             cosTheta = 1 - t;
             const auto sinThetaSqr = 1 - cosTheta * cosTheta;
-
             const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
-            if constexpr (Lowenergycorrection == 0) {
-                rejected = state.randomUniform<T>() > g;
-            } else { // Livermore and IA process
-                const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
-                const auto scatterFactor = material.scatterFactor(q);
-                // normalize scatterfactor
-                rejected = state.randomUniform<T>(material.effectiveZ()) > (g * scatterFactor);
-            }
+            rejected = state.randomUniform<T>() > g;
         } while (rejected);
 
-        if constexpr (Lowenergycorrection == 2) { // only IA process
+        const auto U = shell.bindingEnergy / ELECTRON_REST_MASS<T>();
+        const auto p_i = (k * (k - U) * (1 - cosTheta) - U) / std::sqrt(2 * k * (k - U) * (1 - cosTheta) + U * U);
+        constexpr auto p = T { 0.15 };
 
-            const auto kc = k * e;
-            const auto cqc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosTheta);
-            std::array<T, Nshells + 1> nia_pz_max;
-            std::transform(std::execution::unseq, material.shells().cbegin(), material.shells().cend(), nia_pz_max.begin(), [cosTheta, k](const auto& shell) -> T {
-                const auto ku = shell.bindingEnergy / ELECTRON_REST_MASS<T>();
-                const auto pz_part1 = k * (k - ku) * (1 - cosTheta);
-                const auto pz_imax = (pz_part1 - ku) / std::sqrt(2 * pz_part1 + ku * ku);
+        const auto kc = k * e;
+        const auto qc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosTheta);
+        const auto alpha = qc * (1 + kc * (kc - k * cosTheta) / (qc * qc)) / k;
 
-                constexpr auto d2 = std::numbers::sqrt2_v<T>;
-                constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
+        const auto J0 = shell.HartreeFockOrbital_0;
+        const auto exp_b_part = 1 + 2 * J0 * std::abs(p_i);
+        const auto exp_b = std::exp(-(T { 0.5 } * exp_b_part * exp_b_part) - T { 0.5 });
 
-                const auto exp_part1 = d1 + d2 * shell.HartreeFockOrbital_0 * std::abs(pz_imax);
-                const auto exp = std::exp(T { 0.5 } - exp_part1 * exp_part1);
-                const auto ni_pz = pz_imax > T { 0 } ? 1 - T { 0.5 } * exp : T { 0.5 } * exp;
-                return ni_pz;
-            });
-
-            // selecting shell for interaction
-            std::array<T, Nshells + 1> shellProbs;
-            std::transform(std::execution::unseq, material.shells().cbegin(), material.shells().cend(), nia_pz_max.cbegin(), shellProbs.begin(), [&particle](const auto& shell, const auto nia) -> T {
-                return shell.bindingEnergy > particle.energy ? shell.numberOfElectronsFraction * nia : T { 0 };
-            });
-            // cummulative sum
-            std::partial_sum(shellProbs.cbegin(), shellProbs.cend(), shellProbs.begin());
-            T pz, F;
-            do {
-                do {
-                    // select shell
-                    const auto r3 = state.randomUniform<T>(shellProbs.back());
-                    auto idx = std::lower_bound(shellProbs.cbegin(), shellProbs.cend(), r3);
-                    const auto i = std::distance(shellProbs.cbegin(), idx);
-                    const auto A = state.randomUniform<T>() * nia_pz_max[i];
-
-                    if (A < T { 0.5 }) {
-                        constexpr auto d2 = std::numbers::sqrt2_v<T>;
-                        constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
-                        constexpr auto ln2 = std::numbers::ln2_v<T>;
-                        pz = (d1 - std::sqrt(T { 0.5 } - ln2 * A)) / (d2 * material.shell(i).HartreeFockOrbital_0);
-                    } else {
-                        constexpr auto d2 = std::numbers::sqrt2_v<T>;
-                        constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
-                        constexpr auto ln2 = std::numbers::ln2_v<T>;
-                        pz = (std::sqrt(T { 0.5 } - ln2 * (1 - A)) - d1) / (d2 * material.shell(i).HartreeFockOrbital_0);
-                    }
-                } while (pz < -1);
-
-                F = 1 + cqc * (1 + (kc * (kc - k * cosTheta)) / (cqc * cqc)) * pz / k;
-
-            } while (state.randomUniform<T>(T { 0.2 }) < F);
-
-            // correcting value of e
-            const auto t = pz * pz;
-            const auto epart1 = 1 - t * e * cosTheta;
-            const auto epart2 = 1 - t * e * e;
-            const auto sign = (pz > 0) - (pz < 0);
-            e = e * (epart1 + sign * std::sqrt(epart1 * epart1 - epart2 * (1 - t))) / epart2;
+        auto errf = [exp_b, J0](const T pz) -> T {
+            const auto t = T { 1 } / (1 + 0.332673 * (1 + 2 * J0 * std::abs(pz)));
+            return T { 1.64872127 } - exp_b * t * (0.34802 - 0.0958798 * t + 0.7478556 * t * t);
+        };
+        T Si;
+        if (p_i < -p) {
+            Si = (1 - alpha * p) * exp_b * T { 0.5 };
+        } else if (p_i <= 0) {
+            Si = (1 + alpha * p_i) * exp_b * T { 0.5 } - alpha / (4 * J0 * std::numbers::inv_sqrtpi_v<T> * std::numbers::sqrt2_v<T>)*(errf(p) - errf(p_i));
+        } else if (p_i < p) {
+            Si = 1 - (1 + alpha * p_i) * exp_b * T { 0.5 } - alpha / (4 * J0 * std::numbers::inv_sqrtpi_v<T> * std::numbers::sqrt2_v<T>)*(errf(p) - errf(p_i));
+        } else {
+            Si = 1 - (1 - alpha * p) * exp_b * T { 0.5 };
         }
 
+        if (state.randomUniform<T>() > Si) {
+            return T { 0 };
+        }
+        T Fmax;
+        if (p_i < -p) {
+            Fmax = 1 - alpha * p;
+        } else if (p_i > p) {
+            Fmax = 1 + alpha * p;
+        } else {
+            Fmax = 1 + alpha * p_i;
+        }
+
+        T pz, Fpz;
+        do {
+            if (const T r_b = state.randomUniform<T>() * exp_b; r_b < T { 0.5 }) {
+                pz = (1 - std::sqrt(1 - 2 * std::log(2 * r_b))) / (2 * J0);
+            } else {
+                pz = (std::sqrt(1 - 2 * std::log(2 - 2 * r_b)) - 1) / (2 * J0);
+            }
+
+            if (pz < -p) {
+                Fpz = 1 - alpha * p;
+            } else if (pz > p) {
+                Fpz = 1 + alpha * p;
+            } else {
+                Fpz = 1 + alpha * pz;
+            }
+        } while (state.randomUniform<T>(Fmax) > Fpz);
+
+        const auto kb = kc / (1 - pz * pz * e * e) * (1 - pz * pz * e * cosTheta + pz * std::sqrt(1 - 2 * e * cosTheta + e * e * (1 - pz * pz * (1 - cosTheta * cosTheta))));
+        e = kb / k;
+        particle.energy *= e;
         const auto theta = std::acos(cosTheta);
         const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
         vectormath::peturb<T>(particle.dir, theta, phi);
 
-        const auto E = particle.energy;
-        particle.energy *= e;
         return E - particle.energy;
+    }
 
-        /*
+    template <Floating T, int Lowenergycorrection, int Nshells>
+    T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
+    // and
+    // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
+    {
         if constexpr (Lowenergycorrection == 2) {
-            return comptonScatterNRC(particle, materialIdx, state);
+            return comptonScatterIA(particle, material, state);
         } else {
 
-            const auto E = particle.energy;
-            const auto k = E / ELECTRON_REST_MASS<T>();
+            const auto k = particle.energy / ELECTRON_REST_MASS<T>();
             const auto emin = 1 / (1 + 2 * k);
-            const auto gmax_inv = 1 / (1 / emin + emin);
-            T e, cosAngle, Ee;
+
+            const auto gmaxInv = emin / (1 + emin * emin);
+
+            T e, cosTheta;
             bool rejected;
             do {
                 const auto r1 = state.randomUniform<T>();
                 e = r1 + (1 - r1) * emin;
-                const auto t = (1 - e) / (k * e);
-                const auto sinthetasqr = t * (2 - t);
-                cosAngle = 1 - t;
-                const auto g = (1 / e + e - sinthetasqr) * gmax_inv;
-                const auto r2 = state.randomUniform<T>();
-                if constexpr (Lowenergycorrection == 1) {
-                    // simple correction with scatterfactor to supress forward scattering due to binding energy
-                    const auto q = m_attenuationLut.momentumTransferFromCos(E, cosAngle);
-                    const auto scatterFactor = m_attenuationLut.comptonScatterFactor(materialIdx, q);
-                    rejected = r2 > g * scatterFactor;
-                } else {
-                    rejected = r2 > g;
-                }
 
+                const auto t = std::min((1 - e) / (k * e), T { 2 }); // to prevent rounding errors with t > 2 (better way?)
+
+                cosTheta = 1 - t;
+                const auto sinThetaSqr = 1 - cosTheta * cosTheta;
+
+                const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
+                if constexpr (Lowenergycorrection == 0) {
+                    rejected = state.randomUniform<T>() > g;
+                } else { // Livermore and IA process
+                    const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
+                    const auto scatterFactor = material.scatterFactor(q);
+                    // normalize scatterfactor
+                    rejected = state.randomUniform<T>(material.effectiveZ()) > (g * scatterFactor);
+                }
             } while (rejected);
-            const auto theta = std::acos(cosAngle);
+
+            const auto theta = std::acos(cosTheta);
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
             vectormath::peturb<T>(particle.dir, theta, phi);
+
+            const auto E = particle.energy;
             particle.energy *= e;
             return E - particle.energy;
-        }*/
-    }
-    /*
-    T comptonScatterNRC(Particle<T>& particle, std::uint8_t materialIdx, RandomState& state) const noexcept
-    {
-
-        const auto& eConfig = m_attenuationLut.electronShellConfiguration(materialIdx);
-        std::array<T, 12> shellProbs;
-
-        // calculating shell probs
-        std::transform(std::execution::unseq, eConfig.cbegin(), eConfig.cend(), shellProbs.begin(), [&](const auto& e) -> T {
-            return e.bindingEnergy < particle.energy && e.hartreeFockOrbital_0 > 0 ? e.numberElectrons : 0;
-        });
-        // cummulative sum of shell probs
-        std::partial_sum(shellProbs.cbegin(), shellProbs.cend(), shellProbs.begin());
-        // selectring shell
-        int shellIdx = 0;
-        const auto shellIdxSample = shellProbs.back() * state.randomUniform<T>();
-        while (shellProbs[shellIdx] < shellIdxSample && shellIdx < 11) {
-            ++shellIdx;
         }
-
-        const auto U = eConfig[shellIdx].bindingEnergy / ELECTRON_REST_MASS<T>();
-        const auto p = std::sqrt(2 * U + U * U);
-        const auto J0 = eConfig[shellIdx].hartreeFockOrbital_0;
-
-        const auto k = particle.energy / ELECTRON_REST_MASS<T>();
-
-        // Rejecting interaction if binding energy is larger than particle energy
-        // Rejecting the interaction will correct the compton cross section
-        if (U > k) {
-            return 0;
-        }
-
-        const auto emin = 1 / (1 + 2 * k);
-        const auto gmax_inv = 1 / (1 / emin + emin);
-
-        T e, cosAngle;
-        bool rejected;
-        do {
-            const auto r1 = state.randomUniform<T>();
-            e = r1 + (1 - r1) * emin;
-            const auto t = (1 - e) / (k * e);
-            const auto sinAngleSqr = t * (2 - t);
-            cosAngle = 1 - t;
-            const auto g = (1 / e + e - sinAngleSqr) * gmax_inv;
-            const auto r2 = state.randomUniform<T>();
-            rejected = r2 > g;
-
-            if (!rejected) {
-                const auto pi = (k * (k - U) * (1 - cosAngle) - U) / std::sqrt(2 * k * (k - U) * (1 - cosAngle) + U * U);
-                const auto kc = k * e;
-                const auto qc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosAngle);
-                const auto alpha = qc * (1 + kc * (kc - k * cosAngle) / (qc * qc)) / k;
-                const auto b_part = 1 + 2 * J0 * std::abs(pi);
-                const auto b = (b_part * b_part + 1) / 2;
-                const auto expb = std::exp(-b);
-
-                // calculating S
-                T S;
-                if (pi <= -p) {
-                    S = (1 - alpha * p) * expb / 2;
-                } else if (pi <= 0) {
-                    const auto pabs = std::abs(p);
-                    const auto piabs = std::abs(pi);
-                    constexpr auto sp2 = 1 / (std::numbers::inv_sqrtpi_v<T> / std::numbers::sqrt2_v<T>);
-                    const auto part1 = alpha * sp2 / (4 * J0);
-                    constexpr auto a1 = T { 0.34802 };
-                    constexpr auto a2 = T { -0.0958798 };
-                    constexpr auto a3 = T { 0.7478556 };
-                    const auto sqrte = std::sqrt(std::numbers::e_v<T>);
-                    const auto tp = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * pabs));
-                    const auto tpi = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * piabs));
-                    const auto part2p = sqrte - expb * tp * (a1 + a2 * tp + a3 * tp * tp);
-                    const auto part2pi = sqrte - expb * tpi * (a1 + a2 * tpi + a3 * tpi * tpi);
-                    S = (1 - alpha * pi) * expb / 2 - part1 * (part2p - part2pi);
-                } else if (pi < p) {
-                    const auto pabs = std::abs(p);
-                    const auto piabs = std::abs(pi);
-                    constexpr auto sp2 = 1 / (std::numbers::inv_sqrtpi_v<T> / std::numbers::sqrt2_v<T>);
-                    const auto part1 = alpha * sp2 / (4 * J0);
-                    constexpr auto a1 = T { 0.34802 };
-                    constexpr auto a2 = T { -0.0958798 };
-                    constexpr auto a3 = T { 0.7478556 };
-                    const auto sqrte = std::sqrt(std::numbers::e_v<T>);
-                    const auto tp = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * pabs));
-                    const auto tpi = 1 / (1 + T { 0.332673 } * (1 + 2 * J0 * piabs));
-                    const auto part2p = sqrte - expb * tp * (a1 + a2 * tp + a3 * tp * tp);
-                    const auto part2pi = sqrte - expb * tpi * (a1 + a2 * tpi + a3 * tpi * tpi);
-                    S = 1 - (1 - alpha * pi) * expb / 2 - part1 * (part2p - part2pi);
-                } else {
-                    S = 1 - (1 - alpha * p) * expb / 2;
-                }
-
-                const auto r3 = state.randomUniform<T>();
-                rejected = r3 > S;
-                if (!rejected) {
-                    // sampling pz
-                    T Fmax;
-                    if (pi <= -p) {
-                        Fmax = 1 - alpha * p;
-                    } else if (pi >= p) {
-                        Fmax = 1 + alpha * p;
-                    } else {
-                        Fmax = 1 + alpha * pi;
-                    }
-                    const auto r4 = state.randomUniform<T>();
-                    const auto r_bar2 = 2 * r4 * expb;
-                    T pz;
-                    if (r_bar2 < 1) {
-                        const auto part = sqrt(1 - 2 * std::log(r_bar2));
-                        pz = (1 - part) / (2 * J0) / ELECTRON_REST_MASS<T>();
-                    } else {
-                        const auto part = sqrt(1 - 2 * std::log(2 - r_bar2));
-                        pz = (part - 1) / (2 * J0) / ELECTRON_REST_MASS<T>();
-                    }
-
-                    T Fpz;
-                    if (pz <= -p) {
-                        Fpz = 1 - alpha * p;
-                    } else if (pz >= p) {
-                        Fpz = 1 + alpha * p;
-                    } else {
-                        Fpz = 1 + alpha * pz;
-                    }
-
-                    const auto r5 = state.randomUniform<T>();
-                    rejected = r5 > Fpz / Fmax;
-
-                    if (!rejected) {
-                        // calculate new energy
-                        const auto part = std::sqrt(1 - 2 * e * cosAngle + e * e * (1 - pz * pz * sinAngleSqr));
-                        const auto k_bar = kc / (1 - pz * pz * e * e) * (1 - pz * pz * e * cosAngle + pz * part);
-                        e = k_bar / k;
-                    }
-                }
-            }
-        } while (rejected);
-        const auto theta = std::acos(cosAngle);
-        const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-        vectormath::peturb<T>(particle.dir, theta, phi);
-        const auto E = particle.energy;
-        particle.energy *= e;
-        return E - particle.energy;
     }
-    */
+
 }
 }
