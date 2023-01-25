@@ -28,8 +28,8 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 namespace interactions {
 
-    template <Floating T, int Lowenergycorrection>
-    void rayleightScatter(Particle<T>& particle, const Material2<T>& material, RandomState& state) noexcept
+    template <Floating T, int Lowenergycorrection, int Nshells>
+    void rayleightScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 0) {
             bool reject;
@@ -64,8 +64,8 @@ namespace interactions {
         }
     }
 
-    template <Floating T, int Lowenergycorrection>
-    T comptonScatter(Particle<T>& particle, const Material2<T>& material, RandomState& state) noexcept
+    template <Floating T, int Lowenergycorrection, int Nshells>
+    T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -98,7 +98,63 @@ namespace interactions {
         } while (rejected);
 
         if constexpr (Lowenergycorrection == 2) { // only IA process
-            estimate electron shell anf doppler broadening here
+
+            const auto kc = k * e;
+            const auto cqc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosTheta);
+            std::array<T, Nshells + 1> nia_pz_max;
+            std::transform(std::execution::unseq, material.shells().cbegin(), material.shells().cend(), nia_pz_max.begin(), [cosTheta, k](const auto& shell) -> T {
+                const auto ku = shell.bindingEnergy / ELECTRON_REST_MASS<T>();
+                const auto pz_part1 = k * (k - ku) * (1 - cosTheta);
+                const auto pz_imax = (pz_part1 - ku) / std::sqrt(2 * pz_part1 + ku * ku);
+
+                constexpr auto d2 = std::numbers::sqrt2_v<T>;
+                constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
+
+                const auto exp_part1 = d1 + d2 * shell.HartreeFockOrbital_0 * std::abs(pz_imax);
+                const auto exp = std::exp(T { 0.5 } - exp_part1 * exp_part1);
+                const auto ni_pz = pz_imax > T { 0 } ? 1 - T { 0.5 } * exp : T { 0.5 } * exp;
+                return ni_pz;
+            });
+
+            // selecting shell for interaction
+            std::array<T, Nshells + 1> shellProbs;
+            std::transform(std::execution::unseq, material.shells().cbegin(), material.shells().cend(), nia_pz_max.cbegin(), shellProbs.begin(), [&particle](const auto& shell, const auto nia) -> T {
+                return shell.bindingEnergy > particle.energy ? shell.numberOfElectronsFraction * nia : T { 0 };
+            });
+            // cummulative sum
+            std::partial_sum(shellProbs.cbegin(), shellProbs.cend(), shellProbs.begin());
+            T pz, F;
+            do {
+                do {
+                    // select shell
+                    const auto r3 = state.randomUniform<T>(shellProbs.back());
+                    auto idx = std::lower_bound(shellProbs.cbegin(), shellProbs.cend(), r3);
+                    const auto i = std::distance(shellProbs.cbegin(), idx);
+                    const auto A = state.randomUniform<T>() * nia_pz_max[i];
+
+                    if (A < T { 0.5 }) {
+                        constexpr auto d2 = std::numbers::sqrt2_v<T>;
+                        constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
+                        constexpr auto ln2 = std::numbers::ln2_v<T>;
+                        pz = (d1 - std::sqrt(T { 0.5 } - ln2 * A)) / (d2 * material.shell(i).HartreeFockOrbital_0);
+                    } else {
+                        constexpr auto d2 = std::numbers::sqrt2_v<T>;
+                        constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
+                        constexpr auto ln2 = std::numbers::ln2_v<T>;
+                        pz = (std::sqrt(T { 0.5 } - ln2 * (1 - A)) - d1) / (d2 * material.shell(i).HartreeFockOrbital_0);
+                    }
+                } while (pz < -1);
+
+                F = 1 + cqc * (1 + (kc * (kc - k * cosTheta)) / (cqc * cqc)) * pz / k;
+
+            } while (state.randomUniform<T>(T { 0.2 }) < F);
+
+            // correcting value of e
+            const auto t = pz * pz;
+            const auto epart1 = 1 - t * e * cosTheta;
+            const auto epart2 = 1 - t * e * e;
+            const auto sign = (pz > 0) - (pz < 0);
+            e = e * (epart1 + sign * std::sqrt(epart1 * epart1 - epart2 * (1 - t))) / epart2;
         }
 
         const auto theta = std::acos(cosTheta);

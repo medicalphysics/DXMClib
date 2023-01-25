@@ -163,10 +163,12 @@ public:
     {
         return m_numberOfShells;
     }
-    inline const Material2Shell<T>& materialShell(std::size_t shell) const
+    inline const Material2Shell<T>& shell(std::size_t shell) const
     {
         return m_shells[shell];
     }
+    inline const auto& shells() const { return m_shells; }
+
     static T momentumTransfer(T energy, T angle)
     {
         return momentumTransferMax(energy) * std::sin(angle * T { 0.5 }); // per Å
@@ -532,10 +534,10 @@ protected:
                 const auto w = shells[i].weight;
 
                 materialshell.numberOfElectronsFraction += shell.numberOfElectrons * w / sum_weight;
-                materialshell.numberOfElectrons += mean_fac * shell.numberOfElectrons;
-                materialshell.HartreeFockOrbital_0 += w * shell.HartreeFockOrbital_0 * mean_fac / sum_weight;
-                materialshell.numberOfPhotonsPerInitVacancy += w * shell.numberOfPhotonsPerInitVacancy * mean_fac / sum_weight;
-                materialshell.energyOfPhotonsPerInitVacancy += w * shell.energyOfPhotonsPerInitVacancy * mean_fac / sum_weight;
+                materialshell.numberOfElectrons += shell.numberOfElectrons;
+                materialshell.HartreeFockOrbital_0 += shell.HartreeFockOrbital_0 * mean_fac;
+                materialshell.numberOfPhotonsPerInitVacancy += shell.numberOfPhotonsPerInitVacancy * mean_fac;
+                materialshell.energyOfPhotonsPerInitVacancy += shell.energyOfPhotonsPerInitVacancy * mean_fac;
             }
 
             materialshell.bindingEnergy = 0;

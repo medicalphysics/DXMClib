@@ -157,9 +157,14 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     bool success = true;
     constexpr std::size_t N = 1E6;
 
-    Histogram hist(T { -1 }, T { 1 }, 90);
+    constexpr std::size_t sampleStep = 90;
 
-    auto material_opt = dxmc::Material2<T>::byZ(Z);
+    Histogram hist_angle(T { -1 }, T { 1 }, sampleStep);
+    Histogram hist_energy(T { 0 }, T { 1 }, sampleStep);
+
+    constexpr int Nshells = 4;
+
+    auto material_opt = dxmc::Material2<T, Nshells>::byZ(Z);
     auto material = material_opt.value();
 
     auto atom = dxmc::AtomHandler<T>::Atom(Z);
@@ -176,18 +181,21 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     for (std::size_t i = 0; i < N; ++i) {
         particle.dir = dir;
         particle.energy = energy;
-        dxmc::interactions::comptonScatter<T, type>(particle, material, state);
-        hist(dxmc::vectormath::dot(particle.dir, dir));
+        const auto ei = dxmc::interactions::comptonScatter<T, type>(particle, material, state);
+        hist_angle(dxmc::vectormath::dot(particle.dir, dir));
+        hist_energy(particle.energy / energy);
     }
     const auto tend = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
 
-    const auto [x, y] = hist.plotData();
-    std::vector<T> y_ana(x.size(), 0);
-    std::vector<T> y_xraylib(x.size(), 0);
+    const auto [x_angle, y_angle] = hist_angle.plotData();
+    const auto [x_energy, y_energy] = hist_energy.plotData();
+    std::vector<T> y_energy_ana(x_energy.size(), 0);
+    std::vector<T> y_angle_ana(x_angle.size(), 0);
+    std::vector<T> y_xraylib(x_angle.size(), 0);
 
     if constexpr (type == 0) {
-        std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy](const auto cosangle) {
+        std::transform(x_angle.cbegin(), x_angle.cend(), y_angle_ana.begin(), [energy](const auto cosangle) {
             const auto k = energy / dxmc::ELECTRON_REST_MASS<T>();
             const auto kc = k / (1 + k * (1 - cosangle));
             const auto e = kc / k;
@@ -195,12 +203,23 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
             const auto KN = e * e * (e + 1 / e - sinangleSqr);
             return KN;
         });
-        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [energy](const auto cosangle) {
+        std::transform(x_energy.cbegin(), x_energy.cend(), y_energy_ana.begin(), [energy](const auto e) {
+            constexpr auto mec = dxmc::ELECTRON_REST_MASS<T>();
+            const auto emin = mec / (mec + 2 * energy);
+            if (e < emin)
+                return T { 0 };
+            const auto cosangle = 1 + mec / energy - mec / (energy * e);
+            const auto sinangleSqr = 1 - cosangle * cosangle;
+            const auto KN = (1 / e + e) * (1 - e * sinangleSqr / (1 + e * e));
+
+            return KN;
+        });
+        std::transform(x_angle.cbegin(), x_angle.cend(), y_xraylib.begin(), [energy](const auto cosangle) {
             const auto theta = std::acos(cosangle);
             return static_cast<T>(DCS_KN(energy, theta, nullptr));
         });
     } else if constexpr (type == 1) {
-        std::transform(x.cbegin(), x.cend(), y_ana.begin(), [energy, &material](const auto cosangle) {
+        std::transform(x_angle.cbegin(), x_angle.cend(), y_angle_ana.begin(), [energy, &material](const auto cosangle) {
             const auto k = energy / dxmc::ELECTRON_REST_MASS<T>();
             const auto kc = k / (1 + k * (1 - cosangle));
             const auto e = kc / k;
@@ -209,25 +228,38 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
             const auto q = material.momentumTransferCosAngle(energy, cosangle);
             return KN * material.scatterFactor(q);
         });
-        std::transform(x.cbegin(), x.cend(), y_xraylib.begin(), [Z, energy, &material](const auto cosangle) {
+        std::transform(x_energy.cbegin(), x_energy.cend(), y_energy_ana.begin(), [energy, &material](const auto e) {
+            constexpr auto mec = dxmc::ELECTRON_REST_MASS<T>();
+            const auto emin = mec / (mec + 2 * energy);
+            if (e < emin)
+                return T { 0 };
+            const auto cosangle = 1 + mec / energy - mec / (energy * e);
+            const auto sinangleSqr = 1 - cosangle * cosangle;
+            const auto KN = (1 / e + e) * (1 - e * sinangleSqr / (1 + e * e));
+            const auto q = material.momentumTransferCosAngle(energy, cosangle);
+
+            return KN * material.scatterFactor(q);
+        });
+        std::transform(x_angle.cbegin(), x_angle.cend(), y_xraylib.begin(), [Z, energy, &material](const auto cosangle) {
             const auto theta = std::acos(cosangle);
             const auto q = material.momentumTransferCosAngle(energy, cosangle);
             return static_cast<T>(DCS_Compt(Z, energy, theta, nullptr));
         });
+    } else if constexpr (type == 2) {
+
     }
-    const auto y_ana_sum = std::reduce(y_ana.cbegin(), y_ana.cend(), T { 0 });
-    std::for_each(y_ana.begin(), y_ana.end(), [y_ana_sum](auto& yv) { yv /= y_ana_sum; });
-    const auto y_xraylib_sum = std::reduce(y_xraylib.cbegin(), y_xraylib.cend(), T { 0 });
-    std::for_each(y_xraylib.begin(), y_xraylib.end(), [y_xraylib_sum](auto& yv) { yv /= y_xraylib_sum; });
 
-    std::vector<T> x_ang(x.size(), 0);
-    std::transform(x.cbegin(), x.cend(), x_ang.begin(), [energy](const auto xv) {
-        const auto cosTheta = 1 - dxmc::ELECTRON_REST_MASS<T>() * (1 / xv - 1) / energy;
-        return std::acos(cosTheta);
-    });
+    auto normalize = [](std::vector<T>& v) -> void {
+        const auto sum = std::reduce(v.cbegin(), v.cend(), T { 0 });
+        std::for_each(v.begin(), v.end(), [sum](auto& el) { el /= sum; });
+    };
 
-    for (std::size_t i = 0; i < y.size() - 1; ++i) {
-        const auto diff = std::abs(y[i] / y_ana[i] - 1);
+    normalize(y_angle_ana);
+    normalize(y_energy_ana);
+    normalize(y_xraylib);
+
+    for (std::size_t i = 0; i < y_angle.size() - 1; ++i) {
+        const auto diff = std::abs(y_angle[i] / y_angle_ana[i] - 1);
         success = success && diff < T { 0.05 };
     }
 
@@ -243,9 +275,10 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     std::cout << " Compton with floating point size of " << sizeof(T) << " and ";
     std::cout << corr << " correction [time: " << time.count() << "ms]\n";
     if (print) {
-        std::cout << "energyFraction, samples, analytical, xraylib\n";
-        for (std::size_t i = 0; i < y.size(); ++i) {
-            std::cout << x[i] << ", " << y[i] << ", " << y_ana[i] << ", " << y_xraylib[i] << std::endl;
+        std::cout << "energyFraction, samples, analytical, angle, samples, analytical, xraylib\n";
+        for (std::size_t i = 0; i < y_angle.size(); ++i) {
+            std::cout << x_energy[i] << ", " << y_energy[i] << ", " << y_energy_ana[i] << ", ";
+            std::cout << x_angle[i] << ", " << y_angle[i] << ", " << y_angle_ana[i] << ", " << y_xraylib[i] << std::endl;
         }
     }
     return success;
@@ -256,6 +289,8 @@ int main()
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
 
+    success = success && testIncoherent<double, 2>(13, 50., true);
+
     success = success && testCoherent<double, 1>(13, 5.0, false);
     success = success && testCoherent<float, 1>(13, 5.0, false);
     success = success && testCoherent<double, 0>(13, 5.0, false);
@@ -265,6 +300,8 @@ int main()
     success = success && testIncoherent<float, 0>(13, 50., false);
     success = success && testIncoherent<double, 1>(13, 50., false);
     success = success && testIncoherent<float, 1>(13, 50., false);
+    success = success && testIncoherent<double, 2>(13, 50., false);
+    success = success && testIncoherent<float, 2>(13, 50., false);
 
     if (success)
         return EXIT_SUCCESS;
