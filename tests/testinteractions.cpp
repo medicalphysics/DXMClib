@@ -50,8 +50,10 @@ public:
 
     void operator()(T value)
     {
-        const auto i = idx(value);
-        intensity[i] += 1;
+        if (m_start < value && value < m_stop ) {
+            const auto i = idx(value);
+            intensity[i] += 1;
+        }
     }
     std::pair<std::vector<T>, std::vector<T>> plotData(bool normalize = true)
     {
@@ -160,7 +162,7 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     constexpr std::size_t sampleStep = 90;
 
     Histogram hist_angle(T { -1 }, T { 1 }, sampleStep);
-    Histogram hist_energy(T { 0 }, T { 1 }, sampleStep);
+    Histogram hist_energy(T { 0.6 }, T { 1 }, sampleStep);
 
     constexpr int Nshells = 4;
 
@@ -176,14 +178,20 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     particle.energy = energy;
     particle.weight = 1;
 
+    std::size_t rejectedInteractions = 0;
+
     dxmc::RandomState state;
     const auto tstart = std::chrono::high_resolution_clock::now();
     for (std::size_t i = 0; i < N; ++i) {
         particle.dir = dir;
         particle.energy = energy;
         const auto ei = dxmc::interactions::comptonScatter<T, type>(particle, material, state);
-        hist_angle(dxmc::vectormath::dot(particle.dir, dir));
-        hist_energy(particle.energy / energy);
+        if (ei > T { 0 }) {
+            hist_angle(dxmc::vectormath::dot(particle.dir, dir));
+            hist_energy(particle.energy / energy);
+        } else {
+            ++rejectedInteractions;
+        }
     }
     const auto tend = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
@@ -218,7 +226,7 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
             const auto theta = std::acos(cosangle);
             return static_cast<T>(DCS_KN(energy, theta, nullptr));
         });
-    } else if constexpr (type == 1) {
+    } else if constexpr (type == 1 || type == 2 || type==3) {
         std::transform(x_angle.cbegin(), x_angle.cend(), y_angle_ana.begin(), [energy, &material](const auto cosangle) {
             const auto k = energy / dxmc::ELECTRON_REST_MASS<T>();
             const auto kc = k / (1 + k * (1 - cosangle));
@@ -245,13 +253,12 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
             const auto q = material.momentumTransferCosAngle(energy, cosangle);
             return static_cast<T>(DCS_Compt(Z, energy, theta, nullptr));
         });
-    } else if constexpr (type == 2) {
-
-    }
+    } 
 
     auto normalize = [](std::vector<T>& v) -> void {
         const auto sum = std::reduce(v.cbegin(), v.cend(), T { 0 });
-        std::for_each(v.begin(), v.end(), [sum](auto& el) { el /= sum; });
+        if (sum > T { 0 })
+            std::for_each(v.begin(), v.end(), [sum](auto& el) { el /= sum; });
     };
 
     normalize(y_angle_ana);
@@ -266,14 +273,14 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     std::string corr = "None";
     if (type == 1)
         corr = "Livermore";
-    if (type == 2)
+    if (type > 1)
         corr = "IA";
 
     auto s_string = success ? "SUCCESS" : "FAILURE";
 
     std::cout << s_string;
     std::cout << " Compton with floating point size of " << sizeof(T) << " and ";
-    std::cout << corr << " correction [time: " << time.count() << "ms]\n";
+    std::cout << corr << " correction [time: " << time.count() << "ms] Rejected " << rejectedInteractions << " of " << N << " interactions\n";
     if (print) {
         std::cout << "energyFraction, samples, analytical, angle, samples, analytical, xraylib\n";
         for (std::size_t i = 0; i < y_angle.size(); ++i) {
@@ -289,7 +296,8 @@ int main()
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
 
-    success = success && testIncoherent<double, 2>(13, 50., true);
+    testIncoherent<double, 3>(79, 50., true);
+    testIncoherent<double, 2>(79, 50., true);
 
     success = success && testCoherent<double, 1>(13, 5.0, false);
     success = success && testCoherent<float, 1>(13, 5.0, false);
@@ -302,6 +310,8 @@ int main()
     success = success && testIncoherent<float, 1>(13, 50., false);
     success = success && testIncoherent<double, 2>(13, 50., false);
     success = success && testIncoherent<float, 2>(13, 50., false);
+    success = success && testIncoherent<double, 3>(13, 50., false);
+    success = success && testIncoherent<float, 3>(13, 50., false);
 
     if (success)
         return EXIT_SUCCESS;
