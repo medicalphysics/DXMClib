@@ -209,5 +209,23 @@ namespace interactions {
         }
     }
 
+    template <Floating T, int Lowenergycorrection, int Nshells>
+    T photoelectricEffect(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    {
+        if constexpr (Lowenergycorrection < 2) {
+            const auto E = particle.energy;
+            particle.energy = 0;
+            return E;
+        } else {
+        
+
+        
+        
+        
+        }
+
+    
+    }
+
 }
 }

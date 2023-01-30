@@ -28,26 +28,14 @@ namespace dxmc {
 
 template <Floating T>
 constexpr T MAX_ENERGY()
-{
-    constexpr auto to_floating = [](const std::string_view s) -> T {
-        if (T value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
-            return value;
-        else
-            return T { 500 };
-    };
-    return to_floating(DXMCLIB_MAXENERGY);
+{    
+    return T{DXMCLIB_MAXENERGY};
 }
 
 template <Floating T>
 constexpr T MIN_ENERGY()
-{
-    auto to_floating = [](const std::string_view s) -> T {
-        if (T value; std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
-            return value;
-        else
-            return T { 1 };
-    };
-    return to_floating(DXMCLIB_MINENERGY);
+{    
+    return T { DXMCLIB_MINENERGY };
 }
 
 template <Floating T>

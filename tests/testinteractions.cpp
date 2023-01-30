@@ -290,12 +290,13 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
 
 int main()
 {
+    static_assert(dxmc::MIN_ENERGY<double>() == 1.0);
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
 
     // testIncoherent<double, 2>(13, 50., true);
 
-    success = success && testCoherent<double, 0>(13, 5.0, false);
+    success = success && testCoherent<double, 0>(82, 5.0, false);
     success = success && testCoherent<float, 0>(13, 5.0, false);
     success = success && testCoherent<double, 1>(13, 5.0, false);
     success = success && testCoherent<float, 1>(13, 5.0, false);
