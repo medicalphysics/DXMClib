@@ -357,7 +357,7 @@ public:
             const auto idx = std::distance(error.cbegin(), max);
             auto g0 = grid.cbegin() + idx;
             auto g1 = g0 + 1;
-            const T new_point = g0->x + (g1->x - g0->x) * 0.5;
+            const T new_point = g0->x + (g1->x - g0->x) * T { 0.5 };
             points.insert(points.cbegin() + idx + 1, new_point);
         }
 
