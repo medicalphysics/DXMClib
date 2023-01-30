@@ -283,7 +283,7 @@ constexpr double AtomicElementHandler::momentumTransferMax()
     constexpr double eV2keV = 1E-3; // eV to keV
     constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
     constexpr double hc_inv = 1.0 / hc;
-    return 2 * maxPhotonEnergy() * hc_inv; // per Å
+    return maxPhotonEnergy() * hc_inv; // per Å
 }
 double AtomicElementHandler::momentumTransfer(double energy, double angle)
 {
@@ -292,5 +292,5 @@ double AtomicElementHandler::momentumTransfer(double energy, double angle)
     constexpr double eV2keV = 1E-3; // eV to keV
     constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
     constexpr double hc_inv = 1.0 / hc;
-    return 2 * energy * std::sin(angle * 0.5) * hc_inv; // per Å
+    return energy * std::sin(angle * 0.5) * hc_inv; // per Å
 }
