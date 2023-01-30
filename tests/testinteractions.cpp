@@ -157,12 +157,12 @@ template <typename T, int type = 0>
 bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
 {
     bool success = true;
-    constexpr std::size_t N = 1E6;
+    constexpr std::size_t N = 1E7;
 
-    constexpr std::size_t sampleStep = 90;
+    constexpr std::size_t sampleStep = 360;
 
     Histogram hist_angle(T { -1 }, T { 1 }, sampleStep);
-    Histogram hist_energy(T { 0.6 }, T { 1 }, sampleStep);
+    Histogram hist_energy(T { 0 }, T { 1 }, sampleStep);
 
     constexpr int Nshells = 12;
 
@@ -262,9 +262,11 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     normalize(y_energy_ana);
     normalize(y_xraylib);
 
+    T max_diff = 0;
     for (std::size_t i = 0; i < y_angle.size() - 1; ++i) {
         const auto diff = std::abs(y_angle[i] / y_angle_ana[i] - 1);
-        success = success && diff < T { 0.05 };
+        success = success && diff < T { 0.03 };
+        max_diff = std::max(diff, max_diff);
     }
 
     std::string corr = "None";
@@ -277,7 +279,8 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
 
     std::cout << s_string;
     std::cout << " Compton with floating point size of " << sizeof(T) << " and ";
-    std::cout << corr << " correction [time: " << time.count() << "ms]\n";
+    std::cout << corr << " correction [time: " << time.count() << "ms]";
+    std::cout << " Max error of " << max_diff << std::endl;
     if (print) {
         std::cout << "energyFraction, samples, analytical, angle, samples, analytical, xraylib\n";
         for (std::size_t i = 0; i < y_angle.size(); ++i) {
@@ -287,16 +290,80 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     }
     return success;
 }
+template <typename T>
+bool testPhotoelectricEffectIA(std::size_t Z = 13, T energy = 50.0, bool print = false)
+{
+    bool success = true;
+    constexpr std::size_t N = 1E6;
+    constexpr std::size_t sampleStep = 360;
+
+    constexpr int Nshells = 12;
+    auto material_opt = dxmc::Material2<T, Nshells>::byZ(Z);
+    auto material = material_opt.value();
+
+    T min_energy = energy;
+    for (const auto& s : material.shells()) {
+        if (s.bindingEnergy < energy)
+            min_energy = std::min(min_energy, energy - s.energyOfPhotonsPerInitVacancy);
+    }
+
+    Histogram hist_energy(min_energy - 1, energy + 1, sampleStep);
+
+    auto atom = dxmc::AtomHandler<T>::Atom(Z);
+
+    constexpr std::array<T, 3> dir = { 0, 0, 1 };
+    dxmc::Particle<T> particle;
+    particle.pos = { 0, 0, 0 };
+    particle.dir = dir;
+    particle.energy = energy;
+    particle.weight = 1;
+
+    dxmc::RandomState state;
+    const auto tstart = std::chrono::high_resolution_clock::now();
+    const T photoAtt = material.attenuationPhotoeletric(energy);
+
+    for (std::size_t i = 0; i < N; ++i) {
+        particle.dir = dir;
+        particle.energy = energy;
+        particle.weight = 1;
+        const auto ei = dxmc::interactions::photoelectricEffectIA<T>(photoAtt, particle, material, state);
+        hist_energy(ei);
+    }
+    const auto tend = std::chrono::high_resolution_clock::now();
+    auto time = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
+
+    auto [x_energy, y_energy] = hist_energy.plotData();
+
+    auto normalize = [](std::vector<T>& v) -> void {
+        const auto sum = std::reduce(v.cbegin(), v.cend(), T { 0 });
+        if (sum > T { 0 })
+            std::for_each(v.begin(), v.end(), [sum](auto& el) { el /= sum; });
+    };
+    normalize(y_energy);
+
+    auto s_string = success ? "SUCCESS" : "FAILURE";
+
+    std::cout << s_string;
+    std::cout << " PE with floating point size of " << sizeof(T) << " and ";
+    std::cout << "[time:" << time.count() << "ms] ";
+    std::cout << std::endl;
+    if (print) {
+        std::cout << "energy, samples\n";
+        for (std::size_t i = 0; i < y_energy.size(); ++i) {
+            std::cout << x_energy[i] << ", " << y_energy[i] << std::endl;
+        }
+    }
+    return success;
+}
 
 int main()
 {
-    static_assert(dxmc::MIN_ENERGY<double>() == 1.0);
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
-
+    success = success && testPhotoelectricEffectIA<double>(79, 100.0, true);
     // testIncoherent<double, 2>(13, 50., true);
 
-    success = success && testCoherent<double, 0>(82, 5.0, false);
+    success = success && testCoherent<double, 0>(13, 5.0, false);
     success = success && testCoherent<float, 0>(13, 5.0, false);
     success = success && testCoherent<double, 1>(13, 5.0, false);
     success = success && testCoherent<float, 1>(13, 5.0, false);

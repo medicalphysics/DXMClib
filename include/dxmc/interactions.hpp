@@ -209,22 +209,41 @@ namespace interactions {
         }
     }
 
-    template <Floating T, int Lowenergycorrection, int Nshells>
-    T photoelectricEffect(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    template <Floating T, int Nshells>
+    T photoelectricEffectIA(const T totalPhotoCrossSection, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     {
-        if constexpr (Lowenergycorrection < 2) {
-            const auto E = particle.energy;
-            particle.energy = 0;
-            return E;
-        } else {
-        
-
-        
-        
-        
+        // find shell we only care about K shells with max binding energy > 1, aka up to M
+        constexpr std::uint_fast8_t max_shell = 1;
+        std::uint_fast8_t shell = 0;
+        T prob = state.randomUniform<T>();
+        bool next = true;
+        while (next) {
+            const auto& sh = material.shell(shell);
+            if (sh.bindingEnergy < MIN_ENERGY<T>())
+                next = false;
+            next = next && shell < max_shell;
+            if (next) {
+                if (sh.bindingEnergy < particle.energy) {
+                    prob -= sh.numberOfElectronsFraction * sh.numberOfElectrons * material.attenuationPhotoelectricShell(shell, particle.energy) / totalPhotoCrossSection;
+                    next = prob > T { 0 };
+                    if (next)
+                        ++shell;
+                } else {
+                    ++shell;
+                }
+            }
         }
-
-    
+        T E = particle.energy;
+        if (shell < max_shell) {
+            const auto& s = material.shell(shell);
+            particle.energy = s.energyOfPhotonsPerInitVacancy;
+            E -= particle.energy;
+            particle.weight *= s.numberOfPhotonsPerInitVacancy;
+            const auto theta = state.randomUniform(PI_VAL<T>());
+            const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
+            vectormath::peturb(particle.dir, theta, phi);
+        }
+        return E;
     }
 
 }

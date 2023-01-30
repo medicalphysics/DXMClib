@@ -411,9 +411,9 @@ protected:
         } else if (type == LUTType::incoherent) {
             nknots = 10;
         } else if (type == LUTType::scatterfactor) {
-            nknots = 10;
+            nknots = 20;
         } else if (type == LUTType::formfactor) {
-            nknots = 10;
+            nknots = 20;
         }
         constexpr auto loglog = true;
         auto lut = constructSplineInterpolator(data, weights, loglog, nknots);
@@ -533,14 +533,13 @@ protected:
                 const auto& shell = AtomHandler<T>::Atom(shells[i].Z).shells.at(shells[i].S);
                 const auto w = shells[i].weight;
 
+                materialshell.bindingEnergy += shell.bindingEnergy * mean_fac;
                 materialshell.numberOfElectronsFraction += shell.numberOfElectrons * w / sum_weight;
                 materialshell.numberOfElectrons += shell.numberOfElectrons;
                 materialshell.HartreeFockOrbital_0 += shell.HartreeFockOrbital_0 * mean_fac;
                 materialshell.numberOfPhotonsPerInitVacancy += shell.numberOfPhotonsPerInitVacancy * mean_fac;
                 materialshell.energyOfPhotonsPerInitVacancy += shell.energyOfPhotonsPerInitVacancy * mean_fac;
             }
-
-            materialshell.bindingEnergy = 0;
         }
 
         // normalize number og electrons fraction
