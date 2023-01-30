@@ -67,8 +67,8 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     target_compile_definitions(libdxmc PUBLIC DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
 
     ## make max energy exposed to libdxmc
-    target_compile_definitions(libdxmc PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
-    target_compile_definitions(libdxmc PUBLIC DXMCLIB_MINENERGY="${DXMCLIB_MIN_ENERGY_KEV}")
+    target_compile_definitions(libdxmc PUBLIC DXMCLIB_MAXENERGY=${DXMCLIB_MAX_ENERGY_KEV})
+    target_compile_definitions(libdxmc PUBLIC DXMCLIB_MINENERGY=${DXMCLIB_MIN_ENERGY_KEV})
 
     add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
         COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
