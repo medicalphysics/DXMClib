@@ -155,7 +155,7 @@ int main(int argc, char* argv[])
     auto success = true;
     success = success && testAtomAttenuation();
 
-    writeAtomTestData<double>(13);
+    // writeAtomTestData<double>(13);
 
     if (success)
         return EXIT_SUCCESS;

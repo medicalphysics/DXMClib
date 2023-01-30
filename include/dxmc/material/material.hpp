@@ -411,9 +411,9 @@ protected:
         } else if (type == LUTType::incoherent) {
             nknots = 10;
         } else if (type == LUTType::scatterfactor) {
-            nknots = 15;
+            nknots = 10;
         } else if (type == LUTType::formfactor) {
-            nknots = 15;
+            nknots = 10;
         }
         constexpr auto loglog = true;
         auto lut = constructSplineInterpolator(data, weights, loglog, nknots);
