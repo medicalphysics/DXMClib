@@ -355,13 +355,39 @@ bool testPhotoelectricEffectIA(std::size_t Z = 13, T energy = 50.0, bool print =
     }
     return success;
 }
+/*
+void printShell()
+{
+    std::cout << "Z, shell, bindingEnergy, photons per vacancy, PE10, PE30, PE50, PE70, PE100, PE150\n";
 
+    constexpr std::array en = { 10., 30., 50., 70., 100., 150. };
+    for (std::size_t Z = 1; Z < 90; ++Z) {
+
+        const auto& atom = dxmc::AtomHandler<double>::Atom(Z);
+
+        for (const auto& [shIdx, shell] : atom.shells) {
+
+            if (shell.bindingEnergy > 1.0) {
+                std::cout << Z << ", ";
+                std::cout << shIdx << ", ";
+                std::cout << shell.bindingEnergy << ", ";
+                std::cout << shell.numberOfPhotonsPerInitVacancy << ", ";
+                for (const auto& e : en) {
+                    std::cout << dxmc::interpolate<double, false, false>(shell.photoel, e) / dxmc::interpolate(atom.photoel, e) << ", ";
+                }
+                std::cout << std::endl;
+            }
+        }
+    }
+}
+*/
 int main()
 {
+    // printShell();
+
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
     success = success && testPhotoelectricEffectIA<double>(79, 100.0, true);
-    // testIncoherent<double, 2>(13, 50., true);
 
     success = success && testCoherent<double, 0>(13, 5.0, false);
     success = success && testCoherent<float, 0>(13, 5.0, false);
@@ -374,6 +400,9 @@ int main()
     success = success && testIncoherent<float, 1>(13, 50., false);
     success = success && testIncoherent<double, 2>(13, 50., false);
     success = success && testIncoherent<float, 2>(13, 50., false);
+
+    success = success && testPhotoelectricEffectIA<double>(79, 100.0, false);
+    success = success && testPhotoelectricEffectIA<float>(79, 100.0, false);
 
     if (success)
         return EXIT_SUCCESS;
