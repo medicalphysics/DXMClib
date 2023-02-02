@@ -290,59 +290,56 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
     }
     return success;
 }
-template <typename T>
-bool testPhotoelectricEffectIA(std::size_t Z = 13, T energy = 50.0, bool print = false)
+template <typename T, int Nshells>
+bool testPhotoelectricEffectIA(const dxmc::Material2<T, Nshells>& material, const T energy = 50.0, bool print = false)
 {
     bool success = true;
     constexpr std::size_t N = 1E6;
-    constexpr std::size_t sampleStep = 360;
 
-    constexpr int Nshells = 12;
-    auto material_opt = dxmc::Material2<T, Nshells>::byZ(Z);
-    auto material = material_opt.value();
+    struct ShellStatistics {
+        T prob = 0;
+        T energy = 0;
+        T weight = 0;
+        std::size_t count = 0;
+    };
 
-    T min_energy = energy;
-    for (const auto& s : material.shells()) {
-        if (s.bindingEnergy < energy)
-            min_energy = std::min(min_energy, energy - s.energyOfPhotonsPerInitVacancy);
+    std::array<ShellStatistics, Nshells + 1> shell_stat;
+    for (int i = 1; i < material.numberOfShells(); ++i) {
+        const auto& shell = material.shell(i - 1);
+        if (shell.energyOfPhotonsPerInitVacancy > dxmc::MIN_ENERGY<T>())
+            shell_stat[i].prob = material.attenuationPhotoelectricShell(i - 1, energy) / material.attenuationPhotoeletric(energy);
+        shell_stat[i].prob *= (shell.numberOfElectronsFraction * shell.numberOfElectrons);
+        shell_stat[i].energy = shell.energyOfPhotonsPerInitVacancy;
+        shell_stat[i].weight = shell.numberOfPhotonsPerInitVacancy;
     }
 
-    Histogram hist_energy(min_energy - 1, energy + 1, sampleStep);
-
-    auto atom = dxmc::AtomHandler<T>::Atom(Z);
-
+    auto probsum = std::reduce(shell_stat.cbegin(), shell_stat.cend(), T { 0 }, [](T lh, const auto& rh) { return lh + rh.prob; });
+    shell_stat[0].prob = 1 - probsum;
+    
     constexpr std::array<T, 3> dir = { 0, 0, 1 };
     dxmc::Particle<T> particle;
     particle.pos = { 0, 0, 0 };
-    particle.dir = dir;
-    particle.energy = energy;
-    particle.weight = 1;
-
+    const auto photoAtt = material.attenuationPhotoeletric(energy);
     dxmc::RandomState state;
     const auto tstart = std::chrono::high_resolution_clock::now();
-    const T photoAtt = material.attenuationPhotoeletric(energy);
-
     for (std::size_t i = 0; i < N; ++i) {
         particle.dir = dir;
         particle.energy = energy;
         particle.weight = 1;
         const auto ei = dxmc::interactions::photoelectricEffectIA<T>(photoAtt, particle, material, state);
-        hist_energy(ei);
+        auto el = std::min_element(shell_stat.begin(), shell_stat.end(), [&particle](const auto left, const auto right) {
+            return std::abs(particle.energy - left.energy) < std::abs(particle.energy - right.energy);
+        });
+        ++(el->count);
     }
     const auto tend = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
 
-    auto [x_energy, y_energy] = hist_energy.plotData();
-
-    auto normalize = [](std::vector<T>& v) -> void {
-        const auto sum = std::reduce(v.cbegin(), v.cend(), T { 0 });
-        if (sum > T { 0 })
-            std::for_each(v.begin(), v.end(), [sum](auto& el) { el /= sum; });
-    };
-    normalize(y_energy);
+    std::array<T, shell_stat.size()> sample;
+    std::transform(shell_stat.cbegin(), shell_stat.cend(), sample.begin(), [N](const auto& s) { return static_cast<T>(s.count) / N; });
 
     auto s_string = success ? "SUCCESS" : "FAILURE";
-
+    /*
     std::cout << s_string;
     std::cout << " PE with floating point size of " << sizeof(T) << " and ";
     std::cout << "[time:" << time.count() << "ms] ";
@@ -353,6 +350,7 @@ bool testPhotoelectricEffectIA(std::size_t Z = 13, T energy = 50.0, bool print =
             std::cout << x_energy[i] << ", " << y_energy[i] << std::endl;
         }
     }
+    */
     return success;
 }
 /*
@@ -387,7 +385,21 @@ int main()
 
     std::cout << "Testing interactions" << std::endl;
     bool success = true;
-    success = success && testPhotoelectricEffectIA<double>(79, 100.0, true);
+
+    {
+        auto m3_opt = dxmc::Material2<double, 13>::byChemicalFormula("PbAu2");
+        auto& m3 = m3_opt.value();
+        success = success && testPhotoelectricEffectIA(m3, 150.0, true);
+
+
+        auto m2_opt = dxmc::Material2<double, 13>::byZ(82);
+        auto& m2 = m2_opt.value();
+        success = success && testPhotoelectricEffectIA(m2, 150.0, true);
+
+        auto m1_opt = dxmc::Material2<double, 6>::byChemicalFormula("H2O");
+        auto& m1 = m1_opt.value();
+        success = success && testPhotoelectricEffectIA(m1, 100.0, true);
+    }
 
     success = success && testCoherent<double, 0>(13, 5.0, false);
     success = success && testCoherent<float, 0>(13, 5.0, false);
@@ -401,8 +413,8 @@ int main()
     success = success && testIncoherent<double, 2>(13, 50., false);
     success = success && testIncoherent<float, 2>(13, 50., false);
 
-    success = success && testPhotoelectricEffectIA<double>(79, 100.0, false);
-    success = success && testPhotoelectricEffectIA<float>(79, 100.0, false);
+    // success = success && testPhotoelectricEffectIA<double>(79, 100.0, false);
+    // success = success && testPhotoelectricEffectIA<float>(79, 100.0, false);
 
     if (success)
         return EXIT_SUCCESS;
