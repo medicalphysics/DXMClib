@@ -630,7 +630,7 @@ protected:
 
         N = std::min(N, Nlim);
 
-        if (x.size() == 0 || N < 2) {
+        if (x.size() < 4 || N < 2) {
             return std::nullopt;
         }
 
@@ -644,7 +644,7 @@ protected:
         return calculateLSSplinePart(x, y, t);
     }
 
-    Spline calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t) const
+    std::optional<Spline> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, const std::vector<T>& t) const
     { // assume x is sorted
         const std::size_t N = t.size() - 1;
 
@@ -797,6 +797,8 @@ protected:
         Eigen::VectorX<T> res = sol.lu().solve(bval);
 #else
         auto res = sol.solve(bval);
+        if (std::isnan(res.front()))
+            return std::nullopt;
 #endif // USE_EIGEN
 
         std::vector<T> m_p(N + 1);
@@ -805,7 +807,7 @@ protected:
         std::copy(res.begin(), res.begin() + N + 1, m_p.begin());
         std::copy(res.begin() + N + 1, res.begin() + 2 * (N + 1), m_pz.begin());
         Spline spline(t, m_p, m_pz);
-        return spline;
+        return std::make_optional(spline);
     }
 
 private:
