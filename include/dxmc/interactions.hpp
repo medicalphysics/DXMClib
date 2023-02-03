@@ -242,8 +242,7 @@ namespace interactions {
         particle.energy = 0;
         if (shell < max_shell) {
             const auto& s = material.shell(shell);
-            if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {
-                const auto& s = material.shell(shell);
+            if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {                
                 particle.energy = s.energyOfPhotonsPerInitVacancy;
                 E -= particle.energy;
                 particle.weight *= s.numberOfPhotonsPerInitVacancy;

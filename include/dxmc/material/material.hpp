@@ -24,6 +24,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/interpolation.hpp"
 #include "dxmc/material/atomhandler.hpp"
 #include "dxmc/material/atomicelement.hpp"
+#include "dxmc/material/nistmaterials.hpp"
 
 #include <algorithm>
 #include <array>
@@ -83,14 +84,16 @@ public:
 
     static std::optional<Material2<T, N>> byNistName(const std::string& name)
     {
-        const std::map<std::string, std::map<std::size_t, T>> nist {
-            { "Air, Dry (near sea level)", { { 6, 0.000124f }, { 7, 0.755268f }, { 8, 0.231781f }, { 18, 0.012827f } } },
-            { "Water, Liquid", { { 1, 0.111898f }, { 8, 0.888102f } } }
-        };
-        if (nist.contains(name)) {
-            return byWeight(nist.at(name));
-        }
+        const auto& w = NISTMaterials<T>::Composition(name);
+        if (!w.empty())
+            return Material2<T, N>::byWeight(w);
+
         return std::nullopt;
+    }
+
+    static std::vector<std::string> listNistCompoundNames()
+    {
+        return NISTMaterials<T>::listNames();
     }
 
     inline T effectiveZ() const { return m_effectiveZ; }

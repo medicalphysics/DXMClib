@@ -11,7 +11,10 @@ from matplotlib import pylab as plt
 
 def testAtom():
     path = r"atomTestData.csv"    
-    df = pd.read_csv(path,sep=',')
+    try:
+        df = pd.read_csv(path,sep=',', skiprows=1)
+    except:
+        return
     
     xmin = df['e'].min()
     xmax = df['e'].max()
@@ -51,8 +54,45 @@ def testAtom():
     plt.tight_layout()
     plt.show()    
 
+def testCompound():
+    path = r"compTestData.csv"    
+    try:
+        df = pd.read_csv(path,sep=',', skiprows=1)
+    except:
+        return
+    
+    xmin = df['e'].min()
+    xmax = df['e'].max()
+    
+    ## Edit these to view only a small energy segment
+    # xmin = 5.5
+    # xmax = 6.5
+    
+    for t in ['photoelectric', 'coherent', 'incoherent', 'total',]:
+        idx = df['type'] == t
+        dff = df[idx]
+        _ = plt.figure(figsize=(9, 3), dpi=300)
+               
+        hue_att = ['dxmc', 'xlib']        
+        sns.lineplot(data=dff, x='e', y='att', hue='kind', hue_order=hue_att)
+        plt.yscale('log')
+        plt.xscale('log')
+        plt.xlim(xmin, xmax)                
+        plt.title(t)
+        plt.tight_layout()
+        plt.show()
+        
+    sns.relplot(data=df, x='e', y='att', hue='type', col='kind', hue_order=['photoelectric', 'coherent', 'incoherent', 'total'], 
+                col_order=['dxmc', 'xlib'], kind='line')
+    plt.yscale('log')
+    plt.xscale('log')
+    plt.xlim(xmin,xmax)    
+    plt.tight_layout()
+    plt.show()   
 
-if __name__=='__main__':    
+
+if __name__=='__main__':
+    testCompound()
     testAtom()
         
     

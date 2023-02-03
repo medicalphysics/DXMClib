@@ -22,6 +22,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/atomicshell.hpp"
 #include "dxmc/material/atomserializer.hpp"
 #include "dxmc/material/material.hpp"
+#include "dxmc/material/nistmaterials.hpp"
 
 #include "xraylib.h"
 
@@ -36,6 +37,7 @@ template <typename T>
 void writeAtomTestData(std::size_t Z)
 {
     std::ofstream file("atomTestData.csv");
+    file << Z << std::endl;
     file << "e,att,type,kind" << std ::endl;
 
     std::vector<T> energy;
@@ -102,6 +104,42 @@ void writeAtomTestData(std::size_t Z)
     }
     file.close();
 }
+
+template <typename T, int N = 12>
+void writeCompoundTestData(const std::string& name)
+{
+    std::ofstream file("compTestData.csv");
+    file << name << std::endl;
+    file << "e,att,type,kind" << std ::endl;
+
+    std::vector<T> energy;
+    const T step = 0.5;
+    std::size_t it = 0;
+    do {
+        energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
+    } while (energy.back() < dxmc::MAX_ENERGY<T>());
+
+    const auto m = dxmc::Material2<T, N>::byNistName(name).value();
+
+    const auto Z = name.c_str();
+
+    for (auto e : energy) {
+        auto att = m.attenuationValues(e);
+        file << std::format("{},{},{},{}", e, att.photoelectric, "photoelectric", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, att.coherent, "coherent", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, att.incoherent, "incoherent", "dxmc") << std::endl;
+
+        file << std::format("{},{},{},{}", e, CS_Photo_CP(Z, e, nullptr), "photoelectric", "xlib") << std::endl;
+        file << std::format("{},{},{},{}", e, CS_Rayl_CP(Z, e, nullptr), "coherent", "xlib") << std::endl;
+        file << std::format("{},{},{},{}", e, CS_Compt_CP(Z, e, nullptr), "incoherent", "xlib") << std::endl;
+
+        file << std::format("{},{},{},{}", e, CS_Total_CP(Z, e, nullptr), "total", "xlib") << std::endl;
+        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
+        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
+    }
+    file.close();
+}
+
 template <dxmc::Floating T = double>
 bool testAtomAttenuation()
 {
@@ -150,7 +188,50 @@ bool testAtomAttenuation()
     return valid;
 }
 
-template<typename T>
+template <typename T>
+bool testCompoundAttenuation()
+{
+    const auto emin = dxmc::MIN_ENERGY<T>() + 1;
+    const auto emax = dxmc::MAX_ENERGY<T>();
+
+    std::vector<T> earr(static_cast<std::size_t>(emax - emin));
+    std::iota(earr.begin(), earr.end(), emin);
+    bool valid = true;
+    constexpr T lim = 0.2;
+
+    const auto names = dxmc::Material2<T>::listNistCompoundNames();
+
+    for (const auto& name : names) {
+
+        const auto mat_opt = dxmc::Material2<T>::byNistName(name);
+        const auto& comp = NISTMaterials<T>::Composition(name);
+        const auto& material = mat_opt.value();
+        const auto n_c = name.c_str();
+
+        for (const auto& e : earr) {
+            const auto att = material.attenuationValues(e);
+            std::array<T, 3> xlib = {
+                CS_Photo_CP(n_c, e, nullptr),
+                CS_Rayl_CP(n_c, e, nullptr),
+                CS_Compt_CP(n_c, e, nullptr),
+            };
+
+            valid = valid && std::abs(xlib[0] / att.photoelectric - 1) < lim;
+            if (e > T { 40 })
+                valid = valid && std::abs(xlib[1] / att.coherent - 1) < lim;
+            valid = valid && std::abs(xlib[2] / att.incoherent - 1) < lim;
+
+            if (!valid) {
+                writeCompoundTestData<T>(name);
+                return false;
+            }
+        }
+    }
+
+    return valid;
+}
+
+template <typename T>
 bool testPhotoelectricAttenuation()
 {
     for (std::size_t Z = 1; Z < 85; ++Z) {
@@ -159,23 +240,22 @@ bool testPhotoelectricAttenuation()
 
         std::vector<T> earr(static_cast<std::size_t>(emax - emin));
         std::iota(earr.begin(), earr.end(), emin);
-    
+
         const auto atom = dxmc::AtomHandler<T>::Atom(Z);
         const auto material = dxmc::Material2<T, 13>::byZ(Z).value();
         for (const auto& e : earr) {
-            auto att = material
-            auto photo_val = dxmc::interpolate(atom.photoel, e);
-
-
-
+            // auto att = material
+            // auto photo_val = dxmc::interpolate(atom.photoel, e);
         }
     }
 }
 
-
 int main(int argc, char* argv[])
 {
+
     auto success = true;
+
+    success = success && testCompoundAttenuation<float>();
     success = success && testAtomAttenuation<double>();
     success = success && testAtomAttenuation<float>();
 
