@@ -222,32 +222,13 @@ bool testCompoundAttenuation()
             valid = valid && std::abs(xlib[2] / att.incoherent - 1) < lim;
 
             if (!valid) {
-                writeCompoundTestData<T>(name);                
+                writeCompoundTestData<T>(name);
                 return false;
             }
         }
     }
 
     return valid;
-}
-
-template <typename T>
-bool testPhotoelectricAttenuation()
-{
-    for (std::size_t Z = 1; Z < 85; ++Z) {
-        const auto emin = dxmc::MIN_ENERGY<T>() + 1;
-        const auto emax = dxmc::MAX_ENERGY<T>();
-
-        std::vector<T> earr(static_cast<std::size_t>(emax - emin));
-        std::iota(earr.begin(), earr.end(), emin);
-
-        const auto atom = dxmc::AtomHandler<T>::Atom(Z);
-        const auto material = dxmc::Material2<T, 13>::byZ(Z).value();
-        for (const auto& e : earr) {
-            // auto att = material
-            // auto photo_val = dxmc::interpolate(atom.photoel, e);
-        }
-    }
 }
 
 int main(int argc, char* argv[])
