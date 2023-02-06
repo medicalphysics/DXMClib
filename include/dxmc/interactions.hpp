@@ -219,49 +219,25 @@ namespace interactions {
         bool next;
         do {
             const auto& sh = material.shell(shell);
-            if (sh.bindingEnergy < MIN_ENERGY<T>()) {            
+            if (sh.bindingEnergy < MIN_ENERGY<T>()) {
                 shell = max_shell;
             }
-            next =  shell != max_shell;
+            next = shell != max_shell;
             if (next && sh.bindingEnergy < particle.energy) {
                 const auto shellCS = material.attenuationPhotoelectricShell(shell, particle.energy);
                 const auto shellProb = shellCS / totalPhotoCrossSection;
-                prob -= shellProb;                
+                prob -= shellProb;
                 next = prob > T { 0 };
             }
             if (next)
                 ++shell;
         } while (next);
 
-
-
-        /* bool next = true;
-        while (next) {
-            const auto& sh = material.shell(shell);
-            if (sh.bindingEnergy < MIN_ENERGY<T>()) {
-                next = false;
-                shell = max_shell;
-            }
-            next = next && shell < max_shell;
-            if (next) {
-                if (sh.bindingEnergy < particle.energy) {
-                    const auto shellCS = material.attenuationPhotoelectricShell(shell, particle.energy);
-                    const auto shellProb = shellCS / totalPhotoCrossSection;
-                    prob -= shellProb;
-                    next = prob > T { 0 };
-                    if (next)
-                        ++shell;
-                } else {
-                    ++shell;
-                }
-            }
-        }
-        */
         T E = particle.energy;
         particle.energy = 0;
         if (shell != max_shell) {
             const auto& s = material.shell(shell);
-            if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {                
+            if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {
                 particle.energy = s.energyOfPhotonsPerInitVacancy;
                 E -= particle.energy;
                 particle.weight *= s.numberOfPhotonsPerInitVacancy;
