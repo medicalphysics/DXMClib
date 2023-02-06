@@ -511,7 +511,7 @@ protected:
                 [=](const auto& p) {
                     return std::make_pair(std::log(p.first), std::log(p.second * shells[i].weight));
                 });
-            CubicLSInterpolator<T> inter(photolog, 30, false);
+            CubicLSInterpolator<T> inter(photolog, 5, false);
 
             auto begin = inter.getDataTable().begin();
             auto end = inter.getDataTable().end();
