@@ -28,7 +28,18 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 namespace interactions {
 
-    template <Floating T, int Lowenergycorrection, int Nshells>
+    template <Floating T>
+    constexpr static T russianRuletteProbability()
+    {
+        return T { 0.9 };
+    }
+    template <Floating T>
+    constexpr static T russianRuletteWeightThreshold()
+    {
+        return T { 0.1 };
+    }
+
+    template <Floating T, int Nshells, int Lowenergycorrection = 3>
     void rayleightScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 0) {
@@ -166,9 +177,9 @@ namespace interactions {
         const auto theta = std::acos(cosTheta);
         const auto phi = state.randomUniform(PI_VAL<T>() * 2);
         vectormath::peturb(particle.dir, theta, phi);
-        return E - particle.energy;
+        return (E - particle.energy) * particle.weight;
     }
-    template <Floating T, int Lowenergycorrection, int Nshells>
+    template <Floating T, int Nshells, int Lowenergycorrection = 3>
     T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
@@ -205,7 +216,7 @@ namespace interactions {
 
             const auto E = particle.energy;
             particle.energy *= e;
-            return E - particle.energy;
+            return (E - particle.energy) * particle.weight;
         }
     }
 
@@ -233,13 +244,13 @@ namespace interactions {
                 ++shell;
         } while (next);
 
-        T E = particle.energy;
+        T E = particle.energy * particle.weight;
         particle.energy = 0;
         if (shell != max_shell) {
             const auto& s = material.shell(shell);
             if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {
                 particle.energy = s.energyOfPhotonsPerInitVacancy;
-                E -= particle.energy;
+                E -= particle.energy * particle.weight;
                 particle.weight *= s.numberOfPhotonsPerInitVacancy;
                 const auto theta = state.randomUniform(PI_VAL<T>());
                 const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
@@ -247,6 +258,17 @@ namespace interactions {
             }
         }
         return E;
+    }
+    template <Floating T, int Nshells, int Lowenergycorrection = 3>
+    T photoelectricEffect(const T totalPhotoCrossSection, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    {
+        if constexpr (Lowenergycorrection == 3) {
+            return photoelectricEffectIA(totalPhotoCrossSection, particle, material, state);
+        } else {
+            const T E = particle.energy * particle.weight;
+            particle.energy = 0;
+            return E;
+        }
     }
 }
 }

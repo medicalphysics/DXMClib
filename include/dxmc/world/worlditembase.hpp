@@ -28,34 +28,29 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class ResultObject {
+class DoseScore {
 public:
-    ResultObject(std::size_t N = 1)
+    void scoreEnergy(T energy)
     {
-        m_nEvents.resize(N, 0);
-        m_energyImparted.resize(N, T { 0 });
-        m_energyImpartedSquared.resize(N, T { 0 });
-    }
-    void scoreEnergy(T energy, std::size_t idx = 0)
-    {
+        // threadsafe update
         {
-            auto aref = std::atomic_ref(m_energyImparted[idx]);
+            auto aref = std::atomic_ref(m_energyImparted);
             aref.fetch_add(energy);
         }
         {
-            auto aref = std::atomic_ref(m_energyImpartedSquared[idx]);
+            auto aref = std::atomic_ref(m_energyImpartedSquared);
             aref.fetch_add(energy * energy);
         }
         {
-            auto aref = std::atomic_ref(m_nEvents[idx]);
+            auto aref = std::atomic_ref(m_nEvents);
             ++aref;
         }
     }
 
 private:
-    std::vector<std::uint64_t> m_nEvents;
-    std::vector<T> m_energyImparted;
-    std::vector<T> m_energyImpartedSquared;
+    std::uint64_t m_nEvents = 0;
+    T m_energyImparted = 0;
+    T m_energyImpartedSquared = 0;
 };
 
 template <Floating T>
@@ -65,7 +60,8 @@ public:
     virtual std::array<T, 3> center() const = 0;
     virtual std::array<T, 6> AABB() const = 0;
     virtual std::optional<T> intersect(const Particle<T>& p) const = 0;
-    virtual T transport(Particle<T>& p, RandomState& state) = 0;
+
+    virtual void transport(Particle<T>& p, RandomState& state) = 0;
 
     template <int FORWARD = 1>
     static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)

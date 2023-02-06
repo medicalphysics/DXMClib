@@ -81,11 +81,11 @@ public:
     {
         return m_kdtree.intersect(p, m_aabb);
     }
+
     void transport(Particle<T>& p, RandomState& state)
     {
-
         bool continueSampling = true;
-        bool updateAttenuation = false;
+        bool updateAttenuation = true;
 
         if (!pointInsideAABB(p.pos, m_aabb)) {
             // transport particle to aabb
@@ -97,7 +97,7 @@ public:
             }
         }
 
-        T attenuationTotalInv = T { 1 } / (m_fillMaterial.attenuationValues(p.energy).sum() * m_fillMaterialDensity);
+        T attenuationTotalInv;
 
         while (continueSampling) {
             if (updateAttenuation) {
@@ -120,17 +120,31 @@ public:
                     const auto att = m_fillMaterial.attenuationValues(p.energy);
                     const auto r2 = state.randomUniform<T>(att.sum());
                     if (r2 < att.photoelectric) {
-
-                    } else if (r2 < (att.photoelectric + att.incoherent)) {
-
+                        const auto Ei = interactions::photoelectricEffect(att.photoelectric, p, m_fillMaterial, state);
+                        m_dose.scoreEnergy(Ei);
+                        updateAttenuation = true;
+                    } else if (r2 < (att.photoelectric + att.coherent)) {
+                        const auto Ei = interactions::comptonScatter(p, m_fillMaterial, state);
+                        m_dose.scoreEnergy(Ei);
+                        updateAttenuation = true;
                     } else {
+                        interactions::rayleightScatter(p, m_fillMaterial, state);
                     }
-
+                    if (p.energy < MIN_ENERGY<T>()) {
+                        continueSampling = false;
+                    } else {
+                        if (p.weight < interactions::russianRuletteWeightThreshold<T>()) {
+                            if (state.randomUniform<T>() < interactions::russianRuletteProbability<T>()) {
+                                continueSampling = false;
+                            } else {
+                                p.weight /= (T { 1 } - interactions::russianRuletteProbability<T>());
+                            }
+                        }
+                    }
                 } else {
                     continueSampling = false;
                 }
             }
-            continueSampling = false;
         }
     }
 
@@ -166,6 +180,6 @@ private:
     KDTree<T> m_kdtree;
     Material2<T> m_fillMaterial;
     T m_fillMaterialDensity = T { 0.001225 };
-    ResultObject<T> m_dose;
+    DoseScore<T> m_dose;
 };
 }

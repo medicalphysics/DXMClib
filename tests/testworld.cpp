@@ -93,7 +93,7 @@ auto create_image(W& world, const std::array<T, 3>& camera_pos, bool print = tru
 }
 
 template <dxmc::Floating T>
-bool testWorld()
+bool testWorldConstruction()
 {
     dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>, dxmc::Box<T>, dxmc::TriangulatedMesh<T>> world;
 
@@ -123,9 +123,7 @@ bool testWorld()
 
     auto res = world.intersect(p);
 
-    dxmc::RandomState rand;
-    world.transport(p, rand);
-
+    
     std::array<T, 3> camera { 0, -500, 00 };
     create_image(world, camera, true);
 
@@ -135,8 +133,8 @@ bool testWorld()
 int main(int argc, char* argv[])
 {
     auto success = true;
-    success = success && testWorld<double>();
-    success = success && testWorld<float>();
+    success = success && testWorldConstruction<double>();
+    success = success && testWorldConstruction<float>();
 
     if (success)
         return EXIT_SUCCESS;
