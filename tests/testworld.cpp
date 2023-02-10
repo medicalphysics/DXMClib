@@ -130,9 +130,50 @@ bool testWorldConstruction()
     return false;
 }
 
+template<typename T>
+void testWorldTransport()
+{
+    constexpr std::size_t N = 1E6;
+    const T energy = 60;
+
+    dxmc::World2<dxmc::Box<T>> world;
+    dxmc::Box<T> box1(T {50});
+    dxmc::Box<T> box2({ 50 }, {0,0,100});
+
+    world.addItem(box1);
+    world.addItem(box2);
+
+    world.build();
+
+    dxmc::Particle<T> p;
+    p.pos = { 0, 0, -100 };
+    p.dir = { 0, 0, 1 };
+    p.energy = energy;
+    p.weight = 1;
+
+    dxmc::RandomState state;
+
+    for (std::size_t i = 0; i < N; ++i) {
+        p.energy = energy;
+        p.weight = 1;
+        world.transport(p, state);
+    }
+    auto boxes = world.getItems<dxmc::Box<T>>();
+    for (const auto& b : boxes) {
+        const auto d = b.dose();
+        std::cout << d.energyImparted();
+    }
+
+
+
+}
+
 int main(int argc, char* argv[])
 {
     auto success = true;
+
+    testWorldTransport<double>();
+
     success = success && testWorldConstruction<double>();
     success = success && testWorldConstruction<float>();
 

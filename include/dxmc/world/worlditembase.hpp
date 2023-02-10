@@ -35,16 +35,20 @@ public:
         // threadsafe update
         {
             auto aref = std::atomic_ref(m_energyImparted);
-            aref.fetch_add(energy);
+            aref.fetch_add(energy, std::memory_order_relaxed);
         }
         {
             auto aref = std::atomic_ref(m_energyImpartedSquared);
-            aref.fetch_add(energy * energy);
+            aref.fetch_add(energy * energy, std::memory_order_relaxed);
         }
         {
             auto aref = std::atomic_ref(m_nEvents);
             ++aref;
         }
+    }
+    T energyImparted() const
+    {
+        return m_energyImparted;
     }
 
 private:
@@ -60,6 +64,7 @@ public:
     virtual std::array<T, 3> center() const = 0;
     virtual std::array<T, 6> AABB() const = 0;
     virtual std::optional<T> intersect(const Particle<T>& p) const = 0;
+    virtual const DoseScore<T>& dose(std::size_t index = 0) const = 0;
 
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
 

@@ -46,7 +46,7 @@ struct AttenuationValues {
     T photoelectric;
     T incoherent;
     T coherent;
-    T sum() const { return photoelectric + incoherent + coherent; }
+    T sum() const noexcept { return photoelectric + incoherent + coherent; }
 };
 template <Floating T, std::size_t N = 5>
 class Material2 {
