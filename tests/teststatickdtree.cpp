@@ -101,7 +101,15 @@ bool teststatickdtree()
             b.translate(d);
         }
 
-    dxmc::StaticKDTree<>
+    dxmc::StaticKDTree<2, T, dxmc::Box<T>> tree(boxes);
+
+    dxmc::Particle<T> p;
+
+    p.pos = { 0, 0, -100 };
+    p.dir = { 0, 0, 1 };
+
+    const auto aabb = tree.AABB();
+    auto t = tree.intersect(p, aabb);
 
     return true;
 }

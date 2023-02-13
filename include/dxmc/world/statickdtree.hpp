@@ -24,11 +24,9 @@ Copyright 2022 Erlend Andersen
 
 #include <array>
 #include <concepts>
-#include <memory>
+#include <execution>
 #include <numeric>
 #include <optional>
-#include <tuple>
-#include <variant>
 #include <vector>
 
 namespace dxmc {
@@ -36,6 +34,7 @@ namespace dxmc {
 template <typename U, typename T>
 concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
                                Floating<T>;
+
                                u.translate(vec);
                                {
                                    u.intersect(p)
@@ -53,122 +52,90 @@ concept AnyKDTreeType = (... or std::same_as<U, Us>);
 template <int Depth, Floating T, StaticKDTreeType<T> U>
 class StaticKDTree {
 public:
-    StaticKDTreeNode() { }
-    StaticKDTreeNode(std::vector<U>& data)
-    {
-        buildTree(data);
-    }
-
-    static constexpr std::size_t depth()
-    {
-        return Depth;
-    }
-
-    void buildTree(std::vector<U>& data)
+    StaticKDTree() { }
+    StaticKDTree(std::vector<U>& data)
     {
         if (data.size() == 0)
             return;
 
-        // finding aabb
-        std::array<T, 6> aabb {
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-        };
-        for (const auto& u : data) {
-            const auto& aabb_obj = u.AABB();
-            for (std::size_t i = 0; i < 3; ++i) {
-                aabb[i] = std::min(aabb[i], aabb_obj[i]);
-            }
-            for (std::size_t i = 3; i < 6; ++i) {
-                aabb[i] = std::max(aabb[i], aabb_obj[i]);
-            }
-        }
+        const auto [D, plane] = planeSplit(data);
 
-        const std::array<T, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
-
-        m_D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
-
-        // finding split
-        m_plane = planeSplit(data, m_D);
-        const auto fom = figureOfMerit(data, m_D, m_plane);
+        m_D = D;
+        m_plane = plane;
 
         // moving object depending on plane splits
-        std vector<U> left, right;
-        for (std::size_t i = 0; i < data.size()++ i) {
+        std::vector<U> left, right;
+        for (std::size_t i = 0; i < data.size(); ++i) {
             const auto side = planeSide(data[i], m_D, m_plane);
             if (side == -1) {
-                std::move(data[i], std::back_inserter(left));
+                left.push_back(data[i]);
             } else if (side == 1) {
-                std::move(data[i], std::back_inserter(right));
+                right.push_back(data[i]);
             } else {
                 left.push_back(data[i]);
-                std::move(data[i], std::back_inserter(right));
+                right.push_back(data[i]);
             }
         }
-        // purging data since it is in an bad state after moves
-        data.clear();
 
         m_left = StaticKDTree<Depth - 1, T, U>(left);
         m_right = StaticKDTree<Depth - 1, T, U>(right);
     }
-
-    std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    void translate(const std::array<T, 3>& dir)
     {
-        const auto& inter = intersectAABB(particle, aabb);
-        return inter ? intersect(data, particle, *inter) : std::nullopt;
+        m_left.translate(dir);
+        m_right.translate(dir);
     }
-    std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    std::array<T, 6> AABB() const
     {
-        if (!m_left) { // this is a leaf
-            // intersect triangles between tbox and return;
-            T t = std::numeric_limits<T>::max();
-            auto func = [&particle](const auto& obj) -> std::optional<T> { return obj.intersect(particle); };
-            for (const auto i : m_idx) {
-                const auto t_cand = std::visit(func, data[i]);
-                if (t_cand) {
-                    t = std::min(t, *t_cand);
-                }
-            }
-            return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
-        }
 
+        auto left = m_left.AABB();
+        const auto right = m_right.AABB();
+        for (std::size_t i = 0; i < 3; ++i) {
+            left[i] = std::min(left[i], right[i]);
+        }
+        for (std::size_t i = 3; i < 6; ++i) {
+            left[i] = std::max(left[i], right[i]);
+        }
+        return left;
+    }
+    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    {
+        const auto tbox = intersectAABB(particle, aabb);
+        return tbox ? intersect(particle, *tbox) : std::nullopt;
+    }
+    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    {
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            const auto hit_left = m_left->intersect(data, particle, tbox);
-            const auto hit_right = m_right->intersect(data, particle, tbox);
+            const auto hit_left = m_left.intersect(particle, tbox);
+            const auto hit_right = m_right.intersect(particle, tbox);
             if (hit_left && hit_right)
                 return std::min(hit_left, hit_right);
-            if (!hit_left)
-                return hit_right;
-            return hit_left;
+            return hit_left ? hit_left : hit_right;
         }
 
-        const auto* const[front, back] = particle.dir[m_D] > T { 0 } ? std::make_pair(&m_left, &m_right) : std::make_pair(&m_right, &m_left);
+        const auto [front, back] = particle.dir[m_D] > T { 0 } ? std::make_pair(&m_left, &m_right) : std::make_pair(&m_right, &m_left);
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
         if (t <= tbox[0]) {
             // back only
-            return back->intersect(data, particle, tbox);
+            return back->intersect(particle, tbox);
         } else if (t >= tbox[1]) {
             // front only
-            return front->intersect(data, particle, tbox);
+            return front->intersect(particle, tbox);
         }
 
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
-        const auto hit = front->intersect(data, particle, t_front);
+        const auto hit = front->intersect(particle, t_front);
         if (hit) {
             if (*hit <= t) {
                 return hit;
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
-        return back->intersect(data, particle, t_back);
+        return back->intersect(particle, t_back);
     }
 
 protected:
@@ -191,60 +158,64 @@ protected:
         return t[0] > t[1] ? std::nullopt : std::make_optional(t);
     }
 
-    static T planeSplit(const std::vector<U>& data, std::uint_fast32_t D)
+    static std::pair<std::uint_fast32_t, T> planeSplit(const std::vector<U>& data)
     {
         // mean split
-
+        /*
         const auto plane_mean = std::transform_reduce(data.cbegin(), data.cend(), T { 0 }, std::plus<>(), [D](const auto& u) -> T {
             return u.center()[D];
         }) / data.size();
 
         return plane_mean;
-    }
+        */
 
-    static int figureOfMerit(const std::vector<U>& data, std::uint_fast32_t D, const T planesep)
-    {
-        int fom = 0;
-        int shared = 0;
-        auto func = [planesep, D](const auto& o) -> int {
-            return StaticKDTreeNode<T, Us...>::planeSide(o, planesep, D);
-        };
+        std::array<std::vector<std::pair<T, T>>, 3> segs;
         for (const auto& u : data) {
-            const auto side = planeSide(u, D, planesep)
-                fom
-                += side;
-            if (side == 0)
-                shared++;
+            const auto aabb = u.AABB();
+            for (std::size_t i = 0; i < 3; ++i) {
+                const auto seg = std::make_pair(aabb[i], aabb[i + 3]);
+                bool added = false;
+                std::size_t teller = 0;
+                while (!added && teller != segs[i].size()) {
+                    auto& r_seg = segs[i][teller];
+                    if (r_seg.second > seg.first || r_seg.first > seg.second) {
+                        r_seg.first = std::min(r_seg.first, seg.first);
+                        r_seg.second = std::min(r_seg.second, seg.second);
+                        added = true;
+                    }
+                    ++teller;
+                }
+                if (!added) {
+                    segs[i].push_back(seg);
+                }
+            }
         }
-        return std::abs(fom) + shared;
+
+        const std::array<std::size_t, 3> n_splits = { segs[0].size(), segs[1].size(), segs[2].size() };
+        const auto n_splits_max = std::max(n_splits[0], std::max(n_splits[1], n_splits[2]));
+        const auto D = vectormath::argmax3<std::uint_fast32_t>(n_splits);
+        if (n_splits_max == 1) {
+            const auto plane = std::nextafter(segs[D][0].second, std::numeric_limits<T>::max());
+            return std::make_pair(D, plane);
+        } else {
+            const auto ind_split = n_splits_max / 2;
+            const auto plane = (segs[D][ind_split - 1].second + segs[D][ind_split].first) * T { 0.5 };
+            return std::make_pair(D, plane);
+        }
     }
 
     static int planeSide(const U& obj, std::uint_fast32_t D, const T planesep)
     {
-        T max = std::numeric_limits<T>::lowest();
-        T min = std::numeric_limits<T>::max();
-        const auto& aabb = obj.AABB();
-        min = aabb[D];
-        max = aabb[D + 3];
 
-        if (lessOrEqual(max, plane))
+        const auto& aabb = obj.AABB();
+        const auto min = aabb[D];
+        const auto max = aabb[D + 3];
+
+        if (max < planesep)
             return -1;
-        if (greaterOrEqual(min, plane))
+        if (min > planesep)
             return 1;
         return 0;
-    }
-    constexpr static T epsilon()
-    {
-        // Huristic epsilon for triangle intersections
-        return T { 11 } * std::numeric_limits<T>::epsilon();
-    }
-    constexpr static bool lessOrEqual(T a, T b)
-    {
-        return a - b <= epsilon() * a;
-    }
-    constexpr static bool greaterOrEqual(T a, T b)
-    {
-        return b - a <= epsilon() * a;
     }
 
 private:
@@ -254,120 +225,63 @@ private:
     StaticKDTree<Depth - 1, T, U> m_right;
 };
 
-template <Floating T, StaticKDTreeType<T>... Us>
-class StaticKDTree {
+template <Floating T, StaticKDTreeType<T> U>
+class StaticKDTree<0, T, U> {
 public:
-    void build(std::size_t max_depth = 8)
+    StaticKDTree() { }
+    StaticKDTree(std::vector<U>& data)
+        : m_data(data)
     {
-        std::sort(m_data.begin(), m_data.end(), [](const auto& lh, const auto& rh) { return lh.index() < rh.index(); });
-        m_node.buildTree(m_data, max_depth);
-        m_aabb = AABB();
     }
-    void clear()
+    void translate(const std::array<T, 3>& dir)
     {
-        m_node.clear();
-    }
-    std::size_t depth() const
-    {
-        return m_node.depth();
-    }
-    template <AnyKDTreeType<Us...> U>
-    void insert(U item)
-    {
-        m_data.emplace_back(std::variant<Us...>(item));
-        clear();
-    }
-    template <AnyKDTreeType<Us...> U>
-    void insert(const std::vector<U>& items)
-    {
-        for (const auto& item : items) {
-            m_data.emplace_back(std::variant<Us...>(item));
-        }
-        clear();
-    }
-
-    void translate(const std::array<T, 3>& vec)
-    {
-        for (auto& v : m_data) {
-            std::visit(
-                [&vec](auto&& obj) {
-                    obj.translate(vec);
-                },
-                v);
-        }
-        clear();
-    }
-
-    std::array<T, 3> center() const
-    {
-        std::array<T, 3> cnt { 0, 0, 0 };
-        std::size_t count = 0;
-
-        for (auto& v : m_data) {
-            auto c = std::visit([&cnt, &count](auto&& obj) -> std::array<T, 3> { return obj.center(); }, v);
-            for (std::size_t i = 0; i < 3; ++i) {
-                cnt[i] += c[i];
-            }
-        }
-
-        if (count > 0) {
-            for (std::size_t i = 0; i < cnt.size(); ++i)
-                cnt[i] /= count;
-        }
-        return cnt;
+        for (auto& u : m_data)
+            u.translate(dir);
     }
     std::array<T, 6> AABB() const
     {
+
         std::array<T, 6> aabb {
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest()
+            std::numeric_limits<T>::lowest(),
         };
-
-        for (auto& v : m_data) {
-            auto c = std::visit([&aabb](const auto& obj) -> std::array<T, 6> {
-                auto aabb_obj = obj.AABB();
-                for (std::size_t i = 0; i < 3; ++i) {
-                    aabb[i] = std::min(aabb[i], aabb_obj[i]);
-                }
-                for (std::size_t i = 3; i < 6; ++i) {
-                    aabb[i] = std::max(aabb[i], aabb_obj[i]);
-                }
-                return aabb_obj;
-            },
-                v);
+        for (const auto& u : m_data) {
+            const auto& aabb_obj = u.AABB();
+            for (std::size_t i = 0; i < 3; ++i) {
+                aabb[i] = std::min(aabb[i], aabb_obj[i]);
+            }
+            for (std::size_t i = 3; i < 6; ++i) {
+                aabb[i] = std::max(aabb[i], aabb_obj[i]);
+            }
         }
+
         return aabb;
-    }
-
-    std::optional<T> intersect(const Particle<T>& particle) const
-    {
-        return m_node.intersect(m_data, particle, m_aabb);
-    }
-
-private:
-    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    std::vector<std::variant<Us...>> m_data;
-    StaticKDTreeNode<T, Us...> m_node;
-};
-
-
-finish template spesialization
-template <Floating T, StaticKDTreeType<T> U>
-class StaticKDTree<0, T, U> {
-public:
-    StaticKDTreeNode() { }
-    StaticKDTreeNode(std::vector<U>& data)
-    {
-        buildTree(data);
     }
 
     static constexpr std::size_t depth()
     {
-        return Depth;
+        return 0;
+    }
+    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    {
+        std::optional<T> t;
+        for (const auto& u : m_data) {
+            const auto t_cand = u.intersect(particle);
+            if (t_cand)
+                t = t_cand.value() < t.value_or(std::numeric_limits<T>::max()) ? t_cand : t;
+        }
+        return t;
+        /* auto res = std::reduce(m_data.cbegin(), m_data.cend(), std::nullopt, [&particle](const std::optional<T>& left, const U& right) -> std::optional<T> {
+            const auto r_val = right.intersect(particle);
+            if (r_val && left)
+                return r_val.value() < left.value() ? r_val : left;
+            return r_val ? r_val : left;
+        });*/
+        return t;
     }
 
 private:

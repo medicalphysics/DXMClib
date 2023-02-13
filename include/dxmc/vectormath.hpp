@@ -244,6 +244,15 @@ namespace vectormath {
         return x >= y ? x >= z ? 0 : 2 : y >= z ? 1
                                                 : 2;
     }
+    template <Index U = std::size_t, Index T>
+    inline U argmax3(const std::array<T, 3>& vec) noexcept
+    {
+        const T x = vec[0];
+        const T y = vec[1];
+        const T z = vec[2];
+        return x >= y ? x >= z ? 0 : 2 : y >= z ? 1
+                                                : 2;
+    }
 
     template <Floating T>
     inline std::array<T, 3> changeBasis(const std::array<T, 3>& b1, const std::array<T, 3>& b2, const std::array<T, 3>& b3, const std::array<T, 3>& vector) noexcept
