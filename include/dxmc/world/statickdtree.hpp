@@ -50,42 +50,21 @@ concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
 template <typename U, typename... Us>
 concept AnyKDTreeType = (... or std::same_as<U, Us>);
 
-template <Floating T, StaticKDTreeType<T>... Us>
-class StaticKDTreeNode {
+template <int Depth, Floating T, StaticKDTreeType<T> U>
+class StaticKDTree {
 public:
     StaticKDTreeNode() { }
-    StaticKDTreeNode(const std::vector<std::variant<Us...>>& data, std::size_t max_depth = 8)
+    StaticKDTreeNode(std::vector<U>& data)
     {
-        buildTree(data, max_depth);
-    }
-    StaticKDTreeNode(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx, std::size_t max_depth = 8)
-    {
-        buildTree(data, idx, max_depth);
+        buildTree(data);
     }
 
-    void clear()
+    static constexpr std::size_t depth()
     {
-        if (m_left)
-            m_left->clear();
-        if (m_right)
-            m_right->clear();
-        m_idx.clear();
-        m_left = nullptr;
-        m_right = nullptr;
+        return Depth;
     }
-    std::size_t depth() const
-    {
-        if (m_left)
-            return std::max(m_left->depth(), m_right->depth()) + 1;
-        return 0;
-    }
-    void buildTree(const std::vector<std::variant<Us...>>& data, std::size_t max_depth = 8)
-    {
-        std::vector<std::size_t> idx(data.size());
-        std::iota(idx.begin(), idx.end(), std::size_t { 0 });
-        buildTree(data, idx, max_depth);
-    }
-    void buildTree(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx, std::size_t max_depth = 8)
+
+    void buildTree(std::vector<U>& data)
     {
         if (data.size() == 0)
             return;
@@ -99,8 +78,8 @@ public:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
         };
-        for (const auto& i : idx) {
-            std::array<T, 6> aabb_obj = std::visit([&aabb](const auto& obj) -> std::array<T, 6> { return obj.AABB(); }, data[i]);
+        for (const auto& u : data) {
+            const auto& aabb_obj = u.AABB();
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(aabb[i], aabb_obj[i]);
             }
@@ -114,39 +93,29 @@ public:
         m_D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
 
         // finding split
-        const auto plane_split = planeSplit(data, idx, m_D);
-        const auto fom = figureOfMerit(data, idx, m_D, plane_split);
+        m_plane = planeSplit(data, m_D);
+        const auto fom = figureOfMerit(data, m_D, m_plane);
 
-        if (fom == idx.size() || max_depth <= 1 || idx.size() <= 1) {
-            m_idx = idx;
-        } else {
-            m_plane = plane_split;
-            std::vector<std::size_t> left, right;
-
-            auto func = [=](const auto& o) -> int {
-                return StaticKDTreeNode<T, Us...>::planeSide(o, m_plane, m_D);
-            };
-            for (const auto i : idx) {
-                const auto side = std::visit(func, data[i]);
-                if (side <= 0)
-                    left.push_back(i);
-                if (side >= 0)
-                    right.push_back(i);
+        // moving object depending on plane splits
+        std vector<U> left, right;
+        for (std::size_t i = 0; i < data.size()++ i) {
+            const auto side = planeSide(data[i], m_D, m_plane);
+            if (side == -1) {
+                std::move(data[i], std::back_inserter(left));
+            } else if (side == 1) {
+                std::move(data[i], std::back_inserter(right));
+            } else {
+                left.push_back(data[i]);
+                std::move(data[i], std::back_inserter(right));
             }
-            m_left = std::make_unique<StaticKDTreeNode<T, Us...>>(data, left, max_depth - 1);
-            m_right = std::make_unique<StaticKDTreeNode<T, Us...>>(data, right, max_depth - 1);
         }
+        // purging data since it is in an bad state after moves
+        data.clear();
+
+        m_left = StaticKDTree<Depth - 1, T, U>(left);
+        m_right = StaticKDTree<Depth - 1, T, U>(right);
     }
 
-    std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 6>& aabb, const std::array<T, 2>& tbox) const
-    {
-        const auto& inter = intersectAABB(particle, aabb);
-        if (inter) {
-            const std::array<T, 2> tbox_min { std::min((*inter)[0], tbox[0]), std::min((*inter)[1], tbox[1]) };
-            return intersect(data, particle, tbox_min);
-        } else
-            return std::nullopt;
-    }
     std::optional<T> intersect(const std::vector<std::variant<Us...>>& data, const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto& inter = intersectAABB(particle, aabb);
@@ -178,8 +147,7 @@ public:
             return hit_left;
         }
 
-        const auto* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        const auto* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        const auto* const[front, back] = particle.dir[m_D] > T { 0 } ? std::make_pair(&m_left, &m_right) : std::make_pair(&m_right, &m_left);
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -223,55 +191,39 @@ protected:
         return t[0] > t[1] ? std::nullopt : std::make_optional(t);
     }
 
-    static T planeSplit(const std::vector<std::variant<Us...>>& data, const std::vector<std::size_t>& idx, std::uint_fast32_t D)
+    static T planeSplit(const std::vector<U>& data, std::uint_fast32_t D)
     {
         // mean split
-        auto func = [&](const auto& obj) -> T { return obj.center()[D]; };
 
-        const auto plane_mean = std::transform_reduce(idx.cbegin(), idx.cend(), T { 0 }, std::plus<>(), [&](const auto& i) -> T {
-            return std::visit(func, data[i]);
-        }) / idx.size();
+        const auto plane_mean = std::transform_reduce(data.cbegin(), data.cend(), T { 0 }, std::plus<>(), [D](const auto& u) -> T {
+            return u.center()[D];
+        }) / data.size();
 
         return plane_mean;
-
-        // median split
-        /*
-        std::sort(idx.begin(), idx.end(), [&](auto lh, auto rh) {
-            const auto lh_value = std::visit(func, data[lh]);
-            const auto rh_value = std::visit(func, data[rh]);
-            return lh_value < rh_value;
-        });
-
-        const auto N = idx.size();
-        if (N % 2 == 1) {
-            return std::visit(func, data[N / 2]);
-        }
-        return (std::visit(func, data[N / 2]) + std::visit(func, data[N / 2 - 1])) / 2;
-        */
     }
 
-    static int figureOfMerit(const std::vector<std::variant<Us...>>& objects, const std::vector<std::size_t>& idx, std::uint_fast32_t D, T planesep)
+    static int figureOfMerit(const std::vector<U>& data, std::uint_fast32_t D, const T planesep)
     {
         int fom = 0;
         int shared = 0;
         auto func = [planesep, D](const auto& o) -> int {
             return StaticKDTreeNode<T, Us...>::planeSide(o, planesep, D);
         };
-        for (const auto& i : idx) {
-            const auto side = std::visit(func, objects[i]);
-            fom += side;
+        for (const auto& u : data) {
+            const auto side = planeSide(u, D, planesep)
+                fom
+                += side;
             if (side == 0)
                 shared++;
         }
         return std::abs(fom) + shared;
     }
 
-    template <AnyKDTreeType<Us...> U>
-    static int planeSide(const U& obj, const T plane, std::uint_fast32_t D)
+    static int planeSide(const U& obj, std::uint_fast32_t D, const T planesep)
     {
         T max = std::numeric_limits<T>::lowest();
         T min = std::numeric_limits<T>::max();
-        const auto aabb = obj.AABB();
+        const auto& aabb = obj.AABB();
         min = aabb[D];
         max = aabb[D + 3];
 
@@ -298,9 +250,8 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     T m_plane = 0;
-    std::vector<std::size_t> m_idx;
-    std::unique_ptr<StaticKDTreeNode<T, Us...>> m_left = nullptr;
-    std::unique_ptr<StaticKDTreeNode<T, Us...>> m_right = nullptr;
+    StaticKDTree<Depth - 1, T, U> m_left;
+    StaticKDTree<Depth - 1, T, U> m_right;
 };
 
 template <Floating T, StaticKDTreeType<T>... Us>
@@ -403,4 +354,23 @@ private:
     StaticKDTreeNode<T, Us...> m_node;
 };
 
+
+finish template spesialization
+template <Floating T, StaticKDTreeType<T> U>
+class StaticKDTree<0, T, U> {
+public:
+    StaticKDTreeNode() { }
+    StaticKDTreeNode(std::vector<U>& data)
+    {
+        buildTree(data);
+    }
+
+    static constexpr std::size_t depth()
+    {
+        return Depth;
+    }
+
+private:
+    std::vector<U> m_data;
+};
 }

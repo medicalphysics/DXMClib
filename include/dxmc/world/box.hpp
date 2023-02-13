@@ -37,18 +37,18 @@ public:
     Box(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase<T>()
         , m_aabb(aabb)
+        , m_material(Material2<T>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_material = Material2<T>::byNistName("Air, Dry (near sea level)").value();
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
     Box(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
         : WorldItemBase<T>()
+        , m_material(Material2<T>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
             m_aabb[i + 3] = std::abs(aabb_size) + pos[i];
         }
-        m_material = Material2<T>::byNistName("Air, Dry (near sea level)").value();
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
 
