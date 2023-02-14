@@ -68,26 +68,7 @@ public:
 
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
 
-    template <int FORWARD = 1>
-    static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
-    {
-        auto t = []() -> std::array<T, 2> {
-            if constexpr (FORWARD == 1)
-                return std::array { T { 0 }, std::numeric_limits<T>::max() };
-            else
-                return std::array { std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max() };
-        }();
-
-        for (std::uint_fast8_t i = 0; i < 3; i++) {
-            if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
-                const auto d_inv = T { 1 } / p.dir[i];
-                const auto [tmin, tmax] = std::minmax((aabb[i] - p.pos[i]) * d_inv, (aabb[i + 3] - p.pos[i]) * d_inv);
-                t[0] = std::max(t[0], tmin);
-                t[1] = std::min(t[1], tmax);
-            }
-        }
-        return t[0] > t[1] ? std::nullopt : std::make_optional(t);
-    }
+    
 
 protected:
 private:

@@ -93,11 +93,11 @@ bool teststatickdtree()
 {
     // createsome boxes
     std::vector<dxmc::Box<T>> boxes(4);
-    for (int j = 0; j < 2; ++j)
-        for (int i = 0; i < 2; ++i) {
+    for (int j = 0; j < 2; j++)
+        for (int i = 0; i < 2; i++) {
             auto ind = j * 2 + i;
             auto& b = boxes[ind];
-            std::array d = { static_cast<T>(i * 40), static_cast<T>(j * 40), T { 0 } };
+            std::array d = { static_cast<T>(i * 8 - 4), static_cast<T>(j * 8 - 4), T { 0 } };
             b.translate(d);
         }
 
@@ -105,8 +105,8 @@ bool teststatickdtree()
 
     dxmc::Particle<T> p;
 
-    p.pos = { 0, 0, -100 };
-    p.dir = { 0, 0, 1 };
+    p.pos = { -100, 4, 0 };
+    p.dir = { 1, 0, 0 };
 
     const auto aabb = tree.AABB();
     auto t = tree.intersect(p, aabb);

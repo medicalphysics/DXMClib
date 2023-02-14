@@ -74,34 +74,7 @@ public:
     }
 
 protected:
-    static std::optional<T> intersectSphere(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const std::array<T, 2>& tbox)
-    {
-        std::optional<T> t_cand = std::nullopt;
-
-        const auto f = vectormath::subtract(p.pos, center);
-        const auto b = -vectormath::dot(f, p.dir);
-        const auto p1 = vectormath::add(f, vectormath::scale(p.dir, b));
-        const auto r2 = radii * radii;
-        const auto det = r2 - vectormath::dot(p1, p1);
-        if (det > T { 0 }) {
-            const auto c = vectormath::dot(f, f) - r2;
-            if (c > T { 0 }) {
-                const int sign = (T { 0 } < b) - (b < T { 0 });
-                const auto q = b + sign * std::sqrt(det);
-                const auto t = c / q;
-                if ((tbox[0] < t) && (t < tbox[1]))
-                    t_cand = t;
-            } else {
-                const int sign = (T { 0 } < b) - (b < T { 0 });
-                const auto q = b + sign * std::sqrt(det);
-                const auto t = q;
-                if ((tbox[0] < t) && (t < tbox[1]))
-                    t_cand = t;
-            }
-        }
-
-        return t_cand;
-    }
+    
 
 private:
     T m_radius = 0;

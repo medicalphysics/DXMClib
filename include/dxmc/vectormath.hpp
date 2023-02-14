@@ -36,8 +36,7 @@ namespace vectormath {
     template <Floating T>
     inline constexpr T lenght_sqr(const std::array<T, 3>& vec) noexcept
     {
-        constexpr T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
-        return lsqr;
+        return vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];        
     }
 
     template <Floating T>

@@ -89,6 +89,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/itemcollection.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/intersection.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/ctdiphantom.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/sphere.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/box.hpp"

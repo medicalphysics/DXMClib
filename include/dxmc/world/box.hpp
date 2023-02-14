@@ -25,6 +25,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditembase.hpp"
+#include "dxmc/world/intersection.hpp"
 
 #include <limits>
 #include <optional>
@@ -75,7 +76,7 @@ public:
     }
     std::optional<T> intersect(const Particle<T>& p) const noexcept override
     {
-        const auto t = WorldItemBase<T>::intersectAABB<0>(p, m_aabb);
+        const auto t = intersectAABB(p, m_aabb);
         if (t) {
             return (*t)[0] < T { 0 } ? std::make_optional((*t)[1]) : std::make_optional((*t)[0]);
         }

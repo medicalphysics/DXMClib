@@ -193,11 +193,31 @@ protected:
 
         const std::array<std::size_t, 3> n_splits = { segs[0].size(), segs[1].size(), segs[2].size() };
         const auto n_splits_max = std::max(n_splits[0], std::max(n_splits[1], n_splits[2]));
-        const auto D = vectormath::argmax3<std::uint_fast32_t>(n_splits);
+
         if (n_splits_max == 1) {
+            const std::uint_fast32_t D = 0;
             const auto plane = std::nextafter(segs[D][0].second, std::numeric_limits<T>::max());
             return std::make_pair(D, plane);
         } else {
+            // finding dim with min 2 splits and max extent
+            std::uint_fast32_t D = 0;
+            T extent = 0;
+            for (std::uint_fast32_t i = 0; i < 3; ++i) {
+                if (n_splits[i] == n_splits_max) {
+                    T min = std::numeric_limits<T>::max();
+                    T max = std::numeric_limits<T>::lowest();
+                    for (const auto& [fi, se] : segs[i]) {
+                        min = std::min(min, fi);
+                        max = std::max(max, se);
+                    }
+                    const auto ex_cand = max - min;
+                    if (ex_cand > extent) {
+                        D = i;
+                        extent = ex_cand;
+                    }
+                }
+            }
+
             const auto ind_split = n_splits_max / 2;
             const auto plane = (segs[D][ind_split - 1].second + segs[D][ind_split].first) * T { 0.5 };
             return std::make_pair(D, plane);
@@ -206,7 +226,6 @@ protected:
 
     static int planeSide(const U& obj, std::uint_fast32_t D, const T planesep)
     {
-
         const auto& aabb = obj.AABB();
         const auto min = aabb[D];
         const auto max = aabb[D + 3];
@@ -274,13 +293,6 @@ public:
             if (t_cand)
                 t = t_cand.value() < t.value_or(std::numeric_limits<T>::max()) ? t_cand : t;
         }
-        return t;
-        /* auto res = std::reduce(m_data.cbegin(), m_data.cend(), std::nullopt, [&particle](const std::optional<T>& left, const U& right) -> std::optional<T> {
-            const auto r_val = right.intersect(particle);
-            if (r_val && left)
-                return r_val.value() < left.value() ? r_val : left;
-            return r_val ? r_val : left;
-        });*/
         return t;
     }
 
