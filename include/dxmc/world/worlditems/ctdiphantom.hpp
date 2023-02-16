@@ -22,7 +22,8 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditembase.hpp"
+#include "dxmc/world/intersection.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -30,55 +31,53 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class Sphere final : public WorldItemBase<T> {
+class CTDIPhantom final : public WorldItemBase<T> {
 public:
-    Sphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
+    CTDIPhantom(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 }, T height = T { 15 })
         : WorldItemBase<T>()
         , m_radius(radius)
+        , m_halfheight(height * T { 0.5 })
         , m_center(pos)
     {
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<T, 3>& dist)
     {
         m_center = vectormath::add(m_center, dist);
     }
-    std::array<T, 3> center() const override
+    std::array<T, 3> center() const
     {
         return m_center;
     }
 
-    std::array<T, 6> AABB() const override
+    std::array<T, 6> AABB() const
     {
-        std::array<T, 6> aabb {
+        std::array aabb {
             m_center[0] - m_radius,
             m_center[1] - m_radius,
-            m_center[2] - m_radius,
+            m_center[2] - m_halfheight,
             m_center[0] + m_radius,
             m_center[1] + m_radius,
-            m_center[2] + m_radius
+            m_center[2] + m_halfheight
         };
         return aabb;
     }
-    std::optional<T> intersect(const Particle<T>& p) const override
+
+    std::optional<T> intersect(const Particle<T>& p) const
     {
-        const auto tbox = WorldItemBase<T>::intersectAABB(p, AABB());
-        if (tbox)
-            return intersectSphere(p, m_center, m_radius, *tbox);
-        return std::nullopt;
     }
 
-    T transport(Particle<T>& p, RandomState& state) override
+    T transport(Particle<T>& p, RandomState& state)
     {
         return 0;
     }
 
 protected:
-    
-
 private:
-    T m_radius = 0;
     std::array<T, 3> m_center;
+    T m_radius = 0;
+    T m_halfheight = 0;
+    std::array<DoseScore<T>, 6> m_dose;
 };
 
 }

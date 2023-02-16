@@ -25,7 +25,8 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/kdtree.hpp"
-#include "dxmc/world/worlditembase.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
 
 #include <concepts>
 #include <tuple>
@@ -87,7 +88,7 @@ public:
         bool continueSampling = true;
         bool updateAttenuation = true;
 
-        if (!pointInsideAABB(p.pos, m_aabb)) {
+        if (!basicshapes::AABB::pointInsideAABB(p.pos, m_aabb)) {
             // transport particle to aabb
             const auto t = WorldItemBase<T>::intersectAABB(p, m_aabb);
             if (t) {
@@ -98,10 +99,11 @@ public:
         }
 
         T attenuationTotalInv;
-
+        AttenuationValues<T> att;
         while (continueSampling) {
             if (updateAttenuation) {
-                attenuationTotalInv = T { 1 } / (m_fillMaterial.attenuationValues(p.energy).sum() * m_fillMaterialDensity);
+                att = m_fillMaterial.attenuationValues(p.energy);
+                attenuationTotalInv = T { 1 } / (att.sum() * m_fillMaterialDensity);
             }
 
             const auto r1 = state.randomUniform<T>();
@@ -117,30 +119,10 @@ public:
             } else {
                 p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
                 if (pointInsideAABB(p.pos, m_aabb)) {
-                    const auto att = m_fillMaterial.attenuationValues(p.energy);
-                    const auto r2 = state.randomUniform<T>(att.sum());
-                    if (r2 < att.photoelectric) {
-                        const auto Ei = interactions::photoelectricEffect(att.photoelectric, p, m_fillMaterial, state);
-                        m_dose.scoreEnergy(Ei);
-                        updateAttenuation = true;
-                    } else if (r2 < (att.photoelectric + att.coherent)) {
-                        const auto Ei = interactions::comptonScatter(p, m_fillMaterial, state);
-                        m_dose.scoreEnergy(Ei);
-                        updateAttenuation = true;
-                    } else {
-                        interactions::rayleightScatter(p, m_fillMaterial, state);
-                    }
-                    if (p.energy < MIN_ENERGY<T>()) {
-                        continueSampling = false;
-                    } else {
-                        if (p.weight < interactions::russianRuletteWeightThreshold<T>()) {
-                            if (state.randomUniform<T>() < interactions::russianRuletteProbability<T>()) {
-                                continueSampling = false;
-                            } else {
-                                p.weight /= (T { 1 } - interactions::russianRuletteProbability<T>());
-                            }
-                        }
-                    }
+                    const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
+                    updateAttenuation = interactionResult.particleEnergyChanged;
+                    continueSampling = interactionResult.particleAlive;
+                    m_dose.scoreEnergy(interactionResult.energyImparted);
                 } else {
                     continueSampling = false;
                 }

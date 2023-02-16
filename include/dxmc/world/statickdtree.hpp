@@ -82,6 +82,7 @@ public:
     }
     void translate(const std::array<T, 3>& dir)
     {
+        m_plane += dir[m_D];
         m_left.translate(dir);
         m_right.translate(dir);
     }
@@ -105,7 +106,7 @@ public:
     }
     std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
-        // test for parallell beam
+        // test for parallell beam, if parallell we must test both sides.
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
             const auto hit_left = m_left.intersect(particle, tbox);
             const auto hit_right = m_right.intersect(particle, tbox);
@@ -160,14 +161,7 @@ protected:
 
     static std::pair<std::uint_fast32_t, T> planeSplit(const std::vector<U>& data)
     {
-        // mean split
-        /*
-        const auto plane_mean = std::transform_reduce(data.cbegin(), data.cend(), T { 0 }, std::plus<>(), [D](const auto& u) -> T {
-            return u.center()[D];
-        }) / data.size();
-
-        return plane_mean;
-        */
+        // split where we find best separation between objects
 
         std::array<std::vector<std::pair<T, T>>, 3> segs;
         for (const auto& u : data) {

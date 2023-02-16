@@ -9,7 +9,7 @@ set(TEST_SOURCES
     "teststatickdtree.cpp"
     "testworlditembase.cpp"
     "testinteractions.cpp"
-    "testintersection.cpp"
+    "testbasicshapes.cpp"
 #    "testtube.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"

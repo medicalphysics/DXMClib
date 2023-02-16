@@ -30,56 +30,52 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class CTDIPhantom final : public WorldItemBase<T> {
+class Sphere final : public WorldItemBase<T> {
 public:
-    CTDIPhantom(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 }, T height = T { 15 })
+    Sphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_radius(radius)
-        , m_halfheight(height * T { 0.5 })
         , m_center(pos)
     {
     }
 
-    void translate(const std::array<T, 3>& dist)
+    void translate(const std::array<T, 3>& dist) override
     {
         m_center = vectormath::add(m_center, dist);
     }
-    std::array<T, 3> center() const
+    std::array<T, 3> center() const override
     {
         return m_center;
     }
 
-    std::array<T, 6> AABB() const
+    std::array<T, 6> AABB() const override
     {
-        std::array aabb {
+        std::array<T, 6> aabb {
             m_center[0] - m_radius,
             m_center[1] - m_radius,
-            m_center[2] - m_halfheight,
+            m_center[2] - m_radius,
             m_center[0] + m_radius,
             m_center[1] + m_radius,
-            m_center[2] + m_halfheight
+            m_center[2] + m_radius
         };
         return aabb;
     }
-
-    std::optional<T> intersect(const Particle<T>& p) const
+    std::optional<T> intersect(const Particle<T>& p) const override
     {
         const auto tbox = WorldItemBase<T>::intersectAABB(p, AABB());
         if (tbox)
-            return intersectCylinder(p, m_center, m_radius, m_center[2] - m_halfheight, m_center[2] + m_halfheight, *tbox);
+            return intersectSphere(p, m_center, m_radius, *tbox);
         return std::nullopt;
     }
 
-    T transport(Particle<T>& p, RandomState& state)
+    T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;
     }
 
 protected:
-    
 private:
     T m_radius = 0;
-    T m_halfheight = 0;
     std::array<T, 3> m_center;
 };
 

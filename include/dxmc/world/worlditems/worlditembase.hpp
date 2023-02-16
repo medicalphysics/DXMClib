@@ -20,6 +20,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/material/material.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -42,7 +43,7 @@ public:
             aref.fetch_add(energy * energy, std::memory_order_relaxed);
         }
         {
-            auto aref = std::atomic_ref(m_nEvents);
+            auto aref = std::atomic_ref(m_nEvents, std::memory_order_relaxed);
             ++aref;
         }
     }
@@ -65,9 +66,7 @@ public:
     virtual std::array<T, 6> AABB() const = 0;
     virtual std::optional<T> intersect(const Particle<T>& p) const = 0;
     virtual const DoseScore<T>& dose(std::size_t index = 0) const = 0;
-
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
-
     
 
 protected:

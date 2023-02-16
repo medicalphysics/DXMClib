@@ -20,12 +20,10 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
-#include "dxmc/interactions.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditembase.hpp"
-#include "dxmc/world/intersection.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -33,16 +31,16 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class Box final : public WorldItemBase<T> {
+class WorldBox final : public WorldItemBase<T> {
 public:
-    Box(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
+    WorldBox(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase<T>()
         , m_aabb(aabb)
         , m_material(Material2<T>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
-    Box(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
+    WorldBox(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_material(Material2<T>::byNistName("Air, Dry (near sea level)").value())
     {
@@ -130,14 +128,6 @@ public:
     }
 
 protected:
-    static bool pointInsideAABB(const std::array<T, 3>& p, const std::array<T, 6>& aabb)
-    {
-        bool inside = aabb[0] <= p[0] && p[0] <= aabb[3];
-        inside = inside && aabb[1] <= p[1] && p[1] <= aabb[4];
-        inside = inside && aabb[2] <= p[2] && p[2] <= aabb[5];
-        return inside;
-    }
-
 private:
     std::array<T, 6> m_aabb;
     Material2<T> m_material;

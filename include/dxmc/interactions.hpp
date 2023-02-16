@@ -270,5 +270,47 @@ namespace interactions {
             return E;
         }
     }
+
+    template<Floating T>
+    struct InteractionResult {
+        T energyImparted;
+        bool particleAlive;
+        bool particleEnergyChanged;
+    };
+
+
+    template<Floating T, int Nshells, int Lowenergycorrection=3>
+    InteractionResult<T> interact(const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state)
+    {        
+        const auto r2 = state.randomUniform<T>(attenuation.sum());
+        InteractionResult<T> res;
+        if (r2 < attenuation.photoelectric) {
+            const auto Ei = interactions::photoelectricEffect(attenuation.photoelectric, particle, material, state);
+            res.energyImparted=Ei; 
+            res.particleEnergyChanged = true;
+        } else if (r2 < (attenuation.photoelectric + attenuation.coherent)) {
+            const auto Ei = interactions::comptonScatter(particle, material, state);
+            res.energyImparted = Ei;
+            res.particleEnergyChanged = true;
+        } else {
+            interactions::rayleightScatter(particle, material, state);
+        }
+        if (p.energy < MIN_ENERGY<T>()) {
+            res.particleAlive = false;
+        } else {
+            if (p.weight < interactions::russianRuletteWeightThreshold<T>()) {
+                if (state.randomUniform<T>() < interactions::russianRuletteProbability<T>()) {
+                    res.particleAlive = false;
+                } else {
+                    p.weight /= (T { 1 } - interactions::russianRuletteProbability<T>());
+                }
+            }
+        }
+        return res;
+    }
+
+    
+
+
 }
 }
