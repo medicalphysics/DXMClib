@@ -21,10 +21,10 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/triangulatedmesh/meshkdtree.hpp"
-#include "dxmc/world/triangulatedmesh/stlreader.hpp"
-#include "dxmc/world/triangulatedmesh/triangle.hpp"
-#include "dxmc/world/worlditembase.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/meshkdtree.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/stlreader.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 #include <vector>

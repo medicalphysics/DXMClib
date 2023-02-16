@@ -89,7 +89,8 @@ namespace basicshape {
             const auto t_cand = intersect(p, aabb);
             if (t_cand) {
                 const auto& t = t_cand.value();
-                return pointInsideAABB(p.pos, aabb) ? std::make_optional(t[1]) : std::make_optional(t[0]);
+                const auto t_forw = pointInsideAABB(p.pos, aabb) ? std::make_optional(t[1]) : std::make_optional(t[0]);
+                return *t_forw >= 0 ? t_forw : std::nullopt;
             }
             return std::nullopt;
         }
