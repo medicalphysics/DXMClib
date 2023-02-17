@@ -30,6 +30,13 @@ namespace basicshape {
     namespace cylinder {
 
         template <Floating T>
+        bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii, const T half_height)
+        {
+            const std::array<T, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
+            return (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
+        }
+
+        template <Floating T>
         std::optional<std::array<T, 2>> intersectCylinderWall(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
         {
             // nummeric stable ray sphere intersection in 2D
@@ -164,18 +171,22 @@ namespace basicshape {
                         t[1] = std::min(t[1], tdh_cand.value());
                     }
                 }
-                return t_cand;
+                return t[1] > 0 ? t_cand : std::nullopt;
             } else {
                 // no cylindar wall intersection, test for ends
                 const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
                 const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
                 if (tdl_cand && tdh_cand) {
                     if (tdl_cand < tdh_cand) {
-                        std::array t = { tdl_cand.value(), tdh_cand.value() };
-                        return std::make_optional(t);
+                        if (*tdh_cand > 0) {
+                            std::array t = { tdl_cand.value(), tdh_cand.value() };
+                            return std::make_optional(t);
+                        }
                     } else {
-                        std::array t = { tdh_cand.value(), tdl_cand.value() };
-                        return std::make_optional(t);
+                        if (*tdl_cand > 0) {
+                            std::array t = { tdh_cand.value(), tdl_cand.value() };
+                            return std::make_optional(t);
+                        }
                     }
                 }
             }
@@ -193,33 +204,35 @@ namespace basicshape {
                 if (center[2] - half_height < pz && pz < center[2] - half_height) {
                     return t_cand;
                 } else {
-
                     const std::array centerDiscl = { center[0], center[1], center[2] - half_height };
                     const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
                     if (tdl_cand) {
-                        t = std::min(t, tdl_cand.value());
+                        t = tdl_cand.value();
                     }
-
                     const std::array centerDisch = { center[0], center[1], center[2] + half_height };
                     const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
                     if (tdh_cand) {
                         t = std::min(t, tdh_cand.value());
                     }
 
-                    return t_cand;
+                    return t > 0 ? t_cand : std::nullopt;
                 }
             } else {
                 const std::array centerDiscl = { center[0], center[1], center[2] - half_height };
                 const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
                 const std::array centerDisch = { center[0], center[1], center[2] + half_height };
-                if (!tdl_cand) {
-                    return intersectDiscZ(p, centerDisch, radii);
-                }
-
                 const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
-                if (!tdh_cand)
-                    return tdl_cand;
-                return std::min(tdl_cand, tdh_cand);
+                if (tdl_cand && tdh_cand) {
+                    if (*tdl_cand > 0 && *tdh_cand > 0) {
+                        return std::min(tdl_cand, tdh_cand);
+                    } else {
+                        const auto& td_cand = std::max(tdl_cand, tdh_cand);
+                        return *td_cand > 0 ? td_cand : std::nullopt;
+                    }
+                } else {
+                    return std::nullopt;
+                    // this is unreacable
+                }
             }
         }
 

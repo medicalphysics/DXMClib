@@ -28,6 +28,13 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 namespace basicshape {
     namespace AABB {
+
+        template <Floating F>
+        static bool pointInside(const std::array<F, 3>& p, const std::array<F, 6>& aabb)
+        {
+            return aabb[0] <= p[0] && p[0] <= aabb[3] && aabb[1] <= p[1] && p[1] <= aabb[4] && aabb[2] <= p[2] && p[2] <= aabb[5];
+        }
+
         template <Floating F>
         static std::optional<std::array<F, 2>> intersect(const Particle<F>& p, const std::array<F, 6>& aabb)
         {
@@ -74,13 +81,9 @@ namespace basicshape {
                 t[0] = tzmin;
             if (tzmax < t[1])
                 t[1] = tzmax;
+            if (t[1] < 0)
+                return std::nullopt;
             return std::make_optional(t);
-        }
-
-        template <Floating F>
-        static bool pointInsideAABB(const std::array<F, 3>& p, const std::array<F, 6>& aabb)
-        {
-            return aabb[0] <= p[0] && p[0] <= aabb[3] && aabb[1] <= p[1] && p[1] <= aabb[4] && aabb[2] <= p[2] && p[2] <= aabb[5];
         }
 
         template <Floating F>
@@ -88,13 +91,14 @@ namespace basicshape {
         {
             const auto t_cand = intersect(p, aabb);
             if (t_cand) {
-                const auto& t = t_cand.value();
-                const auto t_forw = pointInsideAABB(p.pos, aabb) ? std::make_optional(t[1]) : std::make_optional(t[0]);
-                return *t_forw >= 0 ? t_forw : std::nullopt;
+                if (const auto& t = t_cand.value(); pointInside(p.pos, aabb)) {
+                    return std::make_optional(t[1]);
+                } else {
+                    return std::make_optional(t[0]);
+                }
             }
             return std::nullopt;
         }
-
     }
 }
 }

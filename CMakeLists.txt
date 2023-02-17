@@ -95,7 +95,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worlditembase.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldbox.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldsphere.hpp"    
-    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangulatedmesh.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/stlreader.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/meshkdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangle.hpp"

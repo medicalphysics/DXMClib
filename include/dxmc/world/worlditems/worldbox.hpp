@@ -20,6 +20,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
+#include "dxmc/interactions.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -98,22 +99,11 @@ public:
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto r1 = state.randomUniform(att.sum());
-                if (r1 < att.photoelectric) {
-                    const auto E = interactions::photoelectricEffect(att.photoelectric, p, m_material, state);
-                    m_dose.scoreEnergy(E);
-                    if (p.energy == T { 0 }) {
-                        cont = false;
-                    }
-                } else if (r1 < att.photoelectric + att.incoherent) {
-                    const auto E = interactions::comptonScatter(p, m_material, state);
-                    m_dose.scoreEnergy(E);
-                    if (p.energy == T { 0 }) {
-                        cont = false;
-                    }
-                } else {
-                    interactions::rayleightScatter(p, m_material, state);
-                }
+                auto intRes = interactions::interact(att, p, m_material, state);
+                m_dose.scoreEnergy(intRes.energyImparted);
+                cont = intRes.particleAlive;
+                updateAtt = intRes.particleEnergyChanged;
+                
             } else {
                 // transport to border
                 p.translate(std::nextafter(intLen, std::numeric_limits<T>::max()));

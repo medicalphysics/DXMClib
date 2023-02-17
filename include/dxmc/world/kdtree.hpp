@@ -21,7 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditembase.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <algorithm>
 #include <array>
@@ -146,13 +146,13 @@ public:
         }
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb)
+    IntersectionResult<T> intersectForward(const Particle<T>& particle, const std::array<T, 6>& aabb)
     {
         const auto& inter = WorldItemBase<T>::intersectAABB(particle, aabb);
-        return inter ? intersect(particle, *inter) : IntersectionResult<T> {};
+        return inter ? intersectForward(particle, *inter) : IntersectionResult<T> {};
     }
 
-    IntersectionResult<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox)
+    IntersectionResult<T> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox)
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;

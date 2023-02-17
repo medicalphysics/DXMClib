@@ -24,9 +24,9 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtree.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
-#include "dxmc/world/basicshapes/aabb.hpp"
 
 #include <concepts>
 #include <tuple>
@@ -78,9 +78,9 @@ public:
         return m_aabb;
     }
 
-    auto intersect(const Particle<T>& p)
+    inline auto intersect(const Particle<T>& p) const
     {
-        return m_kdtree.intersect(p, m_aabb);
+        return m_kdtree.intersectForward(p, m_aabb);
     }
 
     void transport(Particle<T>& p, RandomState& state)
@@ -90,9 +90,9 @@ public:
 
         if (!basicshapes::AABB::pointInsideAABB(p.pos, m_aabb)) {
             // transport particle to aabb
-            const auto t = WorldItemBase<T>::intersectAABB(p, m_aabb);
+            const auto t = basicshape::AABB::intersectForward(p, m_aabb);
             if (t) {
-                p.translate(std::nextafter(t.value()[0], std::numeric_limits<T>::max()));
+                p.translate(std::nextafter(*t, std::numeric_limits<T>::max()));
             } else {
                 continueSampling = false;
             }
@@ -110,7 +110,7 @@ public:
             const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
-            auto intersection = m_kdtree.intersect(p, m_aabb);
+            auto intersection = m_kdtree.intersectForward(p, m_aabb);
             const auto intersectionLenght = intersection.valid() ? intersection.intersection : std::numeric_limits<T>::max();
 
             if (intersectionLenght < stepLenght) {
@@ -118,7 +118,7 @@ public:
                 intersection.item->transport(p, state);
             } else {
                 p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
-                if (pointInsideAABB(p.pos, m_aabb)) {
+                if (basicshapes::AABB::pointInsideAABB(p.pos, m_aabb)) {
                     const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;

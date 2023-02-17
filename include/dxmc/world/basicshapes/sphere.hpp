@@ -30,6 +30,13 @@ namespace basicshape {
     namespace sphere {
 
         template <Floating T>
+        bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii)
+        {
+            const std::array<T, 3> dp = { pos[0] - center[0], pos[1] - center[1], pos[2] - center[2] };
+            return dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2] < radii * radii;
+        }
+
+        template <Floating T>
         std::optional<T> intersectForward(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
         {
 

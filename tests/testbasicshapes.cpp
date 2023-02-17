@@ -61,6 +61,12 @@ bool testSphereIntersection()
     p.dir = { 0, 0, -1 };
     auto t6 = dxmc::basicshape::sphere::intersect(p, center, radii).value();
     success = success && t6[0] == 7998 && t6[1] == 8002;
+
+    p.pos = { 0, 0, 8000 };
+    p.dir = { 0, 0, 1 };
+    auto t7 = dxmc::basicshape::sphere::intersect(p, center, radii);
+    success = success && !t7;
+
     return success;
 }
 
@@ -143,6 +149,11 @@ bool testAABBIntersection()
     p.dir = { 0, 0, -1 };
     auto t6 = dxmc::basicshape::AABB::intersect(p, aabb).value();
     success = success && t6[0] == 7998 && t6[1] == 8002;
+
+    p.pos = { 0, 0, 8000 };
+    p.dir = { 0, 0, 1 };
+    auto t7 = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && !t7;
     return success;
 }
 
@@ -184,6 +195,11 @@ bool testAABBIntersectionForward()
     p.dir = { 0, 0, -1 };
     auto t6 = dxmc::basicshape::AABB::intersectForward(p, aabb).value();
     success = success && t6 == 7998;
+
+    p.pos = { 0, 0, 8000 };
+    p.dir = { 0, 0, 1 };
+    auto t7 = dxmc::basicshape::AABB::intersectForward(p, aabb);
+    success = success && !t7;
     return success;
 }
 
@@ -227,6 +243,25 @@ bool testCylindarIntersection()
     success = success && std::abs(t5[0] + std::sqrt(T { 2 })) <= std::numeric_limits<T>::epsilon() * 10;
     success = success && std::abs(t5[1] - 3 * std::sqrt(T { 2 })) <= std::numeric_limits<T>::epsilon() * 10;
 
+    p.pos = { -1, 0, center[0] - half_height - 1 };
+    p.dir = { -1, 0, -1 };
+    dxmc::vectormath::normalize(p.dir);
+    auto t6 = dxmc::basicshape::cylinder::intersect(p, center, radii, half_height);
+    success = success && !t6;
+
+    p.pos = { -1, -1, 0 };
+    p.dir = { 0, 0, -1 };
+    dxmc::vectormath::normalize(p.dir);
+    auto t7 = dxmc::basicshape::cylinder::intersect(p, center, radii, half_height).value();
+    success = success && t7[0] == -half_height;
+    success = success && t7[1] == half_height;
+
+    p.pos = { -1, -1, -half_height * 2 };
+    p.dir = { 0, 0, -1 };
+    dxmc::vectormath::normalize(p.dir);
+    auto t8 = dxmc::basicshape::cylinder::intersect(p, center, radii, half_height);
+    success = success && !t8;
+
     return success;
 }
 template <typename T>
@@ -266,6 +301,24 @@ bool testCylindarIntersectionForward()
     dxmc::vectormath::normalize(p.dir);
     auto t5 = dxmc::basicshape::cylinder::intersectForward(p, center, radii, half_height).value();
     success = success && std::abs(t5 - 3 * std::sqrt(T { 2 })) <= std::numeric_limits<T>::epsilon() * 10;
+
+    p.pos = { -1, 0, center[0] - half_height - 1 };
+    p.dir = { -1, 0, -1 };
+    dxmc::vectormath::normalize(p.dir);
+    auto t6 = dxmc::basicshape::cylinder::intersectForward(p, center, radii, half_height);
+    success = success && !t6;
+
+    p.pos = { -1, -1, 0 };
+    p.dir = { 0, 0, -1 };
+    dxmc::vectormath::normalize(p.dir);
+    auto t7 = dxmc::basicshape::cylinder::intersectForward(p, center, radii, half_height).value();
+    success = success && t7 == half_height;
+
+    p.pos = { -1, -1, -half_height * 2 };
+    p.dir = { 0, 0, -1 };
+    dxmc::vectormath::normalize(p.dir);
+    auto t8 = dxmc::basicshape::cylinder::intersectForward(p, center, radii, half_height);
+    success = success && !t8;
 
     return success;
 }

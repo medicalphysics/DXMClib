@@ -18,11 +18,8 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/box.hpp"
-#include "dxmc/world/ctdiphantom.hpp"
-#include "dxmc/world/sphere.hpp"
-#include "dxmc/world/triangulatedmesh/triangulatedmesh.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/world/worlditems/worldbox.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -92,77 +89,12 @@ auto create_image(W& world, const std::array<T, 3>& camera_pos, bool print = tru
     return t1 - t0;
 }
 
-template <dxmc::Floating T>
-bool testWorldConstruction()
+template <typename T>
+bool testCreateWorld()
 {
-    dxmc::World2<T, dxmc::Sphere<T>, dxmc::CTDIPhantom<T>, dxmc::Box<T>, dxmc::TriangulatedMesh<T>> world;
 
-    dxmc::CTDIPhantom<T> ctdi(5);
-    dxmc::Sphere<T> sphere(32, { 50, 50, 50 });
-    dxmc::Box<T> box(10);
-    box.translate({ -50, -50, -50 });
+    dxmc::World2<dxmc::WorldBox<T>> world;
 
-    world.addItem(ctdi);
-    world.addItem(sphere);
-    world.addItem(box);
-
-    if (true) {
-        dxmc::TriangulatedMesh<T> mesh("bunny_low.stl", 0.5);
-        world.addItem(std::move(mesh));
-    }
-
-    world.build();
-
-    std::array<T, 3> trans { 5, 5, 5 };
-
-    dxmc::Particle<T> p {
-        .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 }
-    };
-    p.energy = T { 60.0 };
-    p.weight = T { 1 };
-
-    auto res = world.intersect(p);
-
-    
-    std::array<T, 3> camera { 0, -500, 00 };
-    create_image(world, camera, true);
-
-    return false;
-}
-
-template<typename T>
-void testWorldTransport()
-{
-    constexpr std::size_t N = 1E6;
-    const T energy = 60;
-
-    dxmc::World2<dxmc::Box<T>> world;
-    dxmc::Box<T> box1(T {50});
-    dxmc::Box<T> box2({ 50 }, {0,0,100});
-
-    world.addItem(box1);
-    world.addItem(box2);
-
-    world.build();
-
-    dxmc::Particle<T> p;
-    p.pos = { 0, 0, -100 };
-    p.dir = { 0, 0, 1 };
-    p.energy = energy;
-    p.weight = 1;
-
-    dxmc::RandomState state;
-
-    for (std::size_t i = 0; i < N; ++i) {
-        p.energy = energy;
-        p.weight = 1;
-        world.transport(p, state);
-    }
-    auto boxes = world.getItems<dxmc::Box<T>>();
-    for (const auto& b : boxes) {
-        const auto d = b.dose();
-        std::cout << d.energyImparted();
-    }
 
 
 
@@ -172,10 +104,8 @@ int main(int argc, char* argv[])
 {
     auto success = true;
 
-    testWorldTransport<double>();
-
-    success = success && testWorldConstruction<double>();
-    success = success && testWorldConstruction<float>();
+    success = success && testCreateWorld<double>();
+    success = success && testCreateWorld<float>();
 
     if (success)
         return EXIT_SUCCESS;
