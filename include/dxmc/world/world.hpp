@@ -66,11 +66,18 @@ public:
         return std::get<std::vector<U>>(m_items);
     }
 
-    void build()
+    void build(T AABB_padding = 10)
     {
         auto ptrs = getItemPointers();
         m_kdtree = KDTree(ptrs);
         m_aabb = m_kdtree.AABB();
+
+        // adding padding
+        const auto padding = std::max(AABB_padding, T { 0.1 }); // always at least 1 mm padding
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] = m_aabb[i] - padding;
+            m_aabb[i + 3] = m_aabb[i + 3] + padding;
+        }
     }
 
     const std::array<T, 6>& AABB() const
@@ -88,11 +95,11 @@ public:
         bool continueSampling = true;
         bool updateAttenuation = true;
 
-        if (!basicshapes::AABB::pointInsideAABB(p.pos, m_aabb)) {
+        if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
             // transport particle to aabb
             const auto t = basicshape::AABB::intersectForward(p, m_aabb);
             if (t) {
-                p.translate(std::nextafter(*t, std::numeric_limits<T>::max()));
+                p.translate(std::nextafter(*t, std::numeric_limits<T>::lowest()));
             } else {
                 continueSampling = false;
             }
@@ -118,7 +125,7 @@ public:
                 intersection.item->transport(p, state);
             } else {
                 p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
-                if (basicshapes::AABB::pointInsideAABB(p.pos, m_aabb)) {
+                if (basicshape::AABB::pointInside(p.pos, m_aabb)) {
                     const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;

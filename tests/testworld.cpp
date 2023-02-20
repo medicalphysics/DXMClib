@@ -93,11 +93,28 @@ template <typename T>
 bool testCreateWorld()
 {
 
-    dxmc::World2<dxmc::WorldBox<T>> world;
+    dxmc::World2<T, dxmc::WorldBox<T>> world;
 
+    for (std::size_t i = 0; i < 2; ++i) {
+        dxmc::WorldBox<T> box;
+        std::array<T, 3> dir = { 0, 0, 5.0f * i };
+        box.translate(dir);
+        world.addItem(std::move(box));
+    }
 
+    world.build();
 
+    dxmc::Particle<T> p;
+    p.pos = { 0, 0, -5 };
+    p.dir = { 0, 0, 1 };
+    p.energy = 60;
+    p.weight = 1;
 
+    dxmc::RandomState state;
+
+    world.transport(p, state);
+
+    return false;
 }
 
 int main(int argc, char* argv[])

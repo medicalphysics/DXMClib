@@ -19,8 +19,8 @@ Copyright 2022 Erlend Andersen
 #pragma once
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
-#include "dxmc/particle.hpp"
 #include "dxmc/material/material.hpp"
+#include "dxmc/particle.hpp"
 
 #include <algorithm>
 #include <atomic>
@@ -28,9 +28,10 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+/* template <Floating T>
 class DoseScore {
 public:
+     DoseScore() { }
     void scoreEnergy(T energy)
     {
         // threadsafe update
@@ -43,7 +44,7 @@ public:
             aref.fetch_add(energy * energy, std::memory_order_relaxed);
         }
         {
-            auto aref = std::atomic_ref(m_nEvents, std::memory_order_relaxed);
+            auto aref = std::atomic_ref(m_nEvents);
             ++aref;
         }
     }
@@ -57,6 +58,30 @@ private:
     T m_energyImparted = 0;
     T m_energyImpartedSquared = 0;
 };
+*/
+
+template <Floating T>
+class DoseScore {
+public:
+    DoseScore() { }
+    DoseScore(DoseScore&& other)
+    {
+        m_nEvents.store(other.m_nEvents);
+        m_energyImparted.store(other.m_energyImparted);
+        m_energyImpartedSquared.store(other.m_energyImpartedSquared);
+    }
+    void scoreEnergy(const T energy)
+    {
+        m_nEvents++;
+        m_energyImparted.fetch_add(energy, std::memory_order_relaxed);
+        m_energyImpartedSquared.fetch_add(energy * energy, std::memory_order_relaxed);
+    }
+
+private:
+    std::atomic<std::uint64_t> m_nEvents = 0;
+    std::atomic<T> m_energyImparted = 0;
+    std::atomic<T> m_energyImpartedSquared = 0;
+};
 
 template <Floating T>
 class WorldItemBase {
@@ -64,10 +89,9 @@ public:
     virtual void translate(const std::array<T, 3>& dist) = 0;
     virtual std::array<T, 3> center() const = 0;
     virtual std::array<T, 6> AABB() const = 0;
-    virtual std::optional<T> intersect(const Particle<T>& p) const = 0;
+    virtual std::optional<T> intersectForward(const Particle<T>& p) const = 0;
     virtual const DoseScore<T>& dose(std::size_t index = 0) const = 0;
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
-    
 
 protected:
 private:

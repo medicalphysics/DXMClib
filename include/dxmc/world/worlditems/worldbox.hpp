@@ -24,6 +24,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
@@ -73,18 +74,14 @@ public:
     {
         return m_aabb;
     }
-    std::optional<T> intersect(const Particle<T>& p) const noexcept override
+    std::optional<T> intersectForward(const Particle<T>& p) const noexcept override
     {
-        const auto t = intersectAABB(p, m_aabb);
-        if (t) {
-            return (*t)[0] < T { 0 } ? std::make_optional((*t)[1]) : std::make_optional((*t)[0]);
-        }
-        return std::nullopt;
+        return basicshape::AABB::intersectForward(p, m_aabb);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = pointInsideAABB(p.pos, m_aabb);
+        bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = false;
         auto att = m_material.attenuationValues(p.energy);
         auto attSumInv = 1 / (att.sum() * m_materialDensity);
@@ -94,16 +91,16 @@ public:
                 attSumInv = 1 / (att.sum() * m_materialDensity);
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersect(p).value(); // this must be not nullopt
+            const auto intLen = intersectForward(p).value(); // this can not be nullopt
 
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                auto intRes = interactions::interact(att, p, m_material, state);
+                const auto intRes = interactions::interact(att, p, m_material, state);
                 m_dose.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
-                
+
             } else {
                 // transport to border
                 p.translate(std::nextafter(intLen, std::numeric_limits<T>::max()));
