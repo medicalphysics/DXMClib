@@ -32,25 +32,42 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T, int NMaterialShells = 5>
 class WorldBox final : public WorldItemBase<T> {
 public:
     WorldBox(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase<T>()
         , m_aabb(aabb)
-        , m_material(Material2<T>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
     WorldBox(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_material(Material2<T>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
             m_aabb[i + 3] = std::abs(aabb_size) + pos[i];
         }
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+    }
+
+    void setMaterial(const Material2<T, NMaterialShells>& material)
+    {
+        m_material = material;
+    }
+    void setMaterialDensity(T density) { m_materialDensity = density; }
+
+    bool setNistMaterial(const std::string& nist_name)
+    {
+        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
+        if (mat) {
+            m_material = mat.value();
+            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            return true;
+        }
+        return false;
     }
 
     void translate(const std::array<T, 3>& dist) noexcept override
@@ -103,7 +120,7 @@ public:
 
             } else {
                 // transport to border
-                p.translate(std::nextafter(intLen, std::numeric_limits<T>::max()));
+                p.border_translate(intLen);
                 cont = false;
             }
         }
@@ -117,7 +134,7 @@ public:
 protected:
 private:
     std::array<T, 6> m_aabb;
-    Material2<T> m_material;
+    Material2<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
     DoseScore<T> m_dose;
 };

@@ -30,9 +30,9 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class Sphere final : public WorldItemBase<T> {
+class WorldSphere final : public WorldItemBase<T> {
 public:
-    Sphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
+    WorldSphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_radius(radius)
         , m_center(pos)

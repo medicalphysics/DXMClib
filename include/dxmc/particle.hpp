@@ -45,11 +45,21 @@ struct Particle {
      */
     T weight;
 
-    inline void translate(const T dist) {
+    inline void translate(const T dist)
+    {
         pos[0] += dir[0] * dist;
         pos[1] += dir[1] * dist;
         pos[2] += dir[2] * dist;
     }
-
+    inline void border_translate(const T dist)
+    {
+        // Make sure we translate particle beyond any border we want to translate to
+        // In short the particle is translated to next possible floating point
+        // representation after pos + dir * dist
+        for (std::size_t i = 0; i < 3; ++i) {
+            if (dir[i] != 0)
+                pos[i] = std::nextafter(pos[i] + dist * dir[i], dir[i] < 0 ? std::numeric_limits<T>::lowest() : std::numeric_limits<T>::max());
+        }
+    }
 };
 }

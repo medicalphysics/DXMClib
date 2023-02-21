@@ -502,7 +502,7 @@ public:
 
     template <std::random_access_iterator It>
         requires std::is_same_v<typename std::iterator_traits<It>::value_type, std::array<T, 3>>
-    static inline T evaluateSpline(const T x, It begin, It end)
+    static inline T evaluateSpline(const T x, const It begin, const It end)
     {
         const std::array<T, 3> x_comp { x, 0, 0 };
         auto it = std::upper_bound(begin + 1, end - 1, x_comp, [](const auto& left, const auto& right) -> bool { return left[0] < right[0]; });

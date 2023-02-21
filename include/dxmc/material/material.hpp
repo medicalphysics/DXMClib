@@ -101,13 +101,17 @@ public:
     inline T scatterFactor(const T momentumTransfer) const
     {
         const auto logmomt = std::log(momentumTransfer);
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, m_attenuationTableOffset[4], m_attenuationTableOffset[5]));
+        const auto begin = m_attenuationTable.cbegin() + m_attenuationTableOffset[4];
+        const auto end = m_attenuationTable.cbegin() + m_attenuationTableOffset[5];
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, begin, end));
     }
 
     inline T formFactor(const T momentumTransfer) const
     {
         const auto logmomt = std::log(momentumTransfer);
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, m_attenuationTableOffset[3], m_attenuationTableOffset[4]));
+        const auto begin = m_attenuationTable.cbegin() + m_attenuationTableOffset[3];
+        const auto end = m_attenuationTable.cbegin() + m_attenuationTableOffset[4];
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logmomt, begin, end));
     }
 
     inline T sampleSquaredMomentumTransferFromFormFactorSquared(T qsquared_max, RandomState& state) const
@@ -119,10 +123,15 @@ public:
     inline AttenuationValues<T> attenuationValues(const T energy) const
     {
         const auto logEnergy = std::log(energy);
+
+        const auto begin_p = m_attenuationTable.cbegin();
+        const auto begin_i = begin_p + m_attenuationTableOffset[1];
+        const auto begin_c = begin_p + m_attenuationTableOffset[2];
+        const auto end_c = begin_p + m_attenuationTableOffset[3];
         AttenuationValues<T> att {
-            std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1])),
-            std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[1], m_attenuationTableOffset[2])),
-            std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[2], m_attenuationTableOffset[3]))
+            .photoelectric = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_p, begin_i)),
+            .incoherent = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_i, begin_c)),
+            .coherent = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_c, end_c))
         };
         return att;
     }
@@ -130,12 +139,18 @@ public:
     std::vector<AttenuationValues<T>> attenuationValues(const std::vector<T>& energy) const
     {
         std::vector<AttenuationValues<T>> att(energy.size());
+
+        const auto begin_p = m_attenuationTable.cbegin();
+        const auto begin_i = begin_p + m_attenuationTableOffset[1];
+        const auto begin_c = begin_p + m_attenuationTableOffset[2];
+        const auto end_c = begin_p + m_attenuationTableOffset[3];
+
         std::transform(std::execution::par_unseq, energy.cbegin, energy.cend(), att.begin(), [&](const auto e) {
             const auto logEnergy = std::log(energy);
             AttenuationValues<T> a {
-                std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1])),
-                std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[1], m_attenuationTableOffset[2])),
-                std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[2], m_attenuationTableOffset[3]))
+                .photoelectric = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_p, begin_i)),
+                .incoherent = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_i, begin_c)),
+                .coherent = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_c, end_c))
             };
             return a; });
         return att;
@@ -151,17 +166,25 @@ public:
     inline T attenuationPhotoeletric(const T energy) const
     {
         const auto logEnergy = std::log(energy);
-        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, m_attenuationTableOffset[0], m_attenuationTableOffset[1]));
+        const auto begin = m_attenuationTable.cbegin();
+        const auto end = m_attenuationTable.cbegin() + m_attenuationTableOffset[1];
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
     }
     inline T attenuationPhotoelectricShell(std::uint8_t shell, const T energy) const
     {
         const std::uint8_t n_photo_shells = std::min(numberOfShells(), static_cast<std::uint8_t>(N));
+
         const auto start = shell < n_photo_shells ? m_attenuationTableOffset[5 + shell] : m_attenuationTableOffset[0];
         const auto stop = shell < n_photo_shells ? m_attenuationTableOffset[5 + shell + 1] : m_attenuationTableOffset[1];
+
+        const auto begin = m_attenuationTable.cbegin() + start;
+        const auto end = m_attenuationTable.cbegin() + stop;
+
         const auto logEnergy = std::log(energy);
         // prevents extrapolation to lower energies
-        return logEnergy < (*start)[0] ? T { 0 } : std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, start, stop));
+        return logEnergy < (*begin)[0] ? T { 0 } : std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
     }
+    static constexpr int numberOfShellsAvailable() { return N; }
     inline std::uint8_t numberOfShells() const
     {
         return m_numberOfShells;
@@ -456,11 +479,11 @@ protected:
 
         for (std::size_t i = 0; i < offset.size(); ++i) {
             if (i < attenuation.size() + std::min(std::uint8_t { N }, m.numberOfShells()))
-                m.m_attenuationTableOffset[i] = m.m_attenuationTable.begin() + offset[i];
+                m.m_attenuationTableOffset[i] = std::distance(m.m_attenuationTable.begin(), m.m_attenuationTable.begin() + offset[i]);
             else
-                m.m_attenuationTableOffset[i] = m.m_attenuationTable.end();
+                m.m_attenuationTableOffset[i] = std::distance(m.m_attenuationTable.begin(), m.m_attenuationTable.end());
         }
-        m.m_attenuationTableOffset[offset.size()] = m.m_attenuationTable.end();
+        m.m_attenuationTableOffset[offset.size()] = std::distance(m.m_attenuationTable.begin(), m.m_attenuationTable.end());
 
         // creating lookuptable for inverse sampling of formfactor
         generateFormFactorInverseSampling(m);
@@ -553,7 +576,7 @@ protected:
 private:
     T m_effectiveZ = 0;
     std::vector<std::array<T, 3>> m_attenuationTable;
-    std::array<typename std::vector<std::array<T, 3>>::iterator, 5 + N + 1> m_attenuationTableOffset;
+    std::array<std::uint_fast32_t, 5 + N + 1> m_attenuationTableOffset;
     CPDFSampling<T, 20> m_formFactorInvSamp;
     std::array<Material2Shell<T>, N + 1> m_shells;
     std::uint8_t m_numberOfShells = 0;

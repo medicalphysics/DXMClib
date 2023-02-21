@@ -89,6 +89,43 @@ auto create_image(W& world, const std::array<T, 3>& camera_pos, bool print = tru
     return t1 - t0;
 }
 
+template <typename T, typename WO>
+bool testWorldItem()
+{
+
+    WO obj;
+
+    dxmc::Particle<T> p;
+    p.dir = { 0, 0, 1 };
+    p.pos = { 0, 0, -2000 };
+
+    auto t = obj.intersectForward(p);
+    if (!t)
+        return false;
+    p.translate(*t);
+
+    dxmc::RandomState state;
+    p.energy = 60;
+    p.weight = 1;
+    obj.transport(p, state);
+
+    auto t_fin = obj.intersectForward(p);
+    if (t_fin)
+        return false;
+
+    return true;
+}
+
+template <typename T>
+bool testWorldItems()
+{
+    bool success = true;
+
+    success = success && testWorldItem<T, dxmc::WorldBox<T>>();
+
+    return success;
+}
+
 template <typename T>
 bool testCreateWorld()
 {
@@ -99,6 +136,7 @@ bool testCreateWorld()
         dxmc::WorldBox<T> box;
         std::array<T, 3> dir = { 0, 0, 5.0f * i };
         box.translate(dir);
+        auto material_set = box.setNistMaterial("Water, Liquid");
         world.addItem(std::move(box));
     }
 
@@ -114,12 +152,15 @@ bool testCreateWorld()
 
     world.transport(p, state);
 
-    return false;
+    return true;
 }
 
 int main(int argc, char* argv[])
 {
     auto success = true;
+
+    success = success && testWorldItems<double>();
+    success = success && testWorldItems<float>();
 
     success = success && testCreateWorld<double>();
     success = success && testCreateWorld<float>();

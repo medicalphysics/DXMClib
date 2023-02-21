@@ -99,7 +99,7 @@ public:
             // transport particle to aabb
             const auto t = basicshape::AABB::intersectForward(p, m_aabb);
             if (t) {
-                p.translate(std::nextafter(*t, std::numeric_limits<T>::lowest()));
+                p.translate(*t);
             } else {
                 continueSampling = false;
             }
@@ -111,6 +111,7 @@ public:
             if (updateAttenuation) {
                 att = m_fillMaterial.attenuationValues(p.energy);
                 attenuationTotalInv = T { 1 } / (att.sum() * m_fillMaterialDensity);
+                updateAttenuation = false;
             }
 
             const auto r1 = state.randomUniform<T>();
@@ -121,10 +122,10 @@ public:
             const auto intersectionLenght = intersection.valid() ? intersection.intersection : std::numeric_limits<T>::max();
 
             if (intersectionLenght < stepLenght) {
-                p.translate(std::nextafter(intersectionLenght, std::numeric_limits<T>::max()));
+                p.translate(intersectionLenght);
                 intersection.item->transport(p, state);
             } else {
-                p.translate(std::nextafter(stepLenght, std::numeric_limits<T>::max()));
+                p.translate(stepLenght);
                 if (basicshape::AABB::pointInside(p.pos, m_aabb)) {
                     const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
