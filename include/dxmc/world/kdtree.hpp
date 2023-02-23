@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
+#include "dxmc/world/kdtreeinteractionresult.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <algorithm>
@@ -36,17 +37,6 @@ Copyright 2022 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-
-template <Floating T>
-struct IntersectionResult {
-    WorldItemBase<T>* item = nullptr;
-    T intersection = 0;
-
-    bool valid() const
-    {
-        return item != nullptr;
-    }
-};
 
 template <Floating T>
 class KDTree {
@@ -125,7 +115,7 @@ public:
         depth_iterator(teller);
         return teller;
     }
-    std::vector<WorldItemBase<T>*> items() const
+    std::vector<WorldItemBase<T>*> items()
     {
         std::vector<WorldItemBase<T>*> all;
         item_iterator(all);
@@ -147,19 +137,19 @@ public:
         }
     }
 
-    IntersectionResult<T> intersectForward(const Particle<T>& particle, const std::array<T, 6>& aabb)
+    IntersectionResult<T, WorldItemBase<T>> intersectForward(const Particle<T>& particle, const std::array<T, 6>& aabb)
     {
 
         const auto& inter = basicshape::AABB::intersect(particle, aabb);
-        return inter ? intersectForward(particle, *inter) : IntersectionResult<T> {};
+        return inter ? intersectForward(particle, *inter) : IntersectionResult<T, WorldItemBase<T>> {};
     }
 
-    IntersectionResult<T> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox)
+    IntersectionResult<T, WorldItemBase<T>> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox)
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
 
-            IntersectionResult<T> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
+            IntersectionResult<T, WorldItemBase<T>> res = { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
             for (auto& item : m_items) {
                 const auto t_cand = item->intersectForward(particle);
                 if (t_cand) {
@@ -172,7 +162,6 @@ public:
                 }
             }
             return res;
-            // return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
         }
 
         // test for parallell beam

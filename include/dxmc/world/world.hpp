@@ -66,6 +66,23 @@ public:
         return std::get<std::vector<U>>(m_items);
     }
 
+    std::vector<WorldItemBase<T>*> getItemPointers()
+    {
+        std::vector<WorldItemBase<T>*> ptrs;
+
+        auto iter = [&ptrs](auto& v) {
+            for (auto& item : v)
+                ptrs.push_back(&item);
+        };
+
+        std::apply([&iter](auto&... vec) {
+            (iter(vec), ...);
+        },
+            m_items);
+
+        return ptrs;
+    }
+
     void build(T AABB_padding = 10)
     {
         auto ptrs = getItemPointers();
@@ -85,7 +102,7 @@ public:
         return m_aabb;
     }
 
-    inline auto intersect(const Particle<T>& p) const
+    inline auto intersect(const Particle<T>& p)
     {
         return m_kdtree.intersectForward(p, m_aabb);
     }
@@ -118,12 +135,13 @@ public:
             const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
-            auto intersection = m_kdtree.intersectForward(p, m_aabb);
+            const auto intersection = m_kdtree.intersectForward(p, m_aabb);
             const auto intersectionLenght = intersection.valid() ? intersection.intersection : std::numeric_limits<T>::max();
 
             if (intersectionLenght < stepLenght) {
-                p.translate(intersectionLenght);
+                p.border_translate(intersectionLenght);
                 intersection.item->transport(p, state);
+                continueSampling = p.energy > 0;
             } else {
                 p.translate(stepLenght);
                 if (basicshape::AABB::pointInside(p.pos, m_aabb)) {
@@ -145,23 +163,6 @@ protected:
         inside = inside && aabb[1] <= p[1] && p[1] <= aabb[4];
         inside = inside && aabb[2] <= p[2] && p[2] <= aabb[5];
         return inside;
-    }
-
-    std::vector<WorldItemBase<T>*> getItemPointers()
-    {
-        std::vector<WorldItemBase<T>*> ptrs;
-
-        auto iter = [&ptrs](auto& v) {
-            for (auto& item : v)
-                ptrs.push_back(&item);
-        };
-
-        std::apply([&iter](auto&... vec) {
-            (iter(vec), ...);
-        },
-            m_items);
-
-        return ptrs;
     }
 
 private:

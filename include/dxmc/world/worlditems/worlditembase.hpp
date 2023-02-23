@@ -28,10 +28,10 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-/* template <Floating T>
+template <Floating T>
 class DoseScore {
 public:
-     DoseScore() { }
+    DoseScore() { }
     void scoreEnergy(T energy)
     {
         // threadsafe update
@@ -57,30 +57,6 @@ private:
     std::uint64_t m_nEvents = 0;
     T m_energyImparted = 0;
     T m_energyImpartedSquared = 0;
-};
-*/
-
-template <Floating T>
-class DoseScore {
-public:
-    DoseScore() { }
-    DoseScore(DoseScore&& other)
-    {
-        m_nEvents.store(other.m_nEvents);
-        m_energyImparted.store(other.m_energyImparted);
-        m_energyImpartedSquared.store(other.m_energyImpartedSquared);
-    }
-    void scoreEnergy(const T energy)
-    {
-        m_nEvents++;
-        m_energyImparted.fetch_add(energy, std::memory_order_relaxed);
-        m_energyImpartedSquared.fetch_add(energy * energy, std::memory_order_relaxed);
-    }
-
-private:
-    std::atomic<std::uint64_t> m_nEvents = 0;
-    std::atomic<T> m_energyImparted = 0;
-    std::atomic<T> m_energyImpartedSquared = 0;
 };
 
 template <Floating T>

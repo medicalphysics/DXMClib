@@ -25,7 +25,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/basicshapes/sphere.hpp"
+#include "dxmc/world/basicshapes/cylinder.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
@@ -34,11 +34,12 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T, int NMaterialShells = 5>
-class WorldSphere final : public WorldItemBase<T> {
+class WorldCylinder final : public WorldItemBase<T> {
 public:
-    WorldSphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
+    WorldCylinder(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_radius(radius)
+        , m_halfHeight(height * T { 0.5 })
         , m_center(pos)
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
@@ -78,10 +79,10 @@ public:
         std::array<T, 6> aabb {
             m_center[0] - m_radius,
             m_center[1] - m_radius,
-            m_center[2] - m_radius,
+            m_center[2] - m_halfHeight,
             m_center[0] + m_radius,
             m_center[1] + m_radius,
-            m_center[2] + m_radius
+            m_center[2] + m_halfHeight
         };
         return aabb;
     }
@@ -93,7 +94,7 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight);
         bool updateAtt = false;
         auto att = m_material.attenuationValues(p.energy);
         auto attSumInv = 1 / (att.sum() * m_materialDensity);
@@ -111,8 +112,8 @@ public:
                 p.translate(stepLen);
                 const auto intRes = interactions::interact(att, p, m_material, state);
                 m_dose.scoreEnergy(intRes.energyImparted);
-                cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
+                cont = intRes.particleAlive;
             } else {
                 // transport to border
                 p.border_translate(intLen);
@@ -129,9 +130,10 @@ public:
 protected:
 private:
     T m_radius = 0;
+    T m_halfHeight = 0;
     std::array<T, 3> m_center;
-    Material2<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
+    Material2<T, NMaterialShells> m_material;
     DoseScore<T> m_dose;
 };
 

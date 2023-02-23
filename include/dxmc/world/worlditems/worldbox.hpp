@@ -42,6 +42,7 @@ public:
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
+
     WorldBox(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
@@ -57,6 +58,7 @@ public:
     {
         m_material = material;
     }
+
     void setMaterialDensity(T density) { m_materialDensity = density; }
 
     bool setNistMaterial(const std::string& nist_name)
@@ -77,6 +79,7 @@ public:
             m_aabb[i + 3] += dist[i];
         }
     }
+
     std::array<T, 3> center() const noexcept override
     {
         std::array<T, 3> c {
@@ -91,6 +94,7 @@ public:
     {
         return m_aabb;
     }
+
     std::optional<T> intersectForward(const Particle<T>& p) const noexcept override
     {
         return basicshape::AABB::intersectForward(p, m_aabb);
@@ -106,6 +110,7 @@ public:
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
                 attSumInv = 1 / (att.sum() * m_materialDensity);
+                updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
             const auto intLen = intersectForward(p).value(); // this can not be nullopt

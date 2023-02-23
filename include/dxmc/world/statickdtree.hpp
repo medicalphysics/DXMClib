@@ -21,6 +21,8 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
+#include "dxmc/world/kdtreeinteractionresult.hpp"
 
 #include <array>
 #include <concepts>
@@ -37,7 +39,7 @@ concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
 
                                u.translate(vec);
                                {
-                                   u.intersect(p)
+                                   u.intersectForward(p)
                                    } -> std::same_as<std::optional<T>>;
                                {
                                    u.center()
@@ -46,8 +48,6 @@ concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
                                    u.AABB()
                                    } -> std::convertible_to<std::array<T, 6>>;
                            };
-template <typename U, typename... Us>
-concept AnyKDTreeType = (... or std::same_as<U, Us>);
 
 template <int Depth, Floating T, StaticKDTreeType<T> U>
 class StaticKDTree {
@@ -99,20 +99,20 @@ public:
         }
         return left;
     }
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    IntersectionResult<T, const U> intersectForward(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
-        const auto tbox = intersectAABB(particle, aabb);
+        const auto tbox = basicshape::AABB::intersect(particle, aabb);
         return tbox ? intersect(particle, *tbox) : std::nullopt;
     }
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    IntersectionResult<T, const U> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         // test for parallell beam, if parallell we must test both sides.
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            const auto hit_left = m_left.intersect(particle, tbox);
-            const auto hit_right = m_right.intersect(particle, tbox);
-            if (hit_left && hit_right)
-                return std::min(hit_left, hit_right);
-            return hit_left ? hit_left : hit_right;
+            const auto hit_left = m_left.intersectForward(particle, tbox);
+            const auto hit_right = m_right.intersectForward(particle, tbox);
+            if (hit_left.valid() && hit_right.valid())
+                return hit_left.intersection < hit_right.intersection ? hit_left : hit_right;
+            return hit_left.valid() ? hit_left : hit_right;
         }
 
         const auto [front, back] = particle.dir[m_D] > T { 0 } ? std::make_pair(&m_left, &m_right) : std::make_pair(&m_right, &m_left);
@@ -121,44 +121,25 @@ public:
 
         if (t <= tbox[0]) {
             // back only
-            return back->intersect(particle, tbox);
+            return back->intersectForward(particle, tbox);
         } else if (t >= tbox[1]) {
             // front only
-            return front->intersect(particle, tbox);
+            return front->intersectForward(particle, tbox);
         }
 
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
-        const auto hit = front->intersect(particle, t_front);
-        if (hit) {
-            if (*hit <= t) {
+        const auto hit = front->intersectForward(particle, t_front);
+        if (hit.valid()) {
+            if (hit.intersection <= t) {
                 return hit;
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
-        return back->intersect(particle, t_back);
+        return back->intersectForward(particle, t_back);
     }
 
 protected:
-    static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
-    {
-        std::array<T, 2> t {
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::max()
-        };
-        for (std::size_t i = 0; i < 3; i++) {
-            if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
-                const auto d_inv = T { 1 } / p.dir[i];
-                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
-                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-                const auto [t_min_cand, t_max_cand] = std::minmax(t1, t2);
-                t[0] = std::max(t[0], t_min_cand);
-                t[1] = std::min(t[1], t_max_cand);
-            }
-        }
-        return t[0] > t[1] ? std::nullopt : std::make_optional(t);
-    }
-
     static std::pair<std::uint_fast32_t, T> planeSplit(const std::vector<U>& data)
     {
         // split where we find best separation between objects
@@ -251,7 +232,7 @@ public:
         for (auto& u : m_data)
             u.translate(dir);
     }
-    std::array<T, 6> AABB() const
+    std::array<T, 6> AABB() const noexcept
     {
 
         std::array<T, 6> aabb {
@@ -279,15 +260,19 @@ public:
     {
         return 0;
     }
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    IntersectionResult<T, const U> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox) const noexcept
     {
-        std::optional<T> t;
+        IntersectionResult<T, const U> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
+
         for (const auto& u : m_data) {
-            const auto t_cand = u.intersect(particle);
+            const auto t_cand = u.intersectForward(particle);
             if (t_cand)
-                t = t_cand.value() < t.value_or(std::numeric_limits<T>::max()) ? t_cand : t;
+                if (*t_cand < res.intersection) {
+                    res.intersection = *t_cand;
+                    res.item = &u;
+                }
         }
-        return t;
+        return res;
     }
 
 private:

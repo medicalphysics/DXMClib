@@ -16,11 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
-#include "dxmc/world/box.hpp"
-#include "dxmc/world/sphere.hpp"
 #include "dxmc/world/statickdtree.hpp"
-#include "dxmc/world/triangulatedmesh/stlreader.hpp"
-#include "dxmc/world/triangulatedmesh/triangle.hpp"
 
 #include <chrono>
 #include <iostream>

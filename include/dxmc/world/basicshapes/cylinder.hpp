@@ -136,59 +136,46 @@ namespace basicshape {
         }
 
         template <Floating T>
+        std::optional<T> intersectDiscZForward(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        {
+            if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
+                return std::nullopt;
+            const auto tz = (center[2] - p.pos[2]) / p.dir[2];
+            if (tz > 0) {
+                const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
+                const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
+                if (xz * xz + yz * yz < radii * radii)
+                    return std::make_optional(tz);
+            }
+            return std::nullopt;
+        }
+
+        template <Floating T>
         std::optional<std::array<T, 2>> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
         {
             auto t_cand = intersectCylinderWall(p, center, radii);
-            const std::array centerDiscl = { center[0], center[1], center[2] - half_height };
-            const std::array centerDisch = { center[0], center[1], center[2] + half_height };
+            std::optional<T> tmin_cand, tmax_cand;
             if (t_cand) {
-                auto& t = t_cand.value();
-                const auto pz0 = p.pos[2] + p.dir[2] * t[0];
-                const auto pz1 = p.pos[2] + p.dir[2] * t[1];
-                const bool cylwall0 = centerDiscl[2] < pz0 && pz0 < centerDisch[2];
-                const bool cylwall1 = centerDiscl[2] < pz1 && pz1 < centerDisch[2];
+                const auto t = *t_cand;
+                const auto pzmin = p.pos[2] + p.dir[2] * t[0];
+                if ((center[2] - half_height) <= pzmin && pzmin <= (center[2] + half_height)) {
+                    tmin_cand = std::make_optional(t[0]);
+                }
+                const auto pzmax = p.pos[2] + p.dir[2] * t[1];
+                if ((center[2] - half_height) <= pzmax && pzmax <= (center[2] + half_height)) {
+                    tmax_cand = std::make_optional(t[1]);
+                }
+            }
+            std::array centerDisc = { center[0], center[1], center[2] - half_height };
+            auto tdl_cand = intersectDiscZ(p, centerDisc, radii);
+            centerDisc[2] = center[2] + half_height;
+            auto tdh_cand = intersectDiscZ(p, centerDisc, radii);
 
-                if (cylwall0 && cylwall1) {
-                    // we intersect cylindar wall on valid z interval
-                    return t_cand;
-                }
+            if (tmin_cand || tmax_cand || tdl_cand || tdh_cand) {
+                auto min = std::min({ tmin_cand, tdl_cand, tdh_cand }, [](const auto& lh, const auto& rh) -> bool { return lh.value_or(std::numeric_limits<T>::max()) < rh.value_or(std::numeric_limits<T>::max()); });
+                auto max = std::max({ tmax_cand, tdl_cand, tdh_cand }, [](const auto& lh, const auto& rh) -> bool { return lh.value_or(std::numeric_limits<T>::min()) < rh.value_or(std::numeric_limits<T>::min()); });
 
-                const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
-                if (tdl_cand) {
-                    if (!cylwall0) {
-                        t[0] = std::max(t[0], tdl_cand.value());
-                    }
-                    if (!cylwall1) {
-                        t[1] = std::min(t[1], tdl_cand.value());
-                    }
-                }
-                const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
-                if (tdh_cand) {
-                    if (!cylwall0) {
-                        t[0] = std::max(t[0], tdh_cand.value());
-                    }
-                    if (!cylwall1) {
-                        t[1] = std::min(t[1], tdh_cand.value());
-                    }
-                }
-                return t[1] > 0 ? t_cand : std::nullopt;
-            } else {
-                // no cylindar wall intersection, test for ends
-                const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
-                const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
-                if (tdl_cand && tdh_cand) {
-                    if (tdl_cand < tdh_cand) {
-                        if (*tdh_cand > 0) {
-                            std::array t = { tdl_cand.value(), tdh_cand.value() };
-                            return std::make_optional(t);
-                        }
-                    } else {
-                        if (*tdl_cand > 0) {
-                            std::array t = { tdh_cand.value(), tdl_cand.value() };
-                            return std::make_optional(t);
-                        }
-                    }
-                }
+                return std::make_optional<std::array<T, 2>>({ *min, *max });
             }
             return std::nullopt;
         }
@@ -198,44 +185,17 @@ namespace basicshape {
         {
             auto t_cand = intersectCylinderWallForward(p, center, radii);
             if (t_cand) {
-                // valid range?
-                auto& t = t_cand.value();
-                const auto pz = p.pos[2] + p.dir[2] * t;
-                if (center[2] - half_height < pz && pz < center[2] - half_height) {
-                    return t_cand;
-                } else {
-                    const std::array centerDiscl = { center[0], center[1], center[2] - half_height };
-                    const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
-                    if (tdl_cand) {
-                        t = tdl_cand.value();
-                    }
-                    const std::array centerDisch = { center[0], center[1], center[2] + half_height };
-                    const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
-                    if (tdh_cand) {
-                        t = std::min(t, tdh_cand.value());
-                    }
-
-                    return t > 0 ? t_cand : std::nullopt;
-                }
-            } else {
-                const std::array centerDiscl = { center[0], center[1], center[2] - half_height };
-                const auto tdl_cand = intersectDiscZ(p, centerDiscl, radii);
-                const std::array centerDisch = { center[0], center[1], center[2] + half_height };
-                const auto tdh_cand = intersectDiscZ(p, centerDisch, radii);
-                if (tdl_cand && tdh_cand) {
-                    if (*tdl_cand > 0 && *tdh_cand > 0) {
-                        return std::min(tdl_cand, tdh_cand);
-                    } else {
-                        const auto& td_cand = std::max(tdl_cand, tdh_cand);
-                        return *td_cand > 0 ? td_cand : std::nullopt;
-                    }
-                } else {
-                    return std::nullopt;
-                    // this is unreacable
+                const auto pz = p.pos[2] + p.dir[2] * *t_cand;
+                if ((pz < center[2] - half_height) || pz > (center[2] + half_height)) {
+                    t_cand = std::nullopt;
                 }
             }
+            std::array centerDisc = { center[0], center[1], center[2] - half_height };
+            auto tdisc1_cand = intersectDiscZForward(p, centerDisc, radii);
+            centerDisc[2] = center[2] + half_height;
+            auto tdisc2_cand = intersectDiscZForward(p, centerDisc, radii);
+            return std::min({ t_cand, tdisc1_cand, tdisc2_cand }, [](const auto& lh, const auto& rh) -> bool { return lh.value_or(std::numeric_limits<T>::max()) < rh.value_or(std::numeric_limits<T>::max()); });
         }
-
     }
 }
 }
