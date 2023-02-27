@@ -141,6 +141,7 @@ void AtomicElementHandler::setPhotoelectricData(const std::vector<double>& data)
 void AtomicElementHandler::setShellPhotoelectricData(std::uint64_t shell, const std::vector<double>& data)
 {
     if (!m_atom.shells.contains(shell)) {
+
         m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
     }
     auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());

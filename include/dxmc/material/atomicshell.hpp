@@ -25,6 +25,10 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 template <std::floating_point T>
 struct AtomicShell {
+    AtomicShell(std::uint64_t shell=0)
+        : shell(shell)
+    {
+    }
     std::uint64_t shell = 0;
     T numberOfElectrons = 0;
     T bindingEnergy = 0;
