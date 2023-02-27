@@ -91,16 +91,20 @@ inline T interpolate(const std::vector<std::pair<T, T>>& data, T x)
 {
     const auto val = std::make_pair(x, T { 0 });
     auto upper = std::upper_bound(data.begin(), data.end(), val, [](const auto& lh, const auto& rh) -> bool { return lh.first < rh.first; });
-    if (upper == data.begin())
-        if constexpr (EXTRAPOLATE_DOWN)
+    if (upper == data.begin()) {
+        if constexpr (EXTRAPOLATE_DOWN) {
             return upper->second;
-        else
+        } else {
             return T { 0 };
-    if (upper == data.end())
-        if constexpr (EXTRAPOLATE_UP)
+        }
+    }
+    if (upper == data.end()) {
+        if constexpr (EXTRAPOLATE_UP) {
             return (upper - 1)->second;
-        else
+        } else {
             return T { 0 };
+        }
+    }
     auto lower = upper - 1;
     return interp(lower->first, upper->first, lower->second, upper->second, x);
 }
