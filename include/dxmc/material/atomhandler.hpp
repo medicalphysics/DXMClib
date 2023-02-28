@@ -113,6 +113,7 @@ protected:
         l.incoherentSF = typecastPairVector(r.incoherentSF);
         l.incoherent = typecastPairVector(r.incoherent);
         l.photoel = typecastPairVector(r.photoel);
+        l.incoherentMeanScatterEnergy = typecastPairVector(r.incoherentMeanScatterEnergy);
         for (const auto& [key, shell] : r.shells) {
             l.shells[key] = typecastShell(shell);
         }

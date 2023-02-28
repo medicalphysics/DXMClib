@@ -43,6 +43,8 @@ public:
     void setPhotoelectricData(const std::vector<double>& data);
     void setCoherentData(const std::vector<double>& data);
     void setIncoherentData(const std::vector<double>& data);
+    void setIncoherentAvgEnergyScatteredPhoton(const std::vector<double>& data);
+
     void setFormFactor(const std::vector<double>& data);
     // void setImaginaryAnomalousSF(const std::vector<double>& data);
     // void setRealAnomalousSF(const std::vector<double>& data);

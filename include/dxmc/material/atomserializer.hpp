@@ -112,6 +112,7 @@ protected:
         serialize(atom.photoel, data);
         serialize(atom.formFactor, data);
         serialize(atom.incoherentSF, data);
+        serialize(atom.incoherentMeanScatterEnergy, data);
 
         // adding shells
         // adding number of shells
@@ -177,6 +178,7 @@ protected:
         start = deserialize(atom.photoel, start);
         start = deserialize(atom.formFactor, start);
         start = deserialize(atom.incoherentSF, start);
+        start = deserialize(atom.incoherentMeanScatterEnergy, start);
 
         std::uint64_t n_shells { 0 };
         atom.shells.clear();

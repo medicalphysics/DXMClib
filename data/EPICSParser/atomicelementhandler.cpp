@@ -73,6 +73,20 @@ void AtomicElementHandler::setIncoherentData(const std::vector<double>& data)
     m_atom.incoherent.shrink_to_fit();
 }
 
+void AtomicElementHandler::setIncoherentAvgEnergyScatteredPhoton(const std::vector<double>& data)
+{
+    auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
+    auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
+    m_atom.incoherentMeanScatterEnergy.clear();
+    m_atom.incoherentMeanScatterEnergy.reserve((end - start) / 2);
+    for (std::size_t i = start; i <= end; i = i + 2) {
+        const double e = data[i] * MeVTokeV();
+        const double a = data[i + 1] * MeVTokeV();
+        m_atom.incoherentMeanScatterEnergy.push_back(std::make_pair(e, a));
+    }
+    m_atom.incoherentMeanScatterEnergy.shrink_to_fit();    
+}
+
 void AtomicElementHandler::setFormFactor(const std::vector<double>& data)
 {
     const auto N = data.size() / 2;
