@@ -93,9 +93,9 @@ public:
         return aabb;
     }
 
-    std::optional<T> intersectForward(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersectForward(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
@@ -111,7 +111,7 @@ public:
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersectForward(p).value(); // this can not be nullopt
+            const auto intLen = intersect(p).intersection; // this can not be nullopt
 
             if (stepLen < intLen) {
                 // interaction happends

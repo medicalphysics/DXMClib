@@ -20,6 +20,8 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
+#include "dxmc/world/kdtreeintersectionresult.hpp"
 
 #include <algorithm>
 #include <array>
@@ -45,6 +47,9 @@ concept MeshKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec, T sc
                              {
                                  u.AABB()
                                  } -> std::same_as<std::array<T, 6>>;
+                             {
+                                 u.planeVector()
+                                 } -> std::same_as<std::array<T, 3>>;
                          };
 
 template <Floating T, MeshKDTreeType<T> U>
@@ -58,7 +63,7 @@ public:
     {
         m_D = other.m_D;
         m_plane = other.m_plane;
-        m_triangles = other.m_triangles;
+        m_triangles = std::move(other.m_triangles);
         if (other.m_left) {
             m_left = std::unique_ptr(std::move(other.m_left));
         }
@@ -165,25 +170,34 @@ public:
         }
     }
 
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
-        const auto& inter = intersectAABB(particle, aabb);
-        return inter ? intersect(particle, *inter) : std::nullopt;
+        const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
+        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<T, const U> {};
     }
 
 protected:
-    std::optional<T> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
+
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
-            T t = std::numeric_limits<T>::max();
+            KDTreeIntersectionResult<T, const U> res;
+            res.intersection = std::numeric_limits<T>::max();
+
             for (const U& triangle : m_triangles) {
                 const auto t_cand = triangle.intersect(particle);
                 if (t_cand) {
-                    t = std::min(t, *t_cand);
+                    if (*t_cand < res.intersection) {
+                        if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
+                            res.intersection = *t_cand;
+                            res.item = &triangle;
+                            res.rayOriginIsInsideItem = vectormath::dot(p.dir, triangle.planeVector()) > 0;
+                        }
+                    }
                 }
             }
-            return greaterOrEqual(t, tbox[0]) && lessOrEqual(t, tbox[1]) ? std::make_optional(t) : std::nullopt;
+            return res;
         }
 
         // test for parallell beam
@@ -220,28 +234,6 @@ protected:
         }
         const std::array<T, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
-    }
-    template <int FORWARD = 1>
-    static std::optional<std::array<T, 2>> intersectAABB(const Particle<T>& p, const std::array<T, 6>& aabb)
-    {
-        auto t = []() -> std::array<T, 2> {
-            if constexpr (FORWARD == 1)
-                return std::array { T { 0 }, std::numeric_limits<T>::max() };
-            else
-                return std::array { std::numeric_limits<T>::lowest(), std::numeric_limits<T>::max() };
-        }();
-
-        for (std::size_t i = 0; i < 3; i++) {
-            if (std::abs(p.dir[i]) > std::numeric_limits<T>::epsilon()) {
-                const auto d_inv = T { 1 } / p.dir[i];
-                const auto t1 = (aabb[i] - p.pos[i]) * d_inv;
-                const auto t2 = (aabb[i + 3] - p.pos[i]) * d_inv;
-                const auto [t_min_cand, t_max_cand] = std::minmax(t1, t2);
-                t[0] = std::max(t[0], t_min_cand);
-                t[1] = std::min(t[1], t_max_cand);
-            }
-        }
-        return t[0] > t[1] ? std::nullopt : std::make_optional(t);
     }
 
     T planeSplit(const std::vector<U>& triangles) const

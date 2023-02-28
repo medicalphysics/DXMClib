@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/worldintersectionresult.hpp"
 
 #include <array>
 #include <optional>
@@ -37,9 +38,9 @@ namespace basicshape {
         }
 
         template <Floating T>
-        std::optional<T> intersectForward(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
         {
-
+            WorldIntersectionResult<T> res;
             // nummeric stable ray sphere intersection
             const auto r2 = radii * radii;
             const auto f = vectormath::subtract(p.pos, center);
@@ -53,7 +54,7 @@ namespace basicshape {
             if ((c > 0) && (b < 0)) {
                 // if ray starts outside sphere and center is begind ray
                 // we exit early
-                return std::nullopt;
+                return res;
             }
 
             const auto delta1 = vectormath::lenght_sqr(vectormath::add(f, vectormath::scale(p.dir, b)));
@@ -62,7 +63,7 @@ namespace basicshape {
 
             if (delta < 0) {
                 // no solution to the quadratic equation (we miss)
-                return std::nullopt;
+                return res;
             }
 
             const int sign = b > 0 ? 1 : -1;
@@ -70,14 +71,17 @@ namespace basicshape {
 
             if (c < 0 && b > 0) {
                 // inside sphere
-                return std::make_optional(q);
+                res.rayOriginIsInsideItem = true;
+                res.intersection = q;
             } else {
-                return std::make_optional(c / q);
+                res.intersection = c / q;
             }
+            res.intersectionValid = true;
+            return res;
         }
 
         template <Floating T>
-        std::optional<std::array<T, 2>> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
         {
             // nummeric stable ray sphere intersection
             const auto r2 = radii * radii;
@@ -114,7 +118,6 @@ namespace basicshape {
                 return std::make_optional(t);
             }
         }
-
     }
 }
 }

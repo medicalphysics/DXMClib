@@ -96,9 +96,11 @@ public:
         }
         return center;
     }
-    std::optional<T> intersect(const Particle<T>& p) const override
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
-        return m_kdtree.intersect(p, m_aabb);
+
+        auto res = m_kdtree.intersect(p, m_aabb);
+        return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
 
     T transport(Particle<T>& p, RandomState& state) override

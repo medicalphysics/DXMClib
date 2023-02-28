@@ -40,7 +40,7 @@ concept WorldItemType = (std::derived_from<U, WorldItemBase<T>>);
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
-template <Floating T, WorldItemType<T>... Us>
+template <typename T, WorldItemType<T>... Us>
 class World2 {
 public:
     World2()
@@ -112,11 +112,13 @@ public:
         bool continueSampling = true;
         bool updateAttenuation = true;
 
-        if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
+        {
             // transport particle to aabb
-            const auto t = basicshape::AABB::intersectForward(p, m_aabb);
-            if (t) {
-                p.translate(*t);
+            const auto t = basicshape::AABB::intersect(p, m_aabb);
+            if (t.valid()) {
+                if (!t.rayOriginIsInsideItem) {
+                    p.translate(t.intersection);
+                }
             } else {
                 continueSampling = false;
             }
@@ -135,11 +137,13 @@ public:
             const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
-            const auto intersection = m_kdtree.intersectForward(p, m_aabb);
+            const auto intersection = m_kdtree.intersect(p, m_aabb);
             const auto intersectionLenght = intersection.valid() ? intersection.intersection : std::numeric_limits<T>::max();
 
             if (intersectionLenght < stepLenght) {
-                p.border_translate(intersectionLenght);
+                if (!intersection.rayOriginIsInsideItem) {
+                    p.border_translate(intersectionLenght);
+                }
                 intersection.item->transport(p, state);
                 continueSampling = p.energy > 0;
             } else {

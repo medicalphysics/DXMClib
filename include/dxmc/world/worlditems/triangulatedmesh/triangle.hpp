@@ -69,6 +69,11 @@ public:
         });
     }
     
+    std::array<T, 3> planeVector() const noexcept
+    {
+        return vectormath::cross(m_vertices[0], m_vertices[1]);
+    }
+
     const std::array<std::array<T, 3>, 3>& vertices() const
     {
         return m_vertices;

@@ -88,9 +88,9 @@ public:
         return aabb;
     }
 
-    std::optional<T> intersectForward(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersectForward(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
@@ -106,21 +106,19 @@ public:
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersectForward(p).value(); // this can not be nullopt
+            const auto intLen = intersect(p).intersection; // this can not be nullopt
             const std::array<T, 2> tbox { T { 0 }, intLen };
-            const auto intHoles = m_kdtree.intersectForward(p, tbox);
+            const auto intHoles = m_kdtree.intersect(p, tbox);
 
             if (intHoles.valid()) {
-                if (basicshape::cylinder::pointInside(p.pos, intHoles.item->pos, intHoles.item->radii, intHoles.item->half_height)) {
-                    // find distance of hole crossing
-                    const auto dist = intHoles.item->intersectForward(p).value();
+                if (intHoles.rayOriginIsInsideItem) {
                     const auto holeAtt = m_air.attenuationValues(p.energy);
-                    const auto interactionProb = 1 - std::exp(-dist * holeAtt.sum() * m_air_density);
+                    const auto interactionProb = 1 - std::exp(-intHoles.intersection * holeAtt.sum() * m_air_density);
                     const auto intRes = interactions::interactForced(interactionProb, att, p, m_air, state);
                     m_dose[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     // transport particle across hole (particle is most likely alive)
-                    p.border_translate(dist);
+                    p.border_translate(intHoles.intersection);
                     cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
                 } else {
                     if (stepLen < intHoles.intersection) {
@@ -134,15 +132,13 @@ public:
 
                         // transport particle to hole
                         p.border_translate(intHoles.intersection);
-
                         // find distance of hole crossing
-                        const auto dist = intHoles.item->intersectForward(p).value();
+                        const auto dist = intHoles.item->intersect(p).intersection;
                         const auto holeAtt = m_air.attenuationValues(p.energy);
                         const auto interactionProb = 1 - std::exp(-dist * holeAtt.sum() * m_air_density);
                         const auto intRes = interactions::interactForced(interactionProb, att, p, m_air, state);
                         m_dose[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
-
                         // transport particle across hole (particle is most likely alive)
                         p.border_translate(dist);
                         cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
@@ -190,9 +186,9 @@ protected:
             };
             return aabb;
         }
-        std::optional<T> intersectForward(const Particle<T>& p) const noexcept
+        auto intersect(const Particle<T>& p) const noexcept
         {
-            return basicshape::cylinder::intersectForward(p, pos, radii, half_height);
+            return basicshape::cylinder::intersect(p, pos, radii, half_height);
         }
     };
 

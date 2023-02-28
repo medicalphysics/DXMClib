@@ -87,9 +87,9 @@ public:
         return aabb;
     }
 
-    std::optional<T> intersectForward(const Particle<T>& p) const noexcept override
+    auto intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::sphere::intersectForward(p, m_center, m_radius);
+        return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override

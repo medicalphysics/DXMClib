@@ -95,17 +95,17 @@ public:
         return m_aabb;
     }
 
-    std::optional<T> intersectForward(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::AABB::intersectForward(p, m_aabb);
+        return basicshape::AABB::intersect(p, m_aabb);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = false;
-        auto att = m_material.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        AttenuationValues<T> att = m_material.attenuationValues(p.energy);
+        T attSumInv = 1 / (att.sum() * m_materialDensity);
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
@@ -113,7 +113,7 @@ public:
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersectForward(p).value(); // this can not be nullopt
+            const auto intLen = intersect(p).intersection; // this can not be nullopt
 
             if (stepLen < intLen) {
                 // interaction happends

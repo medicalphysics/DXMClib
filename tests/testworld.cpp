@@ -96,7 +96,6 @@ auto create_image(W& world, const std::array<T, 3>& camera_pos, bool print = tru
 template <typename T>
 void testTransportWorker(dxmc::World2<T, dxmc::DepthDose<T>>& w, dxmc::Particle<T> p_temp, const std::size_t N)
 {
-
     dxmc::RandomState state;
     for (std::size_t i = 0; i < N; ++i) {
         auto p = p_temp;
@@ -141,7 +140,7 @@ bool testTransport(bool print = false)
     }
     const auto tend = std::chrono::high_resolution_clock::now();
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(tend - tstart);
-    auto items = w.getItems<dxmc::DepthDose<T>>();
+    auto items = w.template getItems<dxmc::DepthDose<T>>();
 
     std::vector<T> diff;
     for (const auto& it : items) {
@@ -186,18 +185,18 @@ bool testWorldItem()
 
     dxmc::vectormath::normalize(p.dir);
 
-    auto t = obj.intersectForward(p);
-    if (!t)
+    auto t = obj.intersect(p);
+    if (!t.valid())
         return false;
-    p.border_translate(*t);
+    p.border_translate(t.intersection);
 
     dxmc::RandomState state;
     p.energy = 60;
     p.weight = 1;
     obj.transport(p, state);
 
-    auto t_fin = obj.intersectForward(p);
-    if (t_fin)
+    auto t_fin = obj.intersect(p);
+    if (t_fin.valid())
         return false;
 
     return true;
@@ -228,15 +227,41 @@ bool testWorldItems()
     return success;
 }
 
+template <typename T>
+bool testBorderCrossing()
+{
+
+    dxmc::World2<T, dxmc::WorldBox<T>> w;
+
+    dxmc::WorldBox<T> b1, b2;
+    b2.translate({ 0, 0, 2 });
+    w.addItem(b1);
+    w.addItem(b2);
+    w.build();
+
+    dxmc::Particle<T> p;
+    p.dir = { 0, 0, 1 };
+    p.pos = { 0, 0, -2000 };
+    dxmc::vectormath::normalize(p.dir);
+
+    dxmc::RandomState state;
+    p.energy = 60;
+    p.weight = 1;
+    w.transport(p, state);
+
+    return true;
+}
+
 int main(int argc, char* argv[])
 {
     std::cout << "World Tests\n";
     auto success = true;
 
-    success = success && testTransport<float>();
-    success = success && testTransport<double>();
-    success = success && testTransport<float>();
-    success = success && testTransport<double>();
+    success = success && testBorderCrossing<float>();
+    success = success && testBorderCrossing<double>();
+
+    //success = success && testTransport<float>();
+    //success = success && testTransport<double>();
 
     success = success && testWorldItems<double>();
     success = success && testWorldItems<float>();

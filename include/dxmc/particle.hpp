@@ -21,6 +21,7 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/floating.hpp"
 
 #include <array>
+#include <cmath>
 
 namespace dxmc {
 /**

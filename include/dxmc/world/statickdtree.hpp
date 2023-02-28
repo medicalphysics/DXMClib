@@ -22,7 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/kdtreeinteractionresult.hpp"
+#include "dxmc/world/kdtreeintersectionresult.hpp"
 
 #include <array>
 #include <concepts>
@@ -39,8 +39,8 @@ concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
 
                                u.translate(vec);
                                {
-                                   u.intersectForward(p)
-                                   } -> std::same_as<std::optional<T>>;
+                                   u.intersect(p)
+                                   } -> std::same_as<WorldIntersectionResult<T>>;
                                {
                                    u.center()
                                    } -> std::convertible_to<std::array<T, 3>>;
@@ -99,17 +99,17 @@ public:
         }
         return left;
     }
-    IntersectionResult<T, const U> intersectForward(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
-        const auto tbox = basicshape::AABB::intersect(particle, aabb);
-        return tbox ? intersect(particle, *tbox) : std::nullopt;
+        const auto tbox = basicshape::AABB::intersectForwardInterval(particle, aabb);
+        return tbox ? intersect(particle, *tbox) : KDTreeIntersectionResult<T, const U> {};
     }
-    IntersectionResult<T, const U> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         // test for parallell beam, if parallell we must test both sides.
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            const auto hit_left = m_left.intersectForward(particle, tbox);
-            const auto hit_right = m_right.intersectForward(particle, tbox);
+            const auto hit_left = m_left.intersect(particle, tbox);
+            const auto hit_right = m_right.intersect(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
                 return hit_left.intersection < hit_right.intersection ? hit_left : hit_right;
             return hit_left.valid() ? hit_left : hit_right;
@@ -121,22 +121,22 @@ public:
 
         if (t <= tbox[0]) {
             // back only
-            return back->intersectForward(particle, tbox);
+            return back->intersect(particle, tbox);
         } else if (t >= tbox[1]) {
             // front only
-            return front->intersectForward(particle, tbox);
+            return front->intersect(particle, tbox);
         }
 
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
-        const auto hit = front->intersectForward(particle, t_front);
+        const auto hit = front->intersect(particle, t_front);
         if (hit.valid()) {
             if (hit.intersection <= t) {
                 return hit;
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
-        return back->intersectForward(particle, t_back);
+        return back->intersect(particle, t_back);
     }
 
 protected:
@@ -260,15 +260,16 @@ public:
     {
         return 0;
     }
-    IntersectionResult<T, const U> intersectForward(const Particle<T>& particle, const std::array<T, 2>& tbox) const noexcept
+    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const noexcept
     {
-        IntersectionResult<T, const U> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
+        KDTreeIntersectionResult<T, const U> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
 
         for (const auto& u : m_data) {
-            const auto t_cand = u.intersectForward(particle);
-            if (t_cand)
-                if (*t_cand < res.intersection) {
-                    res.intersection = *t_cand;
+            const auto t_cand = u.intersect(particle);
+            if (t_cand.valid())
+                if (t_cand.intersection < res.intersection) {
+                    res.intersection = t_cand.intersection;
+                    res.rayOriginIsInsideItem = t_cand.rayOriginIsInsideItem;
                     res.item = &u;
                 }
         }
