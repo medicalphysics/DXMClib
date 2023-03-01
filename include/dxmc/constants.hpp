@@ -28,13 +28,13 @@ namespace dxmc {
 
 template <Floating T>
 constexpr T MAX_ENERGY()
-{    
-    return T{DXMCLIB_MAXENERGY};
+{
+    return T { DXMCLIB_MAXENERGY };
 }
 
 template <Floating T>
 constexpr T MIN_ENERGY()
-{    
+{
     return T { DXMCLIB_MINENERGY };
 }
 
