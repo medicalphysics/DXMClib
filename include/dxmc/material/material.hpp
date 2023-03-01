@@ -145,8 +145,8 @@ public:
         const auto begin_c = begin_p + m_attenuationTableOffset[2];
         const auto end_c = begin_p + m_attenuationTableOffset[3];
 
-        std::transform(std::execution::par_unseq, energy.cbegin, energy.cend(), att.begin(), [&](const auto e) {
-            const auto logEnergy = std::log(energy);
+        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.begin(), [&](const auto e) {
+            const auto logEnergy = std::log(e);
             AttenuationValues<T> a {
                 .photoelectric = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_p, begin_i)),
                 .incoherent = std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin_i, begin_c)),
