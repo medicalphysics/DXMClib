@@ -84,7 +84,7 @@ void AtomicElementHandler::setIncoherentAvgEnergyScatteredPhoton(const std::vect
         const double a = data[i + 1] * MeVTokeV();
         m_atom.incoherentMeanScatterEnergy.push_back(std::make_pair(e, a));
     }
-    m_atom.incoherentMeanScatterEnergy.shrink_to_fit();    
+    m_atom.incoherentMeanScatterEnergy.shrink_to_fit();
 }
 
 void AtomicElementHandler::setFormFactor(const std::vector<double>& data)
@@ -152,6 +152,7 @@ void AtomicElementHandler::setPhotoelectricData(const std::vector<double>& data)
     }
     m_atom.photoel.shrink_to_fit();
 }
+
 void AtomicElementHandler::setShellPhotoelectricData(std::uint64_t shell, const std::vector<double>& data)
 {
     if (!m_atom.shells.contains(shell)) {

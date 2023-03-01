@@ -115,8 +115,10 @@ void processSegments(const std::vector<DataSegment>& segments, std::map<std::uin
                     if (seg.I == 0) { // integrated cross section
                         elements[seg.Z].setIncoherentData(seg.data);
                     }
-                    if (seg.I == 10) { // avg energy of scattered photon
-                        elements[seg.Z].setIncoherentAvgEnergyScatteredPhoton(seg.data);
+                    if (seg.Yo == 7) {
+                        if (seg.I == 10) { // avg energy of scattered photon
+                            elements[seg.Z].setIncoherentAvgEnergyScatteredPhoton(seg.data);
+                        }
                     }
                 }
             }

@@ -33,10 +33,10 @@ struct AtomicElement {
     T standardDensity = 0;
     std::vector<std::pair<T, T>> coherent;
     std::vector<std::pair<T, T>> incoherent;
-    std::vector<std::pair<T, T>> incoherentMeanScatterEnergy;
     std::vector<std::pair<T, T>> photoel;
     std::vector<std::pair<T, T>> formFactor;
     std::vector<std::pair<T, T>> incoherentSF;
+    std::vector<std::pair<T, T>> incoherentMeanScatterEnergy;
     std::map<std::uint64_t, AtomicShell<T>> shells;
 };
 

@@ -16,22 +16,90 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#include "dxmc/constants.hpp"
 #include "dxmc/material/massenergytransfer.hpp"
 #include "dxmc/material/material.hpp"
 
 #include <iostream>
+#include <string>
+#include <vector>
+
+template <typename T>
+bool testCompound()
+{
+    bool success = true;
+
+    struct data_t {
+        std::string name;
+        T energy = 0;
+        T nist = 0;
+    };
+
+    std::vector<data_t> data;
+    data.push_back({ .name = "Air, Dry (near sea level)", .energy = 10, .nist = 4.742 });
+    data.push_back({ .name = "Air, Dry (near sea level)", .energy = 60, .nist = 3.041E-02 });
+    data.push_back({ .name = "Air, Dry (near sea level)", .energy = 150, .nist = 2.496E-02 });
+
+    for (const auto& d : data) {
+        if (d.energy < dxmc::MAX_ENERGY<T>()) {
+            dxmc::MassEnergyTransfer<T> m(d.name);
+            T uen = m(d.energy);
+            T diff = 1 - uen / d.nist;
+
+            success = success && std::abs(diff) < T { 0.1 };
+
+            if (success)
+                std::cout << "SUCCESS ";
+            else
+                std::cout << "FAILURE ";
+            std::cout << "Mass energy absorbtion for " << d.name << ", energy = " << d.energy << " [keV] sizeof(T) = " << sizeof(T) << "\ndxmc: ";
+            std::cout << uen;
+            std::cout << " NIST: ";
+            std::cout << d.nist;
+            std::cout << " Difference [%]: " << diff << std::endl;
+        }
+    }
+    return success;
+}
 
 template <typename T>
 bool testZ()
 {
-    dxmc::MassEnergyTransfer<T> me(6);
+    bool success = true;
 
-    auto m = dxmc::Material2<T>::byZ(6).value();
+    struct data_t {
+        std::size_t Z = 0;
+        T energy = 0;
+        T nist = 0;
+    };
 
-    auto test = me(T { 60 });
-    auto test2 = m.attenuationValues(T { 60 });
-    auto test3 = test2.sum();
-    return false;
+    std::vector<data_t> data;
+    data.push_back({ .Z = 6, .energy = 10, .nist = 2.078 });
+    data.push_back({ .Z = 6, .energy = 60, .nist = 2.098E-2 });
+    data.push_back({ .Z = 6, .energy = 150, .nist = 2.449E-2 });
+    data.push_back({ .Z = 82, .energy = 10, .nist = 1.247E+02 });
+    data.push_back({ .Z = 82, .energy = 60, .nist = 4.149 });
+
+    for (const auto& d : data) {
+        if (d.energy < dxmc::MAX_ENERGY<T>()) {
+            dxmc::MassEnergyTransfer<T> m(d.Z);
+            T uen = m(d.energy);
+            T diff = 1 - uen / d.nist;
+
+            success = success && std::abs(diff) < T { 0.1 };
+
+            if (success)
+                std::cout << "SUCCESS ";
+            else
+                std::cout << "FAILURE ";
+            std::cout << "Mass energy absorbtion for Z = " << d.Z << ", energy = " << d.energy << " [keV] sizeof(T) = " << sizeof(T) << "\ndxmc: ";
+            std::cout << uen;
+            std::cout << " NIST: ";
+            std::cout << d.nist;
+            std::cout << " Difference [%]: " << diff << std::endl;
+        }
+    }
+    return success;
 }
 
 int main(int argc, char* argv[])
@@ -41,6 +109,8 @@ int main(int argc, char* argv[])
 
     success = success && testZ<float>();
     success = success && testZ<double>();
+    success = success && testCompound<float>();
+    success = success && testCompound<double>();
 
     if (success)
         return EXIT_SUCCESS;

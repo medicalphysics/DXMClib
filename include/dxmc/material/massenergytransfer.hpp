@@ -96,14 +96,37 @@ protected:
     {
         const auto& atom = AtomHandler<T>::Atom(Z);
 
-        // photoelectric ignoring fluro
-        auto fpe = interpolate(atom.photoel, energy);
-        addVector(data, fpe, fraction);
-
+        // photoelectric
+        {
+            const auto pe = interpolate(atom.photoel, energy);
+            std::vector<T> fluro(pe.size(), T { 0 });
+            for (const auto& [shIdx, shell] : atom.shells) {
+                auto pe_shell = interpolate(shell.photoel, energy);
+                std::transform(std::execution::par_unseq, pe.cbegin(), pe.cend(), pe_shell.cbegin(), pe_shell.begin(), [](const T p, const T psh) {
+                    return psh / p;
+                });
+                std::transform(std::execution::par_unseq, pe_shell.cbegin(), pe_shell.cend(), energy.cbegin(), pe_shell.begin(), [&shell](const T p, const T e) {
+                    if (e > shell.bindingEnergy)
+                        return p * shell.numberOfPhotonsPerInitVacancy * shell.energyOfPhotonsPerInitVacancy;
+                    else
+                        return T { 0 };
+                });
+                addVector(fluro, pe_shell);
+            }
+            std::transform(
+                std::execution::par_unseq, fluro.cbegin(), fluro.cend(), energy.cbegin(), fluro.begin(), [](const T f, const T e) {
+                    return 1 - f / e;
+                });
+            std::transform(
+                std::execution::par_unseq, pe.cbegin(), pe.cend(), fluro.cbegin(), fluro.begin(), [](const T pe, const T f) {
+                    return pe * f;
+                });
+            addVector(data, fluro, fraction);
+        }
         // compton ignoring fluro
         auto finco_scatterEn = interpolate(atom.incoherentMeanScatterEnergy, energy);
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), finco_scatterEn.cbegin(), finco_scatterEn.begin(), [](const T e, const T scatter_e) {
-            return T { 1 } - scatter_e / e;
+            return 1 - scatter_e / e;
         });
         auto finco = interpolate(atom.incoherent, energy);
         std::transform(std::execution::par_unseq, finco.cbegin(), finco.cend(), finco_scatterEn.cbegin(), finco.begin(), std::multiplies<T>());
