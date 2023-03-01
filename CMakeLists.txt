@@ -112,6 +112,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomserializer.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/nistmaterials.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/material.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/material/massenergytransfer.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"

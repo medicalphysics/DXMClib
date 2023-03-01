@@ -10,6 +10,7 @@ set(TEST_SOURCES
     "testworlditembase.cpp"
     "testinteractions.cpp"
     "testbasicshapes.cpp"
+    "testmassenergytransfer.cpp"
 #    "testtube.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
