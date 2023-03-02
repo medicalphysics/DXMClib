@@ -96,7 +96,7 @@ protected:
     {
         const auto& atom = AtomHandler<T>::Atom(Z);
 
-        // photoelectric
+        // photoelectric with fluro
         {
             const auto pe = interpolate(atom.photoel, energy);
             std::vector<T> fluro(pe.size(), T { 0 });
@@ -106,8 +106,8 @@ protected:
                     return psh / p;
                 });
                 std::transform(std::execution::par_unseq, pe_shell.cbegin(), pe_shell.cend(), energy.cbegin(), pe_shell.begin(), [&shell](const T p, const T e) {
-                    if (e > shell.bindingEnergy)
-                        return p * shell.numberOfPhotonsPerInitVacancy * shell.energyOfPhotonsPerInitVacancy;
+                    if (e >= shell.bindingEnergy)
+                        return p * shell.energyOfPhotonsPerInitVacancy;
                     else
                         return T { 0 };
                 });
@@ -123,14 +123,35 @@ protected:
                 });
             addVector(data, fluro, fraction);
         }
-        // compton ignoring fluro
-        auto finco_scatterEn = interpolate(atom.incoherentMeanScatterEnergy, energy);
-        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), finco_scatterEn.cbegin(), finco_scatterEn.begin(), [](const T e, const T scatter_e) {
-            return 1 - scatter_e / e;
-        });
-        auto finco = interpolate(atom.incoherent, energy);
-        std::transform(std::execution::par_unseq, finco.cbegin(), finco.cend(), finco_scatterEn.cbegin(), finco.begin(), std::multiplies<T>());
-        addVector(data, finco, fraction);
+
+        // compton with fluro
+        {
+            const auto Z = atom.Z;
+            std::vector<T> inco_fluro(energy.size(), T { 0 });
+            auto inco_scatterEn = interpolate(atom.incoherentMeanScatterEnergy, energy);
+            for (const auto& [shIdx, shell] : atom.shells) {
+                std::vector<T> inco_fluro_shell(energy.size());
+                std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), inco_scatterEn.cbegin(), inco_fluro_shell.begin(), [&shell, Z](const T e, const T e_scatter) {
+                    if (e - e_scatter > shell.bindingEnergy)
+                        return shell.energyOfPhotonsPerInitVacancy / Z;
+                    else
+                        return T { 0 };
+                });
+                addVector(inco_fluro, inco_fluro_shell);
+            }
+            std::vector<T> inco_f(energy.size());
+            // <E_scatter> + X_fluro
+            std::transform(std::execution::par_unseq, inco_fluro.cbegin(), inco_fluro.cend(), inco_scatterEn.cbegin(), inco_f.begin(), std::plus<>());
+
+            // 1-(<E_scatter> + X_fluro)/E
+            std::transform(std::execution::par_unseq, inco_f.cbegin(), inco_f.cend(), energy.cbegin(), inco_f.begin(), [](const T f, const T e) { return 1 - f / e; });
+
+            auto inco_u = interpolate(atom.incoherent, energy);
+            // u * (1-(<E_scatter> + X_fluro)/E)
+            std::transform(std::execution::par_unseq, inco_f.cbegin(), inco_f.cend(), inco_u.cbegin(), inco_f.begin(), std::multiplies<T>());
+
+            addVector(data, inco_f, fraction);
+        }
     }
 
     static std::vector<T> energyGrid(const std::vector<std::size_t>& atomicNumbers)

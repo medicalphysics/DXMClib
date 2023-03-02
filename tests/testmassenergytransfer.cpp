@@ -46,9 +46,9 @@ bool testCompound()
             T uen = m(d.energy);
             T diff = 1 - uen / d.nist;
 
-            success = success && std::abs(diff) < T { 0.1 };
+            success = success && std::abs(diff) < T { 0.02 };
 
-            if (success)
+            if (std::abs(diff) < T { 0.1 })
                 std::cout << "SUCCESS ";
             else
                 std::cout << "FAILURE ";
@@ -74,11 +74,14 @@ bool testZ()
     };
 
     std::vector<data_t> data;
+
+    data.push_back({ .Z = 82, .energy = 150, .nist = 1.056E+00 });
+    data.push_back({ .Z = 82, .energy = 10, .nist = 1.247E+02 });
+    data.push_back({ .Z = 82, .energy = 60, .nist = 4.149 });
+
     data.push_back({ .Z = 6, .energy = 10, .nist = 2.078 });
     data.push_back({ .Z = 6, .energy = 60, .nist = 2.098E-2 });
     data.push_back({ .Z = 6, .energy = 150, .nist = 2.449E-2 });
-    data.push_back({ .Z = 82, .energy = 10, .nist = 1.247E+02 });
-    data.push_back({ .Z = 82, .energy = 60, .nist = 4.149 });
 
     for (const auto& d : data) {
         if (d.energy < dxmc::MAX_ENERGY<T>()) {
@@ -86,9 +89,9 @@ bool testZ()
             T uen = m(d.energy);
             T diff = 1 - uen / d.nist;
 
-            success = success && std::abs(diff) < T { 0.1 };
+            success = success && std::abs(diff) < T { 0.02 };
 
-            if (success)
+            if (std::abs(diff) < T { 0.1 })
                 std::cout << "SUCCESS ";
             else
                 std::cout << "FAILURE ";
