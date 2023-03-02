@@ -81,7 +81,7 @@ public:
         m_filtrationMaterials[Z] = std::abs(mm);
         m_hasCachedHVL = false;
     }
-    std::map<std::size_t, T>& filtrationMaterials() { return m_filtrationMaterials; }
+
     const std::map<std::size_t, T>& filtrationMaterials() const { return m_filtrationMaterials; }
 
     void setAlFiltration(T mm)
@@ -119,7 +119,11 @@ public:
 
     void clearFiltrationMaterials() { m_filtrationMaterials.clear(); }
 
-    void setEnergyResolution(T energyResolution) { m_energyResolution = energyResolution; }
+    void setEnergyResolution(T energyResolution)
+    {
+        m_energyResolution = energyResolution;
+        m_hasCachedHVL = false;
+    }
 
     T energyResolution() const { return m_energyResolution; }
 
@@ -153,9 +157,9 @@ public:
     {
         std::vector<T> specter;
         specter.resize(energies.size());
-        std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [&](auto hv) -> T {
-            const auto vd = this->voltage();
-            const auto bh_t = BetheHeitlerCrossSection::betheHeitlerSpectra(vd, hv, anodeAngle);
+        const auto kVp = voltage();
+        std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [kVp, anodeAngle](auto hv) -> T {
+            const auto bh_t = BetheHeitlerCrossSection::betheHeitlerSpectra(kVp, hv, anodeAngle);
             return bh_t;
         });
 
@@ -250,18 +254,20 @@ protected:
         auto att = addVectors(photo, incoherent, coherent);
 
         const auto dens = Al.standardDensity;
-        std::for_each(std::execution::par_unseq, att.begin(), att.end(), [=](auto& a) { a *= dens; });
+        std::for_each(std::execution::par_unseq, att.begin(), att.end(), [dens](auto& a) { a *= dens; });
 
         // Boosted gradient decent for finding half value layer
-        T x { 0.8 };
-        T step { 1 };
+        T x = T { 0.5 };
+        T step = 0;
         int iter = 0;
-        while (std::abs(step) > T { 0.005 }) {
-            const auto g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), T { 0 }, std::plus<T>(), [=](auto s, auto a) -> T { return s * std::exp(-a * x); });
-            step = (g - T { 0.5 }) * std::max(5 - iter, 1);
+        T g;
+
+        do {
             x = x + step;
-            ++iter;
-        }
+            g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), T { 0 }, std::plus<T>(), [x](auto s, auto a) -> T { return s * std::exp(-a * x); });
+            step = (g - T { 0.5 }) * std::max(5 - iter, 1);
+        } while ((std::abs(g - T { 0.5 }) > T { 0.005 } && iter++ < 10));
+
         return x * T { 10.0 }; // cm -> mm
     }
 
