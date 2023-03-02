@@ -117,10 +117,7 @@ protected:
                 std::execution::par_unseq, fluro.cbegin(), fluro.cend(), energy.cbegin(), fluro.begin(), [](const T f, const T e) {
                     return 1 - f / e;
                 });
-            std::transform(
-                std::execution::par_unseq, pe.cbegin(), pe.cend(), fluro.cbegin(), fluro.begin(), [](const T pe, const T f) {
-                    return pe * f;
-                });
+            std::transform(std::execution::par_unseq, pe.cbegin(), pe.cend(), fluro.cbegin(), fluro.begin(), std::multiplies<T>());
             addVector(data, fluro, fraction);
         }
 
@@ -131,8 +128,8 @@ protected:
             auto inco_scatterEn = interpolate(atom.incoherentMeanScatterEnergy, energy);
             for (const auto& [shIdx, shell] : atom.shells) {
                 std::vector<T> inco_fluro_shell(energy.size());
-                std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), inco_scatterEn.cbegin(), inco_fluro_shell.begin(), [&shell, Z](const T e, const T e_scatter) {
-                    if (e - e_scatter > shell.bindingEnergy)
+                std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), inco_fluro_shell.begin(), [&shell, Z](const T e) {
+                    if (e >= shell.bindingEnergy)
                         return shell.energyOfPhotonsPerInitVacancy / Z;
                     else
                         return T { 0 };
