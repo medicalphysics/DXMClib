@@ -160,15 +160,6 @@ public:
         }
     }
 
-protected:
-    static bool pointInsideAABB(const std::array<T, 3>& p, const std::array<T, 6>& aabb)
-    {
-        bool inside = aabb[0] <= p[0] && p[0] <= aabb[3];
-        inside = inside && aabb[1] <= p[1] && p[1] <= aabb[4];
-        inside = inside && aabb[2] <= p[2] && p[2] <= aabb[5];
-        return inside;
-    }
-
 private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::tuple<std::vector<Us>...> m_items;
