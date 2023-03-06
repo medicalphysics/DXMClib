@@ -95,10 +95,11 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
+        bool updateAtt = true;
+        AttenuationValues<T> att;
+        T attSumInv;
+
         bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
-        bool updateAtt = false;
-        auto att = m_pmma.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_pmma_density);
         while (cont) {
             if (updateAtt) {
                 att = m_pmma.attenuationValues(p.energy);
