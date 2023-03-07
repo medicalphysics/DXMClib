@@ -69,8 +69,9 @@ public:
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
 
     std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
+    void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    void setPosition(const std::array<T, 3>& pos)
+    void setPosition(const std::array<T, 3>&& pos)
     {
         m_pos = pos;
     }

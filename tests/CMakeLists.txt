@@ -16,6 +16,7 @@ set(TEST_SOURCES
 #    "testbeamfilters.cpp"
     "testmaterial.cpp"
     "testrandom.cpp"
+    "testtransport.cpp"
 #    "testattenuationlut.cpp"
 #    "testitemcollection.cpp"
 #    "testvectormath.cpp"
