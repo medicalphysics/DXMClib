@@ -40,57 +40,103 @@ namespace basicshape {
         template <Floating T>
         std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
+            std::array t = { T { 0 }, std::numeric_limits<T>::max() };
+
+            for (std::size_t i = 0; i < 3; ++i) {
+                const auto d = T { 1 } / p.dir[i];
+                const auto t0 = (aabb[i] - p.pos[i]) * d;
+                const auto t1 = (aabb[i + 3] - p.pos[i]) * d;
+                if (d > T { 0 }) {
+                    t[0] = std::max(t0, t[0]);
+                    t[1] = std::min(t1, t[1]);
+                } else {
+                    t[0] = std::max(t1, t[0]);
+                    t[1] = std::min(t0, t[1]);
+                }
+            }
+            return t[0] < t[1] && t[1] > T { 0 } ? std::make_optional(t) : std::nullopt;
+        }
+        template <Floating T>
+        std::optional<std::array<T, 2>> intersectForwardInterval2(const Particle<T>& p, const std::array<T, 6>& aabb)
+        {
+            std::array<T, 2> t;
+
             const auto dx = 1 / p.dir[0];
-            const auto [tx_min, tx_max] = std::minmax((aabb[0] - p.pos[0]) * dx, (aabb[3] - p.pos[0]) * dx);
-
+            if (dx >= 0) {
+                t[0] = (aabb[0] - p.pos[0]) * dx;
+                t[1] = (aabb[3] - p.pos[0]) * dx;
+            } else {
+                t[0] = (aabb[3] - p.pos[0]) * dx;
+                t[1] = (aabb[0] - p.pos[0]) * dx;
+            }
+            T tymin, tymax;
             const auto dy = 1 / p.dir[1];
-            const auto [ty_min, ty_max] = std::minmax((aabb[1] - p.pos[1]) * dy, (aabb[4] - p.pos[1]) * dy);
+            if (dy >= 0) {
+                tymin = (aabb[1] - p.pos[1]) * dy;
+                tymax = (aabb[4] - p.pos[1]) * dy;
+            } else {
+                tymin = (aabb[4] - p.pos[1]) * dy;
+                tymax = (aabb[1] - p.pos[1]) * dy;
+            }
+            if ((t[0] > tymax) || (tymin > t[1]))
+                return std::nullopt;
 
+            if (tymin > t[0])
+                t[0] = tymin;
+            if (tymax < t[1])
+                t[1] = tymax;
+
+            T tzmin, tzmax;
             const auto dz = 1 / p.dir[2];
-            const auto [tz_min, tz_max] = std::minmax((aabb[2] - p.pos[2]) * dz, (aabb[5] - p.pos[2]) * dz);
+            if (dz >= 0) {
+                tzmin = (aabb[2] - p.pos[2]) * dz;
+                tzmax = (aabb[5] - p.pos[2]) * dz;
+            } else {
+                tzmin = (aabb[5] - p.pos[2]) * dz;
+                tzmax = (aabb[2] - p.pos[2]) * dz;
+            }
 
-            const auto tmin = std::max(tx_min, std::max(ty_min, tz_min));
-            const auto tmax = std::min(tx_max, std::min(ty_max, tz_max));
-
-            const auto particleInside = pointInside(p.pos, aabb);
-
-            if (tmin > tmax)
+            if ((t[0] > tzmax) || (tzmin > t[1]))
                 return std::nullopt;
-            if (tmax < 0)
+            if (tzmin > t[0])
+                t[0] = tzmin;
+            if (tzmax < t[1])
+                t[1] = tzmax;
+            if (t[1] < 0)
                 return std::nullopt;
+            if (t[0] < T { 0 })
+                t[0] = T { 0 };
 
-            std::optional<std::array<T, 2>> res { { std::max(T { 0 }, tmin), tmax } };
-
-            return res;
+            return std::make_optional(t);
         }
 
         template <Floating T>
         WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
-
-            const auto dx = 1 / p.dir[0];
-            const auto [tx_min, tx_max] = std::minmax((aabb[0] - p.pos[0]) * dx, (aabb[3] - p.pos[0]) * dx);
-
-            const auto dy = 1 / p.dir[1];
-            const auto [ty_min, ty_max] = std::minmax((aabb[1] - p.pos[1]) * dy, (aabb[4] - p.pos[1]) * dy);
-
-            const auto dz = 1 / p.dir[2];
-            const auto [tz_min, tz_max] = std::minmax((aabb[2] - p.pos[2]) * dz, (aabb[5] - p.pos[2]) * dz);
-
-            const auto tmin = std::max(tx_min, std::max(ty_min, tz_min));
-            const auto tmax = std::min(tx_max, std::min(ty_max, tz_max));
-
-            const auto particleInside = pointInside(p.pos, aabb);
+            T tmin = std::numeric_limits<T>::lowest();
+            T tmax = std::numeric_limits<T>::max();
+            for (std::size_t i = 0; i < 3; ++i) {
+                const auto d = 1 / p.dir[i];
+                const auto t0 = (aabb[i] - p.pos[i]) * d;
+                const auto t1 = (aabb[i + 3] - p.pos[i]) * d;
+                if (d > T { 0 }) {
+                    tmin = std::max(t0, tmin);
+                    tmax = std::min(t1, tmax);
+                } else {
+                    tmin = std::max(t1, tmin);
+                    tmax = std::min(t0, tmax);
+                }
+            }
+            const auto particleInside = tmin < T { 0 } && tmax > T { 0 };
 
             WorldIntersectionResult<T> res = {
                 .intersection = particleInside ? tmax : tmin,
                 .rayOriginIsInsideItem = particleInside,
-                .intersectionValid = tmax >= tmin && tmax > 0
+                .intersectionValid = tmax > 0 && tmax > tmin
             };
             return res;
         }
 
-        /*
         // Branched version with early exits
         template <Floating T>
         WorldIntersectionResult<T> intersect2(const Particle<T>& p, const std::array<T, 6>& aabb)
@@ -140,7 +186,7 @@ namespace basicshape {
             if (tzmax < t[1])
                 t[1] = tzmax;
             if (t[1] < 0)
-                res;
+                return res;
 
             res.rayOriginIsInsideItem = t[0] < 0;
             res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
@@ -148,7 +194,6 @@ namespace basicshape {
 
             return res;
         }
-        */
 
     }
 }
