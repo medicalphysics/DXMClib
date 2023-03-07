@@ -75,6 +75,11 @@ public:
         return m_center;
     }
 
+    const DoseScore<T>& dose(std::size_t index = 0) const override
+    {
+        return m_dose[index];
+    }
+
     std::array<T, 6> AABB() const noexcept override
     {
         std::array aabb {
@@ -200,10 +205,6 @@ protected:
     static constexpr T holeRadii() noexcept
     {
         return T { 0.5 };
-    }
-    const DoseScore<T>& dose(std::size_t index = 0) const override
-    {
-        return m_dose[index];
     }
 
 private:

@@ -117,7 +117,7 @@ public:
             const auto t = basicshape::AABB::intersect(p, m_aabb);
             if (t.valid()) {
                 if (!t.rayOriginIsInsideItem) {
-                    p.translate(t.intersection);
+                    p.border_translate(t.intersection);
                 }
             } else {
                 continueSampling = false;

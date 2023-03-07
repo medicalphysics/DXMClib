@@ -22,10 +22,11 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 
+#include <iostream>
+
 template <typename T>
 bool testTransport()
 {
-
     dxmc::CTDIPhantom<T> phantom;
     dxmc::WorldBox<T> box;
     box.translate({ 0, -50, 0 });
@@ -39,12 +40,21 @@ bool testTransport()
     dxmc::PencilBeam<T> beam;
     beam.setPosition({ 0, -1000, 0 });
     beam.setDirection({ 0, 1, 0 });
-    beam.setNumberOfParticlesPerExposure(1e6);
+    beam.setNumberOfParticlesPerExposure(100);
+    beam.setNumberOfExposures(4);
 
     dxmc::Transport<T> transport;
     transport.setNumberOfThreads(1);
 
     transport(world, beam);
+
+    const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
+    auto dose_ctdi = ctdi_vec[0].dose(0);
+    std::cout << "CTDI: " << dose_ctdi.energyImparted() << std::endl;
+
+    const auto& box_vec = world.template getItems<dxmc::WorldBox<T>>();
+    auto dose_box = box_vec[0].dose(0);
+    std::cout << "Box: " << dose_box.energyImparted() << std::endl;
 
     return true;
 }
