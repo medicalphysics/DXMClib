@@ -516,7 +516,7 @@ protected:
         for (const auto& [Z, w] : normalizedWeight) {
             const auto& atom = AtomHandler<T>::Atom(Z);
             for (const auto& [S, shell] : atom.shells) {
-                shells.emplace_back(Z, S, w, shell.bindingEnergy);
+                shells.push_back({ .Z = Z, .S = S, .weight = w, .bindingEnergy = shell.bindingEnergy });
             }
         }
         std::sort(shells.begin(), shells.end(), [](const auto& lh, const auto& rh) {
