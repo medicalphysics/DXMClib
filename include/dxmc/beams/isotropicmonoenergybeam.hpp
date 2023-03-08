@@ -28,24 +28,30 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class PencilBeamExposure {
+class IsotropicMonoEnergyBeamExposure {
 public:
-    IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, std::uint64_t N)
+    IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, T energy, std::uint64_t N)
         : m_pos(pos)
-        , m_dir(dir)
+        , m_dirCosines(dircosines)
         , m_energy(energy)
         , m_NParticles(N)
     {
     }
 
-    void detCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
     Particle<T> sampleParticle(RandomState& state) const noexcept
     {
+        auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
+        const auto theta_x = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
+        dir = vectormath::rotate(dir, m_dirCosines[1], theta_x);
+        const auto theta_y = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
+        dir = vectormath::rotate(dir, m_dirCosines[0], theta_y);
+
         Particle<T> p = { .pos = m_pos,
-            .dir = m_dir,
+            .dir = dir,
             .energy = m_energy,
             .weight = T { 1 } };
         return p;
@@ -54,19 +60,19 @@ public:
 private:
     T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 0, 1 };
+    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
 };
 
 template <Floating T>
-class PencilBeam {
+class IsotropicMonoEnergyBeam {
 public:
-    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& dir = { 0, 0, 1 }, T energy = 60)
+    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 }, T energy = 60)
         : m_pos(pos)
-        , m_dir(dir)
         , m_energy(energy)
     {
+        setDirectionCosines(dircosines);
     }
 
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
@@ -80,19 +86,19 @@ public:
         m_pos = pos;
     }
 
-    void setDirectionCosines(const std::array<T, 6>& dir)
+    void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
     {
         m_dirCosines = dir;
-        vectormath::normalize(&m_dirCosines[0]);
-        vectormath::normalize(&m_dirCosines[3]);
+        vectormath::normalize(m_dirCosines[0]);
+        vectormath::normalize(m_dirCosines[1]);
     }
 
     void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
 
     IsotropicMonoEnergyBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-        const auto dir = vectormath::cross(m_dirCosines);
-        IsotropicMonoEnergyBeamExposure<T> exp(m_pos, dir, m_energy, m_particlesPerExposure);
+        
+        IsotropicMonoEnergyBeamExposure<T> exp(m_pos, m_dirCosines, m_energy, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
         return exp;
     }
@@ -100,7 +106,7 @@ public:
 private:
     T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 6> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;

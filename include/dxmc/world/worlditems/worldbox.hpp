@@ -32,7 +32,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5>
+template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 3>
 class WorldBox final : public WorldItemBase<T> {
 public:
     WorldBox(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
@@ -118,7 +118,7 @@ public:
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::interact(att, p, m_material, state);
+                const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
                 m_dose.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;

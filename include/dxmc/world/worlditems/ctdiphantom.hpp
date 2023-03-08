@@ -112,7 +112,8 @@ public:
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersect(p).intersection; // this can not be nullopt
+            const auto intCTDI = intersect(p); // this can not be nullopt
+            const auto intLen = intCTDI.intersection;
             const std::array<T, 2> tbox { T { 0 }, intLen };
             const auto intHoles = m_kdtree.intersect(p, tbox);
 

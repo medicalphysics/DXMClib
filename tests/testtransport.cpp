@@ -16,6 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2023 Erlend Andersen
 */
 
+#include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/world/world.hpp"
@@ -27,35 +28,53 @@ Copyright 2023 Erlend Andersen
 template <typename T>
 bool testTransport()
 {
+
     dxmc::CTDIPhantom<T> phantom;
-    dxmc::WorldBox<T> box(10);
+    dxmc::WorldBox<T, 4, 1> box(10);
     box.translate({ 0, -50, 0 });
     box.setNistMaterial("Water, Liquid");
 
-    dxmc::World2<T, dxmc::CTDIPhantom<T>, dxmc::WorldBox<T>> world;
+    dxmc::World2<T, dxmc::CTDIPhantom<T>, dxmc::WorldBox<T, 4, 1>> world;
     world.addItem(phantom);
-    // dxmc::World2<T, dxmc::WorldBox<T>> world;
+
     world.addItem(box);
     world.build();
 
-    dxmc::PencilBeam<T> beam;
-    beam.setPosition({ 0, -1000, 0 });
-    beam.setDirection({ 0, 1, 0 });
-    beam.setNumberOfParticlesPerExposure(1e5);
-    beam.setNumberOfExposures(4);
-
     dxmc::Transport<T> transport;
-    transport.setNumberOfThreads(4);
+    transport.setNumberOfThreads(1);
 
-    auto duration = transport(world, beam);
-    std::cout << beam.numberOfParticles() << " histories in " << duration.count() << " ms\n";
-    std::cout << (1000 * beam.numberOfParticles()) / duration.count() << " histories/sec\n";
+    std::uint64_t time = 0;
+    std::uint64_t nPart = 0;
+
+    if constexpr (false) {
+        dxmc::PencilBeam<T> beam;
+        beam.setPosition({ 0, -1000, 0 });
+        beam.setDirection({ 0, 1, 0 });
+        beam.setNumberOfParticlesPerExposure(1e3);
+        beam.setNumberOfExposures(4);
+        nPart = beam.numberOfParticles();
+        auto duration = transport(world, beam);
+        time = duration.count();
+    } else {
+        dxmc::IsotropicMonoEnergyBeam<T> beam;
+        beam.setPosition({ 0, -1000, 0 });
+        beam.setDirectionCosines({ 0, 0, 1, 1, 0, 0 });
+        beam.setCollimationAngles({ .01, .01 });
+        beam.setNumberOfParticlesPerExposure(1e6);
+        beam.setNumberOfExposures(4);
+        nPart = beam.numberOfParticles();
+        auto duration = transport(world, beam);
+        time = duration.count();
+    }
+    std::cout << "SUCCESS Simple transport test ";
+    std::cout << nPart << " histories in " << time << " ms, ";
+    std::cout << (1000 * nPart) / time << " histories/sec for sizeof(T) = " << sizeof(T) << std::endl;
 
     const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
     auto dose_ctdi = ctdi_vec[0].dose(0);
     std::cout << "CTDI: " << dose_ctdi.energyImparted() << std::endl;
 
-    const auto& box_vec = world.template getItems<dxmc::WorldBox<T>>();
+    const auto& box_vec = world.template getItems<dxmc::WorldBox<T, 4, 1>>();
     auto dose_box = box_vec[0].dose(0);
     std::cout << "Box: " << dose_box.energyImparted() << std::endl;
 
@@ -66,6 +85,8 @@ int main()
 {
     bool success = true;
     success = success && testTransport<float>();
+    success = success && testTransport<float>();
+    success = success && testTransport<double>();
 
     if (success)
         return 0;

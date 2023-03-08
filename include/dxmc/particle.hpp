@@ -21,7 +21,6 @@ Copyright 2019 Erlend Andersen
 #include "dxmc/floating.hpp"
 
 #include <array>
-#include <cmath>
 
 namespace dxmc {
 /**
@@ -52,16 +51,19 @@ struct Particle {
         pos[1] += dir[1] * dist;
         pos[2] += dir[2] * dist;
     }
+
+    inline static constexpr T border_translate_minimum()
+    {
+        if constexpr (sizeof(T) == 4)
+            return 1e-4;
+        else
+            return 1e-6;
+    }
     inline void border_translate(const T dist)
     {
         // Make sure we translate particle beyond any border we want to translate to
-        // In short the particle is translated to next possible floating point
-        // representation after pos + dir * dist
-        const auto bdist = std::nextafter(dist, std::numeric_limits<T>::max());
-        for (std::size_t i = 0; i < 3; ++i) {
-            if (dir[i] != 0)
-                pos[i] = std::nextafter(pos[i] + bdist * dir[i], dir[i] < 0 ? std::numeric_limits<T>::lowest() : std::numeric_limits<T>::max());
-        }
+        // We simply add 100 nm to the distance, works for float and double
+        translate(dist + border_translate_minimum());
     }
 };
 }

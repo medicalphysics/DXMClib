@@ -149,6 +149,19 @@ namespace vectormath {
     }
 
     template <Floating T>
+    inline constexpr std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T sinAngle, const T cosAngle) noexcept
+    {        
+        constexpr T one { 1 };
+        const T midt = (one - cosAngle) * dot(vec, axis);
+
+        return std::array<T, 3> {
+            cosAngle * vec[0] + midt * axis[0] + sinAngle * (axis[1] * vec[2] - axis[2] * vec[1]),
+            cosAngle * vec[1] + midt * axis[1] + sinAngle * (-axis[0] * vec[2] + axis[2] * vec[0]),
+            cosAngle * vec[2] + midt * axis[2] + sinAngle * (axis[0] * vec[1] - axis[1] * vec[0])
+        };
+    }
+
+    template <Floating T>
     inline T angleBetween(const std::array<T, 3>& vec1, const std::array<T, 3>& vec2) noexcept
     {
         // Herons formula for numeric stable angle computation

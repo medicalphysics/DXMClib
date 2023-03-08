@@ -38,11 +38,11 @@ public:
         // threadsafe update
         {
             auto aref = std::atomic_ref(m_energyImparted);
-            aref.fetch_add(energy, std::memory_order_relaxed);
+            aref.fetch_add(energy);
         }
         {
             auto aref = std::atomic_ref(m_energyImpartedSquared);
-            aref.fetch_add(energy * energy, std::memory_order_relaxed);
+            aref.fetch_add(energy * energy);
         }
         {
             auto aref = std::atomic_ref(m_nEvents);
