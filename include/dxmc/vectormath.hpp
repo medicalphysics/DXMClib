@@ -36,7 +36,7 @@ namespace vectormath {
     template <Floating T>
     inline constexpr T lenght_sqr(const std::array<T, 3>& vec) noexcept
     {
-        return vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];        
+        return vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
     }
 
     template <Floating T>
@@ -47,28 +47,16 @@ namespace vectormath {
     }
 
     template <Floating T>
-    std::pair<std::array<T, 3>, std::array<T, 3>> splice(const std::array<T, 6>& a)
+    inline std::pair<std::array<T, 3>, std::array<T, 3>> splice(const std::array<T, 6>& a)
     {
         std::array a1 { a[0], a[1], a[2] };
         std::array a2 { a[3], a[4], a[5] };
         return std::make_pair(a1, a2);
     }
     template <Floating T>
-    std::array<T, 6> join(const std::array<T, 3>& a, const std::array<T, 3>& b)
+    inline constexpr std::array<T, 6> join(const std::array<T, 3>& a, const std::array<T, 3>& b)
     {
-        std::array r { a[0], a[1], a[2], b[0], b[1], b[2] };
-        return r;
-    }
-
-    template <Floating T>
-    inline void normalize(T vec[3]) noexcept
-    {
-        const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
-        constexpr T one { 1 };
-        const T norm = one / std::sqrt(lsqr);
-        vec[0] *= norm;
-        vec[1] *= norm;
-        vec[2] *= norm;
+        return std::array { a[0], a[1], a[2], b[0], b[1], b[2] };
     }
 
     template <Floating T>
@@ -83,13 +71,13 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline std::array<T, 3> add(const std::array<T, 3>& v1, const std::array<T, 3>& v2)
+    inline constexpr std::array<T, 3> add(const std::array<T, 3>& v1, const std::array<T, 3>& v2)
     {
-        std::array<T, 3> r { v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2] };
-        return r;
+        return std::array<T, 3> { v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2] };
     }
-    template<Floating T>
-    inline auto add( std::array<T, 3> v1, T v2)
+
+    template <Floating T>
+    inline constexpr auto add(std::array<T, 3> v1, T v2) noexcept
     {
         v1[0] += v2;
         v1[1] += v2;
@@ -97,92 +85,54 @@ namespace vectormath {
         return v1;
     }
     template <Floating T>
-    inline auto add(T v2 , const std::array<T, 3>& v1)
+    inline constexpr auto add(T v2, const std::array<T, 3>& v1) noexcept
     {
-        return add(v1, v2); 
+        return add(v1, v2);
     }
     template <Floating T>
-    inline std::array<T, 3> subtract(const std::array<T, 3>& v1, const std::array<T, 3>& v2)
+    inline constexpr std::array<T, 3> subtract(const std::array<T, 3>& v1, const std::array<T, 3>& v2) noexcept
     {
-        std::array<T, 3> r { v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2] };
-        return r;
-    }
-
-    template<Floating T>
-    inline std::array<T, 3> scale(const std::array<T, 3>& v, T s)
-    {
-        std::array res { v[0] * s, v[1] * s, v[2] * s };
-        return res;
+        return std::array<T, 3> { v1[0] - v2[0], v1[1] - v2[1], v1[2] - v2[2] };
     }
 
     template <Floating T>
-    inline T dot(const T v1[3], const T v2[3]) noexcept
+    inline constexpr std::array<T, 3> scale(const std::array<T, 3>& v, T s)
+    {
+        return std::array { v[0] * s, v[1] * s, v[2] * s };
+    }
+
+    template <Floating T>
+    inline constexpr std::array<T, 3> scale(T s, const std::array<T, 3>& v)
+    {
+        return std::array { v[0] * s, v[1] * s, v[2] * s };
+    }
+
+    template <Floating T>
+    inline constexpr T dot(const std::array<T, 3>& v1, const std::array<T, 3>& v2) noexcept
     {
         return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
     }
 
     template <Floating T>
-    inline T dot(const std::array<T, 3>& v1, const std::array<T, 3>& v2) noexcept
+    inline constexpr std::array<T, 3> cross(const std::array<T, 3>& v1, const std::array<T, 3> v2) noexcept
     {
-        return v1[0] * v2[0] + v1[1] * v2[1] + v1[2] * v2[2];
-    }
-
-    template <Floating T>
-    inline std::array<T, 3> cross(const std::array<T, 3>& v1, const std::array<T, 3> v2) noexcept
-    {
-        std::array<T, 3> res {
+        return std::array<T, 3> {
             v1[1] * v2[2] - v1[2] * v2[1],
             v1[2] * v2[0] - v1[0] * v2[2],
             v1[0] * v2[1] - v1[1] * v2[0]
         };
-        return res;
     }
 
     template <Floating T>
-    inline std::array<T, 3> cross(const std::array<T, 6>& v1) noexcept
+    inline constexpr std::array<T, 3> cross(const std::array<T, 6>& v1) noexcept
     {
-        std::array<T, 3> res {
+        return std::array<T, 3> {
             v1[1] * v1[5] - v1[2] * v1[4],
             v1[2] * v1[3] - v1[0] * v1[5],
             v1[0] * v1[4] - v1[1] * v1[3]
         };
-        return res;
     }
 
-    template <Floating T>
-    inline void rotate(T vec[3], const T axis[3], const T angle) noexcept
-    {
-        const T sang = std::sin(angle);
-        const T cang = std::cos(angle);
-        constexpr T one { 1 };
-        const T midt = (one - cang) * dot(vec, axis);
-
-        T out[3];
-        out[0] = cang * vec[0] + midt * axis[0] + sang * (axis[1] * vec[2] - axis[2] * vec[1]);
-        out[1] = cang * vec[1] + midt * axis[1] + sang * (-axis[0] * vec[2] + axis[2] * vec[0]);
-        out[2] = cang * vec[2] + midt * axis[2] + sang * (axis[0] * vec[1] - axis[1] * vec[0]);
-
-        vec[0] = out[0];
-        vec[1] = out[1];
-        vec[2] = out[2];
-    }
-    template <Floating T>
-    inline void rotate(T vec[3], const std::array<T, 3>& axis, const T angle) noexcept
-    {
-        const T sang = std::sin(angle);
-        const T cang = std::cos(angle);
-        constexpr T one { 1 };
-        const T midt = (one - cang) * dot(vec, &axis[0]);
-
-        std::array<T, 3> res {
-            cang * vec[0] + midt * axis[0] + sang * (axis[1] * vec[2] - axis[2] * vec[1]),
-            cang * vec[1] + midt * axis[1] + sang * (-axis[0] * vec[2] + axis[2] * vec[0]),
-            cang * vec[2] + midt * axis[2] + sang * (axis[0] * vec[1] - axis[1] * vec[0])
-        };
-        vec[0] = res[0];
-        vec[1] = res[1];
-        vec[2] = res[2];
-    }
     template <Floating T>
     inline std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T angle) noexcept
     {
@@ -191,12 +141,11 @@ namespace vectormath {
         constexpr T one { 1 };
         const T midt = (one - cang) * dot(vec, axis);
 
-        std::array<T, 3> res {
+        return std::array<T, 3> {
             cang * vec[0] + midt * axis[0] + sang * (axis[1] * vec[2] - axis[2] * vec[1]),
             cang * vec[1] + midt * axis[1] + sang * (-axis[0] * vec[2] + axis[2] * vec[0]),
             cang * vec[2] + midt * axis[2] + sang * (axis[0] * vec[1] - axis[1] * vec[0])
         };
-        return res;
     }
 
     template <Floating T>
@@ -215,13 +164,6 @@ namespace vectormath {
         const T nom = ((a - b) + c) * u;
         const T den = (a + (b + c)) * ((a - c) + b);
         return T { 2 } * std::atan(std::sqrt(nom / den));
-    }
-
-    template <Floating T>
-    inline T angleBetweenOnPlane(const std::array<T, 3>& vec1, const std::array<T, 3>& vec2, const std::array<T, 3>& planeNormal) noexcept
-    {
-        const auto cr = cross(vec1, vec2);
-        return std::atan2(dot(cr, planeNormal), dot(vec1, vec2));
     }
 
     template <Index U = std::size_t, Floating T>
