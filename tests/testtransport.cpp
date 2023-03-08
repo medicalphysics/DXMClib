@@ -28,25 +28,28 @@ template <typename T>
 bool testTransport()
 {
     dxmc::CTDIPhantom<T> phantom;
-    dxmc::WorldBox<T> box;
+    dxmc::WorldBox<T> box(10);
     box.translate({ 0, -50, 0 });
     box.setNistMaterial("Water, Liquid");
 
     dxmc::World2<T, dxmc::CTDIPhantom<T>, dxmc::WorldBox<T>> world;
     world.addItem(phantom);
+    // dxmc::World2<T, dxmc::WorldBox<T>> world;
     world.addItem(box);
     world.build();
 
     dxmc::PencilBeam<T> beam;
     beam.setPosition({ 0, -1000, 0 });
     beam.setDirection({ 0, 1, 0 });
-    beam.setNumberOfParticlesPerExposure(100);
+    beam.setNumberOfParticlesPerExposure(1e5);
     beam.setNumberOfExposures(4);
 
     dxmc::Transport<T> transport;
-    transport.setNumberOfThreads(1);
+    transport.setNumberOfThreads(4);
 
-    transport(world, beam);
+    auto duration = transport(world, beam);
+    std::cout << beam.numberOfParticles() << " histories in " << duration.count() << " ms\n";
+    std::cout << (1000 * beam.numberOfParticles()) / duration.count() << " histories/sec\n";
 
     const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
     auto dose_ctdi = ctdi_vec[0].dose(0);

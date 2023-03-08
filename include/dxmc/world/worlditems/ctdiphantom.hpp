@@ -194,7 +194,19 @@ protected:
         }
         auto intersect(const Particle<T>& p) const noexcept
         {
-            return basicshape::cylinder::intersect(p, pos, radii, half_height);
+            const std::array<T, 6> aabb {
+                pos[0] - radii,
+                pos[1] - radii,
+                pos[2] - half_height,
+                pos[0] + radii,
+                pos[1] + radii,
+                pos[2] + half_height,
+            };
+            const auto aabbintersection = basicshape::AABB::intersect(p, aabb);
+            if (aabbintersection.valid())
+                return basicshape::cylinder::intersect(p, pos, radii, half_height);
+            else
+                return aabbintersection;
         }
     };
 

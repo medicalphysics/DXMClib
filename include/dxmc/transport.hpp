@@ -13,7 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2019 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #pragma once
@@ -26,6 +26,7 @@ Copyright 2019 Erlend Andersen
 #include <algorithm>
 #include <functional>
 #include <thread>
+#include <chrono>
 
 namespace dxmc {
 template <Floating T>
@@ -42,9 +43,9 @@ public:
     void setNumberOfThreads(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
 
     template <BeamType<T> B, WorldItemType<T>... Ws>
-    void operator()(World2<T, Ws...>& world, const B& beam) const
+    auto operator()(World2<T, Ws...>& world, const B& beam) const
     {
-        run(world, beam);
+        return run(world, beam);
     }
 
 protected:
@@ -63,13 +64,16 @@ protected:
     }
 
     template <BeamType<T> B, WorldItemType<T>... Ws>
-    void run(World2<T, Ws...>& world, const B& beam) const
+    auto run(World2<T, Ws...>& world, const B& beam) const
     {
         const auto nExposures = beam.numberOfExposures();
         const auto step = std::max(std::uint64_t { 1 }, nExposures / m_nThreads);
         std::vector<std::jthread> threads;
         std::uint64_t start = 0;
         auto stop = start + step;
+
+        const auto time_start = std::chrono::high_resolution_clock::now();
+
         for (std::size_t i = 0; i < m_nThreads - 1; ++i) {
             if (start < stop) {
                 threads.emplace_back(Transport<T>::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), start, stop);
@@ -79,8 +83,12 @@ protected:
         }
         runWorker(world, beam, start, nExposures);
 
-        for (auto& thread : threads)
+        for (auto& thread : threads) {
             thread.join();
+        }
+
+        const auto time_end = std::chrono::high_resolution_clock::now();
+        return std::chrono::duration_cast<std::chrono::milliseconds> (time_end - time_start);
     }
 
 private:

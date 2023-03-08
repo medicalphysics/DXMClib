@@ -30,13 +30,15 @@ namespace dxmc {
 template <Floating T>
 class PencilBeamExposure {
 public:
-    PencilBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, std::uint64_t N)
+    IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, std::uint64_t N)
         : m_pos(pos)
         , m_dir(dir)
         , m_energy(energy)
         , m_NParticles(N)
     {
     }
+
+    void detCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
@@ -53,13 +55,14 @@ private:
     T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 0, 1 };
+    std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
 };
 
 template <Floating T>
 class PencilBeam {
 public:
-    PencilBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& dir = { 0, 0, 1 }, T energy = 60)
+    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& dir = { 0, 0, 1 }, T energy = 60)
         : m_pos(pos)
         , m_dir(dir)
         , m_energy(energy)
@@ -77,22 +80,28 @@ public:
         m_pos = pos;
     }
 
-    void setDirection(const std::array<T, 3>& dir)
+    void setDirectionCosines(const std::array<T, 6>& dir)
     {
-        m_dir = dir;
-        vectormath::normalize(m_dir);
+        m_dirCosines = dir;
+        vectormath::normalize(&m_dirCosines[0]);
+        vectormath::normalize(&m_dirCosines[3]);
     }
 
-    PencilBeamExposure<T> exposure(std::size_t i) const noexcept
+    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+
+    IsotropicMonoEnergyBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-        PencilBeamExposure<T> exp(m_pos, m_dir, m_energy, m_particlesPerExposure);
+        const auto dir = vectormath::cross(m_dirCosines);
+        IsotropicMonoEnergyBeamExposure<T> exp(m_pos, dir, m_energy, m_particlesPerExposure);
+        exp.setCollimationAngles(m_collimationAngles);
         return exp;
     }
 
 private:
     T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 0, 1 };
+    std::array<T, 6> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
 };
