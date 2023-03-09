@@ -13,15 +13,21 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2023 Erlend Andersen
+Copyright 2020 Erlend Andersen
 */
 
-#include "dxmc/floating.hpp"
-#include "dxmc/beams/isotropicmonoenergybeam.hpp"
-#include "dxmc/world/world.hpp"
+#include "dxmc/constants.hpp"
+#include "dxmc/source.hpp"
+#include "dxmc/transport.hpp"
+#include "dxmc/tube.hpp"
+#include "dxmc/world.hpp"
 
-#include <iostream>
+#include <cassert>
+#include <chrono>
+#include <execution>
 #include <fstream>
+#include <iostream>
+#include <numeric>
 
 using namespace dxmc;
 
@@ -245,6 +251,20 @@ bool betw(T v, U min, W max)
     return false;
 }
 
+template <Floating T = double>
+std::size_t indexFromPosition(const std::array<T, 3>& pos, const World<T>& world)
+{
+    // assumes particle is inside world
+    std::size_t arraypos[3];
+    const auto& wpos = world.matrixExtent();
+    const auto& wdim = world.dimensions();
+    const auto& wspac = world.spacing();
+
+    for (std::size_t i = 0; i < 3; i++)
+        arraypos[i] = static_cast<std::size_t>((pos[i] - wpos[i * 2]) / wspac[i]);
+    const auto idx = arraypos[2] * wdim[0] * wdim[1] + arraypos[1] * wdim[0] + arraypos[0];
+    return idx;
+}
 
 template <typename T>
 auto runDispatcher(Transport<T> transport, const World<T> world, Source<T>* src)

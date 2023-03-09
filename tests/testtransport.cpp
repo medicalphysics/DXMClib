@@ -25,10 +25,31 @@ Copyright 2023 Erlend Andersen
 
 #include <iostream>
 
+template <typename T, typename W, typename B>
+auto runDispatcher(T& transport, W& world, const B& beam)
+{
+    dxmc::TransportProgress progress;
+
+    bool running = true;
+    std::thread job([&]() {
+        transport(world, beam, &progress);
+        running = false;
+    });
+    std::string message;
+    while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::cout << std::string(message.length(), ' ') << "\r";
+        message = progress.message();
+        std::cout << message << "\r";
+    }
+    job.join();
+    std::cout << std::string(message.length(), ' ') << "\r";
+    return progress.totalTime();
+}
+
 template <typename T>
 bool testTransport()
 {
-
     dxmc::CTDIPhantom<T> phantom;
     dxmc::WorldBox<T, 4, 1> box(10);
     box.translate({ 0, -50, 0 });
@@ -43,9 +64,8 @@ bool testTransport()
     dxmc::Transport<T> transport;
     transport.setNumberOfThreads(4);
 
-    std::uint64_t time = 0;
     std::uint64_t nPart = 0;
-
+    std::chrono::milliseconds time;
     if constexpr (false) {
         dxmc::PencilBeam<T> beam;
         beam.setPosition({ 0, -1000, 0 });
@@ -53,22 +73,23 @@ bool testTransport()
         beam.setNumberOfParticlesPerExposure(1e3);
         beam.setNumberOfExposures(4);
         nPart = beam.numberOfParticles();
-        auto duration = transport(world, beam);
-        time = duration.count();
+        time = runDispatcher(transport, world, beam);
+
     } else {
         dxmc::IsotropicMonoEnergyBeam<T> beam;
         beam.setPosition({ 0, -1000, 0 });
         beam.setDirectionCosines({ 0, 0, 1, 1, 0, 0 });
         beam.setCollimationAngles({ .01, .01 });
         beam.setNumberOfParticlesPerExposure(1e5);
-        beam.setNumberOfExposures(40);
+        beam.setNumberOfExposures(400);
         nPart = beam.numberOfParticles();
-        auto duration = transport(world, beam);
-        time = duration.count();
+        time = runDispatcher(transport, world, beam);
+        // transport(world, beam);
     }
+
     std::cout << "SUCCESS Simple transport test ";
-    std::cout << nPart << " histories in " << time << " ms, ";
-    std::cout << (1000 * nPart) / time << " histories/sec for sizeof(T) = " << sizeof(T) << std::endl;
+    std::cout << nPart << " histories in " << dxmc::TransportProgress::human_time(time) << " ";
+    std::cout << (nPart*1000) / std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << " histories/sec for sizeof(T) = " << sizeof(T) << std::endl;
 
     const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
     auto dose_ctdi = ctdi_vec[0].dose(0);
