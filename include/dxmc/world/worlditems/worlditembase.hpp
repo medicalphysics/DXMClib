@@ -29,18 +29,34 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T, bool KAHN_SUMMATION = true>
 class DoseScore {
 public:
     DoseScore() { }
     void scoreEnergy(T energy)
     {
         // threadsafe update
-        {
+        if constexpr (KAHN_SUMMATION) {
+            auto aref = std::atomic_ref(m_energyImparted);
+            volatile const auto oldacc = aref.fetch_add(energy);
+            volatile const auto newacc = oldacc + energy;
+            volatile const auto r = energy - (newacc - oldacc); // Recover rounding error using Fast2Sum, assumes |oldacc|>=|val|
+            auto restref = std::atomic_ref(m_energyImparted_rest);
+            restref.fetch_add(r);
+        } else {
             auto aref = std::atomic_ref(m_energyImparted);
             aref.fetch_add(energy);
         }
-        {
+
+        if constexpr (KAHN_SUMMATION) {
+            auto aref = std::atomic_ref(m_energyImpartedSquared);
+            const auto esq = energy * energy;
+            const auto oldacc = aref.fetch_add(esq);
+            const auto newacc = oldacc + esq;
+            const auto r = esq - (newacc - oldacc); // Recover rounding error using Fast2Sum, assumes |oldacc|>=|val|
+            auto restref = std::atomic_ref(m_energyImpartedSquared_rest);
+            restref.fetch_add(r);
+        } else {
             auto aref = std::atomic_ref(m_energyImpartedSquared);
             aref.fetch_add(energy * energy);
         }
@@ -51,13 +67,23 @@ public:
     }
     T energyImparted() const
     {
-        return m_energyImparted;
+        return m_energyImparted + m_energyImparted_rest;
+    }
+    T energyImpartedSquared() const
+    {
+        return m_energyImpartedSquared + m_energyImpartedSquared_rest;
+    }
+    std::uint64_t numberOfEvents() const
+    {
+        return m_nEvents;
     }
 
 private:
     std::uint64_t m_nEvents = 0;
     T m_energyImparted = 0;
     T m_energyImpartedSquared = 0;
+    T m_energyImparted_rest = 0;
+    T m_energyImpartedSquared_rest = 0;
 };
 
 template <Floating T>

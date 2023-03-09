@@ -41,7 +41,7 @@ bool testTransport()
     world.build();
 
     dxmc::Transport<T> transport;
-    transport.setNumberOfThreads(1);
+    transport.setNumberOfThreads(4);
 
     std::uint64_t time = 0;
     std::uint64_t nPart = 0;
@@ -60,8 +60,8 @@ bool testTransport()
         beam.setPosition({ 0, -1000, 0 });
         beam.setDirectionCosines({ 0, 0, 1, 1, 0, 0 });
         beam.setCollimationAngles({ .01, .01 });
-        beam.setNumberOfParticlesPerExposure(1e6);
-        beam.setNumberOfExposures(4);
+        beam.setNumberOfParticlesPerExposure(1e5);
+        beam.setNumberOfExposures(40);
         nPart = beam.numberOfParticles();
         auto duration = transport(world, beam);
         time = duration.count();
@@ -72,11 +72,17 @@ bool testTransport()
 
     const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
     auto dose_ctdi = ctdi_vec[0].dose(0);
-    std::cout << "CTDI: " << dose_ctdi.energyImparted() << std::endl;
+    std::cout << "CTDI: " << dose_ctdi.energyImparted();
+    std::cout << ", " << dose_ctdi.numberOfEvents();
+    std::cout << ", " << dose_ctdi.energyImpartedSquared();
+    std::cout << std::endl;
 
     const auto& box_vec = world.template getItems<dxmc::WorldBox<T, 4, 1>>();
     auto dose_box = box_vec[0].dose(0);
-    std::cout << "Box: " << dose_box.energyImparted() << std::endl;
+    std::cout << "Box: " << dose_box.energyImparted();
+    std::cout << ", " << dose_box.numberOfEvents();
+    std::cout << ", " << dose_box.energyImpartedSquared();
+    std::cout << std::endl;
 
     return true;
 }
@@ -86,6 +92,9 @@ int main()
     bool success = true;
     success = success && testTransport<float>();
     success = success && testTransport<float>();
+    success = success && testTransport<float>();
+    success = success && testTransport<double>();
+    success = success && testTransport<double>();
     success = success && testTransport<double>();
 
     if (success)

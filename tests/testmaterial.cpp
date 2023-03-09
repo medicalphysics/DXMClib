@@ -231,10 +231,38 @@ bool testCompoundAttenuation()
     return valid;
 }
 
+bool testTotalAttenuationWater()
+{
+
+    auto matF = dxmc::Material2<float>::byNistName("Water, Liquid").value();
+    auto matD = dxmc::Material2<double>::byNistName("Water, Liquid").value();
+
+    float ef = 1.0f;
+    double ed = 1.0;
+    std::vector<std::pair<float, double>> atts;
+    while (ef < 150.0f) {
+        auto attf = matF.attenuationValues(ef);
+        auto attd = matF.attenuationValues(ed);
+        atts.push_back(std::make_pair(attf.sum(), attd.sum()));
+        ef += 1;
+        ed += 1;
+    }
+
+    double max_diff = 0;
+
+    for (const auto [f, d] : atts) {
+        max_diff = std::max(std::abs(static_cast<double>(f) - d), max_diff);
+        // std::cout << f << ", " << d << " diff: " << static_cast<double>(f) - d << std::endl;
+    }
+    return max_diff < 0.01;
+}
+
 int main(int argc, char* argv[])
 {
 
     auto success = true;
+
+    success = success && testTotalAttenuationWater();
 
     success = success && testCompoundAttenuation<float>();
     success = success && testCompoundAttenuation<double>();
