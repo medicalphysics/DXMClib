@@ -29,36 +29,35 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, bool KAHN_SUMMATION = true>
+template <Floating T>
 class DoseScore {
 public:
     DoseScore() { }
     void scoreEnergy(T energy)
     {
-        // threadsafe update
-        if constexpr (KAHN_SUMMATION) {
+        // Thread safe update of values with Kahn summation in case of large sums
+        {
             auto aref = std::atomic_ref(m_energyImparted);
-            volatile const auto oldacc = aref.fetch_add(energy);
-            volatile const auto newacc = oldacc + energy;
-            volatile const auto r = energy - (newacc - oldacc); // Recover rounding error using Fast2Sum, assumes |oldacc|>=|val|
+            const auto oldacc = aref.fetch_add(energy, std::memory_order_relaxed);
+            const auto newacc = oldacc + energy;
+            const auto r = energy - (newacc - oldacc);
             auto restref = std::atomic_ref(m_energyImparted_rest);
-            restref.fetch_add(r);
-        } else {
-            auto aref = std::atomic_ref(m_energyImparted);
-            aref.fetch_add(energy);
+            restref.fetch_add(r, std::memory_order_relaxed);
+            if (restref.load(std::memory_order_relaxed) > T { 1e5 }) {
+                aref.fetch_add(restref.exchange(T { 0 }, std::memory_order_relaxed), std::memory_order_relaxed);
+            }
         }
-
-        if constexpr (KAHN_SUMMATION) {
+        {
             auto aref = std::atomic_ref(m_energyImpartedSquared);
             const auto esq = energy * energy;
-            const auto oldacc = aref.fetch_add(esq);
+            const auto oldacc = aref.fetch_add(esq, std::memory_order_relaxed);
             const auto newacc = oldacc + esq;
-            const auto r = esq - (newacc - oldacc); // Recover rounding error using Fast2Sum, assumes |oldacc|>=|val|
+            const auto r = esq - (newacc - oldacc);
             auto restref = std::atomic_ref(m_energyImpartedSquared_rest);
-            restref.fetch_add(r);
-        } else {
-            auto aref = std::atomic_ref(m_energyImpartedSquared);
-            aref.fetch_add(energy * energy);
+            restref.fetch_add(r, std::memory_order_relaxed);
+            if (restref.load(std::memory_order_relaxed) > T { 1e5 }) {
+                aref.fetch_add(restref.exchange(T { 0 }, std::memory_order_relaxed), std::memory_order_relaxed);
+            }
         }
         {
             auto aref = std::atomic_ref(m_nEvents);
@@ -81,9 +80,48 @@ public:
 private:
     std::uint64_t m_nEvents = 0;
     T m_energyImparted = 0;
-    T m_energyImpartedSquared = 0;
     T m_energyImparted_rest = 0;
+    T m_energyImpartedSquared = 0;
     T m_energyImpartedSquared_rest = 0;
+};
+
+template <>
+class DoseScore<double> {
+public:
+    DoseScore() { }
+    void scoreEnergy(double energy)
+    {
+        // Threadsafe update. No need for Kahn sum for doubles (hopefully)
+        {
+            auto aref = std::atomic_ref(m_energyImparted);
+            aref.fetch_add(energy, std::memory_order_relaxed);
+        }
+        {
+            auto aref = std::atomic_ref(m_energyImpartedSquared);
+            aref.fetch_add(energy * energy, std::memory_order_relaxed);
+        }
+        {
+            auto aref = std::atomic_ref(m_nEvents);
+            ++aref;
+        }
+    }
+    double energyImparted() const
+    {
+        return m_energyImparted;
+    }
+    double energyImpartedSquared() const
+    {
+        return m_energyImpartedSquared;
+    }
+    std::uint64_t numberOfEvents() const
+    {
+        return m_nEvents;
+    }
+
+private:
+    std::uint64_t m_nEvents = 0;
+    double m_energyImparted = 0;
+    double m_energyImpartedSquared = 0;
 };
 
 template <Floating T>
