@@ -24,14 +24,86 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/world.hpp"
 
 #include <algorithm>
-#include <functional>
-#include <thread>
 #include <chrono>
+#include <format>
+#include <functional>
+#include <string>
+#include <thread>
 
 namespace dxmc {
+class TransportProgress {
+public:
+    TransportProgress() { }
+    TransportProgress(std::uint64_t n_particles)
+    {
+        start(n_particles);
+    }
+
+    void start(std::uint64_t N)
+    {
+        m_nParticles = N;
+        m_nParticleCount = 0;
+        m_start = std::chrono::high_resolution_clock::now();
+    }
+    void addCompletedNumber(std::uint64_t N)
+    {
+        auto aref = std::atomic_ref(m_nParticleCount);
+        aref.fetch_add(N, std::memory_order_relaxed);
+
+        auto dref = std::atomic_ref(m_elapsed);
+        auto duration = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_start);
+        dref.exchange(duration);
+
+        if (aref.load() >= m_nParticles) {
+            m_end = std::chrono::high_resolution_clock::now();
+        }
+    }
+
+    std::string humanTotalTime() const
+    {
+        if (m_nParticleCount == m_nParticles) {
+            return human_time(std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start));
+        }
+        return "Not done yet";
+    }
+    std::chrono::milliseconds totalTime() const
+    {
+        return std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start);
+    }
+
+    std::string message() const
+    {
+        const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_start);
+
+        const auto p = (m_nParticleCount * 100) / m_nParticles;
+        if (m_nParticleCount > 0) {
+            const auto remaining = (m_elapsed * (m_nParticles - m_nParticleCount)) / m_nParticleCount;
+            return std::format("Time elapsed: {0} Estimated remaining time: {1} [{2}%]", human_time(elapsed), human_time(remaining), p);
+        } else {
+            return std::format("Time elapsed: {0} Estimated remaining time: NA [{1}%]", human_time(elapsed), p);
+        }
+    }
+
+    static std::string human_time(const std::chrono::milliseconds& time)
+    {
+        if (time > std::chrono::hours(3))
+            return std::format("{}", std::chrono::duration_cast<std::chrono::hours>(time));
+        else if (time > std::chrono::minutes(3))
+            return std::format("{}", std::chrono::duration_cast<std::chrono::minutes>(time));
+        else
+            return std::format("{}", std::chrono::duration_cast<std::chrono::seconds>(time));
+    }
+
+private:
+    std::uint64_t m_nParticles = 0;
+    std::uint64_t m_nParticleCount = 0;
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
+    std::chrono::time_point<std::chrono::high_resolution_clock> m_end;
+    std::chrono::milliseconds m_elapsed;
+};
+
 template <Floating T>
 class Transport {
-
 public:
     Transport()
     {
@@ -43,14 +115,14 @@ public:
     void setNumberOfThreads(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
 
     template <BeamType<T> B, WorldItemType<T>... Ws>
-    auto operator()(World2<T, Ws...>& world, const B& beam) const
+    auto operator()(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
-        return run(world, beam);
+        return run(world, beam, progress);
     }
 
 protected:
     template <BeamType<T> B, WorldItemType<T>... Ws>
-    static void runWorker(World2<T, Ws...>& world, const B& beam, std::uint64_t exposureBegin, std::uint64_t exposureEnd)
+    static void runWorker(World2<T, Ws...>& world, const B& beam, std::uint64_t exposureBegin, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
     {
         RandomState state;
         for (std::uint64_t eIdx = exposureBegin; eIdx != exposureEnd; ++eIdx) {
@@ -60,11 +132,13 @@ protected:
                 auto particle = exposure.sampleParticle(state);
                 world.transport(particle, state);
             }
+            if (progress)
+                progress->addCompletedNumber(nParticles);
         }
     }
 
     template <BeamType<T> B, WorldItemType<T>... Ws>
-    auto run(World2<T, Ws...>& world, const B& beam) const
+    void run(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
         const auto nExposures = beam.numberOfExposures();
         const auto step = std::max(std::uint64_t { 1 }, nExposures / m_nThreads);
@@ -72,23 +146,21 @@ protected:
         std::uint64_t start = 0;
         auto stop = start + step;
 
-        const auto time_start = std::chrono::high_resolution_clock::now();
+        if (progress)
+            progress->start(beam.numberOfParticles());
 
         for (std::size_t i = 0; i < m_nThreads - 1; ++i) {
             if (start < stop) {
-                threads.emplace_back(Transport<T>::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), start, stop);
+                threads.emplace_back(Transport<T>::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), start, stop, progress);
                 start = stop;
                 stop += step;
             }
         }
-        runWorker(world, beam, start, nExposures);
+        runWorker(world, beam, start, nExposures, progress);
 
         for (auto& thread : threads) {
             thread.join();
         }
-
-        const auto time_end = std::chrono::high_resolution_clock::now();
-        return std::chrono::duration_cast<std::chrono::milliseconds> (time_end - time_start);
     }
 
 private:
