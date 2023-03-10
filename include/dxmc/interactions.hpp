@@ -39,7 +39,7 @@ namespace interactions {
         return T { 0.1 };
     }
 
-    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 3>
+    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
     void rayleightScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 0) {
@@ -179,7 +179,7 @@ namespace interactions {
         vectormath::peturb(particle.dir, theta, phi);
         return (E - particle.energy) * particle.weight;
     }
-    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 3>
+    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
     T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
@@ -259,10 +259,10 @@ namespace interactions {
         }
         return E;
     }
-    template <Floating T, int Nshells, int Lowenergycorrection = 3>
+    template <Floating T, int Nshells, int Lowenergycorrection = 2>
     T photoelectricEffect(const T totalPhotoCrossSection, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     {
-        if constexpr (Lowenergycorrection == 3) {
+        if constexpr (Lowenergycorrection == 2) {
             return photoelectricEffectIA(totalPhotoCrossSection, particle, material, state);
         } else {
             const T E = particle.energy * particle.weight;
@@ -278,7 +278,7 @@ namespace interactions {
         bool particleEnergyChanged = false;
     };
 
-    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 3>
+    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
     InteractionResult<T> interact(const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state)
     {
         const auto r2 = state.randomUniform<T>(attenuation.sum());
@@ -310,7 +310,7 @@ namespace interactions {
         }
         return res;
     }
-    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 3>
+    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
     InteractionResult<T> interactForced(const T interactionprobability, const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state)
     {
         const auto r1 = state.randomUniform<T>();

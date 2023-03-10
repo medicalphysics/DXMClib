@@ -66,6 +66,12 @@ public:
         return std::get<std::vector<U>>(m_items);
     }
 
+    template <AnyWorldItemType<Us...> U>
+    auto& getItems()
+    {
+        return std::get<std::vector<U>>(m_items);
+    }
+
     std::vector<WorldItemBase<T>*> getItemPointers()
     {
         std::vector<WorldItemBase<T>*> ptrs;

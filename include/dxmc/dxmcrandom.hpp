@@ -26,6 +26,7 @@ Copyright 2019 Erlend Andersen
 #include <limits>
 #include <numeric>
 #include <random>
+#include <utility>
 #include <vector>
 
 namespace dxmc {
@@ -181,26 +182,9 @@ public:
     {
         generateTable(weights);
     }
-
-    RandomDistribution(const RandomDistribution& other)
+    RandomDistribution()
     {
-        m_alias = other.aliasingData();
-        m_probs = other.probabilityData();
-    }
-    RandomDistribution& operator=(const RandomDistribution& other)
-    {
-        m_alias = other.aliasingData();
-        m_probs = other.probabilityData();
-        return *this;
-    }
-
-    /**
-     * @brief Sample an index from 0 to size() - 1 according to weights.
-     * @return index with probability according to weights[index].
-     */
-    std::size_t sampleIndex()
-    {
-        return sampleIndex(m_state);
+        m_data.push_back(std::make_pair(T { 1 }, 0));
     }
 
     /**
@@ -211,27 +195,17 @@ public:
     std::size_t sampleIndex(RandomState& state) const
     {
         const auto r = state.randomUniform<T>();
-        const auto k = state.randomUniform<std::size_t>(size());
-        return r < m_probs[k] ? k : m_alias[k];
+        const auto k = state.randomUniform<std::size_t>(m_data.size());
+        // return r < m_probs[k] ? k : m_alias[k];
+        return r < m_data[k].first ? k : m_data[k].second;
     }
 
-    /**
-     * @brief Size of the weights vector
-     * @return Size of weights vector.
-     */
-    std::size_t size() const { return m_probs.size(); }
-
-    const std::vector<std::uint64_t>& aliasingData() const { return m_alias; }
-    const std::vector<T>& probabilityData() const { return m_probs; }
-
 protected:
-    RandomState m_state;
     void generateTable(const std::vector<T>& weights)
     {
         // Squaring the histogram method
         auto m_size = weights.size();
-        m_probs.resize(m_size);
-        m_alias.resize(m_size);
+        m_data.resize(m_size);
         std::vector<T> norm_probs(m_size);
         std::vector<std::int64_t> large_block(m_size);
         std::vector<std::int64_t> small_block(m_size);
@@ -239,9 +213,9 @@ protected:
         std::int64_t num_small_block = 0;
         std::int64_t num_large_block = 0;
 
-        const auto sum = std::accumulate(weights.begin(), weights.end(), T { 0.0 });
+        const auto sum = std::reduce(std::execution::par_unseq, weights.begin(), weights.end(), T { 0.0 });
         const auto scale_factor = m_size / sum;
-        std::transform(weights.cbegin(), weights.cend(), norm_probs.begin(), [=](const auto w) -> T { return w * scale_factor; });
+        std::transform(std::execution::par_unseq, weights.cbegin(), weights.cend(), norm_probs.begin(), [=](const auto w) -> T { return w * scale_factor; });
 
         for (std::int64_t i = m_size - 1; i >= 0; i--) {
             if (norm_probs[i] < T { 1.0 }) {
@@ -254,8 +228,9 @@ protected:
         while (num_small_block && num_large_block) {
             const auto cur_small_block = small_block[--num_small_block];
             const auto cur_large_block = large_block[--num_large_block];
-            m_probs[cur_small_block] = norm_probs[cur_small_block];
-            m_alias[cur_small_block] = cur_large_block;
+
+            m_data[cur_small_block] = std::make_pair(norm_probs[cur_small_block], cur_large_block);
+
             norm_probs[cur_large_block] = norm_probs[cur_large_block] + norm_probs[cur_small_block] - 1;
             if (norm_probs[cur_large_block] < 1) {
                 small_block[num_small_block++] = cur_large_block;
@@ -265,55 +240,38 @@ protected:
         }
 
         while (num_large_block) {
-            m_probs[large_block[--num_large_block]] = 1;
+            m_data[large_block[--num_large_block]].first = 1;
         }
 
         while (num_small_block) {
-            m_probs[small_block[--num_small_block]] = 1;
+            m_data[small_block[--num_small_block]].first = 1;
         }
     }
 
 private:
-    std::vector<std::uint64_t> m_alias;
-    std::vector<T> m_probs;
+    std::vector<std::pair<T, std::uint64_t>> m_data;
 };
 
 /**
  * @brief Class for sampling of a specter of values according to a distribution.
  */
 template <Floating T = double>
-class SpecterDistribution : public RandomDistribution<T> {
+class SpecterDistribution {
 public:
     /**
      * @brief Initialize specter distribution
      * @param weights A vector of probabilities for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity.
      * @param energies A vector of values that are sampled according to weights. Values must be monotonic increasing. Length of energies must be equal to length of weights.
      */
-    SpecterDistribution(const std::vector<T>& weights, const std::vector<T>& energies)
-        : RandomDistribution<T>(weights)
+    SpecterDistribution(const std::vector<std::pair<T, T>>& specter)
     {
-        m_energies = energies;
-    }
-    /**
-     * @brief Initialize specter distribution
-     */
-    SpecterDistribution()
-        : RandomDistribution<T>(std::vector<T> { 1 })
-    {
-        // std::vector<T> w { 1, 1 };
-        // RandomDistribution<T>(w);
-        m_energies = std::vector<T> { 60 };
+        std::vector<T> weights(specter.size());
+        m_energies.resize(specter.size());
+        std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), m_energies.begin(), [](const auto& p) { return p.first; });
+        std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), weights.begin(), [](const auto& p) { return p.second; });
+        m_dist = RandomDistribution(weights);
     }
 
-    /**
-     * @brief Sample an energy value according to weights probability.
-     * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
-     * @return a random energy according to weights probability
-     */
-    T sampleValue()
-    {
-        return sampleValue(this->m_state);
-    }
     /**
      * @brief Sample an energy value according to weights probability. This function is thread safe.
      * The sampling is done by first randomly sample an index into the energy vector. A random uniform energy in the interval energies[sampleIndex] and energies[sampleIndex+1] is returned. If sampleIndex is the last index in weights, the last energy value is returned.
@@ -321,11 +279,12 @@ public:
      */
     T sampleValue(RandomState& state) const
     {
-        const std::size_t ind = this->sampleIndex(state);
+        const std::size_t ind = m_dist.sampleIndex(state);
         return ind < m_energies.size() - 1 ? state.randomUniform(m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
     }
 
 private:
+    RandomDistribution<T> m_dist;
     std::vector<T> m_energies;
 };
 

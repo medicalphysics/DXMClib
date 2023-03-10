@@ -32,7 +32,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 3>
+template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
 class WorldBox final : public WorldItemBase<T> {
 public:
     WorldBox(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
@@ -103,19 +103,19 @@ public:
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
-        bool updateAtt = false;
-        AttenuationValues<T> att = m_material.attenuationValues(p.energy);
-        T attSumInv = 1 / (att.sum() * m_materialDensity);
+        bool updateAtt = true;
+        AttenuationValues<T> att;
+        T attSumInv;
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_materialDensity);
+                attSumInv = 1 / (att.sum()  * m_materialDensity);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv ; // cm
             const auto intLen = intersect(p).intersection; // this can not be nullopt
 
-            if (stepLen < intLen) {
+            if (stepLen < intLen ) {
                 // interaction happends
                 p.translate(stepLen);
                 const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);

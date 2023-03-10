@@ -36,6 +36,45 @@ inline bool isEqual(double a, double b)
 }
 
 template <typename T>
+bool testDistribution()
+{
+    std::vector<T> x;
+    for (std::size_t i = 0; i < 200; ++i) {
+        const T val = T { -3 } + (i * T { 6 }) / (200 - 1);
+        const auto w = std::exp(-val * val);
+        x.push_back(w);
+    }
+
+    dxmc::RandomDistribution dist(x);
+
+    constexpr std::size_t N = 1e6;
+
+    std::vector<T> y(x.size(), T { 0 });
+    RandomState state;
+    for (std::size_t i = 0; i < N; i++) {
+        const auto ind = dist.sampleIndex(state);
+        y[ind] += T { 1 };
+    }
+    for (auto& yy : y) {
+        yy /= N;
+    }
+
+    const auto x_sum = std::reduce(x.cbegin(), x.cend(), T { 0 });
+
+    bool success = true;
+
+    for (std::size_t i = 0; i < 200; ++i) {
+        const auto xx = x[i] / x_sum;
+        const auto diff = std::abs(y[i] - xx);
+        success = success && diff < T { 0.001 };
+        // std::cout << "Sample: " << y[i] << ", Analytical: " << xx << ", Diff: " << std::abs(y[i] - xx)  << std::endl;
+    }
+    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::cout << msg << " Test random discreet distribution for sizeof(T) = " << sizeof(T) << std::endl;
+    return success;
+}
+
+template <typename T>
 bool testUniform()
 {
     constexpr std::size_t S = 1e8;
@@ -202,6 +241,8 @@ int main(int argc, char* argv[])
     std::cout << "Testing random number generator:" << std::endl;
 
     bool success = true;
+    success = success && testDistribution<float>();
+    success = success && testDistribution<double>();
     success = success && testrandomInteger();
     success = success && testUniform<double>();
     success = success && testUniform<float>();

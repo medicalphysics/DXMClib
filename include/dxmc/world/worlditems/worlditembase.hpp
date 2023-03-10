@@ -68,10 +68,19 @@ public:
     {
         return m_energyImparted + m_energyImparted_rest;
     }
+
     T energyImpartedSquared() const
     {
         return m_energyImpartedSquared + m_energyImpartedSquared_rest;
     }
+
+    T varianceEnergyImparted() const
+    {
+        const auto e_exp = energyImparted() / numberOfEvents();
+        const auto e2_exp = energyImpartedSquared() / numberOfEvents();
+        return e2_exp - e_exp * e_exp;
+    }
+
     std::uint64_t numberOfEvents() const
     {
         return m_nEvents;
@@ -105,14 +114,24 @@ public:
             ++aref;
         }
     }
+
     double energyImparted() const
     {
         return m_energyImparted;
     }
+
     double energyImpartedSquared() const
     {
         return m_energyImpartedSquared;
     }
+
+    double varianceEnergyImparted() const
+    {
+        const auto e_exp = energyImparted() / numberOfEvents();
+        const auto e2_exp = energyImpartedSquared() / numberOfEvents();
+        return e2_exp - e_exp * e_exp;
+    }
+
     std::uint64_t numberOfEvents() const
     {
         return m_nEvents;

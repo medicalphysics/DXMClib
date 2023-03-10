@@ -116,15 +116,17 @@ namespace basicshape {
             T tmin = std::numeric_limits<T>::lowest();
             T tmax = std::numeric_limits<T>::max();
             for (std::size_t i = 0; i < 3; ++i) {
-                const auto d = 1 / p.dir[i];
-                const auto t0 = (aabb[i] - p.pos[i]) * d;
-                const auto t1 = (aabb[i + 3] - p.pos[i]) * d;
-                if (d > T { 0 }) {
-                    tmin = std::max(t0, tmin);
-                    tmax = std::min(t1, tmax);
-                } else {
-                    tmin = std::max(t1, tmin);
-                    tmax = std::min(t0, tmax);
+                if (p.dir[i] < T { 0 } || p.dir[i] > T { 0 }) {
+                    const auto d = 1 / p.dir[i];
+                    const auto t0 = (aabb[i] - p.pos[i]) * d;
+                    const auto t1 = (aabb[i + 3] - p.pos[i]) * d;
+                    if (d > T { 0 }) {
+                        tmin = std::max(t0, tmin);
+                        tmax = std::min(t1, tmax);
+                    } else {
+                        tmin = std::max(t1, tmin);
+                        tmax = std::min(t0, tmax);
+                    }
                 }
             }
             const auto particleInside = tmin < T { 0 } && tmax > T { 0 };

@@ -28,9 +28,9 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class IsotropicBeamExposure {
+class IsotropicMonoEnergyBeamExposure {
 public:
-    IsotropicBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, T energy, std::uint64_t N)
+    IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, T energy, std::uint64_t N)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_energy(energy)
@@ -66,11 +66,11 @@ private:
 };
 
 template <Floating T>
-class IsotropicBeam {
+class IsotropicMonoEnergyBeam {
 public:
-    IsotropicBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
+    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 }, T energy = 60)
         : m_pos(pos)
-        
+        , m_energy(energy)
     {
         setDirectionCosines(dircosines);
     }
@@ -90,8 +90,11 @@ public:
         vectormath::normalize(m_dirCosines[0]);
         vectormath::normalize(m_dirCosines[1]);
     }
-    void setSpecter()
-    
+
+    void setEnergy(T energy) { m_energy = std::min(std::max(MIN_ENERGY<T>(), energy), MAX_ENERGY<T>()); }
+
+    T energy() { return m_energy; }
+
     void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
 
     IsotropicMonoEnergyBeamExposure<T> exposure(std::size_t i) const noexcept
