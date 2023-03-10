@@ -16,6 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2023 Erlend Andersen
 */
 
+#include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/transport.hpp"
@@ -27,11 +28,11 @@ Copyright 2023 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 const auto N_THREADS = std::max(std::thread::hardware_concurrency(), 1u);
 const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? N_THREADS * 10 : 100u;
-const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000 : 1000000;
+const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000 : 100000;
 
 template <Floating T>
 struct ResultKeys {
@@ -168,30 +169,27 @@ QVL: 0.7663 mm Al
 const std::vector<double> TG195_30KV_raw({ 7.25, 1.551E-04, 7.75, 4.691E-04, 8.25, 1.199E-03, 8.75, 2.405E-03, 9.25, 4.263E-03, 9.75, 6.797E-03, 10.25, 9.761E-03, 10.75, 1.314E-02, 11.25, 1.666E-02, 11.75, 2.013E-02, 12.25, 2.349E-02, 12.75, 2.666E-02, 13.25, 2.933E-02, 13.75, 3.167E-02, 14.25, 3.365E-02, 14.75, 3.534E-02, 15.25, 3.644E-02, 15.75, 3.741E-02, 16.25, 3.796E-02, 16.75, 3.823E-02, 17.25, 3.445E-01, 17.75, 3.770E-02, 18.25, 3.704E-02, 18.75, 3.639E-02, 19.25, 9.200E-02, 19.75, 2.178E-03, 20.25, 2.048E-03, 20.75, 2.043E-03, 21.25, 2.098E-03, 21.75, 2.193E-03, 22.25, 2.327E-03, 22.75, 2.471E-03, 23.25, 2.625E-03, 23.75, 2.770E-03, 24.25, 2.907E-03, 24.75, 3.000E-03, 25.25, 3.062E-03, 25.75, 3.058E-03, 26.25, 2.988E-03, 26.75, 2.823E-03, 27.25, 2.575E-03, 27.75, 2.233E-03, 28.25, 1.815E-03, 28.75, 1.290E-03, 29.25, 6.696E-04, 29.75, 4.086E-05 });
 
 template <typename T>
-std::pair<std::vector<T>, std::vector<T>> TG195_specter(const std::vector<double>& raw)
+std::vector<std::pair<T, T>> TG195_specter(const std::vector<double>& raw)
 {
-    std::pair<std::vector<T>, std::vector<T>> s;
-    s.first.resize(raw.size() / 2);
-    s.second.resize(raw.size() / 2);
-
-    for (std::size_t i = 0; i < s.first.size(); ++i) {
-        s.first[i] = raw[i * 2] - 0.25;
-        s.second[i] = raw[i * 2 + 1];
+    std::vector<std::pair<T, T>> s;
+    s.reserve(raw.size() / 2);
+    for (std::size_t i = 0; i < raw.size(); i = i + 2) {
+        s.push_back(std::make_pair(static_cast<T>(raw[i] - 0.25), static_cast<T>(raw[i + 1])));
     }
     return s;
 }
 template <typename T>
-std::pair<std::vector<T>, std::vector<T>> TG195_120KV()
+auto TG195_120KV()
 {
     return TG195_specter<T>(TG195_120KV_raw);
 }
 template <typename T>
-std::pair<std::vector<T>, std::vector<T>> TG195_100KV()
+auto TG195_100KV()
 {
     return TG195_specter<T>(TG195_100KV_raw);
 }
 template <typename T>
-std::pair<std::vector<T>, std::vector<T>> TG195_30KV()
+auto TG195_30KV()
 {
     return TG195_specter<T>(TG195_30KV_raw);
 }
@@ -246,28 +244,39 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     }
 
     world.build(T { 160 });
+    if (specter) {
+        IsotropicBeam<T> beam;
+        const auto specter = TG195_120KV<T>();
+        beam.setEnergySpecter(specter);
+        beam.setNumberOfExposures(N_EXPOSURES);
+        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+        const T collangle = std::sin(T { 39 } / (2 * T { 180 }));
+        beam.setCollimationAngles({ collangle, collangle });
 
-    IsotropicMonoEnergyBeam<T> beam;
-    beam.setEnergy(T { 56.4 });
-    beam.setNumberOfExposures(N_EXPOSURES);
-    beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-    const T collangle = std::sin(T { 39 } / (2 * T { 180 }));
-    beam.setCollimationAngles({ collangle, collangle });
+        Transport<T> transport;
+        auto time_elapsed = runDispatcher(transport, world, beam);
+    } else {
+        IsotropicMonoEnergyBeam<T> beam;
+        beam.setEnergy(T { 56.4 });
+        beam.setNumberOfExposures(N_EXPOSURES);
+        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+        const T collangle = std::sin(T { 39 } / (2 * T { 180 }));
+        beam.setCollimationAngles({ collangle, collangle });
 
-    Transport<T> transport;
-
-    auto time_elapsed = runDispatcher(transport, world, beam);
+        Transport<T> transport;
+        auto time_elapsed = runDispatcher(transport, world, beam);
+    }
 
     const auto& boxes = world.getItems<Box>();
     const auto& box = boxes.front();
     const auto& dose = box.dose();
 
-    const auto total_hist = static_cast<T>(beam.numberOfParticles());
+    const auto total_hist = static_cast<T>(N_EXPOSURES * N_HISTORIES);
     const auto ev_history = dose.energyImparted() / (total_hist / 1000);
     const auto ev_history_var = dose.varianceEnergyImparted() / (total_hist / 1000);
     std::cout << "eV per history: " << ev_history << std::endl;
     std::cout << "eV per history std: " << std::sqrt(ev_history_var) << std::endl;
-    std::cout << "Energy " << beam.energy() << " attenuation: " << pmma_cand.value().attenuationValues(beam.energy()).sum() << std::endl;
+    // std::cout << "Energy " << beam.energy() << " attenuation: " << pmma_cand.value().attenuationValues(beam.energy()).sum() << std::endl;
     return true;
 }
 
@@ -276,7 +285,8 @@ bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<T>(false, false);
+    // success = success && TG195Case2AbsorbedEnergy<T>(false, false);
+    success = success && TG195Case2AbsorbedEnergy<T>(true, false);
 
     return success;
 }

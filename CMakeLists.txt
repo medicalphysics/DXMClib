@@ -90,6 +90,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/beamtype.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/pencilbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicmonoenergybeam.hpp" 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/world.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/statickdtree.hpp"

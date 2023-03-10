@@ -62,7 +62,7 @@ bool testTransport()
     world.build();
 
     dxmc::Transport<T> transport;
-    transport.setNumberOfThreads(4);
+    //transport.setNumberOfThreads(4);
 
     std::uint64_t nPart = 0;
     std::chrono::milliseconds time;

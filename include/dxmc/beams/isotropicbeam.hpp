@@ -28,17 +28,21 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class IsotropicMonoEnergyBeamExposure {
+class IsotropicBeamExposure {
 public:
-    IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, T energy, std::uint64_t N)
+    IsotropicBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N)
         : m_pos(pos)
         , m_dirCosines(dircosines)
-        , m_energy(energy)
         , m_NParticles(N)
     {
     }
 
     void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+
+    void setSpecterDistribution(const SpecterDistribution<T>& s)
+    {
+        m_specterDist = s;
+    }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
@@ -52,25 +56,24 @@ public:
 
         Particle<T> p = { .pos = m_pos,
             .dir = dir,
-            .energy = m_energy,
+            .energy = m_specterDist.sampleValue(state),
             .weight = T { 1 } };
         return p;
     }
 
 private:
-    T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
+    SpecterDistribution<T> m_specterDist;
 };
 
 template <Floating T>
-class IsotropicMonoEnergyBeam {
+class IsotropicBeam {
 public:
-    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 }, T energy = 60)
+    IsotropicBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
         : m_pos(pos)
-        , m_energy(energy)
     {
         setDirectionCosines(dircosines);
     }
@@ -81,8 +84,7 @@ public:
     std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-
-    void setPosition(const std::array<T, 3>& pos)    {        m_pos = pos;    }
+    void setPosition(const std::array<T, 3>& pos) { m_pos = pos; }
 
     void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
     {
@@ -91,27 +93,29 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    void setEnergy(T energy) { m_energy = std::min(std::max(MIN_ENERGY<T>(), energy), MAX_ENERGY<T>()); }
-
-    T energy() { return m_energy; }
+    void setEnergySpecter(const std::vector<std::pair<T, T>>& specter)
+    {
+        m_specter = SpecterDistribution(specter);
+    }
 
     void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
 
-    IsotropicMonoEnergyBeamExposure<T> exposure(std::size_t i) const noexcept
+    IsotropicBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-        
-        IsotropicMonoEnergyBeamExposure<T> exp(m_pos, m_dirCosines, m_energy, m_particlesPerExposure);
+
+        IsotropicBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
+        exp.setSpecterDistribution(m_specter);
         return exp;
     }
 
 private:
-    T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
+    SpecterDistribution<T> m_specter;
 };
 
 }

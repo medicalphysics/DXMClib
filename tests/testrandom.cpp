@@ -69,8 +69,54 @@ bool testDistribution()
         success = success && diff < T { 0.001 };
         // std::cout << "Sample: " << y[i] << ", Analytical: " << xx << ", Diff: " << std::abs(y[i] - xx)  << std::endl;
     }
-    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::string msg = success ? "SUCCESS" : "FAILURE";
     std::cout << msg << " Test random discreet distribution for sizeof(T) = " << sizeof(T) << std::endl;
+    return success;
+}
+
+template <typename T>
+bool testSpecterDistribution()
+{
+    std::vector<std::pair<T, T>> x;
+    std::vector<T> pos;
+
+    for (std::size_t i = 0; i < 200; ++i) {
+        const T val = T { -3 } + (i * T { 6 }) / (200 - 1);
+        const auto w = std::exp(-val * val);
+        x.push_back(std::make_pair(val, w));
+        pos.push_back(val);
+    }
+
+    dxmc::SpecterDistribution dist(x);
+
+    constexpr std::size_t N = 1e6;
+
+    std::vector<T> y(x.size(), T { 0 });
+    RandomState state;
+    for (std::size_t i = 0; i < N; i++) {
+        const auto e = dist.sampleValue(state);
+        const auto pIdx = std::upper_bound(pos.cbegin(), pos.cend() - 1, e);
+        const auto ind = std::distance(pos.cbegin(), pIdx);
+        y[ind] += T { 1 };
+    }
+    for (auto& yy : y) {
+        yy /= N;
+    }
+
+    T x_sum = 0;
+    for (const auto& xx : x)
+        x_sum += xx.second;
+
+    bool success = true;
+
+    for (std::size_t i = 0; i < 200; ++i) {
+        const auto xx = x[i].second / x_sum;
+        const auto diff = std::abs(y[i] - xx);
+        success = success && diff < T { 0.001 };
+        // std::cout << "Sample: " << y[i] << ", Analytical: " << xx << ", Diff: " << std::abs(y[i] - xx) << std::endl;
+    }
+    std::string msg = success ? "SUCCESS" : "FAILURE";
+    std::cout << msg << " Test random discreet specter distribution for sizeof(T) = " << sizeof(T) << std::endl;
     return success;
 }
 
@@ -107,7 +153,7 @@ bool testUniform()
     success = success && max_deviation * T { 100 } < T { 0.5 };
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::string msg = success ? "SUCCESS" : "FAILURE";
     std::cout << msg << " Test random uniform, time: " << pcg_time.count() << "ms" << std::endl;
     return success;
 }
@@ -148,7 +194,7 @@ bool testUniformRange()
     success = success && max_deviation * T { 100 } < T { 0.5 };
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::string msg = success ? "SUCCESS" : "FAILURE";
     std::cout << msg << " Test random uniform range, time: " << pcg_time.count() << "ms" << std::endl;
     return success;
 }
@@ -178,7 +224,7 @@ bool testrandomInteger(std::uint8_t max = 128)
     success = success && max_diff * 100 < 1.0;
 
     auto pcg_time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::string msg = success ? "SUCCESS" : "FAILURE";
     std::cout << msg << " Test random uniform index, time: " << pcg_time.count() << "ms" << std::endl;
     return success;
 }
@@ -231,7 +277,7 @@ bool testCPDFdist(bool print = false)
     auto success = maxError < T { 0.01 };
 
     auto time = std::chrono::duration_cast<std::chrono::milliseconds>(end - start);
-    std::string msg = success ? "SUCCSESS" : "FAILURE";
+    std::string msg = success ? "SUCCESS" : "FAILURE";
     std::cout << msg << " Test Gaussian analytical pdf, time: " << time.count() << "ms" << std::endl;
     return success;
 }
@@ -243,6 +289,8 @@ int main(int argc, char* argv[])
     bool success = true;
     success = success && testDistribution<float>();
     success = success && testDistribution<double>();
+    success = success && testSpecterDistribution<float>();
+    success = success && testSpecterDistribution<double>();
     success = success && testrandomInteger();
     success = success && testUniform<double>();
     success = success && testUniform<float>();
