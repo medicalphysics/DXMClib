@@ -180,7 +180,7 @@ public:
      */
     RandomDistribution(const std::vector<T>& weights)
     {
-        generateTable(weights);
+        m_data = generateTable(weights);
     }
     RandomDistribution()
     {
@@ -200,12 +200,13 @@ public:
         return r < m_data[k].first ? k : m_data[k].second;
     }
 
-protected:
-    void generateTable(const std::vector<T>& weights)
+    static std::vector<std::pair<T, std::uint64_t>> generateTable(const std::vector<T>& weights)
     {
         // Squaring the histogram method
         auto m_size = weights.size();
-        m_data.resize(m_size);
+
+        std::vector<std::pair<T, std::uint64_t>> data(m_size);
+
         std::vector<T> norm_probs(m_size);
         std::vector<std::int64_t> large_block(m_size);
         std::vector<std::int64_t> small_block(m_size);
@@ -229,7 +230,7 @@ protected:
             const auto cur_small_block = small_block[--num_small_block];
             const auto cur_large_block = large_block[--num_large_block];
 
-            m_data[cur_small_block] = std::make_pair(norm_probs[cur_small_block], cur_large_block);
+            data[cur_small_block] = std::make_pair(norm_probs[cur_small_block], cur_large_block);
 
             norm_probs[cur_large_block] = norm_probs[cur_large_block] + norm_probs[cur_small_block] - 1;
             if (norm_probs[cur_large_block] < 1) {
@@ -240,12 +241,13 @@ protected:
         }
 
         while (num_large_block) {
-            m_data[large_block[--num_large_block]].first = 1;
+            data[large_block[--num_large_block]].first = 1;
         }
 
         while (num_small_block) {
-            m_data[small_block[--num_small_block]].first = 1;
+            data[small_block[--num_small_block]].first = 1;
         }
+        return data;
     }
 
 private:
@@ -258,18 +260,38 @@ private:
 template <Floating T = double>
 class SpecterDistribution {
 public:
+    SpecterDistribution()
+    {
+    }
     /**
      * @brief Initialize specter distribution
-     * @param weights A vector of probabilities for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity.
-     * @param energies A vector of values that are sampled according to weights. Values must be monotonic increasing. Length of energies must be equal to length of weights.
+     * @param weights A vector of pairs {energy, probability} for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity.
      */
     SpecterDistribution(const std::vector<std::pair<T, T>>& specter)
     {
         std::vector<T> weights(specter.size());
-        m_energies.resize(specter.size());
-        std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), m_energies.begin(), [](const auto& p) { return p.first; });
+        std::vector<T> energies(specter.size());
+
+        std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), energies.begin(), [](const auto& p) { return p.first; });
         std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), weights.begin(), [](const auto& p) { return p.second; });
-        m_dist = RandomDistribution(weights);
+        const auto table = RandomDistribution<T>::generateTable(weights);
+
+        m_data.resize(table.size());
+        std::transform(std::execution::par_unseq, table.cbegin(), table.cend(), energies.cbegin(), m_data.begin(), [](const auto& tab, const T energy) {
+            return DataElement { .alias = tab.second, .prob = tab.first, .energy = energy };
+        });
+    }
+
+    /**
+     * @brief Sample an index from 0 to size() - 1 according to weights. This function is thread safe.
+     * @param state Random state for sampling of an index.
+     * @return index with probability according to weights[index].
+     */
+    std::size_t sampleIndex(RandomState& state) const
+    {
+        const auto r = state.randomUniform<T>();
+        const auto k = state.randomUniform<std::size_t>(m_data.size());
+        return r < m_data[k].prob ? k : m_data[k].alias;
     }
 
     /**
@@ -279,13 +301,18 @@ public:
      */
     T sampleValue(RandomState& state) const
     {
-        const std::size_t ind = m_dist.sampleIndex(state);
-        return ind < m_energies.size() - 1 ? state.randomUniform(m_energies[ind], m_energies[ind + 1]) : m_energies[ind];
+        const std::size_t ind = sampleIndex(state);
+        return ind < m_data.size() - 1 ? state.randomUniform(m_data[ind].energy, m_data[ind + 1].energy) : m_data[ind].energy;
     }
 
+protected:
 private:
-    RandomDistribution<T> m_dist;
-    std::vector<T> m_energies;
+    struct DataElement {
+        std::uint64_t alias = 0;
+        T prob = 0;
+        T energy = 0;
+    };
+    std::vector<DataElement> m_data;
 };
 
 template <Floating T, std::size_t N = 20>
