@@ -73,6 +73,8 @@ public:
 
     const std::array<std::size_t, 3>& voxelDimensions() const { return m_voxelDim; }
 
+    const std::array<T, 3>& voxelSpacing const { return m_voxelSize; }
+
     std::size_t gridIndex(const std::array<T, 3>& pos) const noexcept
     {
         const auto x = static_cast<std::size_t>((pos[0] - m_aabb[0]) / m_voxelSize[0]);
