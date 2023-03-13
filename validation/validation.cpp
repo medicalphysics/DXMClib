@@ -22,17 +22,18 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/transport.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
+#include "dxmc/world/worlditems/worldboxgrid.hpp"
 
 #include <fstream>
 #include <iostream>
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = false;
+constexpr bool SAMPLE_RUN = true;
 
 const auto N_THREADS = std::max(std::thread::hardware_concurrency(), 1u);
-const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? N_THREADS * 10 : 100u;
-const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000 : 100000;
+const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? N_THREADS * 10 : N_THREADS * 100u;
+const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
 
 template <Floating T>
 struct ResultKeys {
@@ -41,7 +42,7 @@ struct ResultKeys {
     std::string specter;
     std::string modus;
     std::string model;
-    bool forced = true;
+    bool forced = false;
     T result = 0;
     T result_std = 0;
     int precision = sizeof(T);
@@ -64,8 +65,15 @@ public:
     {
         m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, Forced, Precision\n";
     }
+
     template <typename T>
-    void print(const ResultKeys<T>& r)
+    void operator()(const ResultKeys<T>& r, bool terminal = true)
+    {
+        print(r, terminal);
+    }
+
+    template <typename T>
+    void print(const ResultKeys<T>& r, bool terminal = true)
     {
         const std::string forced = r.forced ? "1" : "0";
 
@@ -78,6 +86,18 @@ public:
         m_myfile << r.result_std << ", ";
         m_myfile << forced << ", ";
         m_myfile << r.precision << '\n';
+
+        if (terminal) {
+            std::cout << r.rCase << ", ";
+            std::cout << r.volume << ", ";
+            std::cout << r.specter << ", ";
+            std::cout << r.model << ", ";
+            std::cout << r.modus << ", ";
+            std::cout << r.result << ", ";
+            std::cout << r.result_std << ", ";
+            std::cout << forced << ", ";
+            std::cout << r.precision << '\n';
+        }
     }
 };
 
@@ -194,6 +214,37 @@ auto TG195_30KV()
     return TG195_specter<T>(TG195_30KV_raw);
 }
 
+template <typename T, int NShells = 5>
+std::pair<T, Material2<T, NShells>> TG195_soft_tissue()
+{
+    std::map<std::size_t, T> Zs;
+    Zs[1] = T { 10.5 };
+    Zs[6] = T { 25.6 };
+    Zs[7] = T { 2.7 };
+    Zs[8] = T { 60.2 };
+    Zs[11] = T { 0.1 };
+    Zs[15] = T { 0.2 };
+    Zs[16] = T { 0.3 };
+    Zs[17] = T { 0.2 };
+    Zs[19] = T { 0.2 };
+
+    auto mat_cand = Material2<T, NShells>::byWeight(Zs).value();
+
+    return std::make_pair(T { 1.03 }, mat_cand);
+}
+
+template <typename T, int NShells = 5>
+std::pair<T, Material2<T, NShells>> TG195_pmma()
+{
+    std::map<std::size_t, T> pmma_w;
+    pmma_w[1] = T { 53.28139898 };
+    pmma_w[6] = T { 33.37157741 };
+    pmma_w[8] = T { 13.34702361 };
+
+    auto mat_cand = Material2<T, NShells>::byWeight(pmma_w).value();
+    return std::make_pair(T { 1.19 }, mat_cand);
+}
+
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
 {
@@ -216,19 +267,14 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-template <typename T>
+template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 {
-    using Box = WorldBox<T, 5, 2>;
-    using Material = Material2<T, 5>;
+    constexpr int NShells = 5;
+    using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
+    using Material = Material2<T, NShells>;
 
-    std::map<std::size_t, T> pmma_w;
-    pmma_w[1] = T { 53.28139898 };
-    pmma_w[6] = T { 33.37157741 };
-    pmma_w[8] = T { 13.34702361 };
-    const T pmma_dens = T { 1.19 };
-
-    auto pmma_cand = Material::byWeight(pmma_w);
+    auto [mat_dens, mat] = TG195_soft_tissue<T, NShells>();
 
     World2<T, Box> world;
 
@@ -238,8 +284,9 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         const T box_zbegin = 155;
         const std::array<T, 6> box_aabb = { -box_halfside, -box_halfside, box_zbegin, box_halfside, box_halfside, box_zbegin + box_height };
         Box box(box_aabb);
-        box.setMaterial(pmma_cand.value());
-        box.setMaterialDensity(pmma_dens);
+        box.setVoxelDimensions({ 78, 78, 40 });
+        box.setMaterial(mat);
+        box.setMaterialDensity(mat_dens);
         world.addItem(std::move(box));
     }
 
@@ -250,9 +297,18 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         beam.setEnergySpecter(specter);
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        const T collangle = std::sin(T { 39 } / (2 * T { 180 }));
-        beam.setCollimationAngles({ collangle, collangle });
-
+        if (tomo) {
+            constexpr T alpha = 15 * DEG_TO_RAD<T>();
+            const T h = 180 * std::atan(alpha);
+            beam.setPosition({ 0, -h, 0 });
+            const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
+            const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
+            const T x_ang = std::atan(T { 39 } / (2 * 180));
+            beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
+        } else {
+            const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
+            beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+        }
         Transport<T> transport;
         auto time_elapsed = runDispatcher(transport, world, beam);
     } else {
@@ -260,8 +316,26 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         beam.setEnergy(T { 56.4 });
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        const T collangle = std::sin(T { 39 } / (2 * T { 180 }));
-        beam.setCollimationAngles({ collangle, collangle });
+
+        if (tomo) {
+            constexpr T alpha = 15 * DEG_TO_RAD<T>();
+            const T h = 180 * std::atan(alpha);
+            beam.setPosition({ 0, -h, 0 });
+            std::array<T, 3> x_cos = { 1, 0, 0 };
+            std::array<T, 3> y_cos = { 0, 1, 0 };
+            y_cos = vectormath::rotate(y_cos, x_cos, 15 * DEG_TO_RAD<T>());
+            const T beta = std::atan((h - T { 39 } / 2) / 180);
+            const T y_ang_min = alpha - beta;
+            const T phi = std::atan((h + T { 39 } / 2) / 180);
+            const T y_ang_max = phi - beta - alpha;
+
+            const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
+            beam.setCollimationAngles(-collangle, y_ang_min, collangle, y_ang_max);
+            beam.setDirectionCosines(x_cos, y_cos);
+        } else {
+            const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
+            beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+        }
 
         Transport<T> transport;
         auto time_elapsed = runDispatcher(transport, world, beam);
@@ -269,14 +343,68 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 
     const auto& boxes = world.getItems<Box>();
     const auto& box = boxes.front();
-    const auto& dose = box.dose();
 
     const auto total_hist = static_cast<T>(N_EXPOSURES * N_HISTORIES);
-    const auto ev_history = dose.energyImparted() / (total_hist / 1000);
-    const auto ev_history_var = dose.varianceEnergyImparted() / (total_hist / 1000);
+
+    T total_ev = 0;
+    T total_ev_var = 0;
+    for (std::size_t i = 0; i < box.totalNumberOfVoxels(); ++i) {
+        total_ev += box.dose(i).energyImparted();
+        total_ev_var += box.dose(i).varianceEnergyImparted();
+    }
+
+    const auto ev_history = total_ev / (total_hist / 1000);
+    const auto ev_history_var = total_ev_var / (total_hist / 1000);
+
+    std::string model;
+    if (LOWENERGYCORRECTION == 0)
+        model = "None";
+    if (LOWENERGYCORRECTION == 1)
+        model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        model = "IA";
+
+    ResultKeys<T> res;
+    res.specter = specter ? "120kVp" : "56.4keV";
+    res.rCase = "Case 2";
+    res.volume = "Total body";
+    res.model = model;
+    res.result = ev_history;
+    res.result_std = std::sqrt(ev_history_var);
+    res.modus = tomo ? "tomosyntesis" : "radiography";
+
+    double TG195_value;
+    if (specter) {
+        if (tomo) {
+            TG195_value = 30923.13;
+        } else {
+            TG195_value = 33125.98;
+        }
+    } else {
+        if (tomo) {
+            TG195_value = 30883.83;
+        } else {
+            TG195_value = 33171.40;
+        }
+    }
+
+    ResultPrint print;
+    print(res, false);
+
+    if (LOWENERGYCORRECTION == 0) {
+        res.model = "TG195";
+        res.result = TG195_value;
+        res.result_std = 0;
+        print(res, false);
+    }
+
+    std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n";
+    std::cout << "Whole body: " << ev_history << " eV/history, TG195: " << TG195_value << " eV/history";
+    std::cout << ", differense: " << ev_history - TG195_value << " ev/history [" << (ev_history / TG195_value - 1) * 100 << "]%  \n";
+
     std::cout << "eV per history: " << ev_history << std::endl;
     std::cout << "eV per history std: " << std::sqrt(ev_history_var) << std::endl;
-    // std::cout << "Energy " << beam.energy() << " attenuation: " << pmma_cand.value().attenuationValues(beam.energy()).sum() << std::endl;
+
     return true;
 }
 
@@ -285,8 +413,20 @@ bool runAll()
 {
     auto success = true;
 
-    // success = success && TG195Case2AbsorbedEnergy<T>(false, false);
-    success = success && TG195Case2AbsorbedEnergy<T>(true, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 0>(true, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 0>(false, true);
+    success = success && TG195Case2AbsorbedEnergy<T, 0>(true, true);
+
+    success = success && TG195Case2AbsorbedEnergy<T, 1>(false, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 1>(true, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 1>(false, true);
+    success = success && TG195Case2AbsorbedEnergy<T, 1>(true, true);
+
+    success = success && TG195Case2AbsorbedEnergy<T, 2>(false, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 2>(true, false);
+    success = success && TG195Case2AbsorbedEnergy<T, 2>(false, true);
+    success = success && TG195Case2AbsorbedEnergy<T, 2>(true, true);
 
     return success;
 }
@@ -303,15 +443,12 @@ void printStart()
 
 int main(int argc, char* argv[])
 {
-    // printStart();
+    printStart();
 
     auto success = true;
     // success = success && selectOptions<double>();
     success = success && runAll<double>();
-    success = success && runAll<double>();
-    success = success && runAll<double>();
-    success = success && runAll<float>();
-    success = success && runAll<float>();
+
     success = success && runAll<float>();
 
     // std::cout << "Press any key to exit";

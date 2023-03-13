@@ -37,7 +37,7 @@ public:
     {
     }
 
-    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
 
     void setSpecterDistribution(const SpecterDistribution<T>& s)
     {
@@ -49,9 +49,10 @@ public:
     Particle<T> sampleParticle(RandomState& state) const noexcept
     {
         auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
-        const auto theta_x = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
+
+        const auto theta_x = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         dir = vectormath::rotate(dir, m_dirCosines[1], theta_x);
-        const auto theta_y = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
+        const auto theta_y = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
         dir = vectormath::rotate(dir, m_dirCosines[0], theta_y);
 
         Particle<T> p = { .pos = m_pos,
@@ -64,7 +65,7 @@ public:
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_NParticles = 100;
     SpecterDistribution<T> m_specterDist;
 };
@@ -93,12 +94,27 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
+    void setDirectionCosines(const std::array<T, 3>& xdir, const std::array<T, 3>& ydir)
+    {
+        m_dirCosines[0] = xdir;
+        m_dirCosines[1] = ydir;
+        vectormath::normalize(m_dirCosines[0]);
+        vectormath::normalize(m_dirCosines[1]);
+    }
+
     void setEnergySpecter(const std::vector<std::pair<T, T>>& specter)
     {
         m_specter = SpecterDistribution(specter);
     }
 
-    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(T minX, T minY, T maxX, T maxY)
+    {
+        m_collimationAngles[0] = minX;
+        m_collimationAngles[1] = minY;
+        m_collimationAngles[2] = maxX;
+        m_collimationAngles[3] = maxY;
+    }
 
     IsotropicBeamExposure<T> exposure(std::size_t i) const noexcept
     {
@@ -112,7 +128,7 @@ public:
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
     SpecterDistribution<T> m_specter;

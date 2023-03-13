@@ -101,6 +101,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/depthdose.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worlditembase.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldbox.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldboxgrid.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldsphere.hpp"    
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldcylinder.hpp"  
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh.hpp"

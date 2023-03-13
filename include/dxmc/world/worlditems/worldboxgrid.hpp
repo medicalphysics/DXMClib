@@ -33,17 +33,18 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class WorldBox final : public WorldItemBase<T> {
+class WorldBoxGrid final : public WorldItemBase<T> {
 public:
-    WorldBox(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
+    WorldBoxGrid(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase<T>()
         , m_aabb(aabb)
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        setVoxelDimensions({ 1, 1, 1 });
     }
 
-    WorldBox(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
+    WorldBoxGrid(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
@@ -52,11 +53,35 @@ public:
             m_aabb[i + 3] = std::abs(aabb_size) + pos[i];
         }
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        setVoxelDimensions({ 1, 1, 1 });
     }
 
     void setMaterial(const Material2<T, NMaterialShells>& material)
     {
         m_material = material;
+    }
+    void setVoxelDimensions(const std::array<std::size_t, 3>& dim)
+    {
+        m_voxelDim = dim;
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_voxelSize[i] = (m_aabb[i + 3] - m_aabb[i]) / m_voxelDim[i];
+        }
+        const auto ndim = m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
+        m_dose.resize(ndim);
+    }
+    std::size_t totalNumberOfVoxels() const { return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2]; }
+
+    const std::array<std::size_t, 3>& voxelDimensions() const { return m_voxelDim; }
+
+    std::size_t gridIndex(const std::array<T, 3>& pos) const noexcept
+    {
+        const auto x = static_cast<std::size_t>((pos[0] - m_aabb[0]) / m_voxelSize[0]);
+        const auto y = static_cast<std::size_t>((pos[1] - m_aabb[1]) / m_voxelSize[1]);
+        const auto z = static_cast<std::size_t>((pos[2] - m_aabb[2]) / m_voxelSize[2]);
+        if (x < m_voxelDim[0] && y < m_voxelDim[1] && z < m_voxelDim[2]) {
+            return x + y * m_voxelDim[0] + z * m_voxelDim[0] * m_voxelDim[1];
+        }
+        return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
     }
 
     void setMaterialDensity(T density) { m_materialDensity = density; }
@@ -119,7 +144,8 @@ public:
                 // interaction happends
                 p.translate(stepLen);
                 const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
-                m_dose.scoreEnergy(intRes.energyImparted);
+                const auto doseIdx = gridIndex(p.pos);
+                m_dose[doseIdx].scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
 
@@ -133,15 +159,17 @@ public:
 
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
-        return m_dose;
+        return m_dose.at(index);
     }
 
 protected:
 private:
     std::array<T, 6> m_aabb;
     Material2<T, NMaterialShells> m_material;
+    std::vector<DoseScore<T>> m_dose;
     T m_materialDensity = 1;
-    DoseScore<T> m_dose;
+    std::array<T, 3> m_voxelSize = { 1, 1, 1 };
+    std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };
 };
 
 }

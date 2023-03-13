@@ -76,9 +76,12 @@ public:
 
     T varianceEnergyImparted() const
     {
-        const auto e_exp = energyImparted() / numberOfEvents();
-        const auto e2_exp = energyImpartedSquared() / numberOfEvents();
-        return e2_exp - e_exp * e_exp;
+        if (numberOfEvents() > 0) {
+            const auto e_exp = energyImparted() / numberOfEvents();
+            const auto e2_exp = energyImpartedSquared() / numberOfEvents();
+            return e2_exp - e_exp * e_exp;
+        }
+        return 0;
     }
 
     std::uint64_t numberOfEvents() const
@@ -127,9 +130,12 @@ public:
 
     double varianceEnergyImparted() const
     {
-        const auto e_exp = energyImparted() / numberOfEvents();
-        const auto e2_exp = energyImpartedSquared() / numberOfEvents();
-        return e2_exp - e_exp * e_exp;
+        if (numberOfEvents() > 0) {
+            const auto e_exp = energyImparted() / numberOfEvents();
+            const auto e2_exp = energyImpartedSquared() / numberOfEvents();
+            return e2_exp - e_exp * e_exp;
+        }
+        return 0;
     }
 
     std::uint64_t numberOfEvents() const
