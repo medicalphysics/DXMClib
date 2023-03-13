@@ -43,17 +43,18 @@ def fix_axis(fg, rotate_labels=True):
 def plotCase2(dt_full, show=False):
     dt=dt_full[dt_full['Case']=="Case 2"]    
     dt_vol=dt[dt['Volume'] != 'Total body']
-    for forced in [0, 1]:
-        dt_f=dt_vol[dt_vol['Forced']==forced]
-        g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt_f )
+
+    for p in [4,8]:
+        dt_p = dt_vol[dt_vol['Precision']==p]
+        g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt_p )
         fix_axis(g)
-        plt.savefig("plots/Case2_volume{}.png".format("_forced" if forced==1 else ""), dpi=900)
+        plt.savefig("plots/Case2_{}_volume.png".format("double" if p == 8 else "float"), dpi=900)
         if show:
             plt.show()
         plt.clf()
 
     dt_tot = dt[dt['Volume'] == "Total body"]
-    g = sns.catplot(x="Forced", y="Result",hue='Model', row='Specter', col='Mode', data=dt_tot )
+    g = sns.catplot(x="Specter", y="Result",hue='Model', col='Mode', row ='Precision', data=dt_tot )
     fix_axis(g, False)
     plt.savefig("plots/Case2_total_body.png", dpi=900)
     if show:
@@ -125,7 +126,7 @@ if __name__=='__main__':
     except Exception as e:
         print(e)
     plotCase2(dt)
-    plotCase3(dt)
-    plotCase41(dt)
-    plotCase42(dt)
-    plotCase5(dt)
+  #  plotCase3(dt)
+  #  plotCase41(dt)
+  #  plotCase42(dt)
+  #  plotCase5(dt)

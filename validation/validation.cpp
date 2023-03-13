@@ -33,7 +33,7 @@ constexpr bool SAMPLE_RUN = true;
 
 const auto N_THREADS = std::max(std::thread::hardware_concurrency(), 1u);
 const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? N_THREADS * 10 : N_THREADS * 100u;
-const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
+const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 100000;
 
 template <Floating T>
 struct ResultKeys {
@@ -321,17 +321,10 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
             constexpr T alpha = 15 * DEG_TO_RAD<T>();
             const T h = 180 * std::atan(alpha);
             beam.setPosition({ 0, -h, 0 });
-            std::array<T, 3> x_cos = { 1, 0, 0 };
-            std::array<T, 3> y_cos = { 0, 1, 0 };
-            y_cos = vectormath::rotate(y_cos, x_cos, 15 * DEG_TO_RAD<T>());
-            const T beta = std::atan((h - T { 39 } / 2) / 180);
-            const T y_ang_min = alpha - beta;
-            const T phi = std::atan((h + T { 39 } / 2) / 180);
-            const T y_ang_max = phi - beta - alpha;
-
-            const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
-            beam.setCollimationAngles(-collangle, y_ang_min, collangle, y_ang_max);
-            beam.setDirectionCosines(x_cos, y_cos);
+            const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
+            const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
+            const T x_ang = std::atan(T { 39 } / (2 * 180));
+            beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
         } else {
             const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
             beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
@@ -348,8 +341,12 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 
     T total_ev = 0;
     T total_ev_var = 0;
+    std::vector<T> ev_vector(box.totalNumberOfVoxels());
+    std::vector<T> ev_var_vector(box.totalNumberOfVoxels());
     for (std::size_t i = 0; i < box.totalNumberOfVoxels(); ++i) {
         total_ev += box.dose(i).energyImparted();
+        ev_vector[i] = box.dose(i).energyImparted();
+        ev_var_vector[i] = box.dose(i).varianceEnergyImparted();
         total_ev_var += box.dose(i).varianceEnergyImparted();
     }
 
@@ -372,38 +369,89 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     res.result = ev_history;
     res.result_std = std::sqrt(ev_history_var);
     res.modus = tomo ? "tomosyntesis" : "radiography";
+    ResultPrint print;
+    print(res, false);
+
+    std::map<std::size_t, std::array<T, 3>> vois;
+    vois[3] = { 0, 0, 0 };
+    vois[8] = { 0, 0, 3 };
+    vois[9] = { 0, 0, 6 };
+    vois[7] = { 0, 0, -3 };
+    vois[6] = { 0, 0, -6 };
+    vois[1] = { 0, -15, 0 };
+    vois[5] = { 0, 15, 0 };
+    vois[2] = { -15, 0, 0 };
+    vois[4] = { 15, 0, 0 };
+    for (const auto& [ind, pos] : vois) {
+        res.volume = "VOI " + std::to_string(ind);
+        res.result = 0;
+        const auto ds = T { 1.5 };
+        const auto& spacing = box.voxelSpacing();
+        const auto& dim = box.voxelDimensions();
+        for (std::size_t z = 0; z < dim[2]; ++z) {
+            const auto posz = -(dim[2] * spacing[2]) / 2 + z * spacing[2] + spacing[2] / 2;
+            if (pos[2] - ds <= posz && posz <= pos[2] + ds) {
+                for (std::size_t y = 0; y < dim[1]; ++y) {
+                    const auto posy = -(dim[1] * spacing[1]) / 2 + y * spacing[1] + spacing[1] / 2;
+                    if (pos[1] - ds <= posy && posy <= pos[1] + ds) {
+                        for (std::size_t x = 0; x < dim[0]; ++x) {
+                            const auto posx = -(dim[0] * spacing[0]) / 2 + x * spacing[0] + spacing[0] / 2;
+                            if (pos[0] - ds <= posx && posx <= pos[0] + ds) {
+                                std::array<T, 3> vpos = { posx, posy, posz };
+                                const auto boxpos = vectormath::add(vpos, box.center());
+                                const auto dIdx = box.gridIndex(boxpos);
+                                res.result += ev_vector[dIdx];
+                                res.result_std += ev_var_vector[dIdx];
+                            }
+                        }
+                    }
+                }
+            }
+        }
+        res.result /= (total_hist / 1000);
+        res.result_std /= (total_hist / 1000);
+        res.result_std = std::sqrt(res.result_std);
+        print(res, false);
+    }
 
     double TG195_value;
+    std::array<double, 9> TG195_voi_values;
     if (specter) {
         if (tomo) {
             TG195_value = 30923.13;
+            TG195_voi_values = { 30.35, 23.52, 31.64, 23.52, 8.90, 70.53, 47.74, 20.31, 12.51 };
         } else {
             TG195_value = 33125.98;
+            TG195_voi_values = { 24.97, 24.95, 33.52, 24.96, 24.97, 72.70, 49.99, 21.73, 13.48 };
         }
     } else {
         if (tomo) {
             TG195_value = 30883.83;
+            TG195_voi_values = { 33.08, 25.48, 34.63, 25.51, 9.79, 70.80, 51.06, 22.28, 13.54 };
         } else {
             TG195_value = 33171.40;
+            TG195_voi_values = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
         }
     }
 
-    ResultPrint print;
-    print(res, false);
-
     if (LOWENERGYCORRECTION == 0) {
+        res.volume = "Total body";
         res.model = "TG195";
         res.result = TG195_value;
         res.result_std = 0;
         print(res, false);
+        for (std::size_t i = 0; i < TG195_voi_values.size(); ++i) {
+            res.volume = "VOI " + std::to_string(i + 1);
+            res.result = TG195_voi_values[i];
+            print(res, false);
+        }
+
+        saveBinaryArray(ev_vector, res.modus + res.specter + "test.bin");
     }
 
     std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n";
     std::cout << "Whole body: " << ev_history << " eV/history, TG195: " << TG195_value << " eV/history";
     std::cout << ", differense: " << ev_history - TG195_value << " ev/history [" << (ev_history / TG195_value - 1) * 100 << "]%  \n";
-
-    std::cout << "eV per history: " << ev_history << std::endl;
-    std::cout << "eV per history std: " << std::sqrt(ev_history_var) << std::endl;
 
     return true;
 }
@@ -446,9 +494,8 @@ int main(int argc, char* argv[])
     printStart();
 
     auto success = true;
-    // success = success && selectOptions<double>();
-    success = success && runAll<double>();
 
+    success = success && runAll<double>();
     success = success && runAll<float>();
 
     // std::cout << "Press any key to exit";

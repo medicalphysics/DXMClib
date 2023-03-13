@@ -73,7 +73,7 @@ public:
 
     const std::array<std::size_t, 3>& voxelDimensions() const { return m_voxelDim; }
 
-    const std::array<T, 3>& voxelSpacing const { return m_voxelSize; }
+    const std::array<T, 3>& voxelSpacing() const { return m_voxelSize; }
 
     std::size_t gridIndex(const std::array<T, 3>& pos) const noexcept
     {
