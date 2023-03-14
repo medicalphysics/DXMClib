@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/world/worlditems/depthdose.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
 
@@ -33,7 +34,7 @@ constexpr bool SAMPLE_RUN = true;
 
 const auto N_THREADS = std::max(std::thread::hardware_concurrency(), 1u);
 const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? N_THREADS * 10 : N_THREADS * 100u;
-const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 100000;
+const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
 
 template <Floating T>
 struct ResultKeys {
@@ -237,9 +238,9 @@ template <typename T, int NShells = 5>
 std::pair<T, Material2<T, NShells>> TG195_pmma()
 {
     std::map<std::size_t, T> pmma_w;
-    pmma_w[1] = T { 53.28139898 };
-    pmma_w[6] = T { 33.37157741 };
-    pmma_w[8] = T { 13.34702361 };
+    pmma_w[1] = T { 8.0541 };
+    pmma_w[6] = T { 59.9846 };
+    pmma_w[8] = T { 31.9613 };
 
     auto mat_cand = Material2<T, NShells>::byWeight(pmma_w).value();
     return std::make_pair(T { 1.19 }, mat_cand);
@@ -456,12 +457,117 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     return true;
 }
 
+template <Floating T, int LOWENERGYCORRECTION = 2>
+bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = false, int mode = 0)
+{
+    constexpr int materialShells = 5;
+    using Cylindar = DepthDose<T, materialShells>;
+    using World = World2<T, Cylindar>;
+    using Material = Material2<T, materialShells>;
+
+    auto [mat_dens, mat] = TG195_pmma<T, materialShells>();
+
+    World world;
+    auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 300 }, 600 });
+    world.build(60);
+    cylinder.setMaterial(mat);
+    cylinder.setMaterialDensity(mat_dens);
+    if (specter) {
+        using Beam = IsotropicBeam<T>;
+        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+        const auto specter = TG195_120KV<T>();
+        beam.setEnergySpecter(specter);
+        const auto collangle_y = std::atan(T { 16 } / T { 60 });
+        const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
+        beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
+        beam.setNumberOfExposures(N_EXPOSURES);
+        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+        Transport<T> transport;
+        auto time_elapsed = runDispatcher(transport, world, beam);
+    } else {
+        using Beam = IsotropicMonoEnergyBeam<T>;
+        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 }, T { 56.4 });
+        const auto collangle_y = std::atan(T { 16 } / T { 60 });
+        const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
+        beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
+        beam.setNumberOfExposures(N_EXPOSURES);
+        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+        Transport<T> transport;
+        auto time_elapsed = runDispatcher(transport, world, beam);
+    }
+    const std::array<T, 4> voi_locations = { 0, 1, 2, 3 };
+    std::array<T, 4> ev_history, ev_history_var;
+    ev_history.fill(0);
+    ev_history_var.fill(0);
+
+    for (const auto& [z, dose] : cylinder.depthDose()) {
+        for (std::size_t i = 0; i < voi_locations.size(); ++i) {
+            const T zmin = voi_locations[i] - T { 0.5 };
+            const T zmax = voi_locations[i] + T { 0.5 };
+            if (zmin < z && z < zmax) {
+                ev_history[i] += dose.energyImparted();
+                ev_history_var[i] += dose.varianceEnergyImparted();
+            }
+        }
+    }
+
+    for (std::size_t i = 0; i < voi_locations.size(); ++i) {
+        ev_history[i] /= (N_HISTORIES * N_EXPOSURES) / 1000;
+        ev_history_var[i] /= (N_HISTORIES * N_EXPOSURES) / 1000;
+    }
+
+    std::string model;
+    if (LOWENERGYCORRECTION == 0)
+        model = "None";
+    if (LOWENERGYCORRECTION == 1)
+        model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        model = "IA";
+
+    ResultPrint print;
+    ResultKeys<T> res;
+    res.specter = specter ? "120kVp" : "56.4keV";
+    res.rCase = "Case 4.1";
+    res.model = model;
+    res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
+
+    std::cout << res.rCase << " specter: " << res.specter << " collimation: " << res.modus << " " << res.model << std::endl;
+
+    for (std::size_t i = 0; i < voi_locations.size(); ++i) {
+        res.volume = "VOI " + std::to_string(i + 1);
+        res.result = ev_history[i];
+        res.result_std = std::sqrt(ev_history_var[i]);
+        print(res, false);
+        std::cout << res.volume << ": " << res.result << " eV/history\n";
+    }
+    if (LOWENERGYCORRECTION == 0) {
+
+        std::array<double, 4> tg195;
+        if (specter && large_collimation)
+            tg195 = { 3586.59, 3537.84, 3378.99, 2672.21 };
+        if (specter && !large_collimation)
+            tg195 = { 13137.02, 2585.47, 1706.86, 1250.61 };
+        if (!specter && large_collimation)
+            tg195 = { 3380.39, 3332.64, 3176.44, 2559.58 };
+        if (!specter && !large_collimation)
+            tg195 = { 11592.27, 2576.72, 1766.85, 1330.53 };
+        res.model = "TG195";
+        for (const auto r : tg195) {
+            res.result = r;
+            res.result_std = 0;
+            print(res, false);
+        }
+    }
+
+    return true;
+}
+
 template <typename T>
 bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
+    /* success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, true);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(true, true);
@@ -475,6 +581,9 @@ bool runAll()
     success = success && TG195Case2AbsorbedEnergy<T, 2>(true, false);
     success = success && TG195Case2AbsorbedEnergy<T, 2>(false, true);
     success = success && TG195Case2AbsorbedEnergy<T, 2>(true, true);
+    */
+
+    success = success && TG195Case41AbsorbedEnergy<T, 0>(false, false);
 
     return success;
 }

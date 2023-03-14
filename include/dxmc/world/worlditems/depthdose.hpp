@@ -131,17 +131,15 @@ public:
         }
     }
 
-    const std::vector<DoseScore<T>>& doseVector() const
+    const std::vector<std::pair<T, DoseScore<T>>> depthDose() const
     {
-        return m_dose;
-    }
-    const std::vector<T> depthVector() const
-    {
-        std::vector<T> depth(m_dose.size());
-        const auto step = (2 * m_half_height) / depth.size();
+        std::vector<std::pair<T, DoseScore<T>>> depth;
+        depth.reserve(m_dose.size());
+
+        const auto step = (2 * m_half_height) / m_dose.size();
         const auto start = m_center[2] - m_half_height + step / 2;
-        for (std::size_t i = 0; i < depth.size(); ++i) {
-            depth[i] = start + step * i;
+        for (std::size_t i = 0; i < m_dose.size(); ++i) {
+            depth.push_back(std::make_pair(start + step * i, m_dose[i]));
         }
         return depth;
     }
