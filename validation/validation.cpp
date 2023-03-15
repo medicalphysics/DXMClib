@@ -268,7 +268,7 @@ template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 {
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 100;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 500;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
 
     constexpr int NShells = 5;
@@ -459,7 +459,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 200;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 500;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
 
     constexpr int materialShells = 5;
@@ -568,7 +568,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 100;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 500;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
 
     constexpr int materialShells = 5;
