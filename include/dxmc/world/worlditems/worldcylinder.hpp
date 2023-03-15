@@ -33,7 +33,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5>
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class WorldCylinder final : public WorldItemBase<T> {
 public:
     WorldCylinder(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& pos = { 0, 0, 0 })
@@ -87,7 +87,7 @@ public:
         return aabb;
     }
 
-    auto intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
         return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
     }
@@ -95,9 +95,9 @@ public:
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight);
-        bool updateAtt = false;
-        auto att = m_material.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        bool updateAtt = true;
+        AttenuationValues<T> att;
+        T attSumInv;
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
@@ -105,18 +105,18 @@ public:
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersectForward(p).value(); // this can not be nullopt
+            const auto intLen = intersect(p);
 
-            if (stepLen < intLen) {
+            if (stepLen < intLen.intersection) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::interact(att, p, m_material, state);
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 m_dose.scoreEnergy(intRes.energyImparted);
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
             } else {
                 // transport to border
-                p.border_translate(intLen);
+                p.border_translate(intLen.intersection);
                 cont = false;
             }
         }

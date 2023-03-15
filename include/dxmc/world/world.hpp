@@ -90,6 +90,14 @@ public:
         return ptrs;
     }
 
+    void clearDose()
+    {
+        m_dose.clear();
+        for (auto item : getItemPointers()) {
+            item->clearDose();
+        }
+    }
+
     void build(T AABB_padding = 10)
     {
         auto ptrs = getItemPointers();

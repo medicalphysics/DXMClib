@@ -1,6 +1,6 @@
 
 
-add_executable(validation validation.cpp)
+add_executable(validation validation.cpp tg195world42.hpp)
 target_link_libraries(validation libdxmc)
 
 set(DATA_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data")

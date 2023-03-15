@@ -143,6 +143,13 @@ public:
         return m_nEvents;
     }
 
+    void clear()
+    {
+        m_nEvents = 0;
+        m_energyImparted = 0;
+        m_energyImpartedSquared = 0;
+    }
+
 private:
     std::uint64_t m_nEvents = 0;
     double m_energyImparted = 0;
@@ -158,6 +165,7 @@ public:
     virtual WorldIntersectionResult<T> intersect(const Particle<T>& p) const = 0;
 
     virtual const DoseScore<T>& dose(std::size_t index = 0) const = 0;
+    virtual void clearDose() = 0;
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
 
 protected:

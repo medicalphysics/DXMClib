@@ -107,6 +107,13 @@ public:
         }
     }
 
+    void clearDose() override
+    {
+        for (auto& d : m_dose) {
+            d.clear();
+        }
+    }
+
     std::array<T, 3> center() const noexcept override
     {
         std::array<T, 3> c {

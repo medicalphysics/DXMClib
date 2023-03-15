@@ -74,6 +74,12 @@ public:
     {
         return m_center;
     }
+    void clearDose() override
+    {
+        for (auto& d : m_dose) {
+            d.clear();
+        }
+    }
 
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {

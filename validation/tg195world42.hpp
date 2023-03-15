@@ -33,18 +33,24 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class DepthDose final : public WorldItemBase<T> {
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+class TG195World42 final : public WorldItemBase<T> {
 public:
-    DepthDose(T radius = T { 16 }, T height = T { 10 }, std::size_t resolution = 100, const std::array<T, 3>& pos = { 0, 0, 0 })
+    TG195World42(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_radius(radius)
-        , m_half_height(height * T { 0.5 })
+        , m_halfHeight(height * T { 0.5 })
         , m_center(pos)
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
-        m_dose.resize(resolution);
+
+        m_centerChild.center = m_center;
+        m_centerChild.radii = T { 0.5 };
+        m_centerChild.halfHeight = 5;
+        m_periferyChild.center = { m_center[0] - (m_radius - 1), m_center[1], m_center[2] };
+        m_periferyChild.radii = T { 0.5 };
+        m_periferyChild.halfHeight = 5;
     }
 
     void setMaterial(const Material2<T, NMaterialShells>& material)
@@ -54,32 +60,9 @@ public:
 
     void setMaterialDensity(T density) { m_materialDensity = density; }
 
-    bool setNistMaterial(const std::string& nist_name)
-    {
-        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
-        if (mat) {
-            m_material = mat.value();
-            m_materialDensity = NISTMaterials<T>::density(nist_name);
-            return true;
-        }
-        return false;
-    }
-    const Material2<T, NMaterialShells>& material() const
-    {
-        return m_material;
-    }
-    T density() const { return m_materialDensity; }
-
     void translate(const std::array<T, 3>& dist) override
     {
         m_center = vectormath::add(m_center, dist);
-    }
-
-    void clearDose() override
-    {
-        for (auto& d : m_dose) {
-            d.clear();
-        }
     }
 
     std::array<T, 3> center() const override
@@ -92,25 +75,32 @@ public:
         std::array<T, 6> aabb {
             m_center[0] - m_radius,
             m_center[1] - m_radius,
-            m_center[2] - m_half_height,
+            m_center[2] - m_halfHeight,
             m_center[0] + m_radius,
             m_center[1] + m_radius,
-            m_center[2] + m_half_height
+            m_center[2] + m_halfHeight
         };
         return aabb;
     }
 
+    void clearDose() override
+    {
+        m_dose.clear();
+        m_centerChild.dose.clear();
+        m_periferyChild.dose.clear();
+    }
+
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
-        bool updateAtt = false;
-        auto att = m_material.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight);
+        bool updateAtt = true;
+        AttenuationValues<T> att;
+        T attSumInv;
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
@@ -118,52 +108,61 @@ public:
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersect(p).intersection; // this can not be nullopt
+            const auto intLen = intersect(p);
 
-            if (stepLen < intLen) {
+            if (stepLen < intLen.intersection) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+
+                if (basicshape::cylinder::pointInside(p.pos, m_centerChild.center, m_centerChild.radii, m_centerChild.halfHeight)) {
+                    m_centerChild.dose.scoreEnergy(intRes.energyImparted);
+                } else if (basicshape::cylinder::pointInside(p.pos, m_periferyChild.center, m_periferyChild.radii, m_periferyChild.halfHeight)) {
+                    m_periferyChild.dose.scoreEnergy(intRes.energyImparted);
+                } else {
+                    m_dose.scoreEnergy(intRes.energyImparted);
+                }
+
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
-
-                const auto dose_ind_f = (p.pos[2] - (m_center[2] - m_half_height)) * m_dose.size() / (m_half_height * 2);
-                const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_dose.size() - 1);
-                m_dose[ind].scoreEnergy(intRes.energyImparted);
             } else {
                 // transport to border
-                p.border_translate(intLen);
+                p.border_translate(intLen.intersection);
                 cont = false;
             }
         }
     }
 
-    const std::vector<std::pair<T, DoseScore<T>>> depthDose() const
+    const DoseScore<T>& doseCenterCylinder() const
     {
-        std::vector<std::pair<T, DoseScore<T>>> depth;
-        depth.reserve(m_dose.size());
-
-        const auto step = (2 * m_half_height) / m_dose.size();
-        const auto start = m_center[2] - m_half_height + step / 2;
-        for (std::size_t i = 0; i < m_dose.size(); ++i) {
-            depth.push_back(std::make_pair(start + step * i, m_dose[i]));
-        }
-        return depth;
+        return m_centerChild.dose;
     }
-
+    const DoseScore<T>& dosePeriferyCylinder() const
+    {
+        return m_periferyChild.dose;
+    }
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
-        return m_dose[index];
+        return m_dose;
     }
 
 protected:
+    struct CylinderChild {
+        std::array<T, 3> center;
+        T radii;
+        T halfHeight;
+        DoseScore<T> dose;
+    };
+
 private:
     T m_radius = 0;
-    T m_half_height = 0;
+    T m_halfHeight = 0;
     std::array<T, 3> m_center;
     T m_materialDensity = 1;
     Material2<T, NMaterialShells> m_material;
-    std::vector<DoseScore<T>> m_dose;
+    DoseScore<T> m_dose;
+    CylinderChild m_centerChild;
+    CylinderChild m_periferyChild;
 };
 
 }
