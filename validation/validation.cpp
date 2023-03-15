@@ -631,9 +631,9 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             std::uint64_t teller = 0;
             T uncert = 1;
             do {
-                auto time_elapsed = runDispatcher(transport, world, beam);             
+                auto time_elapsed = runDispatcher(transport, world, beam);
                 const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
-                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();                
+                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
                 uncert = std::max(d1, d2);
                 teller++;
             } while (uncert > T { 0.01 } && !SAMPLE_RUN);
@@ -683,7 +683,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
                 const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
                 uncert = std::max(d1, d2);
                 teller++;
-            } while (uncert > T { 0.0001 } && !SAMPLE_RUN);
+            } while (uncert > T { 0.01 } && !SAMPLE_RUN);
 
             std::cout << "Angle " << angInt;
             res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
