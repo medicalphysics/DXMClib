@@ -268,8 +268,8 @@ template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 {
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 500;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 200;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 10000000;
 
     constexpr int NShells = 5;
     using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
@@ -344,11 +344,15 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     T total_ev_var = 0;
     std::vector<T> ev_vector(box.totalNumberOfVoxels());
     std::vector<T> ev_var_vector(box.totalNumberOfVoxels());
+    std::vector<std::uint64_t> ev_events_vector(box.totalNumberOfVoxels());
+    std::uint64_t total_number_events = 0;
     for (std::size_t i = 0; i < box.totalNumberOfVoxels(); ++i) {
         total_ev += box.dose(i).energyImparted();
         ev_vector[i] = box.dose(i).energyImparted();
         ev_var_vector[i] = box.dose(i).varianceEnergyImparted();
         total_ev_var += box.dose(i).varianceEnergyImparted();
+        total_number_events += box.dose(i).numberOfEvents();
+        ev_events_vector[i] = box.dose(i).numberOfEvents();
     }
 
     const auto ev_history = total_ev / (total_hist / 1000);
@@ -370,6 +374,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     res.result = ev_history;
     res.result_std = ev_history_var;
     res.modus = tomo ? "tomosyntesis" : "radiography";
+    res.nEvents = total_number_events;
     ResultPrint print;
     print(res, false);
 
@@ -386,6 +391,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     for (const auto& [ind, pos] : vois) {
         res.volume = "VOI " + std::to_string(ind);
         res.result = 0;
+        res.nEvents = 0;
         const auto ds = T { 1.5 };
         const auto& spacing = box.voxelSpacing();
         const auto& dim = box.voxelDimensions();
@@ -403,6 +409,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
                                 const auto dIdx = box.gridIndex(boxpos);
                                 res.result += ev_vector[dIdx];
                                 res.result_std += ev_var_vector[dIdx];
+                                res.nEvents += ev_events_vector[dIdx];
                             }
                         }
                     }
@@ -439,14 +446,13 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         res.model = "TG195";
         res.result = TG195_value;
         res.result_std = 0;
+        res.nEvents = 0;
         print(res, false);
         for (std::size_t i = 0; i < TG195_voi_values.size(); ++i) {
             res.volume = "VOI " + std::to_string(i + 1);
             res.result = TG195_voi_values[i];
             print(res, false);
         }
-
-        saveBinaryArray(ev_vector, res.modus + res.specter + "test.bin");
     }
 
     std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n";
@@ -459,8 +465,8 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 500;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 100;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr int materialShells = 5;
     using Cylindar = DepthDose<T, materialShells, LOWENERGYCORRECTION>;
@@ -501,6 +507,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     std::array<T, 4> ev_history, ev_history_var;
     ev_history.fill(0);
     ev_history_var.fill(0);
+    std::array<std::uint64_t, 4> ev_events = { 0, 0, 0, 0 };
 
     for (const auto& [z, dose] : cylinder.depthDose()) {
         for (std::size_t i = 0; i < voi_locations.size(); ++i) {
@@ -509,13 +516,14 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             if (zmin < z && z < zmax) {
                 ev_history[i] += dose.energyImparted();
                 ev_history_var[i] += dose.varianceEnergyImparted();
+                ev_events[i] += dose.numberOfEvents();
             }
         }
     }
 
     for (std::size_t i = 0; i < voi_locations.size(); ++i) {
-        ev_history[i] /= (N_HISTORIES * N_EXPOSURES) / 1000;
-        ev_history_var[i] = std::sqrt(ev_history_var[i]) / (N_HISTORIES * N_EXPOSURES) / 1000;
+        ev_history[i] /= ((N_HISTORIES * N_EXPOSURES) / 1000);
+        ev_history_var[i] = std::sqrt(ev_history_var[i]) / ((N_HISTORIES * N_EXPOSURES) / 1000);
     }
 
     std::string model;
@@ -539,6 +547,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         res.volume = "VOI " + std::to_string(i + 1);
         res.result = ev_history[i];
         res.result_std = ev_history_var[i];
+        res.nEvents = ev_events[i];
         print(res, false);
         std::cout << res.volume << ": " << res.result << " eV/history\n";
     }
@@ -558,6 +567,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             res.volume = "VOI " + std::to_string(i + 1);
             res.result = tg195[i];
             res.result_std = 0;
+            res.nEvents = 0;
             print(res, false);
         }
     }
@@ -568,8 +578,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 500;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 100;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;
@@ -621,25 +631,26 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             std::uint64_t teller = 0;
             T uncert = 1;
             do {
-                auto time_elapsed = runDispatcher(transport, world, beam);
-                const T d1 = cylinder.dosePeriferyCylinder().energyImparted();
-                const T d2 = cylinder.doseCenterCylinder().energyImparted();
-                const T d_var = d1 < d2 ? cylinder.dosePeriferyCylinder().varianceEnergyImparted() : cylinder.doseCenterCylinder().varianceEnergyImparted();
-                uncert = std::sqrt(d_var) / std::min(d1, d2);
+                auto time_elapsed = runDispatcher(transport, world, beam);             
+                const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
+                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();                
+                uncert = std::max(d1, d2);
                 teller++;
-            } while (uncert > T { 0.0001 } && !SAMPLE_RUN);
+            } while (uncert > T { 0.01 } && !SAMPLE_RUN);
 
             std::cout << "Angle " << angInt;
             res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
             res.volume = std::to_string(angInt);
             res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = std::sqrt(cylinder.dosePeriferyCylinder().varianceEnergyImparted()) / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
             std::cout << " Pherifery: " << res.result;
             print(res, false);
             res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
             res.volume = std::to_string(angInt);
             res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = std::sqrt(cylinder.doseCenterCylinder().varianceEnergyImparted()) / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
             std::cout << " Center: " << res.result << std::endl;
             print(res, false);
 
@@ -668,10 +679,9 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             T uncert = 1;
             do {
                 auto time_elapsed = runDispatcher(transport, world, beam);
-                const T d1 = cylinder.dosePeriferyCylinder().energyImparted();
-                const T d2 = cylinder.doseCenterCylinder().energyImparted();
-                const T d_var = d1 < d2 ? cylinder.dosePeriferyCylinder().varianceEnergyImparted() : cylinder.doseCenterCylinder().varianceEnergyImparted();
-                uncert = std::sqrt(d_var) / std::min(d1, d2);
+                const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
+                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
+                uncert = std::max(d1, d2);
                 teller++;
             } while (uncert > T { 0.0001 } && !SAMPLE_RUN);
 
@@ -679,13 +689,15 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
             res.volume = std::to_string(angInt);
             res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = std::sqrt(cylinder.dosePeriferyCylinder().varianceEnergyImparted()) / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
             std::cout << " Pherifery: " << res.result;
             print(res, false);
             res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
             res.volume = std::to_string(angInt);
             res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = std::sqrt(cylinder.doseCenterCylinder().varianceEnergyImparted()) / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
             std::cout << " Center: " << res.result << std::endl;
             print(res, false);
 
@@ -719,6 +731,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             angInd = angInd + 10;
             res.result = d;
             res.result_std = 0;
+            res.nEvents = 0;
             print(res, false);
         }
         angInd = 0;
@@ -728,6 +741,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             angInd = angInd + 10;
             res.result = d;
             res.result_std = 0;
+            res.nEvents = 0;
             print(res, false);
         }
     }

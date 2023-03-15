@@ -35,6 +35,8 @@ public:
     DoseScore() { }
     void scoreEnergy(T energy)
     {
+        if (energy <= T { 0 })
+            return;
         // Thread safe update of values with Kahn summation in case of large sums
         {
             auto aref = std::atomic_ref(m_energyImparted);
@@ -79,14 +81,32 @@ public:
         if (numberOfEvents() > 0) {
             const auto e_exp = energyImparted() / numberOfEvents();
             const auto e2_exp = energyImpartedSquared() / numberOfEvents();
-            return e2_exp - e_exp * e_exp;
+            return (e2_exp - e_exp * e_exp) * numberOfEvents();
         }
-        return 0;
+        return std::numeric_limits<T>::infinity();
+    }
+
+    T stdEnergyImparted() const
+    {
+        return std::sqrt(varianceEnergyImparted());
+    }
+
+    T relativeUncertainty() const
+    {
+        return T { 1.96 } * stdEnergyImparted() / energyImparted();
     }
 
     std::uint64_t numberOfEvents() const
     {
         return m_nEvents;
+    }
+    void clear()
+    {
+        m_nEvents = 0;
+        m_energyImparted = 0;
+        m_energyImpartedSquared = 0;
+        m_energyImparted_rest = 0;
+        m_energyImpartedSquared_rest = 0;
     }
 
 private:
@@ -103,7 +123,9 @@ public:
     DoseScore() { }
     void scoreEnergy(double energy)
     {
-        // Threadsafe update. No need for Kahn sum for doubles (hopefully)
+        if (energy <= 0.0)
+            return;
+        // Thread safe update of values with Kahn summation in case of large sums
         {
             auto aref = std::atomic_ref(m_energyImparted);
             aref.fetch_add(energy, std::memory_order_relaxed);
@@ -117,7 +139,6 @@ public:
             ++aref;
         }
     }
-
     double energyImparted() const
     {
         return m_energyImparted;
@@ -133,16 +154,25 @@ public:
         if (numberOfEvents() > 0) {
             const auto e_exp = energyImparted() / numberOfEvents();
             const auto e2_exp = energyImpartedSquared() / numberOfEvents();
-            return e2_exp - e_exp * e_exp;
+            return (e2_exp - e_exp * e_exp) * numberOfEvents();
         }
-        return 0;
+        return std::numeric_limits<double>::infinity();
+    }
+
+    double stdEnergyImparted() const
+    {
+        return std::sqrt(varianceEnergyImparted());
+    }
+
+    double relativeUncertainty() const
+    {
+        return 1.96 * stdEnergyImparted() / energyImparted();
     }
 
     std::uint64_t numberOfEvents() const
     {
         return m_nEvents;
     }
-
     void clear()
     {
         m_nEvents = 0;
