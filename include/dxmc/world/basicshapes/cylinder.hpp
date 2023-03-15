@@ -35,7 +35,7 @@ namespace basicshape {
         {
             const std::array<T, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
             return center[0] - radii <= pos[0] && pos[0] <= center[0] + radii && center[1] - radii <= pos[1] && pos[1] <= center[1] + radii
-                && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && +((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
+                && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
         }
 
         template <Floating T>

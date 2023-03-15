@@ -49,9 +49,10 @@ public:
     }
 
     template <AnyWorldItemType<Us...> U>
-    void addItem(U& item)
+    auto& addItem(U& item)
     {
         std::get<std::vector<U>>(m_items).push_back(item);
+        return std::get<std::vector<U>>(m_items).back();
     }
 
     template <AnyWorldItemType<Us...> U>
@@ -119,25 +120,27 @@ public:
 
     inline auto intersect(const Particle<T>& p)
     {
-        return m_kdtree.intersectForward(p, m_aabb);
+        return m_kdtree.intersect(p, m_aabb);
+    }
+
+    inline bool transportParticleToWorld(Particle<T>& p)
+    {
+        if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
+            const auto t = basicshape::AABB::intersect(p, m_aabb);
+            if (t.valid()) {
+                p.border_translate(t.intersection);
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return true;
     }
 
     void transport(Particle<T>& p, RandomState& state)
     {
-        bool continueSampling = true;
+        bool continueSampling = transportParticleToWorld(p);
         bool updateAttenuation = true;
-
-        {
-            // transport particle to aabb
-            const auto t = basicshape::AABB::intersect(p, m_aabb);
-            if (t.valid()) {
-                if (!t.rayOriginIsInsideItem) {
-                    p.border_translate(t.intersection);
-                }
-            } else {
-                continueSampling = false;
-            }
-        }
 
         T attenuationTotalInv;
         AttenuationValues<T> att;
@@ -152,17 +155,26 @@ public:
             const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
-            const auto intersection = m_kdtree.intersect(p, m_aabb);
+            const KDTreeIntersectionResult<T, WorldItemBase<T>> intersection = m_kdtree.intersect(p, m_aabb);
 
-            if (intersection.valid()) {
-                if (!intersection.rayOriginIsInsideItem) {
-                    p.border_translate(intersection.intersection);
+            if (intersection.valid()) { // Do we intersect anything?
+                if (intersection.intersection < stepLenght) {
+                    // We object is closer than free path.
+                    if (!intersection.rayOriginIsInsideItem) { // if we are not already inside the object (we seldom are)
+                        p.border_translate(intersection.intersection);
+                    }
+                    intersection.item->transport(p, state);
+                    continueSampling = p.energy > 0;
+                } else { // Free path is closer than object, we interact in the world empty space
+                    p.translate(stepLenght);
+                    const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
+                    updateAttenuation = interactionResult.particleEnergyChanged;
+                    continueSampling = interactionResult.particleAlive;
+                    m_dose.scoreEnergy(interactionResult.energyImparted);
                 }
-                intersection.item->transport(p, state);
-                continueSampling = p.energy > 0;
-            } else {
+            } else { // We do not intersect any object
                 p.translate(stepLenght);
-                if (basicshape::AABB::pointInside(p.pos, m_aabb)) {
+                if (basicshape::AABB::pointInside(p.pos, m_aabb)) { // Are we still inside world?
                     const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;

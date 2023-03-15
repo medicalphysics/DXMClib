@@ -148,9 +148,9 @@ public:
 
 protected:
     struct CylinderChild {
-        std::array<T, 3> center;
-        T radii;
-        T halfHeight;
+        std::array<T, 3> center = { 0, 0, 0 };
+        T radii = 0;
+        T halfHeight = 0;
         DoseScore<T> dose;
     };
 

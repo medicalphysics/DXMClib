@@ -50,19 +50,20 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 template <typename T>
 bool testTransport()
 {
-    dxmc::CTDIPhantom<T> phantom;
-    dxmc::WorldBox<T, 4, 1> box(10);
+    using CTDI = dxmc::CTDIPhantom<T>;
+    using Box = dxmc::WorldBox<T, 4, 1>;
+
+    dxmc::World2<T, CTDI, Box> world;
+    auto& phantom = world.addItem<CTDI>({});
+    auto& box = world.addItem<Box>({ T { 10 } });
+
     box.translate({ 0, -50, 0 });
     box.setNistMaterial("Water, Liquid");
 
-    dxmc::World2<T, dxmc::CTDIPhantom<T>, dxmc::WorldBox<T, 4, 1>> world;
-    world.addItem(phantom);
-
-    world.addItem(box);
     world.build();
 
     dxmc::Transport<T> transport;
-    //transport.setNumberOfThreads(4);
+    // transport.setNumberOfThreads(4);
 
     std::uint64_t nPart = 0;
     std::chrono::milliseconds time;
@@ -74,22 +75,20 @@ bool testTransport()
         beam.setNumberOfExposures(4);
         nPart = beam.numberOfParticles();
         time = runDispatcher(transport, world, beam);
-
     } else {
         dxmc::IsotropicMonoEnergyBeam<T> beam;
         beam.setPosition({ 0, -1000, 0 });
         beam.setDirectionCosines({ 0, 0, 1, 1, 0, 0 });
         beam.setCollimationAngles({ .01, .01 });
         beam.setNumberOfParticlesPerExposure(1e5);
-        beam.setNumberOfExposures(400);
+        beam.setNumberOfExposures(4);
         nPart = beam.numberOfParticles();
         time = runDispatcher(transport, world, beam);
-        // transport(world, beam);
     }
 
     std::cout << "SUCCESS Simple transport test ";
     std::cout << nPart << " histories in " << dxmc::TransportProgress::human_time(time) << " ";
-    std::cout << (nPart*1000) / std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << " histories/sec for sizeof(T) = " << sizeof(T) << std::endl;
+    std::cout << (nPart * 1000) / std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << " histories/sec for sizeof(T) = " << sizeof(T) << std::endl;
 
     const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
     auto dose_ctdi = ctdi_vec[0].dose(0);
