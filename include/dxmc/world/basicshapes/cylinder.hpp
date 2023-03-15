@@ -34,7 +34,8 @@ namespace basicshape {
         bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii, const T half_height)
         {
             const std::array<T, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
-            return (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
+            return center[0] - radii <= pos[0] && pos[0] <= center[0] + radii && center[1] - radii <= pos[1] && pos[1] <= center[1] + radii
+                && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && +((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
         }
 
         template <Floating T>
@@ -202,7 +203,7 @@ namespace basicshape {
                 return t_cand;
 
             } else if (tdisc1_cand && tdisc2_cand) {
-                std::array<T, 2> t = *tdisc1_cand < *tdisc2_cand ? std::array { *tdisc1_cand, *tdisc2_cand } : std::array{ *tdisc2_cand, *tdisc1_cand };
+                std::array<T, 2> t = *tdisc1_cand < *tdisc2_cand ? std::array { *tdisc1_cand, *tdisc2_cand } : std::array { *tdisc2_cand, *tdisc1_cand };
                 return std::make_optional(t);
             }
             return std::nullopt;

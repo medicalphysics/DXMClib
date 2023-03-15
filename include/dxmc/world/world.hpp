@@ -153,11 +153,10 @@ public:
 
             // where do we hit an object
             const auto intersection = m_kdtree.intersect(p, m_aabb);
-            const auto intersectionLenght = intersection.valid() ? intersection.intersection : std::numeric_limits<T>::max();
 
-            if (intersectionLenght < stepLenght) {
+            if (intersection.valid()) {
                 if (!intersection.rayOriginIsInsideItem) {
-                    p.border_translate(intersectionLenght);
+                    p.border_translate(intersection.intersection);
                 }
                 intersection.item->transport(p, state);
                 continueSampling = p.energy > 0;
