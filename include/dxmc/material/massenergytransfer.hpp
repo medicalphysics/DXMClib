@@ -58,11 +58,26 @@ public:
 
     T operator()(const T energy)
     {
-        return interpolate<T, false, false>(m_data, energy);
+         //return interpolate<T, false, false>(m_data, energy);
+        const auto elog = std::log(energy);
+        const auto r = CubicLSInterpolator<T>::evaluateSpline(elog, m_data2);
+        return std::exp(r);
     }
     std::vector<T> operator()(const std::vector<T>& energy)
     {
-        return interpolate(m_data, energy);
+         //return interpolate(m_data, energy);
+        std::vector<T> r(energy.size());
+        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), r.begin(), [&](const auto e) {
+            const auto elog = std::log(e);
+            const auto r = CubicLSInterpolator<T>::evaluateSpline(elog, m_data2);
+            return std::exp(r);
+        });
+        return r;
+    }
+
+    const std::vector<std::array<T, 3>>& getDataTable() const
+    {
+        return m_data2;
     }
 
 protected:
@@ -84,6 +99,14 @@ protected:
         m_data.resize(energy.size());
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), data.cbegin(), m_data.begin(), [](const T e, const T d) { return std::make_pair(e, d); });
 
+        std::vector<std::pair<T, T>> d_log(m_data.size());
+
+        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), d_log.begin(), [](const auto& p) { const auto p_fix = p.second; return std::make_pair(std::log(p.first), std::log(p_fix)); });
+
+        d_log.erase(std::remove_if(std::begin(d_log), std::end(d_log), [](const auto& d) { return std::isnan(d.second); }), std::end(d_log));
+
+        auto inter = CubicLSInterpolator(d_log, 30, true);
+        m_data2 = inter.getDataTable();
         return;
     }
 
@@ -207,6 +230,7 @@ protected:
     }
 
 private:
+    std::vector<std::array<T, 3>> m_data2;
     std::vector<std::pair<T, T>> m_data;
 };
 

@@ -62,18 +62,19 @@ bool testCompound()
     return success;
 }
 
+template <typename D>
+struct zdata_t {
+    std::size_t Z = 0;
+    D energy = 0;
+    D nist = 0;
+};
+
 template <typename T>
 bool testZ()
 {
     bool success = true;
 
-    struct data_t {
-        std::size_t Z = 0;
-        T energy = 0;
-        T nist = 0;
-    };
-
-    std::vector<data_t> data;
+    std::vector<zdata_t<T>> data;
 
     data.push_back({ .Z = 82, .energy = 150, .nist = 1.056E+00 });
     data.push_back({ .Z = 82, .energy = 10, .nist = 1.247E+02 });
@@ -83,15 +84,23 @@ bool testZ()
     data.push_back({ .Z = 6, .energy = 60, .nist = 2.098E-2 });
     data.push_back({ .Z = 6, .energy = 150, .nist = 2.449E-2 });
 
+    dxmc::MassEnergyTransfer<T> m(82);
+    std::vector<T> e(150);
+    std::iota(e.begin(), e.end(), T { 1 });
+    auto u = m(e);
+    for (int i = 0; i < 150; ++i) {
+        std::cout << e[i] << ", " << u[i] << std::endl;
+    }
+
     for (const auto& d : data) {
         if (d.energy < dxmc::MAX_ENERGY<T>()) {
             dxmc::MassEnergyTransfer<T> m(d.Z);
             T uen = m(d.energy);
-            T diff = 1 - uen / d.nist;
+            T diff = (1 - uen / d.nist) * 100;
 
-            success = success && std::abs(diff) < T { 0.02 };
+            success = success && std::abs(diff) < T { 2 };
 
-            if (std::abs(diff) < T { 0.1 })
+            if (std::abs(diff) < T { 2 })
                 std::cout << "SUCCESS ";
             else
                 std::cout << "FAILURE ";
