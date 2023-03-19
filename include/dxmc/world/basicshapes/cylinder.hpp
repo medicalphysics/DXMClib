@@ -118,12 +118,25 @@ namespace basicshape {
 
             if (c < 0 && b > 0) {
                 // inside sphere
-                std::array t { T { 0 }, q / a };
+                std::array t { c / q, q / a };
                 return std::make_optional(t);
             } else {
                 std::array t { c / q, q / a };
                 return std::make_optional(t);
             }
+        }
+        template <Floating T>
+        std::optional<T> intersectCylinderDiscIntervalZ(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        {
+            if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
+                return std::nullopt;
+
+            const auto tz = (center[2] - p.pos[2]) / p.dir[2];
+            const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
+            const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
+            if (xz * xz + yz * yz <= radii * radii)
+                return std::make_optional(tz);
+            return std::nullopt;
         }
 
         template <Floating T>
@@ -131,13 +144,17 @@ namespace basicshape {
         {
             if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
                 return std::nullopt;
+
+            if (p.pos[2] > center[2] && p.dir[2] >= 0)
+                return std::nullopt;
+            if (p.pos[2] < center[2] && p.dir[2] <= 0)
+                return std::nullopt;
+
             const auto tz = (center[2] - p.pos[2]) / p.dir[2];
-            if (tz > 0) {
-                const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
-                const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
-                if (xz * xz + yz * yz <= radii * radii)
-                    return std::make_optional(tz);
-            }
+            const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
+            const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
+            if (xz * xz + yz * yz <= radii * radii)
+                return std::make_optional(tz);
             return std::nullopt;
         }
 
@@ -172,43 +189,43 @@ namespace basicshape {
         template <Floating T>
         std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
         {
-            std::array centerDisc = { center[0], center[1], center[2] - half_height };
-            auto tdisc1_cand = intersectCylinderDiscZ(p, centerDisc, radii);
-
-            centerDisc[2] = center[2] + half_height;
-            auto tdisc2_cand = intersectCylinderDiscZ(p, centerDisc, radii);
-
             auto t_cand = intersectCylinderWallInterval(p, center, radii);
-            if (t_cand) {
-                auto& t = *t_cand;
-
-                const auto pt_min = std::nextafter(p.pos[2] + p.dir[2] * t[0], T { 0 });
-                if (!(center[2] - half_height <= pt_min && pt_min <= center[2] + half_height)) {
-                    const auto& tdisc_min = std::min(tdisc1_cand, tdisc2_cand, [](const auto& lh, const auto& rh) { return lh.value_or(std::numeric_limits<T>::max()) < rh.value_or(std::numeric_limits<T>::max()); });
-                    if (tdisc_min) {
-                        t[0] = std::max(t[0], *tdisc_min);
-                    } else {
-                        return std::nullopt;
+            if (!t_cand) {
+                if (std::abs(p.dir[2]) == 1) {
+                    const auto dx = p.pos[0] - center[0];
+                    const auto dy = p.pos[1] - center[1];
+                    if (dx * dx + dy * dy < radii * radii) {
+                        const auto t1 = std::max(center[2] + half_height - p.pos[2], T { 0 });
+                        const auto t2 = std::max(center[2] - half_height - p.pos[2], T { 0 });
+                        std::array<T, 2> tz;
+                        if (t1 < t2) {
+                            tz = { t1, t2 };
+                        } else {
+                            tz = { t2, t1 };
+                        }
+                        if (tz[0] < tz[1]) {
+                            return std::make_optional(tz);
+                        }
                     }
                 }
-                const auto pt_max = std::nextafter(p.pos[2] + p.dir[2] * t[0], T { 0 });
-                if (!(center[2] - half_height <= pt_max && pt_max <= center[2] + half_height)) {
-                    const auto& tdisc_max = std::max(tdisc1_cand, tdisc2_cand, [](const auto& lh, const auto& rh) { return lh.value_or(std::numeric_limits<T>::lowest()) < rh.value_or(std::numeric_limits<T>::lowest()); });
-                    if (tdisc_max) {
-                        t[1] = std::min(t[1], *tdisc_max);
-                    } else {
-                        return std::nullopt;
-                    }
-                }
-                return t_cand;
-
-            } else if (tdisc1_cand && tdisc2_cand) {
-                std::array<T, 2> t = *tdisc1_cand < *tdisc2_cand ? std::array { *tdisc1_cand, *tdisc2_cand } : std::array { *tdisc2_cand, *tdisc1_cand };
-                return std::make_optional(t);
+                return std::nullopt;
             }
+
+            const auto tz1 = (center[2] + half_height - p.pos[2]) / p.dir[2];
+            const auto tz2 = (center[2] - half_height - p.pos[2]) / p.dir[2];
+
+            const auto tz_min = tz1 < tz2 ? tz1 : tz2;
+            const auto tz_max = tz1 < tz2 ? tz2 : tz1;
+            auto& t = t_cand.value();
+
+            t[0] = std::max(t[0], tz_min);
+            t[1] = std::min(t[1], tz_max);
+            if (t[0] < 0)
+                t[0] = 0;
+            if (t[0] < t[1])
+                return t_cand;
             return std::nullopt;
         }
-
     }
 }
 }
