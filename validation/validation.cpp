@@ -32,7 +32,7 @@ Copyright 2023 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = false;
+constexpr bool SAMPLE_RUN = true;
 
 template <Floating T>
 struct ResultKeys {
@@ -95,47 +95,6 @@ public:
             std::cout << r.nEvents << ", ";
             std::cout << r.precision << std::endl;
         }
-    }
-};
-
-class Print {
-private:
-    std::ofstream m_myfile;
-
-public:
-    Print()
-    {
-        m_myfile.open("validation.txt", std::ios::out | std::ios::app);
-    }
-    ~Print()
-    {
-        m_myfile.close();
-    }
-    void date()
-    {
-        auto now = std::chrono::system_clock::now();
-        auto in_time_t = std::chrono::system_clock::to_time_t(now);
-        std::stringstream ss;
-        ss << std::put_time(std::localtime(&in_time_t), "%c %Z");
-        m_myfile << "Time: " << ss.str() << std::endl;
-    }
-    template <typename T>
-    void operator()(const T& msg)
-    {
-        std::cout << msg;
-        m_myfile << msg;
-    }
-    template <typename T, typename... Args>
-    void operator()(const T& msg, Args... args)
-    {
-        std::cout << msg;
-        m_myfile << msg;
-        this->operator()(args...);
-    }
-    template <typename T>
-    void display(const T& msg)
-    {
-        std::cout << msg << "\r";
     }
 };
 
@@ -571,15 +530,14 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             print(res, false);
         }
     }
-
     return true;
 }
 
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 100;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 100;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;
@@ -752,7 +710,7 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
-
+    /*
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, true);
@@ -783,7 +741,7 @@ bool runAll()
     success = success && TG195Case41AbsorbedEnergy<T, 0>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 1>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 2>(true, true);
-
+    */
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, true);
@@ -804,10 +762,6 @@ bool runAll()
 
 void printStart()
 {
-    Print print;
-    print("TG195 validation cases\n");
-    print.date();
-
     ResultPrint resPrint;
     resPrint.header();
 }

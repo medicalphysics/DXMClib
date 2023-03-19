@@ -20,6 +20,8 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/basicshapes/cylinder.hpp"
 #include "dxmc/world/basicshapes/sphere.hpp"
 
+#include "dxmc/dxmcrandom.hpp"
+
 #include <iostream>
 
 template <typename T>
@@ -193,11 +195,71 @@ bool testCylindarIntersection()
     return success;
 }
 
+template <typename T>
+bool testCylinderForwardIntersection()
+{
+
+    bool success = true;
+
+    const T radii = 4;
+    const std::array<T, 3> center = { 8, 0, 0 };
+    const T half_height = 6;
+
+    dxmc::Particle<T> p;
+
+    std::optional<std::array<T, 2>> res;
+
+    std::array dummy = { std::numeric_limits<T>::max(), std::numeric_limits<T>::max() };
+    std::array<T, 2> t;
+    
+    p.pos = { -10, 0, 0 };
+    p.dir = { 1, 0, 0 };
+    res = dxmc::basicshape::cylinder::intersectForwardInterval(p, center, radii, half_height);
+    t = res.value_or(dummy);
+    success = success && t[0] == 14;
+    success = success && t[1] == 22;
+
+    p.pos = { 6, 0, 0 };
+    p.dir = { 1, 0, 0 };
+    res = dxmc::basicshape::cylinder::intersectForwardInterval(p, center, radii, half_height);
+    t = res.value_or(dummy);
+    success = success && t[0] == 0;
+    success = success && t[1] == 6;
+
+    p.pos = { 8, 0, 0 };
+    p.dir = { 0, 0, 1 };
+    res = dxmc::basicshape::cylinder::intersectForwardInterval(p, center, radii, half_height);
+    t = res.value_or(dummy);
+    success = success && t[0] == 0;
+    success = success && t[1] == 6;
+    
+    dxmc::RandomState state;
+    for(std::size_t i =0;i < 1e6;++i) {
+        for (std::size_t i = 0; i < 3; ++i) {
+            p.pos[i] = state.randomUniform(center[i] - radii * 2, center[i] + radii * 2);
+            p.dir[i] = state.randomUniform(T { -1 }, T { 1 });
+        }
+        dxmc::vectormath::normalize(p.dir);
+        auto r = dxmc::basicshape::cylinder::intersectForwardInterval(p, center, radii, half_height);
+        if (r) {
+            auto t2 = r.value();
+            if (t2[0] < T { 0 } || t2[1] < T { 0 } || t2[1] <= t2[0])
+                return false;
+        }
+    }
+
+    return success;
+}
+
 int main()
 {
     std::cout << "Testing ray intersection on basic shapes\n";
 
     bool success = true;
+
+    success = success && testCylinderForwardIntersection<double>();
+    success = success && testCylinderForwardIntersection<float>();
+
     success = success && testSphereIntersection<float>();
     success = success && testSphereIntersection<double>();
 
