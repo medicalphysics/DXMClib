@@ -537,7 +537,7 @@ template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 100;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 100000;
 
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;

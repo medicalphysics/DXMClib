@@ -180,13 +180,12 @@ public:
             if constexpr (VARRED == 1) {
                 // Forced interactions by modifying path lenght sampling to intersection interval of ROI
                 auto [child_intersected, t_child] = intersectChild(p, state);
-                if (child_intersected && state.randomUniform<T>() > T { 0.5 }) { // we pass an object of interest
-                    const auto p0 = T { 1 };
-                    // const auto p0 = std::exp(-t_child[0] * att.sum() * m_materialDensity);
+                if (child_intersected) { // we pass an object of interest
+                    // const auto p0 = T { 1 };
+                    const auto p0 = std::exp(-t_child[0] * att.sum() * m_materialDensity);
                     const auto p1 = std::exp(-t_child[1] * att.sum() * m_materialDensity);
                     const auto pp = p0 - p1;
-
-                    stepLen = -attSumInv * std::log(1 - (1 - p1) * state.randomUniform<T>());
+                    stepLen = -attSumInv * std::log(state.randomUniform<T>(p1, p0));
                     p.weight *= pp;
                 } else {
                     stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
