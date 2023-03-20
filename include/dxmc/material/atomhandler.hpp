@@ -44,6 +44,12 @@ public:
         return instance.m_dummyElement;
     }
 
+    static const std::map<std::uint64_t, AtomicElement<T>>& allAtoms()
+    {
+        const auto& instance = Instance();
+        return instance.m_elements;
+    }
+
     AtomHandler(const AtomHandler&) = delete;
     void operator=(const AtomHandler&) = delete;
 

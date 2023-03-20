@@ -285,18 +285,18 @@ namespace interactions {
         InteractionResult<T> res;
         if (r2 < attenuation.photoelectric) {
             const auto Ei = interactions::photoelectricEffect<T, Nshells, Lowenergycorrection>(attenuation.photoelectric, particle, material, state);
-            res.energyImparted = Ei * particle.weight;
+            res.energyImparted = Ei;
             res.particleEnergyChanged = true;
         } else if (r2 < (attenuation.photoelectric + attenuation.incoherent)) {
             const auto Ei = interactions::comptonScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
-            res.energyImparted = Ei * particle.weight;
+            res.energyImparted = Ei;
             res.particleEnergyChanged = true;
         } else {
             interactions::rayleightScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
         }
         if (particle.energy < MIN_ENERGY<T>()) {
             res.particleAlive = false;
-            res.energyImparted += particle.energy * particle.weight;
+            res.energyImparted += particle.energy;
         } else {
 
             if (particle.weight < interactions::russianRuletteWeightThreshold<T>()) {

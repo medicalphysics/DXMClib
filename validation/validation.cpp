@@ -170,8 +170,8 @@ auto TG195_30KV()
     return TG195_specter<T>(TG195_30KV_raw);
 }
 
-template <typename T, int NShells = 5>
-std::pair<T, Material2<T, NShells>> TG195_soft_tissue()
+template <typename T>
+std::pair<T, std::map<std::size_t, T>> TG195_soft_tissue()
 {
     std::map<std::size_t, T> Zs;
     Zs[1] = T { 10.5 };
@@ -184,21 +184,18 @@ std::pair<T, Material2<T, NShells>> TG195_soft_tissue()
     Zs[17] = T { 0.2 };
     Zs[19] = T { 0.2 };
 
-    auto mat_cand = Material2<T, NShells>::byWeight(Zs).value();
-
-    return std::make_pair(T { 1.03 }, mat_cand);
+    return std::make_pair(T { 1.03 }, Zs);
 }
 
-template <typename T, int NShells = 5>
-std::pair<T, Material2<T, NShells>> TG195_pmma()
+template <typename T>
+std::pair<T, std::map<std::size_t, T>> TG195_pmma()
 {
     std::map<std::size_t, T> pmma_w;
     pmma_w[1] = T { 8.0541 };
     pmma_w[6] = T { 59.9846 };
     pmma_w[8] = T { 31.9613 };
 
-    auto mat_cand = Material2<T, NShells>::byWeight(pmma_w).value();
-    return std::make_pair(T { 1.19 }, mat_cand);
+    return std::make_pair(T { 1.19 }, pmma_w);
 }
 
 template <typename T, typename W, typename B>
@@ -234,10 +231,11 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
     using Material = Material2<T, NShells>;
 
-    auto [mat_dens, mat] = TG195_soft_tissue<T, NShells>();
+    auto [mat_dens, mat_weights] = TG195_soft_tissue<T>();
+
+    auto mat = Material2<T, NShells>::byWeight(mat_weights).value();
 
     World2<T, Box> world;
-
     {
         const T box_halfside = T { 39 } / 2;
         const T box_height = 20;
@@ -247,7 +245,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         box.setVoxelDimensions({ 78, 78, 40 });
         box.setMaterial(mat);
         box.setMaterialDensity(mat_dens);
-        world.addItem(std::move(box));
+        world.addItem(box);
     }
 
     world.build(T { 160 });
@@ -432,7 +430,9 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     using World = World2<T, Cylindar>;
     using Material = Material2<T, materialShells>;
 
-    auto [mat_dens, mat] = TG195_pmma<T, materialShells>();
+    auto [mat_dens, mat_weights] = TG195_pmma<T>();
+
+    auto mat = Material2<T, materialShells>::byWeight(mat_weights).value();
 
     World world;
     auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 300 }, 600 });
@@ -537,18 +537,20 @@ template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 100;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
 
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;
     using World = World2<T, Cylindar>;
     using Material = Material2<T, materialShells>;
-    auto [mat_dens, mat] = TG195_pmma<T, materialShells>();
+    auto [mat_dens, mat_weights] = TG195_pmma<T>();
+    auto mat = Material2<T, materialShells>::byWeight(mat_weights).value();
+    MassEnergyTransfer massEnTransf(mat_weights);
 
     World world;
     auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 600 } });
     world.build(60);
-    cylinder.setMaterial(mat);
+    cylinder.setMaterial(mat, massEnTransf);
     cylinder.setMaterialDensity(mat_dens);
 
     ResultPrint print;

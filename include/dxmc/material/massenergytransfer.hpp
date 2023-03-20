@@ -34,7 +34,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T, bool LOGCUBIC_INTERPOLATION = false>
 class MassEnergyTransfer {
 
 public:
@@ -58,21 +58,27 @@ public:
 
     T operator()(const T energy)
     {
-         //return interpolate<T, false, false>(m_data, energy);
-        const auto elog = std::log(energy);
-        const auto r = CubicLSInterpolator<T>::evaluateSpline(elog, m_data2);
-        return std::exp(r);
+        if constexpr (LOGCUBIC_INTERPOLATION) {
+            const auto elog = std::log(energy);
+            const auto r = CubicLSInterpolator<T>::evaluateSpline(elog, m_data2);
+            return std::exp(r);
+        } else {
+            return interpolate<T, false, false>(m_data, energy);
+        }
     }
     std::vector<T> operator()(const std::vector<T>& energy)
     {
-         //return interpolate(m_data, energy);
-        std::vector<T> r(energy.size());
-        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), r.begin(), [&](const auto e) {
-            const auto elog = std::log(e);
-            const auto r = CubicLSInterpolator<T>::evaluateSpline(elog, m_data2);
-            return std::exp(r);
-        });
-        return r;
+        if constexpr (LOGCUBIC_INTERPOLATION) {
+            std::vector<T> r(energy.size());
+            std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), r.begin(), [&](const auto e) {
+                const auto elog = std::log(e);
+                const auto res = CubicLSInterpolator<T>::evaluateSpline(elog, m_data2);
+                return std::exp(res);
+            });
+            return r;
+        } else {
+            return interpolate(m_data, energy);
+        }
     }
 
     const std::vector<std::array<T, 3>>& getDataTable() const
@@ -99,15 +105,34 @@ protected:
         m_data.resize(energy.size());
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), data.cbegin(), m_data.begin(), [](const T e, const T d) { return std::make_pair(e, d); });
 
-        std::vector<std::pair<T, T>> d_log(m_data.size());
+        // removing negative values, can occur around bindingenergies
+        m_data.erase(std::remove_if(std::execution::par_unseq, m_data.begin(), m_data.end(), [](const auto& p) { return p.second < T { 0 }; }), m_data.end());
 
-        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), d_log.begin(), [](const auto& p) { const auto p_fix = p.second; return std::make_pair(std::log(p.first), std::log(p_fix)); });
+        if constexpr (LOGCUBIC_INTERPOLATION) {
+            // adding bindingenergyes
+            for (const auto& [Z, massFrac] : massFractions) {
+                const auto& atom = AtomHandler<T>::Atom(Z);
+                for (const auto& [shellIdz, shell] : atom.shells) {
+                    const auto e = shell.bindingEnergy;
+                    if (e > MIN_ENERGY<T>()) {
+                        auto elIdx = std::find_if(std::execution::par_unseq, m_data.begin(), m_data.end(), [=](const auto& p) { return p.first == e; });
+                        if (elIdx != m_data.end() && std::distance(elIdx, m_data.end()) > 3) {
+                            const auto val = *elIdx;
+                            elIdx = m_data.insert(elIdx, val);
+                            (elIdx + 1)->second = (elIdx + 2)->second;
+                        }
+                    }
+                }
+            }
 
-        d_log.erase(std::remove_if(std::begin(d_log), std::end(d_log), [](const auto& d) { return std::isnan(d.second); }), std::end(d_log));
+            std::vector<std::pair<T, T>> d_log(m_data.size());
+            std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), d_log.begin(), [](const auto& p) { const auto p_fix = p.second; return std::make_pair(std::log(p.first), std::log(p_fix)); });
+            d_log.erase(std::remove_if(std::begin(d_log), std::end(d_log), [](const auto& d) { return std::isnan(d.second); }), std::end(d_log));
+            auto inter = CubicLSInterpolator(d_log, 20, true);
+            m_data2 = inter.getDataTable();
 
-        auto inter = CubicLSInterpolator(d_log, 30, true);
-        m_data2 = inter.getDataTable();
-        return;
+            m_data.clear();
+        }
     }
 
     static void addVector(std::vector<T>& to, const std::vector<T>& from, const T fraction = T { 1 })
@@ -220,13 +245,19 @@ protected:
         std::sort(energy.begin(), energy.end());
         // removing duplicates
 
-        auto erase_from = std::unique(std::execution::par_unseq, energy.begin(), energy.end(), [](const auto& lh, const auto& rh) {
-            return std::abs(lh - rh) <= (std::numeric_limits<T>::epsilon() * 5);
+        constexpr T min_e_diff = min_energy_diff();
+
+        auto erase_from = std::unique(std::execution::par_unseq, energy.begin(), energy.end(), [min_e_diff](const auto& lh, const auto& rh) {
+            return std::abs(lh - rh) <= min_e_diff;
         });
         if (std::distance(erase_from, energy.end()) != 0) {
             energy.erase(erase_from, energy.end());
         }
         return energy;
+    }
+    static constexpr T min_energy_diff()
+    {
+        return T { 1e-6 };
     }
 
 private:

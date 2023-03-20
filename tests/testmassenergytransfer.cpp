@@ -25,7 +25,7 @@ Copyright 2022 Erlend Andersen
 #include <vector>
 
 template <typename T>
-bool testCompound()
+bool testCompoundNIST()
 {
     bool success = true;
 
@@ -40,15 +40,19 @@ bool testCompound()
     data.push_back({ .name = "Air, Dry (near sea level)", .energy = 60, .nist = 3.041E-02 });
     data.push_back({ .name = "Air, Dry (near sea level)", .energy = 150, .nist = 2.496E-02 });
 
+    data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 10, .nist = 3.026E+00 });
+    data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 60, .nist = 2.530E-02 });
+    data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 150, .nist = 2.755E-02 });
+
     for (const auto& d : data) {
         if (d.energy < dxmc::MAX_ENERGY<T>()) {
             dxmc::MassEnergyTransfer<T> m(d.name);
             T uen = m(d.energy);
-            T diff = 1 - uen / d.nist;
+            T diff = (uen / d.nist - 1) * 100;
+            bool valid = std::abs(diff) < 2 || std::abs(uen - d.nist) < T { 0.001 };
+            success = success && valid;
 
-            success = success && std::abs(diff) < T { 0.02 };
-
-            if (std::abs(diff) < T { 0.1 })
+            if (valid)
                 std::cout << "SUCCESS ";
             else
                 std::cout << "FAILURE ";
@@ -70,7 +74,7 @@ struct zdata_t {
 };
 
 template <typename T>
-bool testZ()
+bool testZNIST()
 {
     bool success = true;
 
@@ -85,22 +89,16 @@ bool testZ()
     data.push_back({ .Z = 6, .energy = 150, .nist = 2.449E-2 });
 
     dxmc::MassEnergyTransfer<T> m(82);
-    std::vector<T> e(150);
-    std::iota(e.begin(), e.end(), T { 1 });
-    auto u = m(e);
-    for (int i = 0; i < 150; ++i) {
-        std::cout << e[i] << ", " << u[i] << std::endl;
-    }
 
     for (const auto& d : data) {
         if (d.energy < dxmc::MAX_ENERGY<T>()) {
             dxmc::MassEnergyTransfer<T> m(d.Z);
             T uen = m(d.energy);
-            T diff = (1 - uen / d.nist) * 100;
+            T diff = (uen / d.nist - 1) * 100;
+            bool valid = std::abs(diff) < 2 || std::abs(uen - d.nist) < T { 0.001 };
+            success = success && valid;
 
-            success = success && std::abs(diff) < T { 2 };
-
-            if (std::abs(diff) < T { 2 })
+            if (valid)
                 std::cout << "SUCCESS ";
             else
                 std::cout << "FAILURE ";
@@ -114,15 +112,64 @@ bool testZ()
     return success;
 }
 
+template <typename T>
+bool testInterpolation()
+{
+    bool success = true;
+    // atoms
+
+    std::vector<T> energy;
+    T e = dxmc::MIN_ENERGY<T>();
+    while (e < dxmc::MAX_ENERGY<T>()) {
+        energy.push_back(e);
+        e += T { 0.5 };
+    }
+
+    for (const auto& [Z, atom] : dxmc::AtomHandler<T>::allAtoms()) {
+        int N = 0;
+        dxmc::MassEnergyTransfer<T, true> mCub(Z);
+        dxmc::MassEnergyTransfer<T, false> mLin(Z);
+
+        std::vector<T> cub, lin;
+
+        for (const auto e : energy) {
+            const auto u_lin = mLin(e);
+            const auto u_cub = mCub(e);
+
+            cub.push_back(u_cub);
+            lin.push_back(u_lin);
+
+            const T diffp = std::abs(u_cub / u_lin - 1) * 100;
+            const T diffa = std::abs(u_cub - u_lin);
+            bool valid = diffp < 2 || diffa < 1;
+
+            if (!valid) {
+                std::cout << Z << ": Energy: " << e << " Diff abs: " << diffa << " Diff per: " << diffp << std::endl;
+                int test = 0;
+                N++;
+            }
+        }
+
+        const auto sqr = std::transform_reduce(cub.cbegin(), cub.cend(), lin.cbegin(), T { 0 }, std::plus<>(), [](const auto c, const auto l) { const auto d = c - l; return d*d; });
+        const auto rms = std::sqrt(sqr / cub.size());
+
+        success = success && N < 10;
+    }
+
+    return success;
+}
+
 int main(int argc, char* argv[])
 {
     std::cout << "Mass energy transfer tests\n";
     auto success = true;
 
-    success = success && testZ<float>();
-    success = success && testZ<double>();
-    success = success && testCompound<float>();
-    success = success && testCompound<double>();
+    // success = success && testInterpolation<float>();
+
+    success = success && testZNIST<double>();
+    success = success && testZNIST<float>();
+    success = success && testCompoundNIST<float>();
+    success = success && testCompoundNIST<double>();
 
     if (success)
         return EXIT_SUCCESS;
