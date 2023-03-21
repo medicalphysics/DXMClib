@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/transport.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
+#include "dxmc/world/worlditems/depthdose.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 
 #include <iostream>
@@ -107,9 +108,69 @@ bool testTransport()
     return true;
 }
 
+template <typename T>
+bool testDepth(bool print = false)
+{
+    using Cylinder = dxmc::DepthDose<T, 5, 2>;
+    using World = dxmc::World2<T, Cylinder>;
+    using Beam = dxmc::PencilBeam<T>;
+
+    World world;
+    auto& cylinder = world.addItem<Cylinder>({ T { 0.1 }, T { 20 }, 20 });
+    auto material = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)");
+    if (material) {
+        cylinder.setMaterial(material.value());
+        cylinder.setMaterialDensity(T { 1.19 });
+    }
+    world.build();
+
+    const T energy = 60;
+
+    Beam beam;
+    beam.setEnergy(energy);
+    beam.setPosition({ 0, 0, -100 });
+    beam.setDirection({ 0, 0, 1 });
+
+    beam.setNumberOfExposures(40);
+    beam.setNumberOfParticlesPerExposure(1e4);
+
+    // beam.setParticleWeight(T { 0.5 });
+
+    dxmc::Transport<T> transport;
+    auto time = runDispatcher(transport, world, beam);
+
+    if (print)
+        std::cout << "pos, energy, std, nevents\n";
+
+    T dose0 = -1;
+    T pos0 = -1;
+    const auto att = material.value().attenuationValues(beam.energy()).sum();
+
+    bool success = true;
+
+    for (const auto& [pos, d] : cylinder.depthDose()) {
+        if (dose0 < 0) {
+            dose0 = d.energyImparted();
+            pos0 = pos;
+        }
+        if (print) {
+            std::cout << pos << ", ";
+            std::cout << d.energyImparted() << ", ";
+            std::cout << d.stdEnergyImparted() << ", ";
+            std::cout << d.numberOfEvents() << "\n";
+        }
+        success = success && d.energyImparted() / dose0 - std::exp(-(pos - pos0) * att) < 0.01;
+    }
+    return success;
+}
+
 int main()
 {
     bool success = true;
+
+    success = success && testDepth<float>();
+    success = success && testDepth<double>();
+
     success = success && testTransport<float>();
     success = success && testTransport<float>();
     success = success && testTransport<float>();
