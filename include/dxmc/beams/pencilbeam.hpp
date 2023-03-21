@@ -68,6 +68,13 @@ public:
     {
     }
 
+    void setEnergy(T energy)
+    {
+        m_energy = std::abs(energy);
+    }
+
+    T energy() const { return m_energy; }
+
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
     void setNumberOfExposures(std::uint64_t n) { m_Nexposures = std::max(n, std::uint64_t { 1 }); }
 
