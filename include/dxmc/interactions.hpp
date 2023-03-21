@@ -294,7 +294,7 @@ namespace interactions {
         } else {
             interactions::rayleightScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
         }
-        if (particle.energy < MIN_ENERGY<T>() ) {
+        if (particle.energy < MIN_ENERGY<T>()) {
             res.particleAlive = false;
             res.energyImparted += particle.energy;
         } else {
@@ -303,29 +303,41 @@ namespace interactions {
                 if (state.randomUniform<T>() < interactions::russianRuletteProbability<T>()) {
                     res.particleAlive = false;
                 } else {
-                    particle.weight /=  interactions::russianRuletteProbability<T>();
+                    constexpr T factor = T { 1 } / (T { 1 } - interactions::russianRuletteProbability<T>());
+                    particle.weight *= factor;
                     res.particleAlive = true;
                 }
             }
         }
         return res;
     }
+
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
     InteractionResult<T> interactForced(const T interactionprobability, const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state)
     {
-        const auto attSum = attenuation.sum();
-        const auto pe_prob = interactionprobability * attenuation.photoelectric / attSum;
-        const T energyImparted = particle.energy * (particle.weight * pe_prob);
-        particle.weight *= (1 - pe_prob);
-        InteractionResult<T> res { .energyImparted = energyImparted, .particleAlive = true, .particleEnergyChanged = false };
-        return res;
-    }
-    template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
-    InteractionResult<T> interactPEForced(const T interactionprobability, Particle<T>& particle)
-    {
-        const T energyImparted = particle.energy * particle.weight * interactionprobability;
-        particle.weight *= (1 - interactionprobability);
-        InteractionResult<T> res { .energyImparted = energyImparted, .particleAlive = true, .particleEnergyChanged = false };
+        const auto photoEventProbability = attenuation.photoelectric / attenuation.sum();
+        const auto weightCorrection = interactionprobability * photoEventProbability;
+
+        InteractionResult<T> res;
+
+        // Forced photoelectric absorbtion
+        res.energyImparted = weightCorrection * particle.weight * particle.energy;
+
+        // remainder interaction
+        const auto r1 = state.randomUniform<T>();
+        if (r1 < interactionprobability * (1 - photoEventProbability)) {
+            const auto r2 = state.randomUniform(attenuation.incoherent + attenuation.coherent);
+            if (r2 < attenuation.incoherent) { // incoherent
+                const auto Ei = interactions::comptonScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
+                res.energyImparted += Ei;
+                res.particleEnergyChanged = true;
+            } else {
+                // coherent
+                interactions::rayleightScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
+            }
+        }
+        particle.weight *= (1 - weightCorrection);
+
         return res;
     }
 }
