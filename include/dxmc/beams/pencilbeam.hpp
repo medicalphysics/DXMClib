@@ -30,10 +30,11 @@ namespace dxmc {
 template <Floating T>
 class PencilBeamExposure {
 public:
-    PencilBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, std::uint64_t N)
+    PencilBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, T weight, std::uint64_t N)
         : m_pos(pos)
         , m_dir(dir)
         , m_energy(energy)
+        , m_weight(weight)
         , m_NParticles(N)
     {
     }
@@ -45,12 +46,13 @@ public:
         Particle<T> p = { .pos = m_pos,
             .dir = m_dir,
             .energy = m_energy,
-            .weight = T { 1 } };
+            .weight = m_weight };
         return p;
     }
 
 private:
     T m_energy = 60;
+    T m_weight = 1;
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 0, 1 };
     std::uint64_t m_NParticles = 100;
@@ -83,14 +85,20 @@ public:
         vectormath::normalize(m_dir);
     }
 
+    void setParticleWeight(T weight = 1)
+    {
+        m_weight = weight;
+    }
+
     PencilBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-        PencilBeamExposure<T> exp(m_pos, m_dir, m_energy, m_particlesPerExposure);
+        PencilBeamExposure<T> exp(m_pos, m_dir, m_energy, m_weight, m_particlesPerExposure);
         return exp;
     }
 
 private:
     T m_energy = 60;
+    T m_weight = 1;
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 0, 1 };
     std::uint64_t m_Nexposures = 100;
