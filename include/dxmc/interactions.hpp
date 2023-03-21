@@ -294,16 +294,16 @@ namespace interactions {
         } else {
             interactions::rayleightScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
         }
-        if (particle.energy < MIN_ENERGY<T>()) {
+        if (particle.energy < MIN_ENERGY<T>() ) {
             res.particleAlive = false;
             res.energyImparted += particle.energy;
         } else {
 
-            if (particle.weight < interactions::russianRuletteWeightThreshold<T>()) {
+            if (particle.weight < interactions::russianRuletteWeightThreshold<T>() && res.particleAlive) {
                 if (state.randomUniform<T>() < interactions::russianRuletteProbability<T>()) {
                     res.particleAlive = false;
                 } else {
-                    particle.weight /= (T { 1 } - interactions::russianRuletteProbability<T>());
+                    particle.weight /=  interactions::russianRuletteProbability<T>();
                     res.particleAlive = true;
                 }
             }
