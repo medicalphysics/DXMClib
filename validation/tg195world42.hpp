@@ -44,6 +44,13 @@ protected:
         DoseScore<T> dose;
         std::array<T, 6> aabb = { 0, 0, 0, 0, 0, 0 };
     };
+    static bool insideChild(const Particle<T>& p, const CylinderChild& child)
+    {
+        if (basicshape::AABB::pointInside(p.pos, child.aabb)) {
+            return basicshape::cylinder::pointInside(p.pos, child.center, child.radii, child.halfHeight);
+        }
+        return false;
+    }
 
 public:
     TG195World42(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& pos = { 0, 0, 0 })
@@ -127,39 +134,6 @@ public:
         return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
     }
 
-    std::pair<CylinderChild*, std::array<T, 2>> intersectChild(const Particle<T>& p, RandomState& state)
-    {
-        CylinderChild* child = nullptr;
-        auto intersectChildC = basicshape::AABB::intersectForwardInterval(p, m_centerChild.aabb);
-        if (intersectChildC) {
-            intersectChildC = basicshape::cylinder::intersectForwardInterval(
-                p, m_centerChild.center, m_centerChild.radii, m_centerChild.halfHeight);
-        }
-        auto intersectChildP = basicshape::AABB::intersectForwardInterval(p, m_periferyChild.aabb);
-        if (intersectChildP) {
-            intersectChildP = basicshape::cylinder::intersectForwardInterval(
-                p, m_periferyChild.center, m_periferyChild.radii, m_periferyChild.halfHeight);
-        }
-        std::array<T, 2> t = { 0, 0 };
-        if (intersectChildC && intersectChildP) {
-            // select a random child
-            if (state.randomUniform<T>() < T { 0.5 }) {
-                child = &m_centerChild;
-                t = intersectChildC.value();
-            } else {
-                child = &m_periferyChild;
-                t = intersectChildP.value();
-            }
-        } else if (intersectChildC) {
-            child = &m_centerChild;
-            t = intersectChildC.value();
-        } else if (intersectChildC) {
-            child = &m_periferyChild;
-            t = intersectChildP.value();
-        }
-        return std::make_pair(child, t);
-    }
-
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight);
@@ -173,73 +147,30 @@ public:
                 updateAtt = false;
             }
 
-            T stepLen;
-            // auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            constexpr int VARRED = 1;
-            // forced interactions
-            if constexpr (VARRED == 1) {
-                // Forced interactions by modifying path lenght sampling to intersection interval of ROI
-                auto [child_intersected, t_child] = intersectChild(p, state);
-                if (child_intersected) { // we pass an object of interest
-                    // const auto p0 = T { 1 };
-                    const auto p0 = std::exp(-t_child[0] * att.sum() * m_materialDensity);
-                    const auto p1 = std::exp(-t_child[1] * att.sum() * m_materialDensity);
-                    const auto pp = p0 - p1;
-                    stepLen = -attSumInv * std::log(state.randomUniform<T>(p1, p0));
-                    p.weight *= pp;
-                } else {
-                    stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-                }
-            } else if constexpr (VARRED == 2) {
-                stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+            constexpr T alpha = T { 0.4 };
 
-                if (basicshape::AABB::intersectForwardInterval(p, m_centerChild.aabb)) {
-                    auto intersectChild = basicshape::cylinder::intersectForwardInterval(
-                        p, m_centerChild.center, m_centerChild.radii, m_centerChild.halfHeight);
-                    if (intersectChild) {
-                        auto& t = intersectChild.value();
-                        t[1] = std::min(stepLen, t[1]);
-                        if (t[0] < t[1]) {
-                            const auto uen = m_massEnergyTransfer(p.energy);
-                            const auto EI = p.energy * m_materialDensity * uen * (t[1] - t[0]) * p.weight;
-                            m_centerChild.dose.scoreEnergy(EI);
-                        }
-                    }
-                }
-                if (basicshape::AABB::intersectForwardInterval(p, m_periferyChild.aabb)) {
-                    auto intersectChild = basicshape::cylinder::intersectForwardInterval(
-                        p, m_periferyChild.center, m_periferyChild.radii, m_periferyChild.halfHeight);
-                    if (intersectChild) {
-                        auto& t = intersectChild.value();
-                        t[1] = std::min(stepLen, t[1]);
-                        if (t[0] < t[1]) {
-                            const auto uen = m_massEnergyTransfer(p.energy);
-                            const auto EI = p.energy * m_materialDensity * uen * (t[1] - t[0]) * p.weight;
-                            m_periferyChild.dose.scoreEnergy(EI);
-                        }
-                    }
-                }
-
-            } else {
-                stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-            }
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv * alpha;
 
             const auto intLen = intersect(p);
             if (stepLen < intLen.intersection) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                if constexpr (VARRED != 2) {
-                    if (basicshape::cylinder::pointInside(p.pos, m_centerChild.center, m_centerChild.radii, m_centerChild.halfHeight)) {
-                        m_centerChild.dose.scoreEnergy(intRes.energyImparted);
-                    } else if (basicshape::cylinder::pointInside(p.pos, m_periferyChild.center, m_periferyChild.radii, m_periferyChild.halfHeight)) {
-                        m_periferyChild.dose.scoreEnergy(intRes.energyImparted);
-                    } else {
-                        // m_dose.scoreEnergy(intRes.energyImparted);
-                    }
+                if (insideChild(p, m_centerChild)) {
+                    const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
+                    m_centerChild.dose.scoreEnergy(intRes.energyImparted);
+                    updateAtt = intRes.particleEnergyChanged;
+                    cont = intRes.particleAlive;
+                } else if (insideChild(p, m_periferyChild)) {
+                    const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
+                    m_periferyChild.dose.scoreEnergy(intRes.energyImparted);
+                    updateAtt = intRes.particleEnergyChanged;
+                    cont = intRes.particleAlive;
+                } else if (state.randomUniform<T>() < alpha) {
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                    updateAtt = intRes.particleEnergyChanged;
+                    cont = intRes.particleAlive;
                 }
-                updateAtt = intRes.particleEnergyChanged;
-                cont = intRes.particleAlive;
+
             } else {
                 // transport to border
                 p.border_translate(intLen.intersection);
@@ -248,7 +179,8 @@ public:
         }
     }
 
-    const DoseScore<T>& doseCenterCylinder() const
+    const DoseScore<T>&
+    doseCenterCylinder() const
     {
         return m_centerChild.dose;
     }
