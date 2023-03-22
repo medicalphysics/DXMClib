@@ -141,7 +141,7 @@ public:
 
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const final
     {
-        const auto aabb_intersect = basicshape::AABB::intersect(p, m_aabb);
+         auto aabb_intersect = basicshape::AABB::intersect(p, m_aabb);
         if (aabb_intersect.valid()) {
             const auto t = voxelIntersect(p, aabb_intersect.intersection);
             if (t) {
@@ -177,7 +177,7 @@ protected:
         translate(c);
     }
 
-    std::optional<T> voxelIntersection(const Particle<T>& p, const T t_intersection_aabb) const
+    std::optional<T> voxelIntersect(const Particle<T>& p, const T t_intersection_aabb) const
     {
         constexpr std::uint8_t ignoreIdx = 0;
         constexpr T t_error = 1E-4;

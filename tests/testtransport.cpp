@@ -189,6 +189,9 @@ bool testAAVoxelGrid()
 
     // test indices and assign material
     bool success = true;
+    item.setData(dim, dens, materialIdx, materials);
+    item.setSpacing(spacing);
+
     for (std::size_t z = 0; z < dim[2]; ++z)
         for (std::size_t y = 0; y < dim[1]; ++y)
             for (std::size_t x = 0; x < dim[0]; ++x) {
