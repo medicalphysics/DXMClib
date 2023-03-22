@@ -209,7 +209,8 @@ protected:
         T tMaxY = deltaY;
         T tMaxZ = deltaZ;
 
-        bool still_inside = false;
+        bool still_inside = true;
+        bool hit = false;
         do {
             if (tMaxX < tMaxY) {
                 if (tMaxX < tMaxZ) {
@@ -219,7 +220,6 @@ protected:
                         still_inside = false;
                     index_flat += xyz_step_flat[0];
                     tMaxX += deltaX;
-
                 } else {
                     // zmin
                     xyz[2] += xyz_step[2];
@@ -245,10 +245,12 @@ protected:
                     tMaxZ += deltaZ;
                 }
             }
-        } while (m_data[index_flat].materialIndex == ignoreIdx && still_inside);
+            if (still_inside)
+                hit = m_data[index_flat].materialIndex == ignoreIdx;
+        } while (!hit && still_inside);
 
         if (still_inside) {
-            return std::make_optional(std::min({ tMax[0], tMax[1], tMax[2] }) + t_intersection_aabb);
+            return std::make_optional(std::min({ tMaxX, tMaxY, tMaxZ }) + t_intersection_aabb);
         }
         return std::nullopt;
     }
