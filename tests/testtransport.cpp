@@ -20,6 +20,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
@@ -164,9 +165,58 @@ bool testDepth(bool print = false)
     return success;
 }
 
+template <typename T>
+bool testAAVoxelGrid()
+{
+
+    dxmc::AAVoxelGrid<T, 5> item;
+
+    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
+    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+
+    const std::array<std::size_t, 3> dim = { 32, 32, 32 };
+    const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
+    std::array<T, 3> spacing = { 0.01f, 0.01f, 0.01f };
+
+    // material arrays
+    std::vector<T> dens(size, air_dens);
+    std::vector<std::uint8_t> materialIdx(size, 0);
+    std::vector<dxmc::Material2<T, 5>> materials;
+    materials.push_back(air);
+    materials.push_back(pmma);
+
+    // test indices and assign material
+    bool success = true;
+    for (std::size_t z = 0; z < dim[2]; ++z)
+        for (std::size_t y = 0; y < dim[1]; ++y)
+            for (std::size_t x = 0; x < dim[0]; ++x) {
+                const std::array tind = { x, y, z };
+                const auto find = item.flatIndex(tind);
+                const auto ind = item.index(find);
+                success = success && ind == tind;
+                if (x > dim[0] / 2 && y > dim[1] / 2 && z > dim[2] / 2) {
+                    dens[find] = pmma_dens;
+                    materialIdx[find] = 1;
+                } else if (x < dim[0] / 2 && y < dim[1] / 2 && z < dim[2] / 2) {
+                    dens[find] = pmma_dens;
+                    materialIdx[find] = 1;
+                }
+            }
+
+    item.setData(dim, dens, materialIdx, materials);
+    item.setSpacing(spacing);
+
+    return success;
+}
+
 int main()
 {
     bool success = true;
+
+    success = success && testAAVoxelGrid<float>();
+    success = success && testAAVoxelGrid<double>();
 
     success = success && testDepth<float>();
     success = success && testDepth<double>();
