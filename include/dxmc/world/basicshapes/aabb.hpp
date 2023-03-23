@@ -38,7 +38,7 @@ namespace basicshape {
         }
 
         template <Floating T>
-        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 6>& aabb)
+        std::optional<std::array<T, 2>> intersectForwardInterval2(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             std::array t = { T { 0 }, std::numeric_limits<T>::max() };
 
@@ -57,7 +57,7 @@ namespace basicshape {
             return t[0] < t[1] && t[1] > T { 0 } ? std::make_optional(t) : std::nullopt;
         }
         template <Floating T>
-        std::optional<std::array<T, 2>> intersectForwardInterval2(const Particle<T>& p, const std::array<T, 6>& aabb)
+        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             std::array<T, 2> t;
 
@@ -110,38 +110,9 @@ namespace basicshape {
             return std::make_optional(t);
         }
 
-        template <Floating T>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 6>& aabb)
-        {
-            T tmin = std::numeric_limits<T>::lowest();
-            T tmax = std::numeric_limits<T>::max();
-            for (std::size_t i = 0; i < 3; ++i) {
-                if (p.dir[i] < T { 0 } || p.dir[i] > T { 0 }) {
-                    const auto d = 1 / p.dir[i];
-                    const auto t0 = (aabb[i] - p.pos[i]) * d;
-                    const auto t1 = (aabb[i + 3] - p.pos[i]) * d;
-                    if (d > T { 0 }) {
-                        tmin = std::max(t0, tmin);
-                        tmax = std::min(t1, tmax);
-                    } else {
-                        tmin = std::max(t1, tmin);
-                        tmax = std::min(t0, tmax);
-                    }
-                }
-            }
-            const auto particleInside = tmin < T { 0 } && tmax > T { 0 };
-
-            WorldIntersectionResult<T> res = {
-                .intersection = particleInside ? tmax : tmin,
-                .rayOriginIsInsideItem = particleInside,
-                .intersectionValid = tmax > 0 && tmax > tmin
-            };
-            return res;
-        }
-
         // Branched version with early exits
         template <Floating T>
-        WorldIntersectionResult<T> intersect2(const Particle<T>& p, const std::array<T, 6>& aabb)
+        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             WorldIntersectionResult<T> res;
             std::array<T, 2> t;
