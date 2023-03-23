@@ -181,10 +181,8 @@ protected:
         constexpr std::uint8_t ignoreIdx = 0;
 
         std::array<std::size_t, 3> xyz;
-        // std::array<T, 3> pos;
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
-            // pos = p.pos;
         } else {
             // make sure we are well inside a voxel
             std::array<T, 3> pos;
@@ -192,15 +190,9 @@ protected:
                 pos[i] = p.pos[i] + p.dir[i] * (intersection.intersection + m_spacing[i] * T { 0.5 });
             }
             xyz = index<false>(pos);
-            /* pos = {
-                p.pos[0] + p.dir[0] * (intersection.intersection + m_spacing[0] * T { 0.5 }),
-                p.pos[1] + p.dir[1] * (intersection.intersection + m_spacing[1] * T { 0.5 }),
-                p.pos[2] + p.dir[2] * (intersection.intersection + m_spacing[2] * T { 0.5 })
-            };*/
         }
-        // auto xyz = index<false>(pos);
+
         auto index_flat = flatIndex(xyz);
-        // check if first voxel is valid
         if (m_data[index_flat].materialIndex != ignoreIdx) {
             return;
         }
