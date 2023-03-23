@@ -166,6 +166,67 @@ bool testDepth(bool print = false)
 }
 
 template <typename T>
+bool testAAVoxelGridTransport()
+{
+    bool success = true;
+
+    dxmc::AAVoxelGrid<T, 5> item;
+
+    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
+    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+
+    const std::array<std::size_t, 3> dim = { 13, 13, 13 };
+    const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
+    std::array<T, 3> spacing = { 2.0f, 2.0f, 2.0f };
+
+    // material arrays
+    std::vector<T> dens(size, air_dens);
+    std::vector<std::uint8_t> materialIdx(size, 0);
+    std::vector<dxmc::Material2<T, 5>> materials;
+    materials.push_back(air);
+    materials.push_back(pmma);
+
+    // test indices and assign material
+    item.setData(dim, dens, materialIdx, materials);
+    item.setSpacing(spacing);
+
+    for (std::size_t z = 0; z < dim[2]; ++z)
+        for (std::size_t y = 0; y < dim[1]; ++y)
+            for (std::size_t x = 0; x < dim[0]; ++x) {
+                const std::array tind = { x, y, z };
+                const auto find = item.flatIndex(tind);
+                const auto ind = item.index(find);
+                success = success && ind == tind;
+
+                if (x > 3 && x < 7) {
+                    dens[find] = pmma_dens;
+                    materialIdx[find] = 1;
+                }
+            }
+
+    item.setData(dim, dens, materialIdx, materials);
+    item.setSpacing(spacing);
+
+    dxmc::Particle<T> p;
+    p.pos = { -100, 0, 0 };
+    p.dir = { 1, 0, 0 };
+    dxmc::vectormath::normalize(p.dir);
+    p.energy = 60;
+    p.weight = 1;
+    auto res = item.intersect(p);
+    p.border_translate(res.intersection);
+    dxmc::RandomState state;
+    for (std::size_t i = 0; i < 1000; ++i) {
+        auto pc = p;
+        item.transport(pc, state);
+    }
+    auto xyz = item.index(p.pos);
+    return success;
+}
+
+template <typename T>
 bool testAAVoxelGrid()
 {
 
@@ -240,6 +301,9 @@ bool testAAVoxelGrid()
 int main()
 {
     bool success = true;
+
+    success = success && testAAVoxelGridTransport<double>();
+    success = success && testAAVoxelGridTransport<float>();
 
     success = success && testAAVoxelGrid<float>();
     success = success && testAAVoxelGrid<double>();

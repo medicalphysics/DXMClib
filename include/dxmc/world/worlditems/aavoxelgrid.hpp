@@ -32,7 +32,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5>
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class AAVoxelGrid final : public WorldItemBase<T> {
 public:
     bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material2<T, NMaterialShells>>& materials)
@@ -52,6 +52,7 @@ public:
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
             return { .dose = dummy_dose, .density = d, .materialIndex = mIdx };
         });
+        m_materials = materials;
 
         updateAABB();
         return true;
@@ -156,7 +157,11 @@ public:
         std::for_each(std::execution::par_unseq, m_data.begin(), m_data.end(), [](auto& d) { d.dose.clear(); });
     }
 
-    void transport(Particle<T>& p, RandomState& state) final { }
+    void transport(Particle<T>& p, RandomState& state) final
+    {
+        constexpr std::uint_fast8_t ignoreMaterialIdx = 0;
+        voxelTransport<ignoreMaterialIdx>(p, state);
+    }
 
 protected:
     void updateAABB()
@@ -175,11 +180,9 @@ protected:
         return a[0] < a[1] ? a[0] < a[2] ? 0 : 2 : a[1] < a[2] ? 1
                                                                : 2;
     }
-
+    template <std::uint_fast8_t IGNOREIDX = 0>
     void voxelIntersect(const Particle<T>& p, WorldIntersectionResult<T>& intersection) const
     {
-        constexpr std::uint8_t ignoreIdx = 0;
-
         std::array<std::size_t, 3> xyz;
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
@@ -193,7 +196,7 @@ protected:
         }
 
         auto index_flat = flatIndex(xyz);
-        if (m_data[index_flat].materialIndex != ignoreIdx) {
+        if (m_data[index_flat].materialIndex != IGNOREIDX) {
             return;
         }
 
@@ -203,6 +206,7 @@ protected:
             p.dir[2] < 0 ? -1 : 1
         };
 
+        // by ising int, max x*y size is about 2e9
         const std::array<int, 3> xyz_step_flat = {
             p.dir[0] < 0 ? -1 : 1,
             p.dir[1] < 0 ? -static_cast<int>(m_dim[0]) : static_cast<int>(m_dim[0]),
@@ -224,7 +228,7 @@ protected:
 
         bool still_inside = true;
         std::uint_fast8_t dIdx;
-        while (still_inside && m_data[index_flat].materialIndex == ignoreIdx) {
+        while (still_inside && m_data[index_flat].materialIndex == IGNOREIDX) {
             dIdx = argmin3(tMax);
             xyz[dIdx] += xyz_step[dIdx];
             still_inside = xyz[dIdx] < m_dim[dIdx];
@@ -238,6 +242,86 @@ protected:
         } else {
             intersection.intersectionValid = false;
         }
+    }
+    template <std::uint_fast8_t IGNOREIDX = 0>
+    void voxelTransport(Particle<T>& p, RandomState& state)
+    {
+
+        bool still_inside;
+        do {
+            std::array<std::size_t, 3> xyz = index<false>(p.pos);
+            auto index_flat = flatIndex(xyz);
+
+            const std::array<int, 3> xyz_step = {
+                p.dir[0] < 0 ? -1 : 1,
+                p.dir[1] < 0 ? -1 : 1,
+                p.dir[2] < 0 ? -1 : 1
+            };
+
+            const std::array<int, 3> xyz_step_flat = {
+                p.dir[0] < 0 ? -1 : 1,
+                p.dir[1] < 0 ? -static_cast<int>(m_dim[0]) : static_cast<int>(m_dim[0]),
+                p.dir[2] < 0 ? -static_cast<int>(m_dim[0] * m_dim[1]) : static_cast<int>(m_dim[0] * m_dim[1])
+            };
+
+            const std::array<T, 3> delta = {
+                m_spacing[0] / std::abs(p.dir[0]),
+                m_spacing[1] / std::abs(p.dir[1]),
+                m_spacing[2] / std::abs(p.dir[2])
+            };
+
+            std::array<T, 3> tMax = {
+                // abs function in case of delta is infinity
+                std::abs(std::nextafter(delta[0], std::numeric_limits<T>::max()) - delta[0]),
+                std::abs(std::nextafter(delta[1], std::numeric_limits<T>::max()) - delta[1]),
+                std::abs(std::nextafter(delta[2], std::numeric_limits<T>::max()) - delta[2])
+            };
+
+            // preventing zero threshold
+            const T interaction_thres = std::max(state.randomUniform<T>(), std::numeric_limits<T>::min());
+
+            T interaction_accum = 1;
+            bool cont = true;
+            std::uint_fast8_t dIdx;
+            do {
+                // current material
+                const auto matInd = m_data[index_flat].materialIndex;
+                const auto density = m_data[index_flat].density;
+                auto& dose = m_data[index_flat].dose;
+
+                // updating stepping
+                dIdx = argmin3(tMax);
+                xyz[dIdx] += xyz_step[dIdx];
+                index_flat += xyz_step_flat[dIdx];
+                tMax[dIdx] += delta[dIdx];
+
+                // we are still inside volume and not in an ignored voxel
+                still_inside = xyz[dIdx] < m_dim[dIdx] && m_data[index_flat].materialIndex != IGNOREIDX;
+
+                // updating radiological path
+                const auto att = m_materials[matInd].attenuationValues(p.energy);
+                const auto att_tot = att.sum() * density;
+                const auto radio_step = std::exp(-att_tot * delta[dIdx]);
+                interaction_accum *= radio_step;
+                if (interaction_accum < interaction_thres) {
+                    // interaction happends
+                    const auto step_correction = std::log(interaction_accum / interaction_thres) / att_tot;
+                    tMax[dIdx] += step_correction;
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
+                    dose.scoreEnergy(intRes.energyImparted);
+                    still_inside = still_inside && intRes.particleAlive;
+                    // particle energy or direction has changed, we restart stepping
+                    cont = false;
+                } else {
+                    cont = still_inside;
+                }
+            } while (cont);
+            // advancing particle to reached step
+            p.translate(tMax[dIdx]);
+        } while (still_inside);
+    }
+    void woodcockTransport(Particle<T>& p, RandomState& state)
+    {
     }
 
     struct DataElement {
