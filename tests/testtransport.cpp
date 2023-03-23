@@ -176,9 +176,9 @@ bool testAAVoxelGrid()
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
-    const std::array<std::size_t, 3> dim = { 32, 32, 32 };
+    const std::array<std::size_t, 3> dim = { 3, 3, 3 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { 0.01f, 0.01f, 0.01f };
+    std::array<T, 3> spacing = { 2.0f, 2.0f, 2.0f };
 
     // material arrays
     std::vector<T> dens(size, air_dens);
@@ -199,10 +199,14 @@ bool testAAVoxelGrid()
                 const auto find = item.flatIndex(tind);
                 const auto ind = item.index(find);
                 success = success && ind == tind;
-                if (x > dim[0] / 2 && y > dim[1] / 2 && z > dim[2] / 2) {
+                /* if (x > dim[0] / 2 && y > dim[1] / 2 && z > dim[2] / 2) {
                     dens[find] = pmma_dens;
                     materialIdx[find] = 1;
                 } else if (x < dim[0] / 2 && y < dim[1] / 2 && z < dim[2] / 2) {
+                    dens[find] = pmma_dens;
+                    materialIdx[find] = 1;
+                }*/
+                if (x == 1 && y == 1 && z == 1) {
                     dens[find] = pmma_dens;
                     materialIdx[find] = 1;
                 }
@@ -210,6 +214,17 @@ bool testAAVoxelGrid()
 
     item.setData(dim, dens, materialIdx, materials);
     item.setSpacing(spacing);
+
+    dxmc::Particle<T> p;
+    p.pos = { 100, 0, 0 };
+    p.dir = { -1, 0, 0 };
+    auto res = item.intersect(p);
+    success = success && res.valid() && res.intersection == 97;
+
+    p.pos = { -100, 0, 0 };
+    p.dir = { 1, 0, 0 };
+    res = item.intersect(p);
+    success = success && res.valid() && res.intersection == 97;
 
     return success;
 }
