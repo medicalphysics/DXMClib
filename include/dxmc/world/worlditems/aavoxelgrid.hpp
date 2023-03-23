@@ -59,17 +59,15 @@ public:
     void setSpacing(const std::array<T, 3>& spacing)
     {
         for (std::size_t i = 0; i < 3; ++i) {
-            m_invSpacing[i] = 1 / std::abs(spacing[i]);
+            m_spacing[i] = std::abs(spacing[i]);
+            m_invSpacing[i] = 1 / m_spacing[i];
         }
         updateAABB();
     }
-    std::array<T, 3> spacing() const
+
+    const std::array<T, 3>& spacing() const
     {
-        std::array<T, 3> s;
-        for (std::size_t i = 0; i < 3; ++i) {
-            s[i] = 1 / m_invSpacing[i];
-        }
-        return s;
+        return m_spacing;
     }
     void translate(const std::array<T, 3>& dist) final
     {
@@ -115,8 +113,9 @@ public:
         if constexpr (BOUNDSCHECK) {
             std::array<std::size_t, 3> idx;
             for (std::size_t i = 0; i < 3; ++i) {
-                const T bpos = std::clamp(pos, m_aabb[i], m_aabb[i + 3]);
-                idx[i] = static_cast<std::size_t>(bpos * m_invSpacing[i]);
+                const T dt = m_spacing[i] * T { 0.5 };
+                const T bpos = std::clamp(pos[i], m_aabb[i] + dt, m_aabb[i + 3] - dt);
+                idx[i] = static_cast<std::size_t>((bpos - m_aabb[i]) * m_invSpacing[i]);
             }
             return idx;
         } else {
@@ -164,7 +163,7 @@ protected:
     {
         const auto c = center();
         for (std::size_t i = 0; i < 3; ++i) {
-            const T half_dist = (m_dim[i] * T { 0.5 }) / m_invSpacing[i];
+            const T half_dist = (m_dim[i] * T { 0.5 }) * m_spacing[i];
             m_aabb[i] = -half_dist;
             m_aabb[i + 3] = half_dist;
         }
@@ -180,21 +179,28 @@ protected:
     void voxelIntersect(const Particle<T>& p, WorldIntersectionResult<T>& intersection) const
     {
         constexpr std::uint8_t ignoreIdx = 0;
-        std::array<T, 3> pos;
+
+        std::array<std::size_t, 3> xyz;
+        // std::array<T, 3> pos;
         if (intersection.rayOriginIsInsideItem) {
-            pos = p.pos;
+            xyz = index<false>(p.pos);
+            // pos = p.pos;
         } else {
+            // make sure we are well inside a voxel
+            std::array<T, 3> pos;
             for (std::size_t i = 0; i < 3; ++i) {
-                const auto dir = p.dir[i] < 0 ? std::numeric_limits<T>::lowest() : std::numeric_limits<T>::max();
-                if constexpr (sizeof(T) == 4)
-                    pos[i] = std::nextafter(p.pos[i] + (intersection.intersection + 1E-4) * p.dir[i], dir);
-                else
-                    pos[i] = std::nextafter(p.pos[i] + (intersection.intersection + 1E-6) * p.dir[i], dir);
+                pos[i] = p.pos[i] + p.dir[i] * (intersection.intersection + m_spacing[i] * T { 0.5 });
             }
+            xyz = index<false>(pos);
+            /* pos = {
+                p.pos[0] + p.dir[0] * (intersection.intersection + m_spacing[0] * T { 0.5 }),
+                p.pos[1] + p.dir[1] * (intersection.intersection + m_spacing[1] * T { 0.5 }),
+                p.pos[2] + p.dir[2] * (intersection.intersection + m_spacing[2] * T { 0.5 })
+            };*/
         }
-        auto xyz = index<false>(pos);
+        // auto xyz = index<false>(pos);
         auto index_flat = flatIndex(xyz);
-        // first voxel is valid
+        // check if first voxel is valid
         if (m_data[index_flat].materialIndex != ignoreIdx) {
             return;
         }
@@ -212,26 +218,26 @@ protected:
         };
 
         const std::array<T, 3> delta = {
-            1 / (std::abs(p.dir[0]) * m_invSpacing[0]),
-            1 / (std::abs(p.dir[1]) * m_invSpacing[1]),
-            1 / (std::abs(p.dir[2]) * m_invSpacing[2])
+            m_spacing[0] / std::abs(p.dir[0]),
+            m_spacing[1] / std::abs(p.dir[1]),
+            m_spacing[2] / std::abs(p.dir[2])
         };
-        std::array<T, 3> tMax = delta;
 
-        auto dIdx = argmin3(tMax);
-        xyz[dIdx] += xyz_step[dIdx];
-        bool still_inside = xyz[dIdx] < m_dim[dIdx];
-        index_flat += xyz_step_flat[dIdx];
-        bool ignore_hit = still_inside ? m_data[index_flat].materialIndex == ignoreIdx : false;
-        while (still_inside && ignore_hit) {
+        std::array<T, 3> tMax = {
+            // abs function in case of delta is infinity
+            std::abs(std::nextafter(delta[0], std::numeric_limits<T>::max()) - delta[0]),
+            std::abs(std::nextafter(delta[1], std::numeric_limits<T>::max()) - delta[1]),
+            std::abs(std::nextafter(delta[2], std::numeric_limits<T>::max()) - delta[2])
+        };
+
+        bool still_inside = true;
+        std::uint_fast8_t dIdx;
+        while (still_inside && m_data[index_flat].materialIndex == ignoreIdx) {
             dIdx = argmin3(tMax);
             xyz[dIdx] += xyz_step[dIdx];
             still_inside = xyz[dIdx] < m_dim[dIdx];
             index_flat += xyz_step_flat[dIdx];
             tMax[dIdx] += delta[dIdx];
-
-            if (still_inside)
-                ignore_hit = m_data[index_flat].materialIndex == ignoreIdx;
         }
 
         if (still_inside) {
@@ -251,6 +257,7 @@ protected:
 private:
     std::array<std::size_t, 3> m_dim = { 1, 1, 1 };
     std::array<T, 3> m_invSpacing = { 1, 1, 1 };
+    std::array<T, 3> m_spacing = { 1, 1, 1 };
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<DataElement> m_data;
     std::vector<Material2<T, NMaterialShells>> m_materials;

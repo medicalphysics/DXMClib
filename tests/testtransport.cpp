@@ -216,15 +216,23 @@ bool testAAVoxelGrid()
     item.setSpacing(spacing);
 
     dxmc::Particle<T> p;
-    p.pos = { 100, 0, 0 };
-    p.dir = { -1, 0, 0 };
-    auto res = item.intersect(p);
-    success = success && res.valid() && res.intersection == 97;
 
     p.pos = { -100, 0, 0 };
     p.dir = { 1, 0, 0 };
+    auto res = item.intersect(p);
+    success = success && res.valid() && res.intersection == 99;
+
+    p.pos = { 100, 0, 0 };
+    p.dir = { -1, 0, 0 };
     res = item.intersect(p);
-    success = success && res.valid() && res.intersection == 97;
+    success = success && res.valid() && res.intersection == 99;
+
+    p.pos = { -100, -100, -100 };
+    p.dir = { 1, 1, 1 };
+    dxmc::vectormath::normalize(p.dir);
+    res = item.intersect(p);
+    auto val = std::sqrt(3 * 100 * T { 100 }) - std::sqrt(3 * spacing[0] * spacing[0] / 4);
+    success = success && res.valid() && val - res.intersection < 1E-6;
 
     return success;
 }
