@@ -64,7 +64,7 @@ bool testTransport()
 
     world.build();
 
-    dxmc::Transport<T> transport;
+    dxmc::Transport transport;
     // transport.setNumberOfThreads(4);
 
     std::uint64_t nPart = 0;
@@ -137,7 +137,7 @@ bool testDepth(bool print = false)
 
     // beam.setParticleWeight(T { 0.5 });
 
-    dxmc::Transport<T> transport;
+    dxmc::Transport transport;
     auto time = runDispatcher(transport, world, beam);
 
     if (print)
@@ -165,12 +165,15 @@ bool testDepth(bool print = false)
     return success;
 }
 
-template <typename T>
+template <typename T, std::uint_fast8_t TRANSPARENT = 255>
 bool testAAVoxelGridTransport()
 {
     bool success = true;
 
-    dxmc::AAVoxelGrid<T, 5> item;
+    using AAVoxelGrid = dxmc::AAVoxelGrid<T, 5, 2, TRANSPARENT>;
+
+    dxmc::World2<T, AAVoxelGrid> world;
+    auto& item = world.addItem(AAVoxelGrid());
 
     auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
     auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
@@ -189,40 +192,40 @@ bool testAAVoxelGridTransport()
     materials.push_back(pmma);
 
     // test indices and assign material
-    item.setData(dim, dens, materialIdx, materials);
-    item.setSpacing(spacing);
 
-    for (std::size_t z = 0; z < dim[2]; ++z)
-        for (std::size_t y = 0; y < dim[1]; ++y)
+    item.setSpacing(spacing);
+    std::size_t i = 0;
+    for (std::size_t z = 0; z < dim[2]; ++z) {
+        for (std::size_t y = 0; y < dim[1]; ++y) {
             for (std::size_t x = 0; x < dim[0]; ++x) {
-                const std::array tind = { x, y, z };
-                const auto find = item.flatIndex(tind);
-                const auto ind = item.index(find);
-                success = success && ind == tind;
-
-                if (x > 3 && x < 7) {
-                    dens[find] = pmma_dens;
-                    materialIdx[find] = 1;
-                }
+                
+                dens[i] = pmma_dens;
+                materialIdx[i] = 1;
+                i++;
             }
+        }
+    }
+    materialIdx[0] = 0;
 
     item.setData(dim, dens, materialIdx, materials);
     item.setSpacing(spacing);
 
-    dxmc::Particle<T> p;
-    p.pos = { -100, 0, 0 };
-    p.dir = { 1, 0, 0 };
-    dxmc::vectormath::normalize(p.dir);
-    p.energy = 60;
-    p.weight = 1;
-    auto res = item.intersect(p);
-    p.border_translate(res.intersection);
-    dxmc::RandomState state;
-    for (std::size_t i = 0; i < 1000; ++i) {
-        auto pc = p;
-        item.transport(pc, state);
+    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 60);
+    beam.setNumberOfExposures(40);
+    beam.setNumberOfParticlesPerExposure(10000);
+    dxmc::Transport transport;
+    world.build();
+    auto time = runDispatcher(transport, world, beam);
+    std::cout << std::format("Total time: {}", time) << std::endl;
+
+    for (std::size_t x = 0; x < dim[0]; ++x) {
+        const auto y = dim[1] / 2;
+        const auto z = dim[2] / 2;
+        const auto ind = item.flatIndex({ x, y, z });
+        const auto d = item.dose(ind).energyImparted();
+        std::cout << (x + T { 0.5 }) * spacing[0] << ", " << d << "," << static_cast<int>(materialIdx[ind]) << std::endl;
     }
-    auto xyz = item.index(p.pos);
+
     return success;
 }
 
@@ -302,8 +305,9 @@ int main()
 {
     bool success = true;
 
-    success = success && testAAVoxelGridTransport<double>();
-    success = success && testAAVoxelGridTransport<float>();
+    success = success && testAAVoxelGridTransport<double, 0>();
+    success = success && testAAVoxelGridTransport<double, 255>();
+    success = success && testAAVoxelGridTransport<float, 255>();
 
     success = success && testAAVoxelGrid<float>();
     success = success && testAAVoxelGrid<double>();

@@ -33,7 +33,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool TRANSPARENTVOXELS = false>
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, std::uint_fast8_t TRANSPARENTVOXELS = 255>
 class AAVoxelGrid final : public WorldItemBase<T> {
 public:
     bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material2<T, NMaterialShells>>& materials)
@@ -144,8 +144,10 @@ public:
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const final
     {
         auto intersect = basicshape::AABB::intersect(p, m_aabb);
-        if (intersect.valid()) {
-            voxelIntersect(p, intersect);
+        if constexpr (TRANSPARENTVOXELS != 255) {
+            if (intersect.valid()) {
+                voxelIntersect<TRANSPARENTVOXELS>(p, intersect);
+            }
         }
         return intersect;
     }
@@ -162,9 +164,8 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) final
     {
-        if constexpr (TRANSPARENTVOXELS) {
-            constexpr std::uint_fast8_t ignoreMaterialIdx = 0;
-            voxelTransport<ignoreMaterialIdx>(p, state);
+        if constexpr (TRANSPARENTVOXELS != 255) {
+            voxelTransport<TRANSPARENTVOXELS>(p, state);
         } else {
             woodcockTransport(p, state);
         }
@@ -195,7 +196,7 @@ protected:
                                                                : 2;
     }
 
-    template <std::uint_fast8_t IGNOREIDX = 0>
+    template <std::uint_fast8_t IGNOREIDX = 255>
     void voxelIntersect(const Particle<T>& p, WorldIntersectionResult<T>& intersection) const
     {
         std::array<std::size_t, 3> xyz;
@@ -203,10 +204,17 @@ protected:
             xyz = index<false>(p.pos);
         } else {
             // make sure we are well inside a voxel
-            std::array<T, 3> pos;
+            constexpr auto h = std::numeric_limits<T>::max();
+            constexpr auto l = std::numeric_limits<T>::lowest();
+            const std::array<T, 3> pos = {
+                std::nextafter(p.pos[0] + p.dir[0] * intersection.intersection, p.dir[0] > 0 ? h : l),
+                std::nextafter(p.pos[1] + p.dir[1] * intersection.intersection, p.dir[1] > 0 ? h : l),
+                std::nextafter(p.pos[2] + p.dir[2] * intersection.intersection, p.dir[2] > 0 ? h : l)
+            }; /* std::array<T, 3>
+                pos;
             for (std::size_t i = 0; i < 3; ++i) {
                 pos[i] = p.pos[i] + p.dir[i] * (intersection.intersection + m_spacing[i] * T { 0.5 });
-            }
+            }*/
             xyz = index<false>(pos);
         }
 
@@ -259,13 +267,17 @@ protected:
         }
     }
 
-    template <std::uint_fast8_t IGNOREIDX = 0>
+    template <std::uint_fast8_t IGNOREIDX = 255>
     void voxelTransport(Particle<T>& p, RandomState& state)
     {
 
         bool still_inside;
+        if (!basicshape::AABB::pointInside(p.pos, m_aabb))
+            bool test2 = false;
+
         do {
             std::array<std::size_t, 3> xyz = index<false>(p.pos);
+
             auto index_flat = flatIndex(xyz);
 
             const std::array<int, 3> xyz_step = {
@@ -323,17 +335,42 @@ protected:
                     // interaction happends
                     const auto step_correction = std::log(interaction_accum / interaction_thres) / att_tot;
                     tMax[dIdx] += step_correction;
+                    // translate particle before interaction
+                    p.translate(tMax[dIdx]);
+
+                    //
+                    //
+                    // TESTING
+                    std::array<std::size_t, 3> tt = index<false>(p.pos);
+                    if (tt[0] > 12 || tt[1] > 12 || tt[2] > 12)
+                        bool test = false;
+                    // TESTING
+                    //
+                    //
+
                     const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
                     dose.scoreEnergy(intRes.energyImparted);
                     still_inside = still_inside && intRes.particleAlive;
                     // particle energy or direction has changed, we restart stepping
                     cont = false;
-                } else {
-                    cont = still_inside;
                 }
-            } while (cont);
-            // advancing particle to reached step
-            p.translate(tMax[dIdx]);
+            } while (cont && still_inside);
+
+            if (cont) {
+                // particle is alive but we reached the end, translate particle
+                p.border_translate(tMax[dIdx]);
+            }
+
+            //
+            //
+            // TESTING
+            std::array<std::size_t, 3> tt = index<false>(p.pos);
+            if (tt[0] > 12 || tt[1] > 12 || tt[2] > 12)
+                bool test = false;
+            // TESTING
+            //
+            //
+
         } while (still_inside);
     }
 
@@ -405,7 +442,7 @@ protected:
 
             if (steplen < intersection.intersection) {
                 p.translate(steplen);
-                const auto flat_index = flatIndex(p.pos());
+                const auto flat_index = flatIndex<false>(p.pos);
                 const auto matIdx = m_data[flat_index].materialIndex;
                 const auto& dens = m_data[flat_index].density;
                 const auto att = m_materials[matIdx].attenuationValues(p.energy);
