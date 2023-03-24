@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interactions.hpp"
+#include "dxmc/interpolation.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -32,7 +33,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool TRANSPARENTVOXELS = false>
 class AAVoxelGrid final : public WorldItemBase<T> {
 public:
     bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material2<T, NMaterialShells>>& materials)
@@ -52,7 +53,9 @@ public:
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
             return { .dose = dummy_dose, .density = d, .materialIndex = mIdx };
         });
+
         m_materials = materials;
+        generateWoodcockStepTable();
 
         updateAABB();
         return true;
@@ -159,8 +162,19 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) final
     {
-        constexpr std::uint_fast8_t ignoreMaterialIdx = 0;
-        voxelTransport<ignoreMaterialIdx>(p, state);
+        if constexpr (TRANSPARENTVOXELS) {
+            constexpr std::uint_fast8_t ignoreMaterialIdx = 0;
+            voxelTransport<ignoreMaterialIdx>(p, state);
+        } else {
+            woodcockTransport(p, state);
+        }
+    }
+
+    T maxAttenuationValue(const T energy) const
+    {
+        // const auto loge = std::log(energy);
+        // return std::exp(CubicLSInterpolator<T>::evaluateSpline(loge, m_woodcockStepTable));
+        return interpolate(m_woodcockStepTableLin, energy);
     }
 
 protected:
@@ -180,6 +194,7 @@ protected:
         return a[0] < a[1] ? a[0] < a[2] ? 0 : 2 : a[1] < a[2] ? 1
                                                                : 2;
     }
+
     template <std::uint_fast8_t IGNOREIDX = 0>
     void voxelIntersect(const Particle<T>& p, WorldIntersectionResult<T>& intersection) const
     {
@@ -243,6 +258,7 @@ protected:
             intersection.intersectionValid = false;
         }
     }
+
     template <std::uint_fast8_t IGNOREIDX = 0>
     void voxelTransport(Particle<T>& p, RandomState& state)
     {
@@ -320,8 +336,92 @@ protected:
             p.translate(tMax[dIdx]);
         } while (still_inside);
     }
+
+    void generateWoodcockStepTable()
+    {
+        std::vector<T> energy;
+        {
+            T e = std::log(MIN_ENERGY<T>());
+            const T emax = std::log(MAX_ENERGY<T>());
+            const T estep = (emax - e) / 10;
+            while (e < emax) {
+                energy.push_back(e);
+                e += estep;
+            }
+            energy.push_back(e);
+        }
+        // adding edges;
+        for (const auto& mat : m_materials) {
+            for (std::size_t i = 0; i < mat.numberOfShells(); ++i) {
+                const auto& shell = mat.shell(i);
+                const auto e = shell.bindingEnergy + T { 0.01 };
+                if (e > MIN_ENERGY<T>()) {
+                    energy.push_back(std::log(e));
+                }
+            }
+        }
+        std::sort(energy.begin(), energy.end());
+        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), energy.begin(), [](const auto e) { return std::exp(e); });
+
+        // finding max density for each material;
+        std::vector<T> dens(m_materials.size(), T { 0 });
+        for (const auto& d : m_data) {
+            const auto i = d.materialIndex;
+            dens[i] = std::max(d.density, dens[i]);
+        }
+
+        // finding max attenuation for each energy
+        std::vector<T> att(energy.size(), T { 0 });
+        for (std::size_t mIdx = 0; mIdx < m_materials.size(); ++mIdx) {
+            const auto& mat = m_materials[mIdx];
+            const auto d = dens[mIdx];
+            for (std::size_t i = 0; i < energy.size(); ++i) {
+                const auto aval = mat.attenuationValues(energy[i]);
+                att[i] = std::max(aval.sum() * d, att[i]);
+            }
+        }
+        std::vector<std::pair<T, T>> data(energy.size());
+        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.cbegin(), data.begin(), [](const auto e, const auto a) {
+            return std::make_pair(e, a);
+        });
+
+        m_woodcockStepTableLin = data;
+    }
+
     void woodcockTransport(Particle<T>& p, RandomState& state)
     {
+        bool valid = basicshape::AABB::pointInside(p.pos, m_aabb);
+        bool updateAtt = true;
+
+        T attMaxInv;
+        while (valid) {
+            if (updateAtt) {
+                attMaxInv = 1 / maxAttenuationValue(p.energy);
+                updateAtt = false;
+            }
+            const auto steplen = -log(state.randomUniform<T>()) * attMaxInv;
+
+            const auto intersection = basicshape::AABB::intersect(p, m_aabb);
+
+            if (steplen < intersection.intersection) {
+                p.translate(steplen);
+                const auto flat_index = flatIndex(p.pos());
+                const auto matIdx = m_data[flat_index].materialIndex;
+                const auto& dens = m_data[flat_index].density;
+                const auto att = m_materials[matIdx].attenuationValues(p.energy);
+                const auto attTot = att.sum() * dens;
+                // check if real or virtual interaction
+                if (state.randomUniform<T>() < attTot * attMaxInv) {
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matIdx], state);
+                    m_data[flat_index].dose.scoreEnergy(intRes.energyImparted);
+                    valid = intRes.particleAlive;
+                    updateAtt = intRes.particleEnergyChanged;
+                }
+            } else {
+                p.border_translate(intersection.intersection);
+                valid = false;
+            }
+        }
     }
 
     struct DataElement {
@@ -335,6 +435,7 @@ private:
     std::array<T, 3> m_invSpacing = { 1, 1, 1 };
     std::array<T, 3> m_spacing = { 1, 1, 1 };
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    std::vector<std::pair<T, T>> m_woodcockStepTableLin;
     std::vector<DataElement> m_data;
     std::vector<Material2<T, NMaterialShells>> m_materials;
 };
