@@ -7,7 +7,7 @@ set(TEST_SOURCES
     "testtriangulatedmesh.cpp"
     "testkdtree.cpp"
     "teststatickdtree.cpp"
-    "testworlditembase.cpp"
+    "testworlditems.cpp"
     "testinteractions.cpp"
     "testbasicshapes.cpp"
     "testmassenergytransfer.cpp"
