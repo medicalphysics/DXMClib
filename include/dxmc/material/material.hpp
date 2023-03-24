@@ -184,11 +184,14 @@ public:
         // prevents extrapolation to lower energies
         return logEnergy < (*begin)[0] ? T { 0 } : std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
     }
+
     static constexpr int numberOfShellsAvailable() { return N; }
+
     inline std::uint8_t numberOfShells() const
     {
         return m_numberOfShells;
     }
+
     inline const Material2Shell<T>& shell(std::size_t shell) const
     {
         return m_shells[shell];
