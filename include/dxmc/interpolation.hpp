@@ -37,7 +37,7 @@ Copyright 2019 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-inline T interp(T x0, T x1, T y0, T y1, T x)
+inline T interp(const T x0, const T x1, const T y0, const T y1, const T x)
 {
     return y0 + (y1 - y0) * (x - x0) / (x1 - x0);
 }
@@ -89,23 +89,20 @@ T interpolate(It xbegin, It xend, It ybegin, It yend, T xvalue)
 template <Floating T, bool EXTRAPOLATE_DOWN = true, bool EXTRAPOLATE_UP = true>
 inline T interpolate(const std::vector<std::pair<T, T>>& data, T x)
 {
+
+    if constexpr (!EXTRAPOLATE_DOWN) {
+        if (x < data[0].first)
+            return 0;
+    }
+    if constexpr (!EXTRAPOLATE_UP) {
+        if (x > data.back().first)
+            return 0;
+    }
+
     const auto val = std::make_pair(x, T { 0 });
-    auto upper = std::upper_bound(data.begin(), data.end(), val, [](const auto& lh, const auto& rh) -> bool { return lh.first < rh.first; });
-    if (upper == data.begin()) {
-        if constexpr (EXTRAPOLATE_DOWN) {
-            return upper->second;
-        } else {
-            return T { 0 };
-        }
-    }
-    if (upper == data.end()) {
-        if constexpr (EXTRAPOLATE_UP) {
-            return (upper - 1)->second;
-        } else {
-            return T { 0 };
-        }
-    }
+    auto upper = std::upper_bound(data.begin() + 1, data.end() - 1, val, [](const auto& lh, const auto& rh) -> bool { return lh.first < rh.first; });
     auto lower = upper - 1;
+
     return interp(lower->first, upper->first, lower->second, upper->second, x);
 }
 
