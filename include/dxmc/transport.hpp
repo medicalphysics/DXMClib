@@ -102,7 +102,6 @@ private:
     std::chrono::milliseconds m_elapsed;
 };
 
-template <Floating T>
 class Transport {
 public:
     Transport()
@@ -114,14 +113,14 @@ public:
     std::uint64_t numberOfThreads() const { return m_nThreads; }
     void setNumberOfThreads(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
 
-    template <BeamType<T> B, WorldItemType<T>... Ws>
+    template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
     auto operator()(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
         return run(world, beam, progress);
     }
 
 protected:
-    template <BeamType<T> B, WorldItemType<T>... Ws>
+    template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
     static void runWorker(World2<T, Ws...>& world, const B& beam, std::uint64_t exposureBegin, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
     {
         RandomState state;
@@ -137,7 +136,7 @@ protected:
         }
     }
 
-    template <BeamType<T> B, WorldItemType<T>... Ws>
+    template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
     void run(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
         const auto nExposures = beam.numberOfExposures();
@@ -151,7 +150,7 @@ protected:
 
         for (std::size_t i = 0; i < m_nThreads - 1; ++i) {
             if (start < stop) {
-                threads.emplace_back(Transport<T>::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), start, stop, progress);
+                threads.emplace_back(Transport::template runWorker<T, B, Ws...>, std::ref(world), std::cref(beam), start, stop, progress);
                 start = stop;
                 stop += step;
             }
