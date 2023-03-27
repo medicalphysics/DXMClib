@@ -214,6 +214,7 @@ bool testAAVoxelGridTransport()
     beam.setNumberOfExposures(40);
     beam.setNumberOfParticlesPerExposure(10000);
     dxmc::Transport transport;
+    transport.setNumberOfThreads(1);
     world.build();
     auto time = runDispatcher(transport, world, beam);
     std::cout << std::format("Total time: {}", time) << std::endl;

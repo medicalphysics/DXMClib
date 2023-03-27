@@ -272,8 +272,6 @@ protected:
     {
 
         bool still_inside;
-        if (!basicshape::AABB::pointInside(p.pos, m_aabb))
-            bool test2 = false;
 
         do {
             std::array<std::size_t, 3> xyz = index<false>(p.pos);
@@ -298,12 +296,25 @@ protected:
                 m_spacing[2] / std::abs(p.dir[2])
             };
 
-            std::array<T, 3> tMax = {
+            /* std::array<T, 3> tMax = {
                 // abs function in case of delta is infinity
                 std::abs(std::nextafter(delta[0], std::numeric_limits<T>::max()) - delta[0]),
                 std::abs(std::nextafter(delta[1], std::numeric_limits<T>::max()) - delta[1]),
                 std::abs(std::nextafter(delta[2], std::numeric_limits<T>::max()) - delta[2])
-            };
+            };*/
+
+            std::array<T, 3> tMax;
+            for (std::size_t i = 0; i < 3; ++i) {
+                if (p.dir[i] < 0) {
+                    const auto cpos = m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
+                    const auto diff = cpos - p.pos[i];
+                    tMax[i] = diff / std::abs(p.dir[i]);
+                } else {
+                    const auto cpos = m_aabb[i] + xyz[i] * m_spacing[i];
+                    const auto diff = p.pos[i] - cpos;
+                    tMax[i] = diff / p.dir[i];
+                }
+            }
 
             // preventing zero threshold
             const T interaction_thres = std::max(state.randomUniform<T>(), std::numeric_limits<T>::min());
@@ -319,12 +330,6 @@ protected:
 
                 // updating stepping
                 dIdx = argmin3(tMax);
-                xyz[dIdx] += xyz_step[dIdx];
-                index_flat += xyz_step_flat[dIdx];
-                tMax[dIdx] += delta[dIdx];
-
-                // we are still inside volume and not in an ignored voxel
-                still_inside = xyz[dIdx] < m_dim[dIdx] && m_data[index_flat].materialIndex != IGNOREIDX;
 
                 // updating radiological path
                 const auto att = m_materials[matInd].attenuationValues(p.energy);
@@ -333,7 +338,7 @@ protected:
                 interaction_accum *= radio_step;
                 if (interaction_accum < interaction_thres) {
                     // interaction happends
-                    const auto step_correction = std::log(interaction_accum / interaction_thres) / att_tot;
+                    const auto step_correction = -std::log(interaction_accum / interaction_thres) / att_tot;
                     tMax[dIdx] += step_correction;
                     // translate particle before interaction
                     p.translate(tMax[dIdx]);
@@ -350,16 +355,21 @@ protected:
 
                     const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
                     dose.scoreEnergy(intRes.energyImparted);
-                    still_inside = still_inside && intRes.particleAlive;
+                    still_inside = intRes.particleAlive;
                     // particle energy or direction has changed, we restart stepping
                     cont = false;
+                } else {
+                    still_inside = xyz[dIdx] < m_dim[dIdx] && m_data[index_flat].materialIndex != IGNOREIDX;
+                    xyz[dIdx] += xyz_step[dIdx];
+                    index_flat += xyz_step_flat[dIdx];
+                    if (!still_inside)
+                        p.border_translate(tMax[dIdx]);
+                    else
+                        tMax[dIdx] += delta[dIdx];
+
+                    // we are still inside volume and not in an ignored voxel
                 }
             } while (cont && still_inside);
-
-            if (cont) {
-                // particle is alive but we reached the end, translate particle
-                p.border_translate(tMax[dIdx]);
-            }
 
             //
             //
