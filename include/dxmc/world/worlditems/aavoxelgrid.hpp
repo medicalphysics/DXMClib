@@ -338,8 +338,8 @@ protected:
                 interaction_accum *= radio_step;
                 if (interaction_accum < interaction_thres) {
                     // interaction happends
-                    const auto step_correction = -std::log(interaction_accum / interaction_thres) / att_tot;
-                    tMax[dIdx] += step_correction;
+                    const auto step_correction = std::log(interaction_accum / interaction_thres) / att_tot;
+                    tMax[dIdx] += delta[dIdx] + step_correction;
                     // translate particle before interaction
                     p.translate(tMax[dIdx]);
 
