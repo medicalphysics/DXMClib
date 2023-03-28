@@ -140,14 +140,15 @@ namespace vectormath {
     {
         const T sang = std::sin(angle);
         const T cang = std::cos(angle);
-        constexpr T one { 1 };
-        const T midt = (one - cang) * dot(vec, axis);
 
-        return std::array<T, 3> {
-            cang * vec[0] + midt * axis[0] + sang * (axis[1] * vec[2] - axis[2] * vec[1]),
-            cang * vec[1] + midt * axis[1] + sang * (-axis[0] * vec[2] + axis[2] * vec[0]),
-            cang * vec[2] + midt * axis[2] + sang * (axis[0] * vec[1] - axis[1] * vec[0])
-        };
+        const auto ax = cross(axis, vec);
+
+        const auto v1 = scale(dot(vec, axis), axis);
+        const auto v2 = scale(cang, cross(ax, axis));
+        const auto v3 = scale(sang, ax);
+        const auto res = add(v1, add(v2, v3));
+
+        return res;
     }
 
     template <Floating T>
@@ -248,14 +249,10 @@ namespace vectormath {
         const auto vec_xy_raw = vectormath::cross(vec, k);
 
         // rotating the arbitrary orthogonal axis about vector direction
-        const auto vec_xy = rotate(vec_xy_raw, vec, phi);
+        auto vec_xy = rotate(vec_xy_raw, vec, phi);
+        normalize(vec_xy);
 
-        // rotating vector about theta with vector addition (they are orthonormal)
-        const T tsin = std::sin(theta);
-        const T tcos = std::cos(theta);
-        vec[0] = vec[0] * tcos + vec_xy[0] * tsin;
-        vec[1] = vec[1] * tcos + vec_xy[1] * tsin;
-        vec[2] = vec[2] * tcos + vec_xy[2] * tsin;
+        vec = rotate(vec, vec_xy, theta);
     }
 
 }
