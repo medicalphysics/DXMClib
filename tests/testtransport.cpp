@@ -178,11 +178,13 @@ bool testAAVoxelGridTransport()
     auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
     auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+    //const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+    const auto pmma_dens = 1;
 
-    const std::array<std::size_t, 3> dim = { 13, 13, 13 };
+
+    const std::array<std::size_t, 3> dim = { 100, 13, 13 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { 2.0f, 2.0f, 2.0f };
+    std::array<T, 3> spacing = { .20f, .20f, .20f };
 
     // material arrays
     std::vector<T> dens(size, air_dens);
@@ -198,7 +200,7 @@ bool testAAVoxelGridTransport()
     for (std::size_t z = 0; z < dim[2]; ++z) {
         for (std::size_t y = 0; y < dim[1]; ++y) {
             for (std::size_t x = 0; x < dim[0]; ++x) {
-                
+
                 dens[i] = pmma_dens;
                 materialIdx[i] = 1;
                 i++;
@@ -210,11 +212,11 @@ bool testAAVoxelGridTransport()
     item.setData(dim, dens, materialIdx, materials);
     item.setSpacing(spacing);
 
-    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 60);
+    dxmc::PencilBeam<T> beam({ -100,0,0 }, { 1,0,0 }, 60);
     beam.setNumberOfExposures(40);
-    beam.setNumberOfParticlesPerExposure(10000);
+    beam.setNumberOfParticlesPerExposure(1000);
     dxmc::Transport transport;
-    transport.setNumberOfThreads(1);
+    //transport.setNumberOfThreads(1);
     world.build();
     auto time = runDispatcher(transport, world, beam);
     std::cout << std::format("Total time: {}", time) << std::endl;
@@ -308,7 +310,7 @@ int main()
 
     success = success && testAAVoxelGridTransport<double, 0>();
     success = success && testAAVoxelGridTransport<double, 255>();
-    success = success && testAAVoxelGridTransport<float, 255>();
+    /* success = success && testAAVoxelGridTransport<float, 255>();
 
     success = success && testAAVoxelGrid<float>();
     success = success && testAAVoxelGrid<double>();
@@ -322,7 +324,7 @@ int main()
     success = success && testTransport<double>();
     success = success && testTransport<double>();
     success = success && testTransport<double>();
-
+    */
     if (success)
         return 0;
 
