@@ -32,7 +32,7 @@ Copyright 2023 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 template <Floating T>
 struct ResultKeys {
@@ -267,7 +267,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
             const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
             beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
         }
-        Transport<T> transport;
+        Transport transport;
         auto time_elapsed = runDispatcher(transport, world, beam);
     } else {
         IsotropicMonoEnergyBeam<T> beam;
@@ -288,7 +288,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
             beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
         }
 
-        Transport<T> transport;
+        Transport transport;
         auto time_elapsed = runDispatcher(transport, world, beam);
     }
 
@@ -449,7 +449,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        Transport<T> transport;
+        Transport transport;
         auto time_elapsed = runDispatcher(transport, world, beam);
     } else {
         using Beam = IsotropicMonoEnergyBeam<T>;
@@ -459,7 +459,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        Transport<T> transport;
+        Transport transport;
         auto time_elapsed = runDispatcher(transport, world, beam);
     }
     const std::array<T, 4> voi_locations = { 0, 1, 2, 3 };
@@ -536,7 +536,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 100;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 100000;
 
     constexpr int materialShells = 5;
@@ -577,7 +577,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        Transport<T> transport;
+        Transport transport;
         const std::array<T, 3> co_x = { 0, 1, 0 };
         const std::array<T, 3> co_y = { 0, 0, 1 };
         const std::array<T, 3> pos = { -60, 0, 0 };
@@ -624,7 +624,7 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        Transport<T> transport;
+        Transport transport;
         const std::array<T, 3> co_x = { 0, 1, 0 };
         const std::array<T, 3> co_y = { 0, 0, 1 };
         const std::array<T, 3> pos = { -60, 0, 0 };
@@ -743,17 +743,17 @@ bool runAll()
     success = success && TG195Case41AbsorbedEnergy<T, 0>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 1>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 2>(true, true);
-    */
+    
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(true, true);
-
+    */
     success = success && TG195Case42AbsorbedEnergy<T, 1>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(true, true);
-
+    
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, true);
