@@ -66,6 +66,7 @@ public:
         , m_dir(dir)
         , m_energy(energy)
     {
+        vectormath::normalize(m_dir);
     }
 
     void setEnergy(T energy)
