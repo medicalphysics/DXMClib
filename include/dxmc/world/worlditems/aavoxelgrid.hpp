@@ -206,16 +206,13 @@ protected:
             // make sure we are well inside a voxel
             constexpr auto h = std::numeric_limits<T>::max();
             constexpr auto l = std::numeric_limits<T>::lowest();
+            const auto t = intersection.intersection + 1E-5;
             const std::array<T, 3> pos = {
-                std::nextafter(p.pos[0] + p.dir[0] * intersection.intersection, p.dir[0] > 0 ? h : l),
-                std::nextafter(p.pos[1] + p.dir[1] * intersection.intersection, p.dir[1] > 0 ? h : l),
-                std::nextafter(p.pos[2] + p.dir[2] * intersection.intersection, p.dir[2] > 0 ? h : l)
-            }; /* std::array<T, 3>
-                pos;
-            for (std::size_t i = 0; i < 3; ++i) {
-                pos[i] = p.pos[i] + p.dir[i] * (intersection.intersection + m_spacing[i] * T { 0.5 });
-            }*/
-            xyz = index<false>(pos);
+                p.pos[0] + p.dir[0] * t,
+                p.pos[1] + p.dir[1] * t,
+                p.pos[2] + p.dir[2] * t
+            };
+            xyz = index<true>(pos);
         }
 
         auto index_flat = flatIndex(xyz);
@@ -296,32 +293,30 @@ protected:
                 m_spacing[2] / std::abs(p.dir[2])
             };
 
-            /* std::array<T, 3> tMax = {
-                // abs function in case of delta is infinity
-                std::abs(std::nextafter(delta[0], std::numeric_limits<T>::max()) - delta[0]),
-                std::abs(std::nextafter(delta[1], std::numeric_limits<T>::max()) - delta[1]),
-                std::abs(std::nextafter(delta[2], std::numeric_limits<T>::max()) - delta[2])
-            };*/
+            std::array<T, 3> tMax = delta;
 
-            std::array<T, 3> tMax;
+            T tCurrent = std::numeric_limits<T>::max();
+
             for (std::size_t i = 0; i < 3; ++i) {
                 if (p.dir[i] < 0) {
-                    const auto cpos = m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
-                    const auto diff = cpos - p.pos[i];
-                    tMax[i] = diff / std::abs(p.dir[i]);
+                    const auto edge = m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
+                    const auto tc = -(edge - p.pos[i]) / p.dir[i];
+                    tCurrent = std::min(tCurrent, tc);
                 } else {
-                    const auto cpos = m_aabb[i] + xyz[i] * m_spacing[i];
-                    const auto diff = p.pos[i] - cpos;
-                    tMax[i] = diff / p.dir[i];
+                    const auto edge = m_aabb[i] + xyz[i] * m_spacing[i];
+                    const auto tc = -(edge - p.pos[i]) / p.dir[i];
+                    tCurrent = std::min(tCurrent, tc);
                 }
             }
 
-            // preventing zero threshold
-            const T interaction_thres = std::max(state.randomUniform<T>(), std::numeric_limits<T>::min());
-
             T interaction_accum = 1;
+            const T interaction_thres = state.randomUniform<T>();
+
+            const auto tLimit = basicshape::AABB::intersectForwardInterval(p, m_aabb).value()[1];
+
             bool cont = true;
             std::uint_fast8_t dIdx;
+
             do {
                 // current material
                 const auto matInd = m_data[index_flat].materialIndex;
@@ -334,52 +329,42 @@ protected:
                 // updating radiological path
                 const auto att = m_materials[matInd].attenuationValues(p.energy);
                 const auto att_tot = att.sum() * density;
-                const auto radio_step = std::exp(-att_tot * delta[dIdx]);
+                const auto step = tMax[dIdx] - tCurrent;
+                const auto radio_step = std::exp(-att_tot * step);
                 interaction_accum *= radio_step;
                 if (interaction_accum < interaction_thres) {
                     // interaction happends
+                    // Correcting for not traversing the whole voxel (step_correction is negative)
                     const auto step_correction = std::log(interaction_accum / interaction_thres) / att_tot;
-                    tMax[dIdx] += delta[dIdx] + step_correction;
-                    // translate particle before interaction
-                    p.translate(tMax[dIdx]);
+                    tMax[dIdx] += step_correction;
 
-                    //
-                    //
-                    // TESTING
-                    std::array<std::size_t, 3> tt = index<false>(p.pos);
-                    if (tt[0] > 12 || tt[1] > 12 || tt[2] > 12)
-                        bool test = false;
-                    // TESTING
-                    //
-                    //
+                    if (tMax[dIdx] > tLimit) { // interaction happends outside volume, we exits
+                        p.border_translate(tLimit);
+                        still_inside = false;
+                    } else {
+                        // translate particle before interaction
+                        p.translate(tMax[dIdx]);
 
-                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
-                    dose.scoreEnergy(intRes.energyImparted);
-                    still_inside = intRes.particleAlive;
-                    // particle energy or direction has changed, we restart stepping
-                    cont = false;
+                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
+                        dose.scoreEnergy(intRes.energyImparted);
+                        still_inside = intRes.particleAlive;
+                        // particle energy or direction has changed, we restart stepping
+                        cont = false;
+                    }
+
                 } else {
-                    still_inside = xyz[dIdx] < m_dim[dIdx] && m_data[index_flat].materialIndex != IGNOREIDX;
                     xyz[dIdx] += xyz_step[dIdx];
                     index_flat += xyz_step_flat[dIdx];
-                    if (!still_inside)
+                    still_inside = xyz[dIdx] < m_dim[dIdx] && m_data[index_flat].materialIndex != IGNOREIDX;
+                    if (!still_inside) {
+                        // next step is outside, we exits
                         p.border_translate(tMax[dIdx]);
-                    else
+                    } else {
+                        tCurrent = tMax[dIdx];
                         tMax[dIdx] += delta[dIdx];
-
-                    // we are still inside volume and not in an ignored voxel
+                    }
                 }
             } while (cont && still_inside);
-
-            //
-            //
-            // TESTING
-            std::array<std::size_t, 3> tt = index<false>(p.pos);
-            if (tt[0] > 12 || tt[1] > 12 || tt[2] > 12)
-                bool test = false;
-            // TESTING
-            //
-            //
 
         } while (still_inside);
     }
