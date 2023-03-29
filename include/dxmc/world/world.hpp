@@ -118,6 +118,12 @@ public:
         return m_aabb;
     }
 
+    std::array<T, 3> center() const
+    {
+        const auto [l, r] = vectormath::splice(m_aabb);
+        return vectormath::scale(T { 0.5 }, vectormath::add(l, r));
+    }
+
     inline auto intersect(const Particle<T>& p)
     {
         return m_kdtree.intersect(p, m_aabb);
