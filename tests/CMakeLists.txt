@@ -12,6 +12,7 @@ set(TEST_SOURCES
     "testbasicshapes.cpp"
     "testmassenergytransfer.cpp"
     "testtube.cpp"
+    "testvisualization.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
     "testmaterial.cpp"

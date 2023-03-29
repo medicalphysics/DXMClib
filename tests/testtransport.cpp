@@ -178,8 +178,8 @@ bool testAAVoxelGridTransport()
     auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
     auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    //const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
-    const auto pmma_dens = 1;
+    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+    
 
 
     const std::array<std::size_t, 3> dim = { 100, 13, 13 };
@@ -212,7 +212,7 @@ bool testAAVoxelGridTransport()
     item.setData(dim, dens, materialIdx, materials);
     item.setSpacing(spacing);
 
-    dxmc::PencilBeam<T> beam({ -100,0,0 }, { 1,0,0 }, 60);
+    dxmc::PencilBeam<T> beam({ 100,0,0 }, { -1,0,0 }, 60);
     beam.setNumberOfExposures(40);
     beam.setNumberOfParticlesPerExposure(1000);
     dxmc::Transport transport;
