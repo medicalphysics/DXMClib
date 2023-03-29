@@ -26,6 +26,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/cylinder.hpp"
+#include "dxmc/world/dosescore.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
@@ -87,6 +88,16 @@ public:
         return aabb;
     }
 
+    void setRadius(const T r)
+    {
+        m_radius = std::abs(r);
+    }
+
+    void setHeight(T h)
+    {
+        m_halfHeight = std::abs(h / 2);
+    }
+
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
         return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
@@ -125,6 +136,11 @@ public:
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
+    }
+
+    void clearDose()
+    {
+        m_dose.clear();
     }
 
 protected:
