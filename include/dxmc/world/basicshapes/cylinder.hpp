@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/visualizationintersectionresult.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
 
 #include <array>
@@ -225,6 +226,68 @@ namespace basicshape {
             if (t[0] < t[1])
                 return t_cand;
             return std::nullopt;
+        }
+
+        template <Floating T>
+        VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
+        {
+            auto t_cand = intersectCylinderWall(p, center, radii);
+            if (t_cand) {
+                // we need to be conservative else we will miss intersections on plane cylinder intersection
+                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, T { 0 });
+                if (!(center[2] - half_height <= tz && tz <= center[2] + half_height))
+                    t_cand.reset();
+            }
+
+            std::array centerDisc = { center[0], center[1], center[2] - half_height };
+            auto tdisc1_cand = intersectCylinderDiscZ(p, centerDisc, radii);
+
+            centerDisc[2] = center[2] + half_height;
+            auto tdisc2_cand = intersectCylinderDiscZ(p, centerDisc, radii);
+
+            constexpr auto m = std::numeric_limits<T>::max();
+
+            VisualizationIntersectionResult<T> res;
+
+            if (t_cand.value_or(m) < tdisc1_cand.value_or(m)) {
+                if (t_cand.value_or(m) < tdisc2_cand.value_or(m)) {
+                    if (t_cand) {
+                        res.intersection = *t_cand;
+                        res.intersectionValid = true;
+                        const auto x = center[0] - (p.pos[0] + res.intersection * p.dir[0]);
+                        const auto y = center[1] - (p.pos[1] + res.intersection * p.dir[1]);
+                        const auto ll = 1 / std::sqrt(x * x + y * y);
+                        res.normal[0] = x * ll;
+                        res.normal[1] = y * ll;
+                    }
+                } else {
+                    if (tdisc2_cand) {
+                        res.intersection = *tdisc2_cand;
+                        res.intersectionValid = true;
+                        res.normal[2] = -1;
+                    }
+                }
+            } else {
+                if (tdisc2_cand.value_or(m) < tdisc1_cand.value_or(m)) {
+                    if (tdisc2_cand) {
+                        res.intersection = *tdisc2_cand;
+                        res.intersectionValid = true;
+                        res.normal[2] = -1;
+                    }
+                } else {
+                    if (tdisc1_cand) {
+                        res.intersection = *tdisc1_cand;
+                        res.intersectionValid = true;
+                        res.normal[2] = 1;
+                    }
+                }
+            }
+
+            if (res.intersectionValid) {
+                res.rayOriginIsInsideItem = pointInside(p.pos, center, radii, half_height);
+            }
+
+            return res;
         }
     }
 }

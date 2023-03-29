@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/visualizationintersectionresult.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
 
 #include <array>
@@ -117,6 +118,24 @@ namespace basicshape {
                 std::array t = { c / q, q };
                 return std::make_optional(t);
             }
+        }
+
+        template <Floating T>
+        VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        {
+            VisualizationIntersectionResult<T> res;
+            const auto t_opt = intersectForwardInterval(p, center, radii);
+            if (t_opt) {
+                const auto& = t_opt.value();
+                res.valid = true;
+                res.rayOriginIsInsideItem = t[0] < 0;
+                res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
+
+                const auto pos = vectormath::add(p.pos, vectormath::scale(p.dir, ray.intersection));
+                res.normal = vectormath::subtract(center, pos);
+                vectormath::normalize(res.normal);
+            }
+            return res;
         }
     }
 }
