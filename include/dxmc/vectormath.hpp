@@ -136,32 +136,32 @@ namespace vectormath {
     }
 
     template <Floating T>
+    [[nodiscard]] inline constexpr std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T sinAngle, const T cosAngle) noexcept
+    {
+        /* const auto ax = cross(axis, vec);
+        const auto v1 = scale(dot(vec, axis), axis);
+        const auto v2 = scale(cosAngle, cross(ax, axis));
+        const auto v3 = scale(sinAngle, ax);
+        const auto res = add(v1, add(v2, v3));
+        return res;
+        */
+
+        const auto ax = cross(axis, vec);
+        const auto va = dot(vec, axis);
+        const auto v2 = cross(ax, axis);
+        return std::array<T, 3> {
+            va * axis[0] + cosAngle * v2[0] + sinAngle * ax[0],
+            va * axis[1] + cosAngle * v2[1] + sinAngle * ax[1],
+            va * axis[2] + cosAngle * v2[2] + sinAngle * ax[2]
+        };
+    }
+
+    template <Floating T>
     [[nodiscard]] inline std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T angle) noexcept
     {
         const T sang = std::sin(angle);
         const T cang = std::cos(angle);
-
-        const auto ax = cross(axis, vec);
-
-        const auto v1 = scale(dot(vec, axis), axis);
-        const auto v2 = scale(cang, cross(ax, axis));
-        const auto v3 = scale(sang, ax);
-        const auto res = add(v1, add(v2, v3));
-
-        return res;
-    }
-
-    template <Floating T>
-    [[nodiscard]] inline constexpr std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T sinAngle, const T cosAngle) noexcept
-    {
-        constexpr T one { 1 };
-        const T midt = (one - cosAngle) * dot(vec, axis);
-
-        return std::array<T, 3> {
-            cosAngle * vec[0] + midt * axis[0] + sinAngle * (axis[1] * vec[2] - axis[2] * vec[1]),
-            cosAngle * vec[1] + midt * axis[1] + sinAngle * (-axis[0] * vec[2] + axis[2] * vec[0]),
-            cosAngle * vec[2] + midt * axis[2] + sinAngle * (axis[0] * vec[1] - axis[1] * vec[0])
-        };
+        return rotate(vec, axis, sang, cang);
     }
 
     template <Floating T>

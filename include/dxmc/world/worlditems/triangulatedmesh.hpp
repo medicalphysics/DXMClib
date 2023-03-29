@@ -38,11 +38,13 @@ public:
         : WorldItemBase<T>()
     {
     }
+
     TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
     {
         setData(triangles, max_tree_dept);
     }
+
     TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
     {
@@ -50,6 +52,7 @@ public:
         auto triangles = reader(path);
         setData(triangles, max_tree_dept);
     }
+
     TriangulatedMesh(const std::string& path, T scale, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
     {
@@ -70,6 +73,7 @@ public:
     {
         return m_kdtree.items();
     }
+
     void translate(const std::array<T, 3>& dist) override
     {
         m_kdtree.translate(dist);
@@ -81,6 +85,7 @@ public:
         m_kdtree.setData(triangles, max_tree_dept);
         m_aabb = m_kdtree.AABB();
     }
+
     std::array<T, 3> center() const override
     {
         std::array<T, 3> center { 0, 0, 0 };
@@ -96,9 +101,9 @@ public:
         }
         return center;
     }
+
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
-
         auto res = m_kdtree.intersect(p, m_aabb);
         return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
