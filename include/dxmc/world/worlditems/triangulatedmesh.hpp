@@ -108,6 +108,21 @@ public:
         return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
 
+    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    {
+        auto res = m_kdtree.intersect(p, m_aabb);
+        VisualizationIntersectionResult<T> res_int if (res.valid())
+        {
+            auto normal = res.item->planeVector();
+            vectormath::normalize(normal);
+            res_int.normal = normal;
+            res_int.intersection = res.intersection;
+            res_int.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+            res_int.intersectionValid = true;
+        }
+        return res_int;
+    }
+
     T transport(Particle<T>& p, RandomState& state) override
     {
         return 0;

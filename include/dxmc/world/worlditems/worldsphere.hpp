@@ -91,6 +91,11 @@ public:
         return basicshape::sphere::intersect(p, m_center, m_radius);
     }
 
+    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    {
+        return basicshape::sphere::intersectVisualization(p, m_center, m_radius);
+    }
+
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);

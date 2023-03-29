@@ -143,13 +143,24 @@ public:
 
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const final
     {
-        auto intersect = basicshape::AABB::intersect(p, m_aabb);
+        auto inter = basicshape::AABB::intersect(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
-            if (intersect.valid()) {
-                voxelIntersect<TRANSPARENTVOXELS>(p, intersect);
+            if (inter.valid()) {
+                voxelIntersect<WorldIntersectionResult<T>, TRANSPARENTVOXELS>(p, inter);
             }
         }
-        return intersect;
+        return inter;
+    }
+
+    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const final
+    {
+        auto res = basicshape::AABB::intersectVisualization(p, m_aabb);
+        if constexpr (TRANSPARENTVOXELS != 255) {
+            if (res.valid()) {
+                voxelIntersect<VisualizationIntersectionResult<T>, TRANSPARENTVOXELS>(p, res);
+            }
+        }
+        return res;
     }
 
     const DoseScore<T>& dose(std::size_t flatIndex = 0) const final
@@ -196,9 +207,10 @@ protected:
                                                                : 2;
     }
 
-    template <std::uint_fast8_t IGNOREIDX = 255>
-    void voxelIntersect(const Particle<T>& p, WorldIntersectionResult<T>& intersection) const
+    template <typename Intersection = WorldIntersectionResult<T>, std::uint_fast8_t IGNOREIDX = 255>
+    void voxelIntersect(const Particle<T>& p, Intersection& intersection) const
     {
+        static_assert(std::is_same<Intersection, WorldIntersectionResult<T>>::value || std::is_same<Intersection, VisualizationIntersectionResult<T>>::value);
         std::array<std::size_t, 3> xyz;
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
@@ -259,6 +271,9 @@ protected:
         if (still_inside) {
             intersection.intersection += tMax[dIdx];
             intersection.rayOriginIsInsideItem = false;
+            if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<T>>::value) {
+                intersection.normal[dIdx] = p.dir[dIdx] < 0 ? 1 : -1;
+            }
         } else {
             intersection.intersectionValid = false;
         }
