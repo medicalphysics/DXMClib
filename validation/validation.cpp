@@ -743,7 +743,7 @@ bool runAll()
     success = success && TG195Case41AbsorbedEnergy<T, 0>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 1>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 2>(true, true);
-    
+
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, true);
@@ -753,7 +753,7 @@ bool runAll()
     success = success && TG195Case42AbsorbedEnergy<T, 1>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(true, true);
-    
+
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, true);

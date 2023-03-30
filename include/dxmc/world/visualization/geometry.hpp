@@ -87,7 +87,7 @@ namespace visualization {
         const auto fov = std::max(fov_x, fov_y);
         const auto pc = vectormath::subtract(c, cameraPos);
 
-        const auto dd = std::tan(fov / resolution / vectormath::lenght(pc) );
+        const auto dd = std::tan(fov / resolution / vectormath::lenght(pc));
         const auto dd_start = -dd * resolution / 2;
 
         const auto dir = vectormath::cross(cameraCosinex, cameraCosiney);
@@ -109,6 +109,96 @@ namespace visualization {
 
         return data;
     }
+
+    template <Floating T>
+    std::array<T, 3> HSVtoRGB(const T H, const T S = T { 1 }, const T V = .8)
+    {
+        // H in [0, 2pi], S in [0, 1], V in [0, 1]
+        const auto C = V * S;
+
+        constexpr auto sep = 3 / std::numbers::phi_v<T>;
+        const auto Hb = std::clamp(H, T { 0 }, 2 * std::numbers::phi_v<T>) * sep;
+        const auto r = std::fmod(Hb, T { 2 });
+        const auto X = C * (1 - std::abs(r - 1));
+
+        std::array<T, 3> rgb;
+        if (Hb < 1) {
+            rgb = { C, X, 0 };
+        } else if (Hb < 2) {
+            rgb = { X, C, 0 };
+        } else if (Hb < 3) {
+            rgb = { 0, C, X };
+        } else if (Hb < 4) {
+            rgb = { 0, X, C };
+        } else if (Hb < 5) {
+            rgb = { X, 0, C };
+        } else {
+            rgb = { C, 0, X };
+        }
+        return rgb;
+    }
+
+    template <Floating T, WorldType<T> W>
+    std::vector<T> rayTraceGeometry(W& world, const std::array<T, 3>& cameraPos, const std::array<T, 3>& cameraCosinex, const std::array<T, 3>& cameraCosiney, std::size_t resolution = 128)
+    {
+        auto light_pos = cameraPos;
+        light_pos[1] += 100;
+
+        const auto aabb = world.AABB();
+        const std::array<T, 3> c = {
+            (aabb[0] + aabb[3]) / 2,
+            (aabb[1] + aabb[4]) / 2,
+            (aabb[2] + aabb[5]) / 2
+        };
+
+        const auto [fov_x, fov_y] = fieldOfView(world.AABB(), cameraPos, cameraCosinex, cameraCosiney);
+        const auto fov = std::max(fov_x, fov_y);
+        const auto pc = vectormath::subtract(c, cameraPos);
+
+        const auto dd = std::tan(fov / resolution / vectormath::lenght(pc));
+        const auto dd_start = -dd * resolution / 2;
+        const auto dir = vectormath::cross(cameraCosinex, cameraCosiney);
+
+        std::vector<T> data(resolution * resolution * 4, T { 1 });
+
+        auto items = world.getItemPointers();
+        std::sort(items.begin(), items.end());
+        std::vector<std::array<T, 3>> colors(items.size());
+        for (std::size_t i = 0; i < colors.size(); ++i) {
+            const auto deg = (std::numbers::pi_v<T> * i) / colors.size();
+            colors[i] = HSVtoRGB(deg);
+        }
+
+        for (std::size_t y = 0; y < resolution; ++y) {
+            const auto y_flat = y * resolution;
+            for (std::size_t x = 0; x < resolution; ++x) {
+                const auto flat = (y_flat + x) * 4;
+                Particle<T> p = { .pos = cameraPos, .dir = dir };
+                p.dir = vectormath::rotate(p.dir, cameraCosiney, dd_start + dd * x);
+                p.dir = vectormath::rotate(p.dir, cameraCosinex, dd_start + dd * y);
+                const auto r = world.intersectVisualization(p);
+                if (r.valid()) {
+                    const auto colorIdx = std::lower_bound(items.cbegin(), items.cend(), r.item);
+                    if (colorIdx != items.cend()) {
+                        const auto& c = colors[colorIdx - items.cbegin()];
+                        p.translate(r.intersection);
+                        const auto scaling = vectormath::dot(p.dir, r.normal);
+
+                        for (std::size_t i = 0; i < 3; ++i) {
+                            data[flat + i] = std::min(c[i] * scaling, T { 1 });
+                        }
+                    } else {
+                        for (std::size_t i = 0; i < 3; ++i) {
+                            data[flat + i] = 0;
+                        }
+                    }
+                }
+            }
+        }
+
+        return data;
+    }
+
 }
 
 }
