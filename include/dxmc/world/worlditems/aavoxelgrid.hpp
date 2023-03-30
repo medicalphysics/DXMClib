@@ -214,13 +214,14 @@ protected:
 
         static_assert(std::is_same<Intersection, WorldIntersectionResult<T>>::value || std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value);
         std::array<std::size_t, 3> xyz;
+
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
         } else {
             // make sure we are well inside a voxel
             constexpr auto h = std::numeric_limits<T>::max();
             constexpr auto l = std::numeric_limits<T>::lowest();
-            const auto t = intersection.intersection + 1E-5;
+            const auto t = intersection.intersection + 1E-4;
             const std::array<T, 3> pos = {
                 p.pos[0] + p.dir[0] * t,
                 p.pos[1] + p.dir[1] * t,
@@ -240,7 +241,7 @@ protected:
             p.dir[2] < 0 ? -1 : 1
         };
 
-        // by ising int, max x*y size is about 2e9
+        // by using int, max x*y size is about 2e9
         const std::array<int, 3> xyz_step_flat = {
             p.dir[0] < 0 ? -1 : 1,
             p.dir[1] < 0 ? -static_cast<int>(m_dim[0]) : static_cast<int>(m_dim[0]),
@@ -253,12 +254,11 @@ protected:
             m_spacing[2] / std::abs(p.dir[2])
         };
 
-        std::array<T, 3> tMax = {
-            // abs function in case of delta is infinity
-            std::abs(std::nextafter(delta[0], std::numeric_limits<T>::max()) - delta[0]),
-            std::abs(std::nextafter(delta[1], std::numeric_limits<T>::max()) - delta[1]),
-            std::abs(std::nextafter(delta[2], std::numeric_limits<T>::max()) - delta[2])
-        };
+        std::array<T, 3> tMax;
+        for (std::size_t i = 0; i < 3; ++i) {
+            const auto plane = p.dir[i] < 0 ? m_aabb[i] + xyz[i] * m_spacing[i] : m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
+            tMax[i] = (plane - (p.pos[i] + p.dir[i] * intersection.intersection)) / p.dir[i];
+        }
 
         bool still_inside = true;
         std::uint_fast8_t dIdx;
@@ -271,7 +271,7 @@ protected:
         }
 
         if (still_inside) {
-            intersection.intersection += tMax[dIdx];
+            intersection.intersection += tMax[dIdx] - delta[dIdx];
             intersection.rayOriginIsInsideItem = false;
             if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value) {
                 intersection.normal[dIdx] = p.dir[dIdx] < 0 ? -1 : 1;
@@ -312,7 +312,7 @@ protected:
             };
 
             std::array<T, 3> tMax = delta;
-
+            Endre denne??? sjekk voxel intersect
             T tCurrent = std::numeric_limits<T>::max();
 
             for (std::size_t i = 0; i < 3; ++i) {

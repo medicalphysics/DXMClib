@@ -70,7 +70,7 @@ namespace visualization {
 
         const auto fov2x = vectormath::lenght(vectormath::subtract(b0, b1));
         const auto fov2y = vectormath::lenght(vectormath::subtract(b2, b1));
-        return std::make_pair(fov2x * 2, fov2y * 2);
+        return std::make_pair(fov2x, fov2y);
     }
 
     template <Floating T, WorldType<T> W>
@@ -156,10 +156,13 @@ namespace visualization {
         const auto pc = vectormath::subtract(c, cameraPos);
 
         const auto dd = std::tan(fov / resolution / vectormath::lenght(pc));
-        const auto dd_start = -dd * resolution / 2;
+        const auto dd_start = -dd * resolution / 2+dd/2;
         const auto dir = vectormath::cross(cameraCosinex, cameraCosiney);
 
-        std::vector<T> data(resolution * resolution * 4, T { 1 });
+        std::vector<T> data(resolution * resolution * 4, T { 0 });
+        for (std::size_t i = 3; i < data.size(); i = i + 4) {
+            data[i] = 1;
+        }
 
         auto items = world.getItemPointers();
         std::sort(items.begin(), items.end());
@@ -169,36 +172,42 @@ namespace visualization {
             colors[i] = HSVtoRGB(deg);
         }
 
+        RandomState state;
+        constexpr int n_samples = 12;
+
         for (std::size_t y = 0; y < resolution; ++y) {
             const auto y_flat = y * resolution;
             for (std::size_t x = 0; x < resolution; ++x) {
                 const auto flat = (y_flat + x) * 4;
-                Particle<T> p = { .pos = cameraPos, .dir = dir };
-                p.dir = vectormath::rotate(p.dir, cameraCosiney, dd_start + dd * x);
-                p.dir = vectormath::rotate(p.dir, cameraCosinex, dd_start + dd * y);
-                const auto r = world.intersectVisualization(p);
-                if (r.valid()) {
-                    const auto colorIdx = std::lower_bound(items.cbegin(), items.cend(), r.item);
-                    if (colorIdx != items.cend()) {
-                        const auto& c = colors[colorIdx - items.cbegin()];
-                        p.translate(r.intersection);
-                        const auto scaling = vectormath::dot(p.dir, r.normal);
-
-                        for (std::size_t i = 0; i < 3; ++i) {
-                            data[flat + i] = std::min(c[i] * scaling, T { 1 });
-                        }
-                    } else {
-                        for (std::size_t i = 0; i < 3; ++i) {
-                            data[flat + i] = 0;
+                for (std::size_t i = 0; i < n_samples; ++i) {
+                    Particle<T> p = { .pos = cameraPos, .dir = dir };
+                    p.dir = vectormath::rotate(p.dir, cameraCosiney, dd_start + dd * x + state.randomUniform<T>(-dd, dd)/2);
+                    p.dir = vectormath::rotate(p.dir, cameraCosinex, dd_start + dd * y + state.randomUniform<T>(-dd, dd)/2);
+                    const auto r = world.intersectVisualization(p);
+                    if (r.valid()) {
+                        const auto colorIdx = std::lower_bound(items.cbegin(), items.cend(), r.item);
+                        if (colorIdx != items.cend()) {
+                            const auto& c = colors[colorIdx - items.cbegin()];
+                            p.translate(r.intersection);                            
+                            const auto scaling = vectormath::dot(p.dir, r.normal);
+                            for (std::size_t i = 0; i < 3; ++i) {
+                                data[flat + i] += std::min(c[i] * scaling, T { 1 }) / n_samples;
+                            }
                         }
                     }
                 }
             }
         }
-
+        for (std::size_t i = 0; i < data.size(); i = i + 4) {
+            T s = 0;
+            for (auto j = i; j < i + 3; ++j)
+                s += data[j];
+            if (s == 0)
+                for (auto j = i; j < i + 3; ++j)
+                    data[j] = 1;
+        }
         return data;
     }
-
 }
 
 }

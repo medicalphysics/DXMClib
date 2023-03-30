@@ -58,6 +58,34 @@ std::vector<T> generateDonut(const std::array<std::size_t, 3>& dim, const std::a
     return d;
 }
 
+template <typename T = int>
+std::vector<T> generateEdges(const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing = { 1, 1, 1 })
+{
+    const auto s = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+    std::vector<T> d(s, T { 0 });
+
+    const auto dim_max = std::max(dim[0], std::max(dim[1], dim[2]));
+
+    const std::size_t c0 = 1; // dim_max * 1 / 4;
+    const std::size_t c1 = dim_max - 2; // dim_max * 3 / 4;
+
+    for (std::size_t z = 0; z < dim[2]; ++z)
+        for (std::size_t y = 0; y < dim[1]; ++y)
+            for (std::size_t x = 0; x < dim[0]; ++x) {
+                const auto flat_ind = x + y * dim[0] + z * dim[0] * dim[1];
+                if (c0 <= x && x <= c1 && (y == c0 || y == c1) && (z == c0 || z == c1)) {
+                    d[flat_ind] = 1;
+                }
+                if (c0 <= y && y <= c1 && (x == c0 || x == c1) && (z == c0 || z == c1)) {
+                    d[flat_ind] = 1;
+                }
+                if (c0 <= z && z <= c1 && (y == c0 || y == c1) && (x == c0 || x == c1)) {
+                    d[flat_ind] = 1;
+                }
+            }
+    return d;
+}
+
 template <typename T>
 bool testGeometryDistance()
 {
@@ -79,7 +107,8 @@ bool testGeometryDistance()
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
-    const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
+    // const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
+    const auto matIdx = generateEdges<std::uint8_t>(dim, spacing);
     std::vector<T> dens(matIdx.size(), 0);
     std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
 
@@ -111,8 +140,8 @@ bool testGeometryDistance()
 template <typename T>
 bool testGeometryColor()
 {
-    std::array<std::size_t, 3> dim = { 64, 64, 64 };
-    std::array<T, 3> spacing = { 1, 1, 1 };
+    std::array<std::size_t, 3> dim = { 32, 32, 32 };
+    std::array<T, 3> spacing = { 2, 2, 2 };
 
     using Grid = dxmc::AAVoxelGrid<T, 5, 2, 0>;
     using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
@@ -130,6 +159,7 @@ bool testGeometryColor()
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
     const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
+    // const auto matIdx = generateEdges<std::uint8_t>(dim, spacing);
     std::vector<T> dens(matIdx.size(), 0);
     std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
 
