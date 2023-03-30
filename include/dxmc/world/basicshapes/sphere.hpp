@@ -120,10 +120,10 @@ namespace basicshape {
             }
         }
 
-        template <Floating T>
-        VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        template <Floating T, typename U>
+        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
         {
-            VisualizationIntersectionResult<T> res;
+            VisualizationIntersectionResult<T, U> res;
             const auto t_opt = intersectForwardInterval(p, center, radii);
             if (t_opt) {
                 const auto& = t_opt.value();

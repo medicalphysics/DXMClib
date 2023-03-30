@@ -105,11 +105,10 @@ public:
         return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
     }
 
-    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersectVisualization(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_half_height);
     }
-
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {

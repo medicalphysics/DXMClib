@@ -150,10 +150,10 @@ namespace basicshape {
             return res;
         }
         // Branched version with early exits
-        template <Floating T>
-        VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p, const std::array<T, 6>& aabb)
+        template <Floating T, typename U>
+        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
-            VisualizationIntersectionResult<T> res;
+            VisualizationIntersectionResult<T, U> res;
             int axis_min = 0;
             int axis_max = 0;
 
@@ -200,22 +200,22 @@ namespace basicshape {
 
             if ((t[0] > tzmax) || (tzmin > t[1]))
                 return res;
-            if (tzmin > t[0])
+            if (tzmin > t[0]) {
                 t[0] = tzmin;
-            if (tzmax < t[1]) {
-                t[1] = tzmax;
                 axis_min = 2;
             }
-            if (t[1] < 0) {
-                return res;
+            if (tzmax < t[1]) {
+                t[1] = tzmax;
                 axis_max = 2;
             }
+            if (t[1] < 0)
+                return res;
 
             res.rayOriginIsInsideItem = t[0] < 0;
             res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
             res.intersectionValid = true;
             const int axis = res.rayOriginIsInsideItem ? axis_max : axis_min;
-            res.normal[axis] = 1;
+            res.normal[axis] = p.dir[axis] > aabb[axis] ? -1 : 1;
             return res;
         }
     }

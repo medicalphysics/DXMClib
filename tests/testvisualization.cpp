@@ -26,9 +26,8 @@ Copyright 2023 Erlend Andersen
 #include <vector>
 
 template <typename T>
-void writeImage(const std::vector<T>& buffer)
+void writeImage(const std::vector<T>& buffer, const std::string& name)
 {
-    const std::string name = sizeof(T) == 4 ? "world4.bin" : "world8.bin";
     std::ofstream file;
     file.open(name, std::ios::out | std::ios::binary);
     file.write((char*)buffer.data(), buffer.size() * sizeof(T));
@@ -60,7 +59,7 @@ std::vector<T> generateDonut(const std::array<std::size_t, 3>& dim, const std::a
 }
 
 template <typename T>
-bool testGeometryVis()
+bool testGeometryDistance()
 {
     std::array<std::size_t, 3> dim = { 64, 64, 64 };
     std::array<T, 3> spacing = { 1, 1, 1 };
@@ -105,7 +104,57 @@ bool testGeometryVis()
     xcam = dxmc::vectormath::cross(ycam, dir);
 
     auto im = dxmc::visualization::rayTraceGeometryDistance(world, campos, xcam, ycam, 512);
-    writeImage(im);
+    writeImage(im, "distance.bin");
+    return false;
+}
+
+template <typename T>
+bool testGeometryColor()
+{
+    std::array<std::size_t, 3> dim = { 64, 64, 64 };
+    std::array<T, 3> spacing = { 1, 1, 1 };
+
+    using Grid = dxmc::AAVoxelGrid<T, 5, 2, 0>;
+    using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
+    using World = dxmc::World2<T, Grid, Cylinder>;
+
+    World world;
+    auto& grid = world.addItem<Grid>({});
+    auto& cylinder = world.addItem<Cylinder>({});
+    cylinder.setRadius(5);
+    cylinder.setHeight(100);
+
+    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
+    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+
+    const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
+    std::vector<T> dens(matIdx.size(), 0);
+    std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
+
+    std::vector<dxmc::Material2<T>> materials;
+    materials.push_back(air);
+    materials.push_back(pmma);
+
+    grid.setData(dim, dens, matIdx, materials);
+    grid.setSpacing(spacing);
+
+    world.build();
+
+    std::array<T, 3> campos = { -100, -100, -200 };
+    auto center = world.center();
+    auto dir = dxmc::vectormath::subtract(center, campos);
+    dxmc::vectormath::normalize(dir);
+
+    std::array<T, 3> xcam = { 0, 0, 0 };
+    xcam[dxmc::vectormath::argmin3(dir)] = 1;
+    auto ycam = dxmc::vectormath::cross(dir, xcam);
+    dxmc::vectormath::normalize(ycam);
+    xcam = dxmc::vectormath::cross(ycam, dir);
+
+    auto im = dxmc::visualization::rayTraceGeometry(world, campos, xcam, ycam, 512);
+    writeImage(im, "color.bin");
     return false;
 }
 
@@ -113,7 +162,8 @@ int main()
 {
 
     bool success = false;
-    testGeometryVis<double>();
+    testGeometryColor<double>();
+    testGeometryDistance<double>();
 
     if (success)
         return EXIT_SUCCESS;

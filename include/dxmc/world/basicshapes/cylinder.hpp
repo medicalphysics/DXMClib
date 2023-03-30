@@ -228,8 +228,8 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        template <Floating T>
-        VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
+        template <Floating T, typename U>
+        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
         {
             auto t_cand = intersectCylinderWall(p, center, radii);
             if (t_cand) {
@@ -247,7 +247,7 @@ namespace basicshape {
 
             constexpr auto m = std::numeric_limits<T>::max();
 
-            VisualizationIntersectionResult<T> res;
+            VisualizationIntersectionResult<T, U> res;
 
             if (t_cand.value_or(m) < tdisc1_cand.value_or(m)) {
                 if (t_cand.value_or(m) < tdisc2_cand.value_or(m)) {

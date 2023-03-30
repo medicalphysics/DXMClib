@@ -129,6 +129,11 @@ public:
         return m_kdtree.intersect(p, m_aabb);
     }
 
+    inline auto intersectVisualization(const Particle<T>& p)
+    {
+        return m_kdtree.intersectVisualization(p, m_aabb);
+    }
+
     inline bool transportParticleToWorld(Particle<T>& p)
     {
         if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {

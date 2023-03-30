@@ -23,6 +23,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
+#include "dxmc/world/visualizationintersectionresult.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <algorithm>
@@ -199,6 +200,69 @@ public:
         }
         const std::array<T, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
+    }
+
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& particle, const std::array<T, 6>& aabb)
+    {
+        const auto& inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
+        return inter ? intersectVisualization(particle, *inter) : VisualizationIntersectionResult<T, WorldItemBase<T>> {};
+    }
+
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& particle, const std::array<T, 2>& tbox)
+    {
+        if (!m_left) { // this is a leaf
+            // intersect triangles between tbox and return;
+
+            VisualizationIntersectionResult<T, WorldItemBase<T>> res;
+            res.intersection = std::numeric_limits<T>::max();
+            for (auto& item : m_items) {
+                const auto t_cand = item->intersectVisualization(particle);
+                if (t_cand.valid()) {
+                    if (t_cand.intersection < res.intersection) {
+                        if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                            res = t_cand;
+                            res.item = item;
+                        }
+                    }
+                }
+            }
+            return res;
+        }
+
+        // test for parallell beam
+        if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
+            const auto hit_left = m_left->intersectVisualization(particle, tbox);
+            const auto hit_right = m_right->intersectVisualization(particle, tbox);
+            if (hit_left.item && hit_right.item)
+                return hit_left.intersection < hit_right.intersection ? hit_left : hit_right;
+            if (!hit_left.item)
+                return hit_right;
+            return hit_left;
+        }
+
+        KDTree<T>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
+        KDTree<T>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+
+        const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
+
+        if (t <= tbox[0]) {
+            // back only
+            return back->intersectVisualization(particle, tbox);
+        } else if (t >= tbox[1]) {
+            // front only
+            return front->intersectVisualization(particle, tbox);
+        }
+
+        // both directions (start with front)
+        const std::array<T, 2> t_front { tbox[0], t };
+        const auto hit = front->intersectVisualization(particle, t_front);
+        if (hit.item) {
+            if (hit.intersection <= t) {
+                return hit;
+            }
+        }
+        const std::array<T, 2> t_back { t, tbox[1] };
+        return back->intersectVisualization(particle, t_back);
     }
 
 protected:

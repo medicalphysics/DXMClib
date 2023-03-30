@@ -105,9 +105,9 @@ public:
         return basicshape::AABB::intersect(p, m_aabb);
     }
 
-    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::AABB::intersectVisualization(p, m_aabb);
+        return basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override

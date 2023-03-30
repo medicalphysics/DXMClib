@@ -108,10 +108,10 @@ public:
         return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
 
-    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<T, WorldBaseItem<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
         auto res = m_kdtree.intersect(p, m_aabb);
-        VisualizationIntersectionResult<T> res_int if (res.valid())
+        VisualizationIntersectionResult<T, WorldBaseItem<T>> res_int if (res.valid())
         {
             auto normal = res.item->planeVector();
             vectormath::normalize(normal);

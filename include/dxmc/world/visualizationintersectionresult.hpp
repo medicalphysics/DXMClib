@@ -24,10 +24,11 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T, typename U>
 struct VisualizationIntersectionResult {
     std::array<T, 3> normal = { 0, 0, 0 };
     T intersection = 0;
+    U* item = nullptr;
     bool rayOriginIsInsideItem = false;
     bool intersectionValid = false;
 

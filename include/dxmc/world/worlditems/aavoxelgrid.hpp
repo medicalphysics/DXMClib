@@ -152,12 +152,13 @@ public:
         return inter;
     }
 
-    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const final
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const final
     {
-        auto res = basicshape::AABB::intersectVisualization(p, m_aabb);
+        auto res = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
             if (res.valid()) {
-                voxelIntersect<VisualizationIntersectionResult<T>, TRANSPARENTVOXELS>(p, res);
+                res.normal = { 0, 0, 0 };
+                voxelIntersect<VisualizationIntersectionResult<T, WorldItemBase<T>>, TRANSPARENTVOXELS>(p, res);
             }
         }
         return res;
@@ -210,7 +211,8 @@ protected:
     template <typename Intersection = WorldIntersectionResult<T>, std::uint_fast8_t IGNOREIDX = 255>
     void voxelIntersect(const Particle<T>& p, Intersection& intersection) const
     {
-        static_assert(std::is_same<Intersection, WorldIntersectionResult<T>>::value || std::is_same<Intersection, VisualizationIntersectionResult<T>>::value);
+
+        static_assert(std::is_same<Intersection, WorldIntersectionResult<T>>::value || std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value);
         std::array<std::size_t, 3> xyz;
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
@@ -271,9 +273,10 @@ protected:
         if (still_inside) {
             intersection.intersection += tMax[dIdx];
             intersection.rayOriginIsInsideItem = false;
-            if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<T>>::value) {
-                intersection.normal[dIdx] = p.dir[dIdx] < 0 ? 1 : -1;
+            if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value) {
+                intersection.normal[dIdx] = p.dir[dIdx] < 0 ? -1 : 1;
             }
+            intersection.intersectionValid = true;
         } else {
             intersection.intersectionValid = false;
         }

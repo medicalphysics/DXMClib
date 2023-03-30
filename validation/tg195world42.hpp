@@ -134,6 +134,11 @@ public:
         return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
     }
 
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    {
+        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_halfHeight);
+    }
+
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight);
