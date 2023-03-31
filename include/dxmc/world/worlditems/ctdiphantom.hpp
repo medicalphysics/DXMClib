@@ -36,7 +36,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5>
+template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class CTDIPhantom final : public WorldItemBase<T> {
 public:
     CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 })
@@ -104,9 +104,9 @@ public:
         return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
     }
 
-    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersectVisualization(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_half_height);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
@@ -142,7 +142,7 @@ public:
                     if (stepLen < intHoles.intersection) {
                         // interaction happends
                         p.translate(stepLen);
-                        const auto intRes = interactions::interact(att, p, m_pmma, state);
+                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_pmma, state);
                         m_dose[0].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         cont = intRes.particleAlive;
@@ -154,7 +154,7 @@ public:
                         const auto dist = intHoles.item->intersect(p).intersection;
                         const auto holeAtt = m_air.attenuationValues(p.energy);
                         const auto interactionProb = 1 - std::exp(-dist * holeAtt.sum() * m_air_density);
-                        const auto intRes = interactions::interactForced(interactionProb, att, p, m_air, state);
+                        const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_air, state);
                         m_dose[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         // transport particle across hole (particle is most likely alive)

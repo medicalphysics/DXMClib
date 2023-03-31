@@ -52,25 +52,23 @@ namespace visualization {
     std::pair<T, T> fieldOfView(const std::array<T, 6>& aabb, const std::array<T, 3>& cameraPos, const std::array<T, 3>& cameraCosinex, const std::array<T, 3>& cameraCosiney)
     {
         const auto dir = vectormath::cross(cameraCosinex, cameraCosiney);
-        const std::array<T, 3> p1 = {
+        const std::array<T, 3> c = {
             (aabb[0] + aabb[3]) / 2,
             (aabb[1] + aabb[4]) / 2,
             (aabb[2] + aabb[5]) / 2
         };
         const auto [c0, c2] = vectormath::splice(aabb);
+        const auto p0 = std::max(std::abs(vectormath::lenght(vectormath::subtract(c0, c))),
+            std::abs(vectormath::lenght(vectormath::subtract(c2, c))));
+        const auto p2 = std::max(std::abs(vectormath::lenght(vectormath::subtract(c0, c))),
+            std::abs(vectormath::lenght(vectormath::subtract(c2, c))));
 
-        const auto p0 = projectToPlane(p1, dir, c0);
-        const auto p2 = projectToPlane(p1, dir, c2);
+        const auto dist = vectormath::lenght(vectormath::subtract(c, cameraPos));
 
-        const auto b0 = vectormath::changeBasis(cameraCosinex, cameraCosiney, dir, p0);
-        const auto b1 = vectormath::changeBasis(cameraCosinex, cameraCosiney, dir, p1);
-        const auto b2 = vectormath::changeBasis(cameraCosinex, cameraCosiney, dir, p2);
+        const auto fx = std::tan(p0 / dist);
+        const auto fy = std::tan(p2 / dist);
 
-        auto test = vectormath::changeBasis(cameraCosinex, cameraCosiney, dir, dir);
-
-        const auto fov2x = vectormath::lenght(vectormath::subtract(b0, b1));
-        const auto fov2y = vectormath::lenght(vectormath::subtract(b2, b1));
-        return std::make_pair(fov2x, fov2y);
+        return std::make_pair(fx, fy);
     }
 
     template <Floating T, WorldType<T> W>
@@ -139,25 +137,36 @@ namespace visualization {
     }
 
     template <Floating T, WorldType<T> W>
-    std::vector<T> rayTraceGeometry(W& world, const std::array<T, 3>& cameraPos, const std::array<T, 3>& cameraCosinex, const std::array<T, 3>& cameraCosiney, std::size_t resolution = 128)
+    std::vector<T> rayTraceGeometry(W& world, const std::array<T, 3>& cameraPos, std::size_t resolution = 128, const T zoom = 1)
     {
-        auto light_pos = cameraPos;
-        light_pos[1] += 100;
 
-        const auto aabb = world.AABB();
-        const std::array<T, 3> c = {
-            (aabb[0] + aabb[3]) / 2,
-            (aabb[1] + aabb[4]) / 2,
-            (aabb[2] + aabb[5]) / 2
-        };
+        auto dir = vectormath::subtract(world.center(), cameraPos);
+        vectormath::normalize(dir);
+        const auto dInd = vectormath::argmax3(dir);
+        std::array<T, 3> x, y;
+        if (dInd == 0) {
+            x = { 0, 1, 0 };
+            y = { 0, 0, 1 };
+        } else if (dInd == 1) {
+            x = { 1, 0, 0 };
+            y = { 0, 0, 1 };
+        } else {
+            x = { 1, 0, 0 };
+            y = { 0, 1, 0 };
+        }
+
+        auto cameraCosinex = vectormath::cross(dir, y);
+        vectormath::normalize(cameraCosinex);
+        auto cameraCosiney = vectormath::cross(dir, x);
+        vectormath::normalize(cameraCosiney);
+
+        const auto d2 = vectormath::cross(cameraCosinex, cameraCosiney);
 
         const auto [fov_x, fov_y] = fieldOfView(world.AABB(), cameraPos, cameraCosinex, cameraCosiney);
         const auto fov = std::max(fov_x, fov_y);
-        const auto pc = vectormath::subtract(c, cameraPos);
 
-        const auto dd = std::tan(fov / resolution / vectormath::lenght(pc));
-        const auto dd_start = -dd * resolution / 2+dd/2;
-        const auto dir = vectormath::cross(cameraCosinex, cameraCosiney);
+        const auto dd = fov / resolution / zoom;
+        const auto dd_start = -dd * resolution / 2 + dd / 2;
 
         std::vector<T> data(resolution * resolution * 4, T { 0 });
         for (std::size_t i = 3; i < data.size(); i = i + 4) {
@@ -173,7 +182,7 @@ namespace visualization {
         }
 
         RandomState state;
-        constexpr int n_samples = 12;
+        constexpr int n_samples = 4;
 
         for (std::size_t y = 0; y < resolution; ++y) {
             const auto y_flat = y * resolution;
@@ -181,14 +190,14 @@ namespace visualization {
                 const auto flat = (y_flat + x) * 4;
                 for (std::size_t i = 0; i < n_samples; ++i) {
                     Particle<T> p = { .pos = cameraPos, .dir = dir };
-                    p.dir = vectormath::rotate(p.dir, cameraCosiney, dd_start + dd * x + state.randomUniform<T>(-dd, dd)/2);
-                    p.dir = vectormath::rotate(p.dir, cameraCosinex, dd_start + dd * y + state.randomUniform<T>(-dd, dd)/2);
+                    p.dir = vectormath::rotate(p.dir, cameraCosiney, dd_start + dd * x + state.randomUniform<T>(-dd, dd) / 2);
+                    p.dir = vectormath::rotate(p.dir, cameraCosinex, dd_start + dd * y + state.randomUniform<T>(-dd, dd) / 2);
                     const auto r = world.intersectVisualization(p);
                     if (r.valid()) {
                         const auto colorIdx = std::lower_bound(items.cbegin(), items.cend(), r.item);
                         if (colorIdx != items.cend()) {
                             const auto& c = colors[colorIdx - items.cbegin()];
-                            p.translate(r.intersection);                            
+                            p.translate(r.intersection);
                             const auto scaling = vectormath::dot(p.dir, r.normal);
                             for (std::size_t i = 0; i < 3; ++i) {
                                 data[flat + i] += std::min(c[i] * scaling, T { 1 }) / n_samples;

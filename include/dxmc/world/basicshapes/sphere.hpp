@@ -126,12 +126,12 @@ namespace basicshape {
             VisualizationIntersectionResult<T, U> res;
             const auto t_opt = intersectForwardInterval(p, center, radii);
             if (t_opt) {
-                const auto& = t_opt.value();
-                res.valid = true;
+                const auto& t = t_opt.value();
+                res.intersectionValid = true;
                 res.rayOriginIsInsideItem = t[0] < 0;
                 res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
 
-                const auto pos = vectormath::add(p.pos, vectormath::scale(p.dir, ray.intersection));
+                const auto pos = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
                 res.normal = vectormath::subtract(center, pos);
                 vectormath::normalize(res.normal);
             }

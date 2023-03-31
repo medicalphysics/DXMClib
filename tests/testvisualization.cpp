@@ -34,14 +34,14 @@ void writeImage(const std::vector<T>& buffer, const std::string& name)
     file.close();
 }
 
-template <typename T = int>
-std::vector<T> generateDonut(const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing = { 1, 1, 1 })
+template <typename T = int, typename U>
+std::vector<T> generateDonut(const std::array<std::size_t, 3>& dim, const std::array<U, 3>& spacing = { 1, 1, 1 })
 {
     const auto s = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
     std::vector<T> d(s, T { 0 });
 
-    const double R = 0.25 * (dim[0] * spacing[0] + dim[1] * spacing[1]) / 2;
-    const double r = 0.1 * (dim[0] * spacing[0] + dim[1] * spacing[1]) / 2;
+    const U R = U { 0.25 } * (dim[0] * spacing[0] + dim[1] * spacing[1]) / 2;
+    const U r = U { 0.1 } * (dim[0] * spacing[0] + dim[1] * spacing[1]) / 2;
 
     for (std::size_t z = 0; z < dim[2]; ++z)
         for (std::size_t y = 0; y < dim[1]; ++y)
@@ -140,8 +140,8 @@ bool testGeometryDistance()
 template <typename T>
 bool testGeometryColor()
 {
-    std::array<std::size_t, 3> dim = { 32, 32, 32 };
-    std::array<T, 3> spacing = { 2, 2, 2 };
+    std::array<std::size_t, 3> dim = {32,32,32 };
+    std::array<T, 3> spacing = { .4, .4, .4 };
 
     using Grid = dxmc::AAVoxelGrid<T, 5, 2, 0>;
     using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
@@ -150,8 +150,8 @@ bool testGeometryColor()
     World world;
     auto& grid = world.addItem<Grid>({});
     auto& cylinder = world.addItem<Cylinder>({});
-    cylinder.setRadius(5);
-    cylinder.setHeight(100);
+    cylinder.setRadius(1);
+    cylinder.setHeight(5);
 
     auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
     auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
@@ -193,6 +193,7 @@ int main()
 
     bool success = false;
     testGeometryColor<double>();
+    //testGeometryColor<float>();
     testGeometryDistance<double>();
 
     if (success)

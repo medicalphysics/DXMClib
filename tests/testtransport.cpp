@@ -19,11 +19,14 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
+#include "dxmc/world/visualization/geometry.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
+#include "dxmc/world/worlditems/worldcylinder.hpp"
+#include "dxmc/world/worlditems/worldsphere.hpp"
 
 #include <iostream>
 
@@ -165,70 +168,121 @@ bool testDepth(bool print = false)
     return success;
 }
 
-template <typename T, std::uint_fast8_t TRANSPARENT = 255>
+template <typename T>
+void writeImage(const std::vector<T>& buffer, const std::string& name)
+{
+    std::ofstream file;
+    file.open(name, std::ios::out | std::ios::binary);
+    file.write((char*)buffer.data(), buffer.size() * sizeof(T));
+    file.close();
+}
+
+template <typename T = int, typename U>
+std::vector<T> generateDonut(const std::array<std::size_t, 3>& dim, const std::array<U, 3>& spacing = { 1, 1, 1 })
+{
+    const auto s = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+    std::vector<T> d(s, T { 0 });
+
+    const U R = U { 0.25 } * (dim[0] * spacing[0] + dim[1] * spacing[1]) / 2;
+    const U r = U { 0.1 } * (dim[0] * spacing[0] + dim[1] * spacing[1]) / 2;
+
+    for (std::size_t z = 0; z < dim[2]; ++z)
+        for (std::size_t y = 0; y < dim[1]; ++y)
+            for (std::size_t x = 0; x < dim[0]; ++x) {
+                const auto flat_ind = x + y * dim[0] + z * dim[0] * dim[1];
+                const auto xc = x * spacing[0] + spacing[0] / 2 - (dim[0] * spacing[0]) / 2;
+                const auto yc = y * spacing[1] + spacing[0] / 2 - (dim[1] * spacing[1]) / 2;
+                const auto zc = z * spacing[2] + spacing[0] / 2 - (dim[2] * spacing[2]) / 2;
+
+                const auto p1 = R - std::sqrt(xc * xc + yc * yc);
+                if (p1 * p1 + zc * zc < r * r)
+                    d[flat_ind] = 1;
+            }
+    return d;
+}
+
+template <typename T = int>
+std::vector<T> generateEdges(const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing = { 1, 1, 1 })
+{
+    const auto s = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+    std::vector<T> d(s, T { 0 });
+
+    const auto dim_max = std::max(dim[0], std::max(dim[1], dim[2]));
+
+    const std::size_t c0 = 3; // dim_max * 1 / 4;
+    const std::size_t c1 = dim_max - 4; // dim_max * 3 / 4;
+
+    for (std::size_t z = 0; z < dim[2]; ++z)
+        for (std::size_t y = 0; y < dim[1]; ++y)
+            for (std::size_t x = 0; x < dim[0]; ++x) {
+                const auto flat_ind = x + y * dim[0] + z * dim[0] * dim[1];
+                if (c0 <= x && x <= c1 && (y == c0 || y == c1) && (z == c0 || z == c1)) {
+                    d[flat_ind] = 1;
+                }
+                if (c0 <= y && y <= c1 && (x == c0 || x == c1) && (z == c0 || z == c1)) {
+                    d[flat_ind] = 1;
+                }
+                if (c0 <= z && z <= c1 && (y == c0 || y == c1) && (x == c0 || x == c1)) {
+                    d[flat_ind] = 1;
+                }
+            }
+    return d;
+}
+
+template <typename T, std::uint_fast8_t TRANSPARENT = 0>
 bool testAAVoxelGridTransport()
 {
     bool success = true;
 
-    using AAVoxelGrid = dxmc::AAVoxelGrid<T, 5, 2, TRANSPARENT>;
+    using AAVoxelGrid = dxmc::AAVoxelGrid<T, 5, 1, TRANSPARENT>;
+    using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
+    using Sphere = dxmc::WorldSphere<T, 5, 2>;
+    using World = dxmc::World2<T, AAVoxelGrid, Sphere>;
 
-    dxmc::World2<T, AAVoxelGrid> world;
-    auto& item = world.addItem(AAVoxelGrid());
+    World world;
+    auto& grid = world.addItem(AAVoxelGrid());
+    auto& sphere = world.addItem(Sphere(3));
 
     auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
     auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
-    
 
+    sphere.setMaterial(pmma);
+    sphere.setMaterialDensity(pmma_dens);
 
-    const std::array<std::size_t, 3> dim = { 100, 13, 13 };
+    const std::array<std::size_t, 3> dim = { 64, 64, 64 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { .20f, .20f, .20f };
+    std::array<T, 3> spacing = { .5f, .5f, .5f };
 
-    // material arrays
+    // setting up grid
+    auto matInd = generateDonut<std::uint8_t>(dim, spacing);
+    // auto matInd = generateEdges<std::uint8_t>(dim, spacing);
     std::vector<T> dens(size, air_dens);
-    std::vector<std::uint8_t> materialIdx(size, 0);
+    std::transform(matInd.cbegin(), matInd.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
     std::vector<dxmc::Material2<T, 5>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
+    grid.setData(dim, dens, matInd, materials);
+    grid.setSpacing(spacing);
 
-    // test indices and assign material
-
-    item.setSpacing(spacing);
-    std::size_t i = 0;
-    for (std::size_t z = 0; z < dim[2]; ++z) {
-        for (std::size_t y = 0; y < dim[1]; ++y) {
-            for (std::size_t x = 0; x < dim[0]; ++x) {
-
-                dens[i] = pmma_dens;
-                materialIdx[i] = 1;
-                i++;
-            }
-        }
-    }
-    materialIdx[0] = 0;
-
-    item.setData(dim, dens, materialIdx, materials);
-    item.setSpacing(spacing);
-
-    dxmc::PencilBeam<T> beam({ 100,0,0 }, { -1,0,0 }, 60);
-    beam.setNumberOfExposures(40);
-    beam.setNumberOfParticlesPerExposure(1000);
+    dxmc::PencilBeam<T> beam({ 0, 0, -100 }, { 0, 0, 1 }, 60);
+    beam.setNumberOfExposures(64);
+    beam.setNumberOfParticlesPerExposure(100000);
     dxmc::Transport transport;
-    //transport.setNumberOfThreads(1);
     world.build();
     auto time = runDispatcher(transport, world, beam);
     std::cout << std::format("Total time: {}", time) << std::endl;
 
-    for (std::size_t x = 0; x < dim[0]; ++x) {
-        const auto y = dim[1] / 2;
-        const auto z = dim[2] / 2;
-        const auto ind = item.flatIndex({ x, y, z });
-        const auto d = item.dose(ind).energyImparted();
-        std::cout << (x + T { 0.5 }) * spacing[0] << ", " << d << "," << static_cast<int>(materialIdx[ind]) << std::endl;
+    std::vector<T> doseArray(dens.size());
+    for (std::size_t i = 0; i < size; ++i) {
+        const auto& dose = grid.dose(i);
+        doseArray[i] = dose.energyImparted();
     }
+    writeImage(doseArray, "dose.bin");
 
+    auto geo = dxmc::visualization::rayTraceGeometry<T, World>(world, { 0, 100, -300 }, 1024, 2);
+    writeImage(geo, "geometry.bin");
     return success;
 }
 
@@ -243,9 +297,9 @@ bool testAAVoxelGrid()
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
-    const std::array<std::size_t, 3> dim = { 3, 3, 3 };
+    const std::array<std::size_t, 3> dim = { 64, 64, 64 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { 2.0f, 2.0f, 2.0f };
+    std::array<T, 3> spacing = { .20f, .20f, .20f };
 
     // material arrays
     std::vector<T> dens(size, air_dens);
@@ -309,7 +363,7 @@ int main()
     bool success = true;
 
     success = success && testAAVoxelGridTransport<double, 0>();
-    success = success && testAAVoxelGridTransport<double, 255>();
+    // success = success && testAAVoxelGridTransport<float, 0>();
     /* success = success && testAAVoxelGridTransport<float, 255>();
 
     success = success && testAAVoxelGrid<float>();

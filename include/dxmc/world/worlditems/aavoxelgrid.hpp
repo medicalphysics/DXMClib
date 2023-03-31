@@ -221,7 +221,7 @@ protected:
             // make sure we are well inside a voxel
             constexpr auto h = std::numeric_limits<T>::max();
             constexpr auto l = std::numeric_limits<T>::lowest();
-            const auto t = intersection.intersection + 1E-4;
+            const auto t = intersection.intersection + T { 1E-5 };
             const std::array<T, 3> pos = {
                 p.pos[0] + p.dir[0] * t,
                 p.pos[1] + p.dir[1] * t,
@@ -311,21 +311,13 @@ protected:
                 m_spacing[2] / std::abs(p.dir[2])
             };
 
-            std::array<T, 3> tMax = delta;
-            Endre denne??? sjekk voxel intersect
-            T tCurrent = std::numeric_limits<T>::max();
-
+           std::array<T, 3> tMax;
             for (std::size_t i = 0; i < 3; ++i) {
-                if (p.dir[i] < 0) {
-                    const auto edge = m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
-                    const auto tc = -(edge - p.pos[i]) / p.dir[i];
-                    tCurrent = std::min(tCurrent, tc);
-                } else {
-                    const auto edge = m_aabb[i] + xyz[i] * m_spacing[i];
-                    const auto tc = -(edge - p.pos[i]) / p.dir[i];
-                    tCurrent = std::min(tCurrent, tc);
-                }
+                const auto plane = p.dir[i] < 0 ? m_aabb[i] + xyz[i] * m_spacing[i] : m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
+                tMax[i] = (plane - p.pos[i]) / p.dir[i];
             }
+            // Endre denne??? sjekk voxel intersect
+            T tCurrent = 0;
 
             T interaction_accum = 1;
             const T interaction_thres = state.randomUniform<T>();

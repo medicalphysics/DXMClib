@@ -33,7 +33,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5>
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class WorldSphere final : public WorldItemBase<T> {
 public:
     WorldSphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
@@ -91,9 +91,9 @@ public:
         return basicshape::sphere::intersect(p, m_center, m_radius);
     }
 
-    VisualizationIntersectionResult<T> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::sphere::intersectVisualization(p, m_center, m_radius);
+        return basicshape::sphere::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
@@ -114,7 +114,7 @@ public:
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::interact(att, p, m_material, state);
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 m_dose.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
@@ -129,6 +129,10 @@ public:
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
+    }
+
+    void clearDose() override {
+        m_dose.clear();
     }
 
 protected:
