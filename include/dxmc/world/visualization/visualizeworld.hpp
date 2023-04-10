@@ -13,7 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #pragma once
@@ -25,9 +25,50 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
+#include <iterator>
 #include <vector>
 
 namespace dxmc {
+template <typename U, typename T>
+concept WorldType = requires(U world, Particle<T> p, KDTreeIntersectionResult<T, WorldItemBase<T>> res) {
+                        Floating<T>;
+                        {
+                            world.intersect(p)
+                            } -> std::same_as<KDTreeIntersectionResult<T, WorldItemBase<T>>>;
+                    };
+template <Floating T>
+class VisualizeWorld {
+public:
+    template <WorldType W, U T>
+        requires std::is_floating_point<U>::value || std::same_as<U, std::uint8_t>::value
+    void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512)
+    {
+        if (m_fov < 0)
+            suggestFOV(world.AABB());
+    }
+
+protected:
+    void suggestFOV(const std::array<T, 6>& aabb)
+    {
+        const auto [p1, p2] = vectormath::splice(aabb);
+        auto d1 = vectormath::subtract(p1, m_camera_pos);
+        vectormath::normalize(d1);
+        auto d2 = vectormath::subtract(p2, m_camera_pos);
+        vectormath::normalize(d2);
+
+        const auto dir = vectormath::cross(m_camera_xcosine, m_camera_ycosine);
+
+        const auto x = std::max(std::abs(vectormath::dot(dir, d1)),std::abs(vectormath::dot(dir, d2));
+        
+        m_fov = std::asin(std::max(x, y)) * 2;
+    }
+
+private:
+    std::array<T, 3> m_camera_pos = { 0, 0, -1000 };
+    std::array<T, 3> m_camera_xcosine = { 1, 0, 0 };
+    std::array<T, 3> m_camera_ycosine = { 0, 1, 0 };
+    T m_fov = -1;
+};
 namespace visualization {
 
     template <typename U, typename T>
@@ -106,6 +147,32 @@ namespace visualization {
         }
 
         return data;
+    }
+
+    std::array<std::uint8_t, 3> HSVtoRGB(const std::uint8_t H, const std::uint8_t S, const std::uint8_t V = 255)
+    {
+        // H in [0, 255], S in [0, 255], V in [0, 255]
+        const std::uint8_t region = H / 43;
+        const std::uint8_t remainder = (H - (region * 43)) * 6;
+
+        const std::uint8_t p = (V * (255 - S)) >> 8;
+        const std::uint8_t q = (V * (255 - ((S * remainder) >> 8))) >> 8;
+        const std::uint8_t t = (V * (255 - ((S * (255 - remainder)) >> 8))) >> 8;
+
+        std::array<std::uint8_t, 3> rgb;
+        if (region == 0)
+            rgb = { V, t, p };
+        else if (region == 1)
+            rgb = { q, V, p };
+        else if (region == 2)
+            rgb = { p, V, t };
+        else if (region == 3)
+            rgb = { p, q, V };
+        else if (region == 4)
+            rgb = { t, p, V };
+        else
+            rgb = { V, p, q };
+        return rgb;
     }
 
     template <Floating T>
