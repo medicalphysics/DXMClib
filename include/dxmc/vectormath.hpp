@@ -255,5 +255,24 @@ namespace vectormath {
         vec = rotate(vec, vec_xy, theta);
     }
 
+    template <Floating T>
+    [[nodiscard]] inline std::array<T, 3> peturb2(const std::array<T, 3>& vec, const T theta, const T phi) noexcept
+    {
+        // generate a peturbed vector about [0,0,1]
+        const auto zk = std::sin(theta);
+        std::array<T, 3> pet = { zk * std::sin(phi), zk * std::cos(phi), std::cos(theta) };
+        if (vec[2] > 1 - T { 1E-5 })
+            return pet;
+        else if (vec[2] < 1 + T { 1E-5 }) {
+            pet[2] = -pet[2];
+            return pet;
+        } else {
+            const auto linv = 1 / std::abs(vec[2]);
+            const std::array rot_axis = { linv * vec[1], -linv * vec[0], T { 0 } };
+            const auto cosang = dot(vec, pet);
+            const auto sinang = std::sqrt(1 - cosang * cosang);
+            return rotate(pet, rot_axis, sinang, cosang);
+        }
+    }
 }
 }
