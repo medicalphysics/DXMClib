@@ -234,7 +234,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void peturb(std::array<T, 3>& vec, const T theta, const T phi) noexcept
+    [[nodiscard]] inline std::array<T, 3> peturb(const std::array<T, 3>& vec, const T cosTheta, const T cosPhi) noexcept
     {
         // rotates a unit vector theta degrees from its current direction
         // phi degrees about a arbitrary axis orthogonal to the direction vector
@@ -247,20 +247,23 @@ namespace vectormath {
         k[minInd] = T { 1 };
 
         const auto vec_xy_raw = vectormath::cross(vec, k);
+        normalize(vec_xy_raw);
 
         // rotating the arbitrary orthogonal axis about vector direction
-        auto vec_xy = rotate(vec_xy_raw, vec, phi);
-        normalize(vec_xy);
+        const auto sinPhi = sqrt(1 - cosPhi * cosPhi);
+        auto vec_xy = rotate(vec_xy_raw, vec, sinPhi, cosPhi);
 
-        vec = rotate(vec, vec_xy, theta);
+        const auto sinTheta = sqrt(1 - cosTheta * cosTheta);
+        vec = rotate(vec, vec_xy, sinTheta, cosTheta);
     }
 
     template <Floating T>
-    [[nodiscard]] inline std::array<T, 3> peturb2(const std::array<T, 3>& vec, const T theta, const T phi) noexcept
+    [[nodiscard]] inline std::array<T, 3> peturb2(const std::array<T, 3>& vec, const T cosTheta, const T cosPhi) noexcept
     {
         // generate a peturbed vector about [0,0,1]
-        const auto zk = std::sin(theta);
-        std::array<T, 3> pet = { zk * std::sin(phi), zk * std::cos(phi), std::cos(theta) };
+        const auto sinTheta = std::sqrt(1 - cosTheta * cosTheta);
+        const auto sinPhi = std::sqrt(1 - cosPhi * cosPhi);
+        std::array<T, 3> pet = { sinTheta * sinPhi, sinTheta * cosPhi, cosTheta };
         if (vec[2] > 1 - T { 1E-5 })
             return pet;
         else if (vec[2] < 1 + T { 1E-5 }) {
