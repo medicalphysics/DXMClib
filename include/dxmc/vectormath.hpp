@@ -239,43 +239,24 @@ namespace vectormath {
         // rotates a unit vector theta degrees from its current direction
         // phi degrees about a arbitrary axis orthogonal to the direction vector
 
-        // First we find a vector orthogonal to the vector direction
-        // T vec_xy[3], k[3] = { 0, 0, 0 };
-
         const auto minInd = argmin3<std::uint_fast32_t, T>(vec);
         std::array<T, 3> k { 0, 0, 0 };
         k[minInd] = T { 1 };
 
-        const auto vec_xy_raw = vectormath::cross(vec, k);
+        auto vec_xy_raw = vectormath::cross(vec, k);
         normalize(vec_xy_raw);
 
         // rotating the arbitrary orthogonal axis about vector direction
         const auto sinPhi = sqrt(1 - cosPhi * cosPhi);
-        auto vec_xy = rotate(vec_xy_raw, vec, sinPhi, cosPhi);
+        const auto vec_xy = rotate(vec_xy_raw, vec, sinPhi, cosPhi);
 
         const auto sinTheta = sqrt(1 - cosTheta * cosTheta);
-        vec = rotate(vec, vec_xy, sinTheta, cosTheta);
+
+        auto res = rotate(vec, vec_xy, sinTheta, cosTheta);
+        // We normalize result in case of multiple calls on same vector
+        normalize(res);
+        return res;
     }
 
-    template <Floating T>
-    [[nodiscard]] inline std::array<T, 3> peturb2(const std::array<T, 3>& vec, const T cosTheta, const T cosPhi) noexcept
-    {
-        // generate a peturbed vector about [0,0,1]
-        const auto sinTheta = std::sqrt(1 - cosTheta * cosTheta);
-        const auto sinPhi = std::sqrt(1 - cosPhi * cosPhi);
-        std::array<T, 3> pet = { sinTheta * sinPhi, sinTheta * cosPhi, cosTheta };
-        if (vec[2] > 1 - T { 1E-5 })
-            return pet;
-        else if (vec[2] < 1 + T { 1E-5 }) {
-            pet[2] = -pet[2];
-            return pet;
-        } else {
-            const auto linv = 1 / std::abs(vec[2]);
-            const std::array rot_axis = { linv * vec[1], -linv * vec[0], T { 0 } };
-            const auto cosang = dot(vec, pet);
-            const auto sinang = std::sqrt(1 - cosang * cosang);
-            return rotate(pet, rot_axis, sinang, cosang);
-        }
-    }
 }
 }

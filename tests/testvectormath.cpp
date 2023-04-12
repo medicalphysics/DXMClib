@@ -1,70 +1,115 @@
 
-#include "dxmc/source.hpp"
+
+#include "dxmc/dxmcrandom.hpp"
 #include "dxmc/vectormath.hpp"
 
-#include <cassert>
-#include <iostream>
+#include <array>
+#include <numbers>
 
 using namespace dxmc;
 
-constexpr double ERRF = 1e-4;
-
-template <typename T>
-bool isEqual(T f1, T f2)
+template <Floating T>
+bool equal(T lh, T rh, const T thres = 1E-5)
 {
-    return std::abs(f1 - f2) < ERRF;
+    return std::abs(lh - rh) < thres;
+}
+
+template <Floating T>
+bool equal(const std::array<T, 3>& lh, const std::array<T, 3>& rh)
+{
+    bool res = true;
+    for (int i = 0; i < 3; ++i)
+        res = res && equal(lh[i], rh[i]);
+    return res;
 }
 
 template <typename T>
-void testLenght()
+bool testRotate()
 {
-    
-    std::array<T, 3> arr_std = { 1, 1, 1 };
+    const std::array<T, 3> vec = { 0, 0, 1 };
+    const std::array<T, 3> z = { 0, 0, 1 };
+    const std::array<T, 3> y = { 0, 1, 0 };
+    const std::array<T, 3> x = { 1, 0, 0 };
 
-    auto l = vectormath::lenght(arr_std);
-    
+    bool success = true;
+    success = success && equal(vec, vectormath::rotate(vec, x, 2 * std::numbers::pi_v<T>));
+    success = success && equal(vec, vectormath::rotate(vec, y, 2 * std::numbers::pi_v<T>));
+    success = success && equal(vec, vectormath::rotate(vec, z, 2 * std::numbers::pi_v<T>));
 
-    assert(isEqual(l, std::sqrt(T { 3 })));
+    std::array<T, 60> ang;
+    for (int i = 0; i < ang.size(); ++i) {
+        ang[i] = (2 * std::numbers::pi_v<T>) / ang.size();
+    }
+    auto t = vec;
+    for (const auto a : ang) {
+        t = vectormath::rotate(t, x, a);
+    }
+    for (const auto a : ang) {
+        t = vectormath::rotate(t, y, a);
+    }
+    success = success && equal(vec, t);
+
+    return success;
 }
 
-void testArgMax()
+template <typename T>
+bool testPeturb()
 {
-    std::array<double, 3> arr { 1, 2, 3 };
-    assert((vectormath::argmax3<std::size_t, double>(arr) == 2));
-    assert((vectormath::argmin3<std::size_t, double>(arr) == 0));
-    arr[0] = 2;
-    arr[1] = 1;
-    arr[2] = 3;
-    assert((vectormath::argmax3<std::size_t, double>(arr) == 2));
-    assert((vectormath::argmin3<std::size_t, double>(arr) == 1));
-    arr[0] = 3;
-    arr[1] = 2;
-    arr[2] = 1;
-    assert((vectormath::argmax3<std::size_t, double>(arr) == 0));
-    assert((vectormath::argmin3<std::size_t, double>(arr) == 2));
-    return;
+
+    dxmc::RandomState state;
+    bool success = true;
+    for (std::size_t i = 0; i < 1E6; ++i) {
+        std::array<T, 3> vec = {
+            state.randomUniform<T>(-1, 1),
+            state.randomUniform<T>(-1, 1),
+            state.randomUniform<T>(-1, 1)
+        };
+        dxmc::vectormath::normalize(vec);
+
+        const auto angle = state.randomUniform<T>(2 * std::numbers::pi_v<T>) - std::numbers::pi_v<T>;
+        const auto cosang = std::cos(angle);
+        if (std::abs(cosang) < T { 0.99 }) {
+            const auto vt = vectormath::peturb(vec, cosang, std::cos(state.randomUniform<T>(2 * std::numbers::pi_v<T>)));
+            const auto res = dxmc::vectormath::angleBetween(vec, vt);
+            success = success && equal(res, std::abs(angle), T { 1E-2 });
+            const auto vt_lenght = vectormath::lenght(vt);
+            success = success && equal(vt_lenght, T { 1 });
+            if (!success) {
+                auto test = false;
+            }
+        }
+    }
+
+    std::array<T, 3> vec = { 0, 0, 1 };
+    for (std::size_t i = 0; i < 1E2; ++i) {
+        const auto angle = state.randomUniform<T>(2 * std::numbers::pi_v<T>) - std::numbers::pi_v<T>;
+        const auto cosang = std::cos(angle);
+        const auto cosphi = std::cos(state.randomUniform<T>(2 * std::numbers::pi_v<T>));
+        vec = vectormath::peturb(vec, cosang, cosphi);
+        const auto lenght = vectormath::lenght(vec);
+        success = success && equal(lenght, T { 1 }, T {1E-3});
+        if (!success) {
+            auto test = false;
+        }
+        vectormath::normalize(vec);
+    }
+
+    return success;
 }
 
-void testChangeBasis()
+template <Floating T>
+bool tests()
 {
-    std::array<double, 6> cos { 1, 0, 0, 0, 0, 1 };
-    std::array<double, 3> dir = vectormath::cross(cos);
-
-    std::array<double, 3> pos { 0, 1, 0 };
-
-    const auto [b1, b2] = vectormath::splice(cos);
-
-    auto posFin = vectormath::changeBasisInverse(b1, b2, dir, pos);
-
-    for (std::size_t i = 0; i < 3; ++i)
-        assert((pos[i] == posFin[i]));
+    bool success = true;
+    success = success && testRotate<T>();
+    success = success && testPeturb<T>();
+    return success;
 }
 
 int main(int argc, char* argv[])
 {
-    testLenght<double>();
-    testLenght<float>();
-    testArgMax();
-    testChangeBasis();
-    return EXIT_SUCCESS;
+    auto succ = tests<float>() && tests<double>();
+    if (succ)
+        return EXIT_SUCCESS;
+    return EXIT_FAILURE;
 }

@@ -20,7 +20,7 @@ set(TEST_SOURCES
     "testtransport.cpp"
 #    "testattenuationlut.cpp"
 #    "testitemcollection.cpp"
-#    "testvectormath.cpp"
+    "testvectormath.cpp"
 #    "testexposure.cpp"
 #    "testinterpolation.cpp"
 )

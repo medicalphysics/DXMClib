@@ -19,7 +19,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
-#include "dxmc/world/visualization/geometry.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
@@ -281,8 +280,6 @@ bool testAAVoxelGridTransport()
     }
     writeImage(doseArray, "dose.bin");
 
-    auto geo = dxmc::visualization::rayTraceGeometry<T, World>(world, { 0, 100, -300 }, 1024, 2);
-    writeImage(geo, "geometry.bin");
     return success;
 }
 
