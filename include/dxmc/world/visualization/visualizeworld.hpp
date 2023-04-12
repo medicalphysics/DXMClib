@@ -54,13 +54,76 @@ public:
         requires std::is_floating_point<U>::value || std::same_as<U, std::uint8_t>::value
     void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512)
     {
-        
+        std::vector<std::pair<WorldItemBase<T>*, std::array<U, 3>>> colors;
+        auto items = world.getItemPointers();
+        colors.reserve(items.size());
+        for (std::size_t i = 0; i < items.size(); ++i) {
+            if constexpr (std::same_as<U, std::uint8_t>::value) {
+                std::uint8_t c = 
+                colors.emplace_back(std::make_pair(items[i], HSVtoRGB()))
+
+
+            } else {
+            }
+        }
 
     }
 
 protected:
     
+    
+    std::array<std::uint8_t, 3> HSVtoRGB(const std::uint8_t H, const std::uint8_t S, const std::uint8_t V = 255)
+    {
+        // H in [0, 255], S in [0, 255], V in [0, 255]
+        const std::uint8_t region = H / 43;
+        const std::uint8_t remainder = (H - (region * 43)) * 6;
 
+        const std::uint8_t p = (V * (255 - S)) >> 8;
+        const std::uint8_t q = (V * (255 - ((S * remainder) >> 8))) >> 8;
+        const std::uint8_t t = (V * (255 - ((S * (255 - remainder)) >> 8))) >> 8;
+
+        std::array<std::uint8_t, 3> rgb;
+        if (region == 0)
+            rgb = { V, t, p };
+        else if (region == 1)
+            rgb = { q, V, p };
+        else if (region == 2)
+            rgb = { p, V, t };
+        else if (region == 3)
+            rgb = { p, q, V };
+        else if (region == 4)
+            rgb = { t, p, V };
+        else
+            rgb = { V, p, q };
+        return rgb;
+    }
+    
+    std::array<T, 3> HSVtoRGB(const T H, const T S = T { 1 }, const T V = .8)
+    {
+        // H in [0, 2pi], S in [0, 1], V in [0, 1]
+        const auto C = V * S;
+
+        constexpr auto sep = 3 / std::numbers::phi_v<T>;
+        const auto Hb = std::clamp(H, T { 0 }, 2 * std::numbers::phi_v<T>) * sep;
+        const auto r = std::fmod(Hb, T { 2 });
+        const auto X = C * (1 - std::abs(r - 1));
+
+        std::array<T, 3> rgb;
+        if (Hb < 1) {
+            rgb = { C, X, 0 };
+        } else if (Hb < 2) {
+            rgb = { X, C, 0 };
+        } else if (Hb < 3) {
+            rgb = { 0, C, X };
+        } else if (Hb < 4) {
+            rgb = { 0, X, C };
+        } else if (Hb < 5) {
+            rgb = { X, 0, C };
+        } else {
+            rgb = { C, 0, X };
+        }
+        return rgb;
+    }
     void suggestFOV(const std::array<T, 6>& aabb)
     {
         const auto [p1, p2] = vectormath::splice(aabb);
