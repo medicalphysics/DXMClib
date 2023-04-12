@@ -39,15 +39,28 @@ concept WorldType = requires(U world, Particle<T> p, KDTreeIntersectionResult<T,
 template <Floating T>
 class VisualizeWorld {
 public:
+
+    template <WorldType W, U T>
+        requires std::is_floating_point<U>::value || std::same_as<U, std::uint8_t>::value
+    void initialize(W& world)
+    {
+        if (m_fov < 0)
+            suggestFOV(world.AABB());
+
+
+    }
+
     template <WorldType W, U T>
         requires std::is_floating_point<U>::value || std::same_as<U, std::uint8_t>::value
     void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512)
     {
-        if (m_fov < 0)
-            suggestFOV(world.AABB());
+        
+
     }
 
 protected:
+    
+
     void suggestFOV(const std::array<T, 6>& aabb)
     {
         const auto [p1, p2] = vectormath::splice(aabb);
@@ -68,6 +81,7 @@ private:
     std::array<T, 3> m_camera_xcosine = { 1, 0, 0 };
     std::array<T, 3> m_camera_ycosine = { 0, 1, 0 };
     T m_fov = -1;
+
 };
 namespace visualization {
 
