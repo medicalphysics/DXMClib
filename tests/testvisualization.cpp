@@ -123,7 +123,7 @@ bool testGeometryColor()
 
     dxmc::VisualizeWorld<T> viz(world);
     viz.setPolarAngle(std::numbers::pi_v<T> / 4);
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 3) / 4);
+    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T {0.1});
     int height = 1024;
     int width = 1024;
     std::vector<T> buffer(height * width * 4, T { 1 });

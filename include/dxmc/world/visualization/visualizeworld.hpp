@@ -27,6 +27,7 @@ Copyright 2023 Erlend Andersen
 #include <array>
 #include <iterator>
 #include <numbers>
+#include <thread>
 #include <vector>
 
 namespace dxmc {
@@ -61,12 +62,10 @@ public:
         m_camera_pos[2] = azimuthal;
     }
 
-    // template <WorldType<T> W, typename U>
-    //   requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
-    template <WorldType<T> W>
-    void generate(W& world, std::vector<T>& buffer, int width = 512, int height = 512)
+    template <WorldType<T> W, typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512)
     {
-        using U = T;
         std::vector<std::pair<WorldItemBase<T>*, std::array<U, 3>>> colors;
         auto items = world.getItemPointers();
         colors.reserve(items.size());
@@ -81,35 +80,38 @@ public:
         }
 
         const auto step = std::max(m_fov / width, m_fov / height);
-        Particle<T> p;
-        p.pos = {
+        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
+        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
+        const auto dir = vectormath::cross(ycos, xcos);
+        const std::array pos = {
             m_camera_pos[0] * std::cos(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[0],
             m_camera_pos[0] * std::sin(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[1],
             m_camera_pos[0] * std::cos(m_camera_pos[2]) + m_center[2]
         };
-        auto dir = vectormath::subtract(m_center, p.pos);
-        vectormath::normalize(dir);
-        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
-        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
-        const auto pdir = vectormath::cross(ycos, xcos);
 
-        for (int y = 0; y < height; ++y) {
-            const auto y_flat = y * width * 4;
-            const auto yang = (-height / 2 + y) * step;
-            const auto dy = step * y - height * step / 2;
-            for (int x = 0; x < width; ++x) {
-                const auto ind = y_flat + x * 4;
-                const auto xang = (-width / 2 + x) * step;
-                const auto dx = step * x - width * step / 2;
+        auto worker = [&](std::size_t start, std::size_t stop) {
+            Particle<T> p;
+            p.pos = pos;
+
+            for (std::size_t j = start; j < stop; ++j) {
+                const auto y = j / width;
+                const auto x = j - y * width;
+                const auto ind = j * 4;
+                const auto yang = -step * height * T { 0.5 } + y * step;
+                const auto xang = -step * width * T { 0.5 } + x * step;
                 p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
-
                 const auto res = world.intersectVisualization(p);
                 if (res.valid()) {
-                    const auto scaling = vectormath::dot(p.dir, res.normal);
+                    const auto scaling = std::clamp(vectormath::dot(p.dir, res.normal), T { 0.5 }, T { 1 });
                     for (const auto& cmap : colors) {
                         if (cmap.first == res.item) {
-                            for (int i = 0; i < 3; ++i)
-                                buffer[ind + i] = cmap.second[i] * scaling;
+                            for (int i = 0; i < 3; ++i) {
+                                if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                    buffer[ind + i] = static_cast<U>(cmap.second[i] * scaling);
+                                } else {
+                                    buffer[ind + i] = cmap.second[i] * scaling;
+                                }
+                            }
                         }
                     }
                 } else {
@@ -122,6 +124,23 @@ public:
                     }
                 }
             }
+        };
+
+        int nThreads = std::thread::hardware_concurrency();
+        const auto jobsize = static_cast<std::size_t>(width * height / nThreads);
+        std::vector<std::jthread> threads;
+        threads.reserve(nThreads - 1);
+        std::size_t start = 0;
+        auto stop = jobsize;
+        for (auto i = nThreads - 1; i > 0; --i) {
+            threads.emplace_back(std::jthread(worker, start, stop));
+            start = stop;
+            stop += jobsize;
+        }
+
+        worker(start, static_cast<std::size_t>(height * width));
+        for (auto& t : threads) {
+            t.join();
         }
     }
 
