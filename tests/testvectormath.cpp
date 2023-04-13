@@ -87,7 +87,7 @@ bool testPeturb()
         const auto cosphi = std::cos(state.randomUniform<T>(2 * std::numbers::pi_v<T>));
         vec = vectormath::peturb(vec, cosang, cosphi);
         const auto lenght = vectormath::lenght(vec);
-        success = success && equal(lenght, T { 1 }, T {1E-3});
+        success = success && equal(lenght, T { 1 }, T { 1E-3 });
         if (!success) {
             auto test = false;
         }

@@ -16,7 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2023 Erlend Andersen
 */
 
-#include "dxmc/world/visualization/geometry.hpp"
+#include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
@@ -47,9 +47,9 @@ std::vector<T> generateDonut(const std::array<std::size_t, 3>& dim, const std::a
         for (std::size_t y = 0; y < dim[1]; ++y)
             for (std::size_t x = 0; x < dim[0]; ++x) {
                 const auto flat_ind = x + y * dim[0] + z * dim[0] * dim[1];
-                const auto xc = x * spacing[0] - (dim[0] * spacing[0]) / 2;
-                const auto yc = y * spacing[1] - (dim[1] * spacing[1]) / 2;
-                const auto zc = z * spacing[2] - (dim[2] * spacing[2]) / 2;
+                const auto xc = x * spacing[0] - (dim[0] * spacing[0]) / 2 + spacing[0] / 2;
+                const auto yc = y * spacing[1] - (dim[1] * spacing[1]) / 2 + spacing[1] / 2;
+                const auto zc = z * spacing[2] - (dim[2] * spacing[2]) / 2 + spacing[2] / 2;
 
                 const auto p1 = R - std::sqrt(xc * xc + yc * yc);
                 if (p1 * p1 + zc * zc < r * r)
@@ -87,61 +87,10 @@ std::vector<T> generateEdges(const std::array<std::size_t, 3>& dim, const std::a
 }
 
 template <typename T>
-bool testGeometryDistance()
-{
-    std::array<std::size_t, 3> dim = { 64, 64, 64 };
-    std::array<T, 3> spacing = { 1, 1, 1 };
-
-    using Grid = dxmc::AAVoxelGrid<T, 5, 2, 0>;
-    using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
-    using World = dxmc::World2<T, Grid, Cylinder>;
-
-    World world;
-    auto& grid = world.addItem<Grid>({});
-    auto& cylinder = world.addItem<Cylinder>({});
-    cylinder.setRadius(5);
-    cylinder.setHeight(100);
-
-    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
-    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
-
-    // const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
-    const auto matIdx = generateEdges<std::uint8_t>(dim, spacing);
-    std::vector<T> dens(matIdx.size(), 0);
-    std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
-
-    std::vector<dxmc::Material2<T>> materials;
-    materials.push_back(air);
-    materials.push_back(pmma);
-
-    grid.setData(dim, dens, matIdx, materials);
-    grid.setSpacing(spacing);
-
-    world.build();
-
-    std::array<T, 3> campos = { -100, -100, -200 };
-    auto center = world.center();
-    auto dir = dxmc::vectormath::subtract(center, campos);
-    dxmc::vectormath::normalize(dir);
-
-    std::array<T, 3> xcam = { 0, 0, 0 };
-    xcam[dxmc::vectormath::argmin3(dir)] = 1;
-    auto ycam = dxmc::vectormath::cross(dir, xcam);
-    dxmc::vectormath::normalize(ycam);
-    xcam = dxmc::vectormath::cross(ycam, dir);
-
-    auto im = dxmc::visualization::rayTraceGeometryDistance(world, campos, xcam, ycam, 512);
-    writeImage(im, "distance.bin");
-    return false;
-}
-
-template <typename T>
 bool testGeometryColor()
 {
-    std::array<std::size_t, 3> dim = {32,32,32 };
-    std::array<T, 3> spacing = { .4, .4, .4 };
+    std::array<std::size_t, 3> dim = { 128, 128, 128 };
+    std::array<T, 3> spacing = { .1, .1, .1 };
 
     using Grid = dxmc::AAVoxelGrid<T, 5, 2, 0>;
     using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
@@ -170,21 +119,17 @@ bool testGeometryColor()
     grid.setData(dim, dens, matIdx, materials);
     grid.setSpacing(spacing);
 
-    world.build();
+    world.build(T { 0 });
 
-    std::array<T, 3> campos = { -100, -100, -200 };
-    auto center = world.center();
-    auto dir = dxmc::vectormath::subtract(center, campos);
-    dxmc::vectormath::normalize(dir);
+    dxmc::VisualizeWorld<T> viz(world);
+    viz.setPolarAngle(std::numbers::pi_v<T> / 4);
+    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 3) / 4);
+    int height = 1024;
+    int width = 1024;
+    std::vector<T> buffer(height * width * 4, T { 1 });
+    viz.generate(world, buffer, width, height);
 
-    std::array<T, 3> xcam = { 0, 0, 0 };
-    xcam[dxmc::vectormath::argmin3(dir)] = 1;
-    auto ycam = dxmc::vectormath::cross(dir, xcam);
-    dxmc::vectormath::normalize(ycam);
-    xcam = dxmc::vectormath::cross(ycam, dir);
-
-    auto im = dxmc::visualization::rayTraceGeometry(world, campos, xcam, ycam, 512);
-    writeImage(im, "color.bin");
+    writeImage(buffer, "color.bin");
     return false;
 }
 
@@ -193,8 +138,8 @@ int main()
 
     bool success = false;
     testGeometryColor<double>();
-    //testGeometryColor<float>();
-    testGeometryDistance<double>();
+    // testGeometryColor<float>();
+    // testGeometryDistance<double>();
 
     if (success)
         return EXIT_SUCCESS;
