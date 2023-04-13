@@ -25,6 +25,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
+#include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "tg195world42.hpp"
 
 #include <fstream>
@@ -707,6 +708,237 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     }
     return true;
 }
+
+
+template <typename T>
+World<T> generateTG195Case5World()
+{
+    const std::array<std::size_t, 3> dim = { 500, 320, 260 };
+    const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+    const std::array<T, 3> spacing = { 1, 1, 1 };
+
+    World<T> w;
+    w.setDimensions(dim);
+    w.setSpacing(spacing);
+
+    // Materials from case TG195 5 converted from mass density to number density
+    std::vector<Material> materials(20);
+    materials[0] = Material("C0.015019N78.443071O21.074800Ar0.467110", "Air", 0.001205);
+    materials[1] = Material("H51.869709C36.108118N4.019974O8.002200", "Cushion Foam", 0.075);
+    materials[2] = Material("C100.000000", "Carbon fiber", 1.2);
+    materials[3] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Soft tissue", 1.03);
+    materials[4] = Material("H63.688796C7.143744N1.278063O27.701991Na0.026851P0.039859S0.038509Cl0.034823K0.047365", "Heart", 1.05);
+    materials[5] = Material("H63.731478C5.452396N1.380394O29.198156Na0.054259P0.040273S0.058363Cl0.052777K0.031904", "Lung", 0.26);
+    materials[6] = Material("H63.217465C7.229913N1.338082O27.958043Na0.054349P0.060510S0.058460Cl0.035243K0.047936", "Liver", 1.06);
+    materials[7] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Gallbladder", 1.03);
+    materials[8] = Material("H63.655092C5.860784N1.423215O28.851671Na0.027097P0.060337S0.038862Cl0.035143K0.047799", "Spleen", 1.06);
+    materials[9] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Stomach", 1.03);
+    materials[10] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Large Intestine", 1.03);
+    materials[11] = Material("H63.939187C8.555183N0.955012O26.374094Na0.052895P0.039261S0.018965Cl0.034300K0.031102", "Pancreas", 1.04);
+    materials[12] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Adrenal", 1.03);
+    materials[13] = Material("H63.845575C6.130922N1.060311O28.814466Na0.053834P0.019979S0.019302Cl0.034909K0.015827I0.004876", "Thyroid", 1.05);
+    materials[14] = Material("H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937", "Thymus", 1.03);
+    materials[15] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Small Intestine", 1.03);
+    materials[16] = Material("H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650", "Esophagus", 1.03);
+    materials[17] = Material("H62.083429C10.628873N1.876505O25.228547Na0.054442P0.020204S0.039039Cl0.052955K0.016006", "Skin", 1.09);
+    materials[18] = Material("H61.873627C28.698524N0.675867O8.736110P0.004495S0.004342K0.003561Ca0.003473", "Breast", 0.93);
+    materials[19] = Material("H39.229963C15.009010N3.487490O31.621690Na0.050590Mg0.095705P3.867606S0.108832Ca6.529115", "Cortical Bone", 1.92);
+
+    auto matArray = readBinaryArray<std::uint8_t>("case5world.bin", size);
+    if (!matArray) {
+        return w;
+    }
+    auto densArray = std::make_shared<std::vector<T>>(size);
+    std::transform(std::execution::par_unseq, matArray->cbegin(), matArray->cend(), densArray->begin(),
+        [&](auto m) -> T { return static_cast<T>(materials[m].standardDensity()); });
+
+    w.setMaterialIndexArray(matArray);
+    w.setDensityArray(densArray);
+    for (const auto& m : materials) {
+        w.addMaterialToMap(m);
+    }
+    w.makeValid();
+    return w;
+}
+
+
+template <Floating T, int LOWENERGYCORRECTION = 2>
+bool TG195Case5AbsorbedEnergy(bool specter = false, bool large_collimation = false)
+{
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 128;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 100000;
+
+    constexpr int materialShells = 5;
+    using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;
+    using World = World2<T, Cylindar>;
+    using Material = Material2<T, materialShells>;
+    auto [mat_dens, mat_weights] = TG195_pmma<T>();
+    auto mat = Material2<T, materialShells>::byWeight(mat_weights).value();
+    MassEnergyTransfer massEnTransf(mat_weights);
+
+    World world;
+    auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 600 } });
+    world.build(60);
+    cylinder.setMaterial(mat, massEnTransf);
+    cylinder.setMaterialDensity(mat_dens);
+
+    ResultPrint print;
+    ResultKeys<T> res;
+    if (LOWENERGYCORRECTION == 0)
+        res.model = "None";
+    else if (LOWENERGYCORRECTION == 1)
+        res.model = "Livermore";
+    else
+        res.model = "IA";
+    res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
+    res.rCase = "Case 4.2";
+    res.specter = specter ? "120kVp" : "56.4keV";
+
+    std::cout << "Case 4.2 specter: " << res.specter << " collimation: " << res.modus << " model: " << res.model << std::endl;
+
+    if (specter) {
+        using Beam = IsotropicBeam<T>;
+        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+        const auto specter = TG195_120KV<T>();
+        beam.setEnergySpecter(specter);
+        const auto collangle_y = std::atan(T { 16 } / T { 60 });
+        const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
+        beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
+        beam.setNumberOfExposures(N_EXPOSURES);
+        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+        Transport transport;
+        const std::array<T, 3> co_x = { 0, 1, 0 };
+        const std::array<T, 3> co_y = { 0, 0, 1 };
+        const std::array<T, 3> pos = { -60, 0, 0 };
+        for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 10) {
+            const T angle = static_cast<T>(angInt) * DEG_TO_RAD<T>();
+            auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
+            auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
+            beam.setPosition(p_ang);
+            beam.setDirectionCosines(x, co_y);
+
+            std::uint64_t teller = 0;
+            T uncert = 1;
+            do {
+                auto time_elapsed = runDispatcher(transport, world, beam);
+                const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
+                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
+                uncert = std::max(d1, d2);
+                teller++;
+            } while (uncert > T { 0.01 } && !SAMPLE_RUN);
+
+            std::cout << "Angle " << angInt;
+            res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
+            res.volume = std::to_string(angInt);
+            res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
+            std::cout << " Pherifery: " << res.result;
+            print(res, false);
+            res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
+            res.volume = std::to_string(angInt);
+            res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
+            std::cout << " Center: " << res.result << std::endl;
+            print(res, false);
+
+            world.clearDose();
+        }
+    } else {
+        using Beam = IsotropicMonoEnergyBeam<T>;
+        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 }, T { 56.4 });
+        const auto collangle_y = std::atan(T { 16 } / T { 60 });
+        const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
+        beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
+        beam.setNumberOfExposures(N_EXPOSURES);
+        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+        Transport transport;
+        const std::array<T, 3> co_x = { 0, 1, 0 };
+        const std::array<T, 3> co_y = { 0, 0, 1 };
+        const std::array<T, 3> pos = { -60, 0, 0 };
+        for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 10) {
+            const T angle = static_cast<T>(angInt) * DEG_TO_RAD<T>();
+            auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
+            auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
+            beam.setPosition(p_ang);
+            beam.setDirectionCosines(x, co_y);
+
+            std::uint64_t teller = 0;
+            T uncert = 1;
+            do {
+                auto time_elapsed = runDispatcher(transport, world, beam);
+                const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
+                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
+                uncert = std::max(d1, d2);
+                teller++;
+            } while (uncert > T { 0.01 } && !SAMPLE_RUN);
+
+            std::cout << "Angle " << angInt;
+            res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
+            res.volume = std::to_string(angInt);
+            res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
+            std::cout << " Pherifery: " << res.result;
+            print(res, false);
+            res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
+            res.volume = std::to_string(angInt);
+            res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+            res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
+            std::cout << " Center: " << res.result << std::endl;
+            print(res, false);
+
+            world.clearDose();
+        }
+    }
+    if (LOWENERGYCORRECTION == 0) {
+        std::array<double, 36> sim_ev_center, sim_ev_pher;
+        if (specter) {
+            if (large_collimation) {
+                sim_ev_center = { 10.878025, 10.9243, 10.884625, 10.89795, 10.87265, 10.902675, 10.8994, 10.880875, 10.875475, 10.8862, 10.895975, 10.88105, 10.8996, 10.886225, 10.8934, 10.8942, 10.879025, 10.8855, 10.894125, 10.8898, 10.8916, 10.895875, 10.889525, 10.889775, 10.89365, 10.901875, 10.894475, 10.906975, 10.888025, 10.877475, 10.883325, 10.875925, 10.8881, 10.886775, 10.88975, 10.900075 };
+                sim_ev_pher = { 115.34325, 113.76275, 109.16925, 101.706, 91.562975, 78.39105, 61.388325, 40.08625, 22.471075, 11.781725, 6.14551, 3.42218, 2.05605, 1.35319, 0.96088275, 0.743808, 0.61922025, 0.55457575, 0.5309405, 0.55428325, 0.6219885, 0.74445025, 0.96480125, 1.3481875, 2.0611025, 3.4154, 6.15532, 11.7854, 22.461525, 40.13715, 61.42595, 78.328975, 91.481375, 101.61325, 109.10425, 113.8365 };
+            } else {
+                sim_ev_center = { 11.35475, 11.399475, 11.38755, 11.402175, 11.400225, 11.370625, 11.402625, 11.37715, 11.385375, 11.4096, 11.399825, 11.376675, 11.3698, 11.3613, 11.38865, 11.377925, 11.3692, 11.371525, 11.3807, 11.36, 11.37645, 11.379075, 11.379975, 11.368975, 11.377675, 11.38375, 11.3871, 11.3844, 11.37395, 11.3821, 11.371825, 11.395575, 11.379075, 11.372125, 11.4001, 11.39895 };
+                sim_ev_pher = { 116.7915, 115.31075, 110.532, 103.1535, 92.9892, 79.7158, 62.57135, 40.92065, 22.966025, 12.169, 6.4216075, 3.5657225, 2.1609475, 1.418235, 1.014725, 0.780394, 0.64618, 0.5763575, 0.559597, 0.5776625, 0.648646, 0.7762825, 1.008508, 1.412125, 2.1584, 3.577945, 6.4296425, 12.1714, 23.039025, 40.926825, 62.451325, 79.759575, 93.074725, 103.269, 110.595, 115.27 };
+            }
+        } else {
+            if (large_collimation) {
+                sim_ev_center = { 11.630625, 11.632925, 11.617175, 11.624825, 11.633075, 11.600225, 11.61655, 11.6235, 11.592875, 11.6258, 11.612, 11.612775, 11.608675, 11.623975, 11.611325, 11.6174, 11.6234, 11.627975, 11.60745, 11.632875, 11.628275, 11.6239, 11.61645, 11.617375, 11.621775, 11.6178, 11.6444, 11.61515, 11.626375, 11.64605, 11.63335, 11.628425, 11.622, 11.6198, 11.59835, 11.609925 };
+                sim_ev_pher = { 99.665175, 98.300175, 94.509325, 88.48595, 80.1113, 69.261125, 55.124425, 37.2351, 21.754, 11.767, 6.269845, 3.460205, 2.073845, 1.3435025, 0.94542875, 0.71714775, 0.58643225, 0.52293525, 0.49996925, 0.5225535, 0.5875545, 0.719903, 0.94029425, 1.3461175, 2.07283, 3.4740625, 6.2371725, 11.79715, 21.73405, 37.28175, 55.1853, 69.2588, 80.036275, 88.397, 94.640025, 98.332825 };
+            } else {
+                sim_ev_center = { 12.168675, 12.11255, 12.163, 12.1358, 12.0881, 12.10275, 12.135925, 12.12425, 12.14915, 12.149575, 12.1482, 12.15955, 12.130775, 12.148475, 12.153925, 12.1383, 12.13475, 12.148675, 12.1576, 12.1452, 12.15665, 12.16225, 12.156625, 12.156875, 12.13905, 12.1561, 12.159325, 12.137025, 12.149725, 12.09575, 12.1471, 12.1231, 12.1211, 12.1368, 12.134825, 12.13955 };
+                sim_ev_pher = { 101.29375, 99.802475, 96.108725, 89.966275, 81.369475, 70.5424, 56.2835, 38.1283, 22.348775, 12.166625, 6.515755, 3.643485, 2.180365, 1.41379, 0.984371, 0.7510235, 0.6165785, 0.54522075, 0.52163, 0.54515775, 0.61643625, 0.750186, 0.9914865, 1.4138375, 2.174915, 3.6299975, 6.5142425, 12.200725, 22.2865, 38.146275, 56.287325, 70.64165, 81.424625, 89.82015, 96.16995, 99.92435 };
+            }
+        }
+        res.model = "TG195";
+        std::size_t angInd = 0;
+        res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
+        for (auto d : sim_ev_center) {
+            res.volume = std::to_string(angInd);
+            angInd = angInd + 10;
+            res.result = d;
+            res.result_std = 0;
+            res.nEvents = 0;
+            print(res, false);
+        }
+        angInd = 0;
+        res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
+        for (auto d : sim_ev_pher) {
+            res.volume = std::to_string(angInd);
+            angInd = angInd + 10;
+            res.result = d;
+            res.result_std = 0;
+            res.nEvents = 0;
+            print(res, false);
+        }
+    }
+    return true;
+}
+
+
+
 
 template <typename T>
 bool runAll()
