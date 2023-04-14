@@ -21,12 +21,14 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
 #include "tg195world42.hpp"
 
+#include <algorithm>
 #include <fstream>
 #include <iostream>
 
@@ -709,6 +711,126 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 }
 
 template <typename T>
+std::vector<T> readBinaryArray(const std::string& path, std::size_t array_size)
+{
+    std::vector<T> buffer;
+
+    std::ifstream ifs(path, std::ios::binary | std::ios::ate);
+    if (!ifs) {
+        return buffer;
+    }
+
+    auto end = ifs.tellg();
+    ifs.seekg(0, std::ios::beg);
+    auto buffer_size = std::size_t(end - ifs.tellg());
+    auto dim_size = array_size * sizeof(T);
+    if (dim_size != buffer_size) {
+        return buffer;
+    }
+
+    if (buffer_size == 0) { // avoid undefined behavior
+        return buffer;
+    }
+
+    buffer.resize(array_size, 0);
+
+    if (!ifs.read(reinterpret_cast<char*>(buffer.data()), buffer_size)) {
+        return buffer;
+    }
+    return buffer;
+}
+
+template <Floating T, std::size_t NMATSHELLS = 5, int LOWENERGYCORRECTION = 2, int TRANSPARENTVOXEL = 255>
+std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::vector<std::pair<T, std::string>>> generateTG195World5()
+{
+
+    std::vector<std::string> matFormula = {
+        "C0.015019N78.443071O21.074800Ar0.467110",
+        "H51.869709C36.108118N4.019974O8.002200",
+        "C100.000000",
+        "H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937",
+        "H63.688796C7.143744N1.278063O27.701991Na0.026851P0.039859S0.038509Cl0.034823K0.047365",
+        "H63.731478C5.452396N1.380394O29.198156Na0.054259P0.040273S0.058363Cl0.052777K0.031904",
+        "H63.217465C7.229913N1.338082O27.958043Na0.054349P0.060510S0.058460Cl0.035243K0.047936",
+        "H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937",
+        "H63.655092C5.860784N1.423215O28.851671Na0.027097P0.060337S0.038862Cl0.035143K0.047799",
+        "H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650",
+        "H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650",
+        "H63.939187C8.555183N0.955012O26.374094Na0.052895P0.039261S0.018965Cl0.034300K0.031102",
+        "H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937",
+        "H63.845575C6.130922N1.060311O28.814466Na0.053834P0.019979S0.019302Cl0.034909K0.015827I0.004876",
+        "H63.000070C12.890598N1.165843O22.756479Na0.026307P0.039052S0.056594Cl0.034118K0.030937",
+        "H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650",
+        "H64.343953C5.858428N0.961057O28.720940Na0.026615P0.019755S0.019085Cl0.034518K0.015650",
+        "H62.083429C10.628873N1.876505O25.228547Na0.054442P0.020204S0.039039Cl0.052955K0.016006",
+        "H61.873627C28.698524N0.675867O8.736110P0.004495S0.004342K0.003561Ca0.003473",
+        "H39.229963C15.009010N3.487490O31.621690Na0.050590Mg0.095705P3.867606S0.108832Ca6.529115",
+    };
+
+    std::vector<Material2<T, NMATSHELLS>> materials;
+
+    std::transform(matFormula.cbegin(), matFormula.cend(), std::back_inserter(materials), [=](const auto& f) {
+        auto mat_cand = Material2<T, NMATSHELLS>::byChemicalFormula(f);
+        return mat_cand.value();
+    });
+
+    const std::array<std::size_t, 3> dim = { 500, 320, 260 };
+    const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
+    const std::array<T, 3> spacing = { 0.1f, 0.1f, 0.1f };
+
+    AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL> grid;
+
+    auto matArray = readBinaryArray<std::uint8_t>("case5world.bin", size);
+
+    std::vector<std::pair<T, std::string>> matInfo;
+    matInfo.push_back(std::make_pair(T { .001205 }, "Air"));
+    matInfo.push_back(std::make_pair(T { .075 }, "Cushion Foam"));
+    matInfo.push_back(std::make_pair(T { 1.20 }, "Carbon fiber"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Soft Tissue"));
+    matInfo.push_back(std::make_pair(T { 1.05 }, "Heart"));
+    matInfo.push_back(std::make_pair(T { 0.26 }, "Lung"));
+    matInfo.push_back(std::make_pair(T { 1.06 }, "Liver"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Gallbladder"));
+    matInfo.push_back(std::make_pair(T { 1.06 }, "Spleen"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Stomach"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Large Intestine"));
+    matInfo.push_back(std::make_pair(T { 1.04 }, "Pancreas"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Adrenal"));
+    matInfo.push_back(std::make_pair(T { 1.05 }, "Thyroid"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Thymus"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Small Intestine"));
+    matInfo.push_back(std::make_pair(T { 1.03 }, "Esophagus"));
+    matInfo.push_back(std::make_pair(T { 1.09 }, "Skin"));
+    matInfo.push_back(std::make_pair(T { 0.93 }, "Breast"));
+    matInfo.push_back(std::make_pair(T { 1.92 }, "Cortial Bone"));
+
+    std::vector<T> density(size, T { 0 });
+    std::transform(std::execution::par_unseq, matArray.cbegin(), matArray.cend(), density.begin(), [&](const auto ind) {
+        return matInfo[ind].first;
+    });
+
+    grid.setData(dim, density, matArray, materials);
+    grid.setSpacing(spacing);
+    return std::make_pair(grid, matInfo);
+}
+
+template <Floating T, int LOWENERGYCORRECTION = 2>
+bool TG195Case5AbsorbedEnergy(bool specter = false)
+{
+
+    
+    using World = World2<T, AAVoxelGrid<T, 5, LOWENERGYCORRECTION, 255>>;
+    auto [grid_object, matInf] = generateTG195World5<T, 5, LOWENERGYCORRECTION, 255>();
+
+    World world;
+    auto grid = world.addItem(std::move(grid_object));
+
+
+
+    return false;
+}
+
+template <typename T>
 bool runAll()
 {
     auto success = true;
@@ -748,7 +870,7 @@ bool runAll()
     success = success && TG195Case42AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 0>(true, true);
-    */
+
     success = success && TG195Case42AbsorbedEnergy<T, 1>(false, false);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 1>(false, true);
@@ -758,7 +880,9 @@ bool runAll()
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, true);
-
+    */
+    success = success && TG195Case5AbsorbedEnergy<T, 0>(false);
+    success = success && TG195Case5AbsorbedEnergy<T, 0>(true);
     return success;
 }
 
