@@ -386,11 +386,11 @@ protected:
             T e = std::log(MIN_ENERGY<T>());
             const T emax = std::log(MAX_ENERGY<T>());
             const T estep = (emax - e) / 10;
-            while (e < emax) {
+            while (e <= emax) {
                 energy.push_back(e);
                 e += estep;
             }
-            energy.push_back(e);
+            
         }
         // adding edges;
         for (const auto& mat : m_materials) {
