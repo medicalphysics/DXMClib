@@ -76,7 +76,7 @@ public:
             const auto e2_exp = energyImpartedSquared() / numberOfEvents();
             return (e2_exp - e_exp * e_exp) * numberOfEvents();
         }
-        return std::numeric_limits<T>::infinity();
+        return 0;
     }
 
     T stdEnergyImparted() const
@@ -118,7 +118,7 @@ public:
     {
         if (energy <= 0.0)
             return;
-        
+
         {
             auto aref = std::atomic_ref(m_energyImparted);
             aref.fetch_add(energy, std::memory_order_relaxed);
@@ -149,7 +149,8 @@ public:
             const auto e2_exp = energyImpartedSquared() / numberOfEvents();
             return (e2_exp - e_exp * e_exp) * numberOfEvents();
         }
-        return std::numeric_limits<double>::infinity();
+
+        return 0;
     }
 
     double stdEnergyImparted() const

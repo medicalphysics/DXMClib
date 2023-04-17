@@ -73,6 +73,7 @@ public:
     {
         return m_spacing;
     }
+
     void translate(const std::array<T, 3>& dist) final
     {
         for (std::size_t i = 0; i < 3; ++i) {
@@ -162,6 +163,30 @@ public:
             }
         }
         return res;
+    }
+
+    std::vector<std::uint8_t> getMaterialIndex() const
+    {
+        const auto size = m_dim[0] * m_dim[1] * m_dim[2];
+        std::vector<std::uint8_t> i(size);
+        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.materialIndex; });
+        return i;
+    }
+
+    std::vector<T> getDensity() const
+    {
+        const auto size = m_dim[0] * m_dim[1] * m_dim[2];
+        std::vector<T> i(size);
+        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.density; });
+        return i;
+    }
+
+    std::vector<DoseScore<T>> getDoseScore() const
+    {
+        const auto size = m_dim[0] * m_dim[1] * m_dim[2];
+        std::vector<DoseScore<T>> i(size);
+        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.dose; });
+        return i;
     }
 
     const DoseScore<T>& dose(std::size_t flatIndex = 0) const final
@@ -311,7 +336,7 @@ protected:
                 m_spacing[2] / std::abs(p.dir[2])
             };
 
-           std::array<T, 3> tMax;
+            std::array<T, 3> tMax;
             for (std::size_t i = 0; i < 3; ++i) {
                 const auto plane = p.dir[i] < 0 ? m_aabb[i] + xyz[i] * m_spacing[i] : m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
                 tMax[i] = (plane - p.pos[i]) / p.dir[i];
@@ -390,7 +415,6 @@ protected:
                 energy.push_back(e);
                 e += estep;
             }
-            
         }
         // adding edges;
         for (const auto& mat : m_materials) {
@@ -403,6 +427,8 @@ protected:
             }
         }
         std::sort(energy.begin(), energy.end());
+        auto remove = std::unique(energy.begin(), energy.end());
+        energy.erase(remove, energy.end());
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), energy.begin(), [](const auto e) { return std::exp(e); });
 
         // finding max density for each material;
