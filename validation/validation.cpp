@@ -821,13 +821,13 @@ template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
 TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 100000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     using World = World2<T, AAVoxelGrid<T, 5, LOWENERGYCORRECTION, 255>>;
     auto [grid_object, matInf] = generateTG195World5<T, 5, LOWENERGYCORRECTION, 255>();
 
     World world;
-    auto grid = world.addItem(grid_object);
+    auto& grid = world.addItem(grid_object);
     world.build(60);
 
     ResultPrint print;
@@ -857,11 +857,11 @@ TG195Case5AbsorbedEnergy()
     beam.setNumberOfExposures(N_EXPOSURES);
     beam.setNumberOfParticlesPerExposure(N_HISTORIES);
     Transport transport;
-    const std::array<T, 3> co_x = { 0, 1, 0 };
+    const std::array<T, 3> co_x = { -1, 0, 0 };
     const std::array<T, 3> co_y = { 0, 0, 1 };
-    const std::array<T, 3> pos = { -60, 0, 0 };
+    const std::array<T, 3> pos = { 0, -60, 0 };
     for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 45) {
-        const T angle = static_cast<T>(angInt) * DEG_TO_RAD<T>();
+        const T angle = -static_cast<T>(angInt) * DEG_TO_RAD<T>();
         auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
         auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
         beam.setPosition(p_ang);
@@ -874,6 +874,18 @@ TG195Case5AbsorbedEnergy()
 
         const auto doseScore = grid.getDoseScore();
         const auto materialIndex = grid.getMaterialIndex();
+
+        /* if (angInt == 0) {
+            std::vector<T> e(doseScore.size());
+            std::transform(doseScore.cbegin(), doseScore.cend(), e.begin(), [](const auto& d) { return d.energyImparted(); });
+            saveBinaryArray(e, "dose.bin");
+            saveBinaryArray(materialIndex, "mat.bin");
+        }
+        if (angInt == 45) {
+            std::vector<T> e(doseScore.size());
+            std::transform(doseScore.cbegin(), doseScore.cend(), e.begin(), [](const auto& d) { return d.energyImparted(); });
+            saveBinaryArray(e, "dose45.bin");
+        }*/
 
         std::uint8_t matIdx = 0;
         for (const auto& [density, material_name] : matInf) {
@@ -911,6 +923,7 @@ TG195Case5AbsorbedEnergy()
 
     if constexpr (LOWENERGYCORRECTION == 0) {
         res.model = "TG195";
+        res.nEvents = 0;
         std::array<std::array<T, 17>, 8> tg195_doses;
         if constexpr (std::same_as<B, IsotropicBeam<T>>) {
             tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };
@@ -935,7 +948,7 @@ TG195Case5AbsorbedEnergy()
         for (std::size_t angInt = 0; angInt < 8; ++angInt) {
             for (std::size_t i = 0; i < tg195_organ_idx.size(); ++i) {
                 const auto mIdx = tg195_organ_idx[i];
-                res.volume = matInf[mIdx].first;
+                res.volume = matInf[mIdx].second;
                 res.modus = std::to_string(angInt * 45);
                 res.result = tg195_doses[angInt][i];
                 res.result_std = T { 0 };
@@ -998,8 +1011,12 @@ bool runAll()
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, true);
     */
-    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 0>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 0>();
+    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 1>();
+    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 2>();
+    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>();
 
     return success;
 }
