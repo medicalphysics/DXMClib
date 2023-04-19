@@ -416,7 +416,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 
     std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n";
     std::cout << "Whole body: " << ev_history << " eV/history, TG195: " << TG195_value << " eV/history";
-    std::cout << ", differense: " << ev_history - TG195_value << " ev/history [" << (ev_history / TG195_value - 1) * 100 << "]%  \n";
+    std::cout << ", difference: " << ev_history - TG195_value << " ev/history [" << (ev_history / TG195_value - 1) * 100 << "]%  \n";
 
     return true;
 }
