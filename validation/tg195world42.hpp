@@ -59,7 +59,7 @@ public:
         , m_halfHeight(height * T { 0.5 })
         , m_center(pos)
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-        , m_massEnergyTransfer(MassEnergyTransfer<T>("Air, Dry(near sea level)"))
+
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
 
@@ -83,10 +83,9 @@ public:
         }
     }
 
-    void setMaterial(const Material2<T, NMaterialShells>& material, const MassEnergyTransfer<T>& massEn)
+    void setMaterial(const Material2<T, NMaterialShells>& material)
     {
         m_material = material;
-        m_massEnergyTransfer = massEn;
     }
 
     void setMaterialDensity(T density) { m_materialDensity = density; }
@@ -204,7 +203,6 @@ private:
     std::array<T, 3> m_center;
     T m_materialDensity = 1;
     Material2<T, NMaterialShells> m_material;
-    MassEnergyTransfer<T> m_massEnergyTransfer;
     DoseScore<T> m_dose;
     CylinderChild m_centerChild;
     CylinderChild m_periferyChild;

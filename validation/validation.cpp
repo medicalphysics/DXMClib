@@ -226,8 +226,8 @@ template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 {
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 200;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 10000000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     constexpr int NShells = 5;
     using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
@@ -424,8 +424,8 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 10 : 100;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     constexpr int materialShells = 5;
     using Cylindar = DepthDose<T, materialShells, LOWENERGYCORRECTION>;
@@ -538,8 +538,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 100000;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;
@@ -547,12 +547,11 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     using Material = Material2<T, materialShells>;
     auto [mat_dens, mat_weights] = TG195_pmma<T>();
     auto mat = Material2<T, materialShells>::byWeight(mat_weights).value();
-    MassEnergyTransfer massEnTransf(mat_weights);
 
     World world;
     auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 600 } });
     world.build(60);
-    cylinder.setMaterial(mat, massEnTransf);
+    cylinder.setMaterial(mat);
     cylinder.setMaterialDensity(mat_dens);
 
     ResultPrint print;
@@ -743,6 +742,9 @@ std::vector<T> readBinaryArray(const std::string& path, std::size_t array_size)
 template <Floating T, std::size_t NMATSHELLS = 5, int LOWENERGYCORRECTION = 2, int TRANSPARENTVOXEL = 255>
 std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::vector<std::pair<T, std::string>>> generateTG195World5()
 {
+    std::vector<std::map<std::size_t, T>> mat;
+    mat.push_back({ { 6, .0124f }, { 7, 75.5268 }, { 18, 1.2827 } }); // air
+    mat.push_back({ { 1, 7.8f }, { 6, 64.7 }, { 7, 8.4 }, { 8, 19.1 } }); // foam
 
     std::vector<std::string> matFormula = {
         "C0.015019N78.443071O21.074800Ar0.467110",
@@ -820,7 +822,7 @@ template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
     requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>) bool
 TG195Case5AbsorbedEnergy()
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 128;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     using World = World2<T, AAVoxelGrid<T, 5, LOWENERGYCORRECTION, 255>>;
@@ -964,7 +966,7 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
-    /*
+
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, true);
@@ -1010,13 +1012,13 @@ bool runAll()
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, false);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(false, true);
     success = success && TG195Case42AbsorbedEnergy<T, 2>(true, true);
-    */
+
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 0>();
-    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 1>();
-    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 2>();
-    // success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>();
 
     return success;
 }
