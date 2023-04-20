@@ -160,7 +160,7 @@ namespace vectormath {
     [[nodiscard]] inline std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T angle) noexcept
     {
         const T sang = std::sin(angle);
-        const T cang = std::cos(angle);
+        const T cang = std::sqrt(1 - sang * sang);
         return rotate(vec, axis, sang, cang);
     }
 

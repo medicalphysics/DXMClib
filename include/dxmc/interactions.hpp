@@ -177,11 +177,12 @@ namespace interactions {
         const auto eb = e / eb1 * (eb2 + sign * std::sqrt(eb2 * eb2 - eb1 * (1 - t)));
         const auto E = particle.energy;
         particle.energy *= eb;
-        const auto phi = state.randomUniform(PI_VAL<T>() * 2);
+        const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
         const auto cosPhi = std::cos(phi);
         particle.dir = vectormath::peturb(particle.dir, cosTheta, cosPhi);
         return (E - particle.energy) * particle.weight;
     }
+
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
     T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf

@@ -40,7 +40,7 @@ public:
     void setCollimationAngles(const std::array<T, 4>& angles)
     {
         for (std::size_t i = 0; i < angles.size(); ++i)
-            m_collimationSinAngles[i] = std::sin(angles[i]);
+            m_collimationAngles[i] = angles[i];
     }
 
     void setSpecterDistribution(const SpecterDistribution<T>& s)
@@ -53,17 +53,14 @@ public:
     Particle<T> sampleParticle(RandomState& state) const noexcept
     {
         auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
-        const auto sinx = state.randomUniform(m_collimationSinAngles[0], m_collimationSinAngles[2]);
-        const auto siny = state.randomUniform(m_collimationSinAngles[1], m_collimationSinAngles[3]);
 
-        const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
+        const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
+        const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
 
-        for (std::size_t i = 0; i < 3; ++i) {
-            dir[i] = dir[i] * sinz + m_dirCosines[0][i] * sinx + m_dirCosines[1][i] * siny;
-        }
+        auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
 
         Particle<T> p = { .pos = m_pos,
-            .dir = dir,
+            .dir = pdir,
             .energy = m_specterDist.sampleValue(state),
             .weight = T { 1 } };
         return p;
@@ -72,7 +69,7 @@ public:
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 4> m_collimationSinAngles = { 0, 0, 0, 0 };
+    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_NParticles = 100;
     SpecterDistribution<T> m_specterDist;
 };
