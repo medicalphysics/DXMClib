@@ -55,11 +55,13 @@ template <typename T>
 bool testCylinder()
 {
     using Cylinder = dxmc::WorldCylinder<T, 5, 1>;
-
+    //using Cylinder=dxmc::WorldSphere<T,5,1>;
     dxmc::World2<T, Cylinder> world;
+    
+    //auto& cylinder = world.addItem<Cylinder>({ 4 });
     auto& cylinder = world.addItem<Cylinder>({ 4, 60 });
 
-    world.build(30);
+    world.build(60);
 
     dxmc::Transport transport;
 
@@ -68,8 +70,8 @@ bool testCylinder()
 
     dxmc::IsotropicMonoEnergyBeam<T> beam;
 
-    const auto collAngleY = std::atan(4.0f / 60);
-    const auto collAngleZ = std::atan(10.0f / 60);
+    const auto collAngleY = std::atan(2.0f / 60);
+    const auto collAngleZ = std::atan(2.0f / 60);
     beam.setCollimationAngles({ -collAngleY, -collAngleZ, collAngleY, collAngleZ });
     beam.setNumberOfParticlesPerExposure(1e5);
     beam.setNumberOfExposures(32);
@@ -92,9 +94,7 @@ bool testCylinder()
         res[ang] = cylinder.dose();
 
         cylinder.clearDose();
-    }
 
-    for (int ang = 0; ang < res.size(); ++ang) {
         std::cout << ang * angStep << ", " << res[ang].energyImparted() << ", " << res[ang].relativeUncertainty() << std::endl;
     }
 

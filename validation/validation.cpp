@@ -551,7 +551,7 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
 
     World world;
     auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 600 } });
-    world.build(60);
+    world.build(90);
     cylinder.setMaterial(mat);
     cylinder.setMaterialDensity(mat_dens);
 
