@@ -56,8 +56,17 @@ public:
 
         const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
+        
+        const auto sinx = std::sin(angx);
+        const auto siny = std::sin(angy);
+        const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
+        std::array pdir = {
+            m_dirCosines[0][0] * sinx + m_dirCosines[1][0] * siny + dir[0] * sinz,
+            m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + dir[1] * sinz,
+            m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
+        };
 
-        auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
+        //auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
 
         Particle<T> p = { .pos = m_pos,
             .dir = pdir,
