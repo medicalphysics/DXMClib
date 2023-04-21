@@ -39,7 +39,7 @@ namespace dxmc {
 template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class CTDIPhantom final : public WorldItemBase<T> {
 public:
-    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 })
+    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, T holeHeight = T { 10 })
         : WorldItemBase<T>()
         , m_radius(radius)
         , m_half_height(height * T { 0.5 })
@@ -50,6 +50,8 @@ public:
         m_pmma_density = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
         m_air_density = NISTMaterials<T>::density("Air, Dry (near sea level)");
 
+        holeHeight = std::min(height, holeHeight);
+
         std::vector<CTDIAirHole> holes;
         holes.reserve(5);
         std::array<T, 10> positions = { 0, 0, 0, 1, 1, 0, 0, -1, -1, 0 };
@@ -57,7 +59,7 @@ public:
         for (std::size_t i = 0; i < 10; i = i + 2) {
             const auto x = positions[i];
             const auto y = positions[i + 1];
-            CTDIAirHole hole { .pos = m_center, .radii = holeRadii(), .half_height = m_half_height, .index = ++index };
+            CTDIAirHole hole { .pos = m_center, .radii = holeRadii(), .half_height = holeHeight / 2, .index = ++index };
             hole.pos[0] += x * (m_radius - holeEdgeDistance());
             hole.pos[1] += y * (m_radius - holeEdgeDistance());
             holes.push_back(hole);
@@ -78,6 +80,15 @@ public:
     {
         for (auto& d : m_dose) {
             d.clear();
+        }
+    }
+
+    void setHoleMaterial(const std::string& nistName, T density)
+    {
+        auto m = Material2<T, NMaterialShells>::byNistName(nistName);
+        if (m) {
+            m_air = m.value();
+            m_air_density = density;
         }
     }
 

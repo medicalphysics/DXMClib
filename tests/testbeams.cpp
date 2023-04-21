@@ -17,7 +17,11 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/beams/beamtype.hpp"
+#include "dxmc/beams/isotropicbeam.hpp"
+#include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
+#include "dxmc/constants.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <iostream>
 
@@ -45,11 +49,66 @@ bool testpencilbeam()
     return initiateBeam<T, dxmc::PencilBeam<T>>(beam);
 }
 
+template <typename T>
+bool testIsotropicMonoEnergyBeam()
+{
+    using Beam = dxmc::IsotropicMonoEnergyBeam<T>;
+
+    Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+
+    const T collangle_y = std::atan(T { 16 } / T { 60 });
+    const auto collangle_z = std::atan(T { 4 } / T { 60 });
+    beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
+
+    const std::array<T, 3> co_x = { 0, 1, 0 };
+    const std::array<T, 3> co_y = { 0, 0, 1 };
+    const std::array<T, 3> pos = { -60, 0, 0 };
+
+    dxmc::RandomState state;
+
+    std::vector<std::vector<std::size_t>> ang_histy;
+
+    for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 45) {
+        const T angle = static_cast<T>(angInt) * dxmc::DEG_TO_RAD<T>();
+        auto x = dxmc::vectormath::rotate(co_x, { 0, 0, 1 }, angle);
+        auto p_ang = dxmc::vectormath::rotate(pos, { 0, 0, 1 }, angle);
+        beam.setPosition(p_ang);
+        beam.setDirectionCosines(x, co_y);
+        auto exposure = beam.exposure(0);
+        const auto dir = dxmc::vectormath::cross(x, co_y);
+        dxmc::RandomState state;
+
+        std::vector<std::size_t> h(100, 0);
+
+        for (std::size_t i = 0; i < 1E6; ++i) {
+            auto p = exposure.sampleParticle(state);
+            auto pdir = p.dir;
+            dxmc::vectormath::normalize(pdir);
+            auto ang = std::acos(dxmc::vectormath::dot(dir, pdir));
+            int ind = static_cast<int>((100 * ang) / collangle_z);
+            if (ind < h.size())
+                h[ind]++;
+        }
+        ang_histy.push_back(h);
+    }
+    for (int j = 0; j < ang_histy[0].size(); ++j) {
+        std::cout << (collangle_z * j) / 100 << ", ";
+        for (int i = 0; i < ang_histy.size(); ++i) {
+            std::cout << ang_histy[i][j] << ", ";
+        }
+        std::cout << std::endl;
+    }
+
+    return false;
+}
+
 int main()
 {
     std::cout << "Testing beams\n";
 
     bool success = true;
+    success = success && testIsotropicMonoEnergyBeam<double>();
+    success = success && testIsotropicMonoEnergyBeam<float>();
     success = success && testpencilbeam<float>();
     success = success && testpencilbeam<double>();
 

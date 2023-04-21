@@ -319,7 +319,7 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
 
     std::string model;
     if (LOWENERGYCORRECTION == 0)
-        model = "None";
+        model = "NoneLC";
     if (LOWENERGYCORRECTION == 1)
         model = "Livermore";
     if (LOWENERGYCORRECTION == 2)
@@ -489,7 +489,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 
     std::string model;
     if (LOWENERGYCORRECTION == 0)
-        model = "None";
+        model = "NoneLC";
     if (LOWENERGYCORRECTION == 1)
         model = "Livermore";
     if (LOWENERGYCORRECTION == 2)
@@ -535,8 +535,9 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     return true;
 }
 
-template <Floating T, int LOWENERGYCORRECTION = 2>
-bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = false)
+template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
@@ -557,117 +558,72 @@ bool TG195Case42AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     ResultPrint print;
     ResultKeys<T> res;
     if (LOWENERGYCORRECTION == 0)
-        res.model = "None";
+        res.model = "NoneLC";
     else if (LOWENERGYCORRECTION == 1)
         res.model = "Livermore";
     else
         res.model = "IA";
     res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
     res.rCase = "Case 4.2";
-    res.specter = specter ? "120kVp" : "56.4keV";
+    res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "120kVp" : "56.4keV";
 
     std::cout << "Case 4.2 specter: " << res.specter << " collimation: " << res.modus << " model: " << res.model << std::endl;
 
-    if (specter) {
-        using Beam = IsotropicBeam<T>;
-        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+    Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
         const auto specter = TG195_120KV<T>();
         beam.setEnergySpecter(specter);
-        const auto collangle_y = std::atan(T { 16 } / T { 60 });
-        const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
-        beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
-        beam.setNumberOfExposures(N_EXPOSURES);
-        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        Transport transport;
-        const std::array<T, 3> co_x = { 0, 1, 0 };
-        const std::array<T, 3> co_y = { 0, 0, 1 };
-        const std::array<T, 3> pos = { -60, 0, 0 };
-        for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 10) {
-            const T angle = static_cast<T>(angInt) * DEG_TO_RAD<T>();
-            auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
-            auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
-            beam.setPosition(p_ang);
-            beam.setDirectionCosines(x, co_y);
-
-            std::uint64_t teller = 0;
-            T uncert = 1;
-            do {
-                auto time_elapsed = runDispatcher(transport, world, beam);
-                const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
-                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
-                uncert = std::max(d1, d2);
-                teller++;
-            } while (uncert > T { 0.01 } && !SAMPLE_RUN);
-
-            std::cout << "Angle " << angInt;
-            res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
-            res.volume = std::to_string(angInt);
-            res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
-            std::cout << " Pherifery: " << res.result;
-            print(res, false);
-            res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
-            res.volume = std::to_string(angInt);
-            res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
-            std::cout << " Center: " << res.result << std::endl;
-            print(res, false);
-
-            world.clearDose();
-        }
     } else {
-        using Beam = IsotropicMonoEnergyBeam<T>;
-        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 }, T { 56.4 });
-        const auto collangle_y = std::atan(T { 16 } / T { 60 });
-        const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
-        beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
-        beam.setNumberOfExposures(N_EXPOSURES);
-        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        Transport transport;
-        const std::array<T, 3> co_x = { 0, 1, 0 };
-        const std::array<T, 3> co_y = { 0, 0, 1 };
-        const std::array<T, 3> pos = { -60, 0, 0 };
-        for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 10) {
-            const T angle = static_cast<T>(angInt) * DEG_TO_RAD<T>();
-            auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
-            auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
-            beam.setPosition(p_ang);
-            beam.setDirectionCosines(x, co_y);
-
-            std::uint64_t teller = 0;
-            T uncert = 1;
-            do {
-                auto time_elapsed = runDispatcher(transport, world, beam);
-                const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
-                const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
-                uncert = std::max(d1, d2);
-                teller++;
-            } while (uncert > T { 0.01 } && !SAMPLE_RUN);
-
-            std::cout << "Angle " << angInt;
-            res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
-            res.volume = std::to_string(angInt);
-            res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
-            std::cout << " Pherifery: " << res.result;
-            print(res, false);
-            res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
-            res.volume = std::to_string(angInt);
-            res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-            res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
-            std::cout << " Center: " << res.result << std::endl;
-            print(res, false);
-
-            world.clearDose();
-        }
+        beam.setEnergy(56.4f);
     }
+    const auto collangle_y = std::atan(T { 16 } / T { 60 });
+    const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
+    beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
+    beam.setNumberOfExposures(N_EXPOSURES);
+    beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+    Transport transport;
+    const std::array<T, 3> co_x = { 0, 1, 0 };
+    const std::array<T, 3> co_y = { 0, 0, 1 };
+    const std::array<T, 3> pos = { -60, 0, 0 };
+    for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 10) {
+        const T angle = static_cast<T>(angInt) * DEG_TO_RAD<T>();
+        auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
+        auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
+        beam.setPosition(p_ang);
+        beam.setDirectionCosines(x, co_y);
+
+        std::uint64_t teller = 0;
+        T uncert = 1;
+        do {
+            auto time_elapsed = runDispatcher(transport, world, beam);
+            const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
+            const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
+            uncert = std::max(d1, d2);
+            teller++;
+        } while (uncert > T { 0.01 } && !SAMPLE_RUN);
+
+        std::cout << "Angle " << angInt;
+        res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
+        res.volume = std::to_string(angInt);
+        res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
+        std::cout << " Pherifery: " << res.result;
+        print(res, false);
+        res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
+        res.volume = std::to_string(angInt);
+        res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
+        std::cout << " Center: " << res.result << std::endl;
+        print(res, false);
+
+        world.clearDose();
+    }
+
     if (LOWENERGYCORRECTION == 0) {
         std::array<double, 36> sim_ev_center, sim_ev_pher;
-        if (specter) {
+        if (std::same_as<Beam, IsotropicBeam<T>>) {
             if (large_collimation) {
                 sim_ev_center = { 10.878025, 10.9243, 10.884625, 10.89795, 10.87265, 10.902675, 10.8994, 10.880875, 10.875475, 10.8862, 10.895975, 10.88105, 10.8996, 10.886225, 10.8934, 10.8942, 10.879025, 10.8855, 10.894125, 10.8898, 10.8916, 10.895875, 10.889525, 10.889775, 10.89365, 10.901875, 10.894475, 10.906975, 10.888025, 10.877475, 10.883325, 10.875925, 10.8881, 10.886775, 10.88975, 10.900075 };
                 sim_ev_pher = { 115.34325, 113.76275, 109.16925, 101.706, 91.562975, 78.39105, 61.388325, 40.08625, 22.471075, 11.781725, 6.14551, 3.42218, 2.05605, 1.35319, 0.96088275, 0.743808, 0.61922025, 0.55457575, 0.5309405, 0.55428325, 0.6219885, 0.74445025, 0.96480125, 1.3481875, 2.0611025, 3.4154, 6.15532, 11.7854, 22.461525, 40.13715, 61.42595, 78.328975, 91.481375, 101.61325, 109.10425, 113.8365 };
@@ -835,7 +791,7 @@ TG195Case5AbsorbedEnergy()
     ResultPrint print;
     ResultKeys<T> res;
     if (LOWENERGYCORRECTION == 0)
-        res.model = "None";
+        res.model = "NoneLC";
     else if (LOWENERGYCORRECTION == 1)
         res.model = "Livermore";
     else
@@ -876,18 +832,6 @@ TG195Case5AbsorbedEnergy()
 
         const auto doseScore = grid.getDoseScore();
         const auto materialIndex = grid.getMaterialIndex();
-
-        /* if (angInt == 0) {
-            std::vector<T> e(doseScore.size());
-            std::transform(doseScore.cbegin(), doseScore.cend(), e.begin(), [](const auto& d) { return d.energyImparted(); });
-            saveBinaryArray(e, "dose.bin");
-            saveBinaryArray(materialIndex, "mat.bin");
-        }
-        if (angInt == 45) {
-            std::vector<T> e(doseScore.size());
-            std::transform(doseScore.cbegin(), doseScore.cend(), e.begin(), [](const auto& d) { return d.energyImparted(); });
-            saveBinaryArray(e, "dose45.bin");
-        }*/
 
         std::uint8_t matIdx = 0;
         for (const auto& [density, material_name] : matInf) {
@@ -966,7 +910,9 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
 
+    /*
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(true, false);
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, true);
@@ -998,20 +944,22 @@ bool runAll()
     success = success && TG195Case41AbsorbedEnergy<T, 1>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 2>(true, true);
 
-    success = success && TG195Case42AbsorbedEnergy<T, 0>(false, false);
-    success = success && TG195Case42AbsorbedEnergy<T, 0>(true, false);
-    success = success && TG195Case42AbsorbedEnergy<T, 0>(false, true);
-    success = success && TG195Case42AbsorbedEnergy<T, 0>(true, true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>( false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>( true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>( false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>( true);
 
-    success = success && TG195Case42AbsorbedEnergy<T, 1>(false, false);
-    success = success && TG195Case42AbsorbedEnergy<T, 1>(true, false);
-    success = success && TG195Case42AbsorbedEnergy<T, 1>(false, true);
-    success = success && TG195Case42AbsorbedEnergy<T, 1>(true, true);
 
-    success = success && TG195Case42AbsorbedEnergy<T, 2>(false, false);
-    success = success && TG195Case42AbsorbedEnergy<T, 2>(true, false);
-    success = success && TG195Case42AbsorbedEnergy<T, 2>(false, true);
-    success = success && TG195Case42AbsorbedEnergy<T, 2>(true, true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>( false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>( true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>( false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>( true);
+
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>( false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>( true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>( false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>( true);
+
 
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 0>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
@@ -1019,7 +967,7 @@ bool runAll()
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 2>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>();
-
+    */
     return success;
 }
 

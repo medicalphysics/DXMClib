@@ -52,61 +52,115 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 }
 
 template <typename T>
-bool testTransport()
+bool testCylinder()
+{
+    using Cylinder = dxmc::WorldCylinder<T, 5, 1>;
+
+    dxmc::World2<T, Cylinder> world;
+    auto& cylinder = world.addItem<Cylinder>({ 4, 60 });
+
+    world.build(30);
+
+    dxmc::Transport transport;
+
+    std::uint64_t nPart = 0;
+    std::chrono::milliseconds time;
+
+    dxmc::IsotropicMonoEnergyBeam<T> beam;
+
+    const auto collAngleY = std::atan(4.0f / 60);
+    const auto collAngleZ = std::atan(10.0f / 60);
+    beam.setCollimationAngles({ -collAngleY, -collAngleZ, collAngleY, collAngleZ });
+    beam.setNumberOfParticlesPerExposure(1e5);
+    beam.setNumberOfExposures(32);
+
+    std::vector<dxmc::DoseScore<T>> res(8);
+    const T angStep = 360 / res.size();
+    for (int ang = 0; ang < res.size(); ++ang) {
+        const auto a = dxmc::DEG_TO_RAD<T>() * ang * angStep;
+        constexpr std::array<T, 3> pos = { -60, 0, 0 };
+        constexpr std::array<T, 3> cosy = { 0, 1, 0 };
+        constexpr std::array<T, 3> cosz = { 0, 0, 1 };
+
+        auto rpos = dxmc::vectormath::rotate(pos, { 0, 0, 1 }, a);
+        auto rcosy = dxmc::vectormath::rotate(cosy, { 0, 0, 1 }, a);
+        auto rcosz = dxmc::vectormath::rotate(cosz, { 0, 0, 1 }, a);
+        beam.setPosition(rpos);
+        beam.setDirectionCosines(rcosy, rcosz);
+
+        time = runDispatcher(transport, world, beam);
+        res[ang] = cylinder.dose();
+
+        cylinder.clearDose();
+    }
+
+    for (int ang = 0; ang < res.size(); ++ang) {
+        std::cout << ang * angStep << ", " << res[ang].energyImparted() << ", " << res[ang].relativeUncertainty() << std::endl;
+    }
+
+    return true;
+}
+
+template <typename T>
+bool testCTDI()
 {
     using CTDI = dxmc::CTDIPhantom<T>;
     using Box = dxmc::WorldBox<T, 4, 1>;
 
     dxmc::World2<T, CTDI, Box> world;
     auto& phantom = world.addItem<CTDI>({});
-    auto& box = world.addItem<Box>({ T { 10 } });
 
-    box.translate({ 0, -50, 0 });
-    box.setNistMaterial("Water, Liquid");
+    phantom.setHoleMaterial("Polymethyl Methacralate (Lucite, Perspex)", dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)"));
 
-    world.build();
+    world.build(30);
 
     dxmc::Transport transport;
-    // transport.setNumberOfThreads(4);
 
     std::uint64_t nPart = 0;
     std::chrono::milliseconds time;
-    if constexpr (false) {
-        dxmc::PencilBeam<T> beam;
-        beam.setPosition({ 0, -1000, 0 });
-        beam.setDirection({ 0, 1, 0 });
-        beam.setNumberOfParticlesPerExposure(1e3);
-        beam.setNumberOfExposures(4);
-        nPart = beam.numberOfParticles();
+
+    dxmc::IsotropicMonoEnergyBeam<T> beam;
+
+    const auto collAngleY = std::atan(16.0f / 60);
+    const auto collAngleZ = 0; //    std::atan(4.0f / 60);
+    beam.setCollimationAngles({ -collAngleY, -collAngleZ, collAngleY, collAngleZ });
+    beam.setNumberOfParticlesPerExposure(1e6);
+    beam.setNumberOfExposures(32);
+
+    std::vector<std::array<T, 6>> res(8);
+    constexpr T angStep = 45;
+    for (int ang = 0; ang < res.size(); ++ang) {
+        const auto a = dxmc::DEG_TO_RAD<T>() * ang * angStep;
+        constexpr std::array<T, 3> pos = { -60, 0, 0 };
+        constexpr std::array<T, 3> cosy = { 0, 1, 0 };
+        constexpr std::array<T, 3> cosz = { 0, 0, 1 };
+
+        auto rpos = dxmc::vectormath::rotate(pos, { 0, 0, 1 }, a);
+        auto rcosy = dxmc::vectormath::rotate(cosy, { 0, 0, 1 }, a);
+        auto rcosz = dxmc::vectormath::rotate(cosz, { 0, 0, 1 }, a);
+        beam.setPosition(rpos);
+        beam.setDirectionCosines(rcosy, rcosz);
+
         time = runDispatcher(transport, world, beam);
-    } else {
-        dxmc::IsotropicMonoEnergyBeam<T> beam;
-        beam.setPosition({ 0, -1000, 0 });
-        beam.setDirectionCosines({ 0, 0, 1, 1, 0, 0 });
-        beam.setCollimationAngles({ .01, .01 });
-        beam.setNumberOfParticlesPerExposure(1e5);
-        beam.setNumberOfExposures(4);
-        nPart = beam.numberOfParticles();
-        time = runDispatcher(transport, world, beam);
+        for (int i = 0; i < 6; ++i) {
+            res[ang][i] = (phantom.dose(i).energyImparted() * 1000) / beam.numberOfParticles();
+        }
+
+        std::cout << ang * angStep << ", ";
+        for (auto a : res[ang]) {
+            std::cout << a << ", ";
+        }
+        std::cout << std::endl;
+        phantom.clearDose();
     }
 
-    std::cout << "SUCCESS Simple transport test ";
-    std::cout << nPart << " histories in " << dxmc::TransportProgress::human_time(time) << " ";
-    std::cout << (nPart * 1000) / std::chrono::duration_cast<std::chrono::milliseconds>(time).count() << " histories/sec for sizeof(T) = " << sizeof(T) << std::endl;
-
-    const auto& ctdi_vec = world.template getItems<dxmc::CTDIPhantom<T>>();
-    auto dose_ctdi = ctdi_vec[0].dose(0);
-    std::cout << "CTDI: " << dose_ctdi.energyImparted();
-    std::cout << ", " << dose_ctdi.numberOfEvents();
-    std::cout << ", " << dose_ctdi.energyImpartedSquared();
-    std::cout << std::endl;
-
-    const auto& box_vec = world.template getItems<dxmc::WorldBox<T, 4, 1>>();
-    auto dose_box = box_vec[0].dose(0);
-    std::cout << "Box: " << dose_box.energyImparted();
-    std::cout << ", " << dose_box.numberOfEvents();
-    std::cout << ", " << dose_box.energyImpartedSquared();
-    std::cout << std::endl;
+    for (int i = 0; i < res.size(); ++i) {
+        std::cout << i * angStep << ", ";
+        for (auto a : res[i]) {
+            std::cout << a << ", ";
+        }
+        std::cout << std::endl;
+    }
 
     return true;
 }
@@ -358,9 +412,11 @@ bool testAAVoxelGrid()
 int main()
 {
     bool success = true;
+    success = success && testCylinder<double>();
+    // success = success && testCTDI<double>();
 
-    success = success && testAAVoxelGridTransport<double, 0>();
-    // success = success && testAAVoxelGridTransport<float, 0>();
+    // success = success && testAAVoxelGridTransport<double, 0>();
+    //  success = success && testAAVoxelGridTransport<float, 0>();
     /* success = success && testAAVoxelGridTransport<float, 255>();
 
     success = success && testAAVoxelGrid<float>();
@@ -377,7 +433,7 @@ int main()
     success = success && testTransport<double>();
     */
     if (success)
-        return 0;
+        return EXIT_SUCCESS;
 
-    return 1;
+    return EXIT_FAILURE;
 }

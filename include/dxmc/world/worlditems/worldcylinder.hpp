@@ -42,9 +42,9 @@ public:
         , m_radius(radius)
         , m_halfHeight(height * T { 0.5 })
         , m_center(pos)
-        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material2<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
-        m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
 
     void setMaterial(const Material2<T, NMaterialShells>& material)

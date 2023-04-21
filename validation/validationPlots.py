@@ -24,7 +24,7 @@ import os
 
 def readData():    
     converters={"Result":float, "Stddev":float}
-    dt = pd.read_csv("validationTable.txt", sep=", ", engine='python', converters=converters, error_bad_lines=False)
+    dt = pd.read_csv("validationTable.txt", sep=", ", engine='python', converters=converters)
     nNaN= dt.isnull().sum().sum()
     if nNaN > 0:
         print("Warning: Found {} NaN values or missing data, dropping rows".format(nNaN))
