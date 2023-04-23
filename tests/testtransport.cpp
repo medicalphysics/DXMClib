@@ -55,32 +55,35 @@ template <typename T>
 bool testCylinder()
 {
     using Cylinder = dxmc::WorldCylinder<T, 5, 1>;
-    //using Cylinder=dxmc::WorldSphere<T,5,1>;
+
     dxmc::World2<T, Cylinder> world;
-    
-    //auto& cylinder = world.addItem<Cylinder>({ 4 });
+
     auto& cylinder = world.addItem<Cylinder>({ 4, 60 });
 
-    world.build(60);
+    world.build(120);
 
     dxmc::Transport transport;
 
     std::uint64_t nPart = 0;
     std::chrono::milliseconds time;
 
-    dxmc::IsotropicMonoEnergyBeam<T> beam;
+    constexpr T dist = 60;
 
-    const auto collAngleY = std::atan(2.0f / 60);
-    const auto collAngleZ = std::atan(2.0f / 60);
+    dxmc::IsotropicMonoEnergyBeam<T> beam;
+    const auto collAngleY = std::atan(2.0f / dist);
+    const auto collAngleZ = std::atan(2.0f / dist);
     beam.setCollimationAngles({ -collAngleY, -collAngleZ, collAngleY, collAngleZ });
-    beam.setNumberOfParticlesPerExposure(1e5);
+
+    beam.setNumberOfParticlesPerExposure(1e6);
     beam.setNumberOfExposures(32);
 
-    std::vector<dxmc::DoseScore<T>> res(8);
+    std::cout << "Angle, EnergyImparted, nEvents, StdDev*2" << std::endl;
+
+    std::vector<dxmc::DoseScore<T>> res(8 * 3);
     const T angStep = 360 / res.size();
     for (int ang = 0; ang < res.size(); ++ang) {
         const auto a = dxmc::DEG_TO_RAD<T>() * ang * angStep;
-        constexpr std::array<T, 3> pos = { -60, 0, 0 };
+        constexpr std::array<T, 3> pos = { -dist, 0, 0 };
         constexpr std::array<T, 3> cosy = { 0, 1, 0 };
         constexpr std::array<T, 3> cosz = { 0, 0, 1 };
 
@@ -95,7 +98,8 @@ bool testCylinder()
 
         cylinder.clearDose();
 
-        std::cout << ang * angStep << ", " << res[ang].energyImparted() << ", " << res[ang].relativeUncertainty() << std::endl;
+        std::cout << ang * angStep << ", " << res[ang].energyImparted() << ", " << res[ang].numberOfEvents();
+        std::cout << ", " << res[ang].stdEnergyImparted() << std::endl;
     }
 
     return true;

@@ -234,7 +234,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    [[nodiscard]] inline std::array<T, 3> peturb(const std::array<T, 3>& vec, const T cosTheta, const T cosPhi) noexcept
+    [[nodiscard]] inline std::array<T, 3> peturb(const std::array<T, 3>& vec, const T theta, const T phi) noexcept
     {
         // rotates a unit vector theta degrees from its current direction
         // phi degrees about a arbitrary axis orthogonal to the direction vector
@@ -247,12 +247,9 @@ namespace vectormath {
         normalize(vec_xy_raw);
 
         // rotating the arbitrary orthogonal axis about vector direction
-        const auto sinPhi = sqrt(1 - cosPhi * cosPhi);
-        const auto vec_xy = rotate(vec_xy_raw, vec, sinPhi, cosPhi);
+        const auto vec_xy = rotate(vec_xy_raw, vec, phi);
 
-        const auto sinTheta = sqrt(1 - cosTheta * cosTheta);
-
-        auto res = rotate(vec, vec_xy, sinTheta, cosTheta);
+        auto res = rotate(vec, vec_xy, theta);
         // We normalize result in case of multiple calls on same vector
         normalize(res);
         return res;

@@ -44,19 +44,17 @@ namespace interactions {
     {
         if constexpr (Lowenergycorrection == 0) {
             bool reject;
-            T sinang;
+            T theta;
             do {
                 constexpr T extreme = (4 * std::numbers::sqrt2_v<T>) / (3 * std::numbers::sqrt3_v<T>);
                 const auto r1 = state.randomUniform<T>(T { 0 }, extreme);
-                const auto theta = state.randomUniform(T { 0 }, PI_VAL<T>());
-                sinang = std::sin(theta);
+                theta = state.randomUniform(T { 0 }, PI_VAL<T>());
+                const auto sinang = std::sin(theta);
                 reject = r1 > ((2 - sinang * sinang) * sinang);
             } while (reject);
             // calc angle and add randomly 90 degrees since dist i symetrical
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            const auto cosPhi = std::cos(phi);
-            const auto cosTheta = std::sqrt(1 - sinang * sinang);
-            particle.dir = vectormath::peturb<T>(particle.dir, cosTheta, cosPhi);
+            particle.dir = vectormath::peturb<T>(particle.dir, theta, phi);
 
         } else {
             // theta is scattering angle
@@ -73,8 +71,8 @@ namespace interactions {
             } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform<T>());
 
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            const auto cosPhi = std::cos(phi);
-            particle.dir = vectormath::peturb<T>(particle.dir, cosAngle, cosPhi);
+            const auto theta = std::acos(cosAngle);
+            particle.dir = vectormath::peturb<T>(particle.dir, theta, phi);
         }
     }
 
@@ -178,8 +176,8 @@ namespace interactions {
         const auto E = particle.energy;
         particle.energy *= eb;
         const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
-        const auto cosPhi = std::cos(phi);
-        particle.dir = vectormath::peturb(particle.dir, cosTheta, cosPhi);
+        const auto theta = std::acos(cosTheta);
+        particle.dir = vectormath::peturb(particle.dir, theta, phi);
         return (E - particle.energy) * particle.weight;
     }
 
@@ -215,8 +213,8 @@ namespace interactions {
             } while (rejected);
 
             const auto phi = state.randomUniform<T>(PI_VAL<T>() + PI_VAL<T>());
-            const auto cosPhi = std::cos(phi);
-            particle.dir = vectormath::peturb<T>(particle.dir, cosTheta, cosPhi);
+            const auto theta = std::acos(cosTheta);
+            particle.dir = vectormath::peturb<T>(particle.dir, theta, phi);
 
             const auto E = particle.energy;
             particle.energy *= e;
@@ -258,7 +256,7 @@ namespace interactions {
                 particle.weight *= s.numberOfPhotonsPerInitVacancy;
                 const auto theta = state.randomUniform(PI_VAL<T>());
                 const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
-                particle.dir = vectormath::peturb(particle.dir, std::cos(theta), std::cos(phi));
+                particle.dir = vectormath::peturb(particle.dir, theta, phi);
             }
         }
         return E;

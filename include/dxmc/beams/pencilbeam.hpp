@@ -93,6 +93,17 @@ public:
         vectormath::normalize(m_dir);
     }
 
+    void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
+    {
+        m_dir = vectormath::cross(dir[0], dir[1]);
+        vectormath::normalize(m_dir);
+    }
+    void setDirectionCosines(const std::array<T, 3>& xdir, const std::array<T, 3>& ydir)
+    {
+        m_dir = vectormath::cross(xdir, ydir);
+        vectormath::normalize(m_dir);
+    }
+
     void setParticleWeight(T weight = 1)
     {
         m_weight = weight;
