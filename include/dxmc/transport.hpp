@@ -24,6 +24,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/world.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <chrono>
 #include <format>
 #include <functional>
@@ -121,18 +122,20 @@ public:
 
 protected:
     template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    static void runWorker(World2<T, Ws...>& world, const B& beam, std::uint64_t exposureBegin, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
+    static void runWorker(World2<T, Ws...>& world, const B& beam, RandomState& state, std::atomic<std::uint64_t>& exposureStart, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
     {
-        RandomState state;
-        for (std::uint64_t eIdx = exposureBegin; eIdx != exposureEnd; ++eIdx) {
-            const auto exposure = beam.exposure(eIdx);
+        auto n = exposureStart.fetch_add(1);
+        while (n < exposureEnd) {
+            const auto exposure = beam.exposure(n);
             const auto nParticles = exposure.numberOfParticles();
             for (std::uint64_t i = 0; i != nParticles; ++i) {
                 auto particle = exposure.sampleParticle(state);
                 world.transport(particle, state);
             }
-            if (progress)
+            if (progress) {
                 progress->addCompletedNumber(nParticles);
+            }
+            n = exposureStart.fetch_add(1);
         }
     }
 
@@ -140,22 +143,19 @@ protected:
     void run(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
         const auto nExposures = beam.numberOfExposures();
-        const auto step = std::max(std::uint64_t { 1 }, nExposures / m_nThreads);
         std::vector<std::jthread> threads;
-        std::uint64_t start = 0;
-        auto stop = start + step;
+        threads.reserve(m_nThreads - 1);
+        std::vector<RandomState> states(m_nThreads - 1);
+        std::atomic<std::uint64_t> start(0);
 
         if (progress)
             progress->start(beam.numberOfParticles());
 
         for (std::size_t i = 0; i < m_nThreads - 1; ++i) {
-            if (start < stop) {
-                threads.emplace_back(Transport::template runWorker<T, B, Ws...>, std::ref(world), std::cref(beam), start, stop, progress);
-                start = stop;
-                stop += step;
-            }
+            threads.emplace_back(Transport::template runWorker<T, B, Ws...>, std::ref(world), std::cref(beam), std::ref(states[i]), std::ref(start), nExposures, progress);
         }
-        runWorker(world, beam, start, nExposures, progress);
+        RandomState state;
+        runWorker(world, beam, state, start, nExposures, progress);
 
         for (auto& thread : threads) {
             thread.join();
