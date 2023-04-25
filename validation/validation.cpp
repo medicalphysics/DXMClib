@@ -20,12 +20,15 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/transport.hpp"
+#include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
+
+#include "tg195world3breast.hpp"
 #include "tg195world42.hpp"
 
 #include <algorithm>
@@ -200,6 +203,87 @@ std::pair<T, std::map<std::size_t, T>> TG195_pmma()
     return std::make_pair(T { 1.19 }, pmma_w);
 }
 
+template <typename T>
+std::pair<T, std::map<std::size_t, T>> TG195_skin()
+{
+    std::map<std::size_t, T> w;
+    w[1] = T { 9.8 };
+    w[6] = T { 17.8 };
+    w[7] = T { 5 };
+    w[8] = T { 66.7 };
+    w[15] = T { .175 };
+    w[16] = T { .175 };
+    w[19] = T { .175 };
+    w[20] = T { .175 };
+
+    return std::make_pair(T { 1.09 }, w);
+}
+
+template <typename T>
+std::pair<T, std::map<std::size_t, T>> TG195_air()
+{
+    std::map<std::size_t, T> w;
+    w[6] = T { 0.0124 };
+    w[7] = T { 75.5268 };
+    w[8] = T { 23.1781 };
+    w[18] = T { 1.2827 };
+
+    return std::make_pair(T { 0.001205 }, w);
+}
+
+template <typename T>
+std::pair<T, std::map<std::size_t, T>> TG195_water()
+{
+    std::map<std::size_t, T> w;
+    w[1] = T { 11.1898 };
+    w[8] = T { 88.8102 };
+    return std::make_pair(T { 1 }, w);
+}
+
+template <typename T>
+std::pair<T, std::map<std::size_t, T>> TG195_breast_tissue()
+{
+    std::map<std::size_t, T> adipose_w;
+    adipose_w[1] = T { 11.2 };
+    adipose_w[6] = T { 61.9 };
+    adipose_w[7] = T { 1.7 };
+    adipose_w[8] = T { 25.1 };
+    adipose_w[15] = T { 0.025 };
+    adipose_w[16] = T { 0.025 };
+    adipose_w[19] = T { 0.025 };
+    adipose_w[20] = T { 0.025 };
+
+    const T adipose_d = T { 0.93 };
+
+    std::map<std::size_t, T> gland_w;
+    gland_w[1] = T { 10.2 };
+    gland_w[6] = T { 18.4 };
+    gland_w[7] = T { 3.2 };
+    gland_w[8] = T { 67.7 };
+    gland_w[15] = T { 0.125 };
+    gland_w[16] = T { 0.125 };
+    gland_w[19] = T { 0.125 };
+    gland_w[20] = T { 0.125 };
+
+    const T gland_d = T { 1.04 };
+
+    // weighetd 20%gland 80% adipose
+    std::map<std::size_t, T> w;
+    for (const auto [Z, n] : adipose_w) {
+        if (!w.contains(Z))
+            w[Z] = T { 0 };
+        w[Z] += n * T { 0.8 };
+    }
+    for (const auto [Z, n] : gland_w) {
+        if (!w.contains(Z))
+            w[Z] = T { 0 };
+        w[Z] += n * T { 0.2 };
+    }
+    const T d = adipose_d * T { 0.8 } + gland_d * T { 0.2 };
+
+    return std::make_pair(d, w);
+}
+
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
 {
@@ -212,7 +296,7 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     });
     std::string message;
     while (running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(1000));
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
         std::cout << std::string(message.length(), ' ') << "\r";
         message = progress.message();
         std::cout << message << "\r";
@@ -417,6 +501,98 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n";
     std::cout << "Whole body: " << ev_history << " eV/history, TG195: " << TG195_value << " eV/history";
     std::cout << ", difference: " << ev_history - TG195_value << " ev/history [" << (ev_history / TG195_value - 1) * 100 << "]%  \n";
+
+    return true;
+}
+
+template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case3AbsorbedEnergy(bool tomo = false)
+{
+
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
+
+    constexpr int NShells = 5;
+    using Box = WorldBox<T, NShells, LOWENERGYCORRECTION>;
+    using Breast = TG195World3Breast<T, NShells, LOWENERGYCORRECTION>;
+    using World = World2<T, Box, Breast>;
+    using Material = Material2<T, NShells>;
+
+    auto [water_d, water_w] = TG195_water<T>();
+    auto [pmma_d, pmma_w] = TG195_pmma<T>();
+    auto [air_d, air_w] = TG195_air<T>();
+    auto [breast_d, breast_w] = TG195_breast_tissue<T>();
+    auto [skin_d, skin_w] = TG195_skin<T>();
+
+    auto water = Material::byWeight(water_w).value();
+    auto pmma = Material::byWeight(pmma_w).value();
+    auto air = Material::byWeight(air_w).value();
+    auto breasttissue = Material::byWeight(breast_w).value();
+    auto skin = Material::byWeight(skin_w).value();
+
+    World world;
+
+    auto& body = world.addItem<Box>({ { -T { 17 }, -T { 15 }, -T { 15 }, T { 0 }, T { 15 }, T { 15 } } });
+    body.setMaterial(water, water_d);
+    auto& uplate = world.addItem<Box>({ { T { 0 }, -T { 13 }, T { 2.5 }, T { 14 }, T { 13 }, T { 2.52 } } });
+    uplate.setMaterial(pmma, pmma_d);
+    auto& lplate = world.addItem<Box>({ { T { 0 }, -T { 13 }, -T { 2.52 }, T { 14 }, T { 13 }, -T { 2.5 } } });
+    lplate.setMaterial(pmma, pmma_d);
+    auto& breast = world.addItem<Breast>();
+    breast.setSkinMaterial(skin, skin_d);
+    breast.setTissueMaterial(breasttissue, breast_d);
+
+    world.build(std::sqrt(T { 66 } * T { 66 } * 2));
+
+    Beam beam;
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
+        const auto specter = TG195_30KV<T>();
+        beam.setEnergySpecter(specter);
+    } else {
+        beam.setEnergy(T { 16.8 });
+    }
+
+    beam.setNumberOfExposures(N_EXPOSURES);
+    beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+    if (tomo) {
+        constexpr T alpha = 15 * DEG_TO_RAD<T>();
+        const T h = 180 * std::atan(alpha);
+        beam.setPosition({ 0, -h, 0 });
+        const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
+        const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
+        const T x_ang = std::atan(T { 39 } / (2 * 180));
+        beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
+    } else {
+        const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
+        beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+    }
+    //    Transport transport;
+    //    auto time_elapsed = runDispatcher(transport, world, beam);
+
+    if (tomo) {
+        constexpr T alpha = 15 * DEG_TO_RAD<T>();
+        const T h = 180 * std::atan(alpha);
+        beam.setPosition({ 0, -h, 0 });
+        const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
+        const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
+        const T x_ang = std::atan(T { 39 } / (2 * 180));
+        beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
+    } else {
+        const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
+        beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+    }
+
+    VisualizeWorld<T> viz(world);
+    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4 + .02f);
+    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T { 0.1 });
+    viz.setDistance(600);
+    viz.suggestFOV(5);
+    int height = 1024;
+    int width = 1024;
+    std::vector<T> buffer(height * width * 4, T { 1 });
+    viz.generate(world, buffer, width, height);
+    saveBinaryArray(buffer, "color.bin");
 
     return true;
 }
@@ -910,7 +1086,7 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
 
     /*
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
