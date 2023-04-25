@@ -58,8 +58,12 @@ public:
     {
         m_material = material;
     }
-
-    void setMaterialDensity(T density) { m_materialDensity = density; }
+    void setMaterial(const Material2<T, NMaterialShells>& material, T density)
+    {
+        m_material = material;
+        m_materialDensity = std::abs(density);
+    }
+    void setMaterialDensity(T density) { m_materialDensity = std::abs(density); }
 
     bool setNistMaterial(const std::string& nist_name)
     {
