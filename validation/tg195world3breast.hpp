@@ -47,7 +47,7 @@ public:
         translateBox(m_dose_boxes[1], { T { 2 }, T { 0 }, T { 0 } });
         translateBox(m_dose_boxes[2], { T { 5 }, T { 0 }, T { 0 } });
         translateBox(m_dose_boxes[3], { T { 8 }, T { 0 }, T { 0 } });
-        translateBox(m_dose_boxes[4], { T { 5 }, T { 5 }, T { 0 } });        
+        translateBox(m_dose_boxes[4], { T { 5 }, T { 5 }, T { 0 } });
         translateBox(m_dose_boxes[5], { T { 5 }, T { 0 }, T { -1.5f } });
         translateBox(m_dose_boxes[6], { T { 5 }, T { 0 }, T { 1.5f } });
     }
@@ -108,32 +108,24 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
+        const auto aabb = AABB();
         auto cyl = basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_halfHeight);
-
-        if (cyl.valid() && std::abs(p.dir[0]) > 1E-6) {
-            const auto t_plane = (m_center[0] - p.pos[0]) / p.dir[0];
-            if (t_plane > 0) {
-                if (t_plane < cyl.intersection) {
-
-                    const auto y = p.pos[1] + t_plane * p.dir[1];
-                    const auto z = p.pos[2] + t_plane * p.dir[2];
-
-                    if ((m_center[1] - m_radius) <= y && y <= (m_center[1] + m_radius) && (m_center[2] - m_halfHeight) <= z && z <= (m_center[2] + m_halfHeight)) {
-                        cyl.intersection = t_plane;
-                        if (p.dir[0] > 0) {
-                            if (p.pos[0] < m_center[0]) {
-                                cyl.rayOriginIsInsideItem = false;
-                                cyl.normal = { -1, 0, 0 };
-                            }
-                        }
-                    } else {
-                        cyl.intersection = 0;
-                        cyl.rayOriginIsInsideItem = false;
-                        cyl.intersectionValid = false;
-                    }
+        const auto box = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, aabb);
+        if (cyl.valid() && box.valid()) {
+            if (basicshape::AABB::pointInside(p.pos, aabb)) {
+                cyl.intersection = std::min(cyl.intersection, box.intersection);
+                cyl.rayOriginIsInsideItem = true;
+            } else {
+                if (cyl.intersection < box.intersection) {
+                    cyl.normal = { -1, 0, 0 };
+                    cyl.intersection = box.intersection;
                 }
+                cyl.rayOriginIsInsideItem = false;
             }
+        } else {
+            cyl.intersectionValid = false;
         }
+
         return cyl;
     }
 
@@ -220,35 +212,33 @@ protected:
                 hit = true;
             }
         }
-        if (!hit) {
-            m_dose.scoreEnergy(energy);
-        }
+        m_dose.scoreEnergy(energy);
     }
 
     static WorldIntersectionResult<T> intersectHalfCylindar(const Particle<T>& p, const std::array<T, 3>& center, const T radius, const T halfHeight)
     {
-        auto cyl = basicshape::cylinder::intersect(p, center, radius, halfHeight);
-        if (cyl.valid() && std::abs(p.dir[0]) > 1E-6) {
-            const auto t_plane = (center[0] - p.pos[0]) / p.dir[0];
-            if (t_plane > 0) {
-                if (t_plane < cyl.intersection) {
-                    const auto y = p.pos[1] + t_plane * p.dir[1];
-                    const auto z = p.pos[2] + t_plane * p.dir[2];
-                    if ((center[1] - radius) <= y && y <= (center[1] + radius) && (center[2] - halfHeight) <= z && z <= (center[2] + halfHeight)) {
-                        cyl.intersection = t_plane;
-                        if (p.dir[0] > 0) {
-                            if (p.pos[0] < center[0]) {
-                                cyl.rayOriginIsInsideItem = false;
-                            }
-                        }
-                    } else {
-                        cyl.intersection = 0;
-                        cyl.rayOriginIsInsideItem = false;
-                        cyl.intersectionValid = false;
-                    }
-                }
+        const std::array<T, 6> aabb = {
+            center[0],
+            center[1] - radius,
+            center[2] - halfHeight,
+            center[0] + radius,
+            center[1] + radius,
+            center[2] + halfHeight
+        };
+        auto cyl = basicshape::cylinder::template intersect(p, center, radius, halfHeight);
+        const auto box = basicshape::AABB::template intersect(p, aabb);
+        if (cyl.valid() && box.valid()) {
+            if (basicshape::AABB::pointInside(p.pos, aabb)) {
+                cyl.intersection = std::min(cyl.intersection, box.intersection);
+                cyl.rayOriginIsInsideItem = true;
+            } else {
+                cyl.intersection = std::max(cyl.intersection, box.intersection);
+                cyl.rayOriginIsInsideItem = false;
             }
+        } else {
+            cyl.intersectionValid = false;
         }
+
         return cyl;
     }
 

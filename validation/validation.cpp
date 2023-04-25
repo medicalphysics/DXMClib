@@ -552,39 +552,55 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     } else {
         beam.setEnergy(T { 16.8 });
     }
-
     beam.setNumberOfExposures(N_EXPOSURES);
     beam.setNumberOfParticlesPerExposure(N_HISTORIES);
     if (tomo) {
         constexpr T alpha = 15 * DEG_TO_RAD<T>();
-        const T h = 180 * std::atan(alpha);
-        beam.setPosition({ 0, -h, 0 });
-        const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
-        const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
-        const T x_ang = std::atan(T { 39 } / (2 * 180));
-        beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
+        const auto beampos = vectormath::subtract(vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha), { 0, 0, 4 });
+        beam.setPosition(beampos);
+        const auto cosy = vectormath::rotate({ 0, 1, 0 }, { 1, 0, 0 }, alpha);
+        beam.setDirectionCosines({ -1, 0, 0 }, cosy);
+
+        const auto d_vec = vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
+        const auto l_vec = vectormath::add(d_vec, { 0, 13, 0 });
+        const auto y_ang_min = std::acos(vectormath::angleBetween(d_vec, l_vec));
+        const auto h_vec = vectormath::subtract(d_vec, { 0, 13, 0 });
+        const auto y_ang_max = std::acos(vectormath::angleBetween(d_vec, h_vec));
+        const T x_ang = std::atan(T { 14 } / T { 66 });
+        beam.setCollimationAngles(0, -y_ang_min, x_ang, y_ang_max);
     } else {
-        const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
-        beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+        beam.setPosition({ 0, 0, 62 });
+        beam.setDirectionCosines({ -1, 0, 0 }, { 0, 1, 0 });
+        const T collanglex = std::atan(T { 14 } / T { 66 });
+        const T collangley = std::atan(T { 13 } / T { 66 });
+        beam.setCollimationAngles(0, -collangley, collanglex, collangley);
     }
     //    Transport transport;
     //    auto time_elapsed = runDispatcher(transport, world, beam);
 
-    if (tomo) {
-        constexpr T alpha = 15 * DEG_TO_RAD<T>();
-        const T h = 180 * std::atan(alpha);
-        beam.setPosition({ 0, -h, 0 });
-        const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
-        const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
-        const T x_ang = std::atan(T { 39 } / (2 * 180));
-        beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
+    double sim_ev;
+    std::array<double, 7> sim_subvol;
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
+        // specter
+        if (tomo) {
+            sim_ev = 4188.833;
+            sim_subvol = { 14.390, 15.825, 15.972, 15.445, 17.171, 5.619, 49.022 };
+        } else {
+            sim_ev = 4293.433;
+            sim_subvol = { 16.502, 16.658, 16.814, 16.249, 16.521, 6.041, 50.041 };
+        }
     } else {
-        const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
-        beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+        if (tomo) {
+            sim_ev = 4577.743;
+            sim_subvol = { 15.217, 16.836, 16.943, 16.431, 18.370, 5.043, 54.974 };
+        } else {
+            sim_ev = 4697.333;
+            sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
+        }
     }
 
     VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4 + .02f);
+    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4 + .2f);
     viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T { 0.1 });
     viz.setDistance(600);
     viz.suggestFOV(5);
