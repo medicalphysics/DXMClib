@@ -45,8 +45,7 @@ public:
     VisualizeWorld(W& world)
     {
         m_center = world.center();
-        if (m_fov < 0)
-            suggestFOV(world.AABB());
+        m_world_aabb = world.AABB();
     }
 
     void setDistance(T dist)
@@ -60,6 +59,14 @@ public:
     void setAzimuthalAngle(T azimuthal)
     {
         m_camera_pos[2] = azimuthal;
+    }
+
+    void suggestFOV(T zoom = 1)
+    {
+        const auto [p1, p2] = vectormath::splice(m_world_aabb);
+        const auto plen = vectormath::lenght(vectormath::subtract(p1, p2));
+        const auto clen = vectormath::lenght(vectormath::subtract(m_camera_pos, m_center));
+        m_fov = std::atan(T { 0.5 } * plen / clen) * 2 / zoom;
     }
 
     template <WorldType<T> W, typename U>
@@ -222,15 +229,8 @@ protected:
         return rgb;
     }*/
 
-    void suggestFOV(const std::array<T, 6>& aabb)
-    {
-        const auto [p1, p2] = vectormath::splice(aabb);
-        const auto len = vectormath::lenght(vectormath::subtract(p1, p2));
-
-        m_fov = std::atan(T { 0.5 } * len / m_camera_pos[0]);
-    }
-
 private:
+    std::array<T, 6> m_world_aabb;
     std::array<T, 3> m_center = { 0, 0, 0 };
     std::array<T, 3> m_camera_pos = { 100, 1.4, 1 };
     std::array<T, 3> m_camera_xcosine = { 1, 0, 0 };
