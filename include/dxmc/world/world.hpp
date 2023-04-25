@@ -63,6 +63,14 @@ public:
     }
 
     template <AnyWorldItemType<Us...> U>
+    auto& addItem()
+    {
+        U item;
+        std::get<std::vector<U>>(m_items).push_back(std::move(item));
+        return std::get<std::vector<U>>(m_items).back();
+    }
+
+    template <AnyWorldItemType<Us...> U>
     const auto& getItems() const
     {
         return std::get<std::vector<U>>(m_items);
