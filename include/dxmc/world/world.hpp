@@ -40,7 +40,7 @@ concept WorldItemType = (std::derived_from<U, WorldItemBase<T>>);
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
-template <typename T, WorldItemType<T>... Us>
+template <Floating T, WorldItemType<T>... Us>
 class World2 {
 public:
     World2()
