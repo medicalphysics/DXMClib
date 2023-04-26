@@ -93,6 +93,19 @@ public:
         vectormath::normalize(m_dir);
     }
 
+    std::array<std::array<T, 3>, 2> directionCosines() const
+    {
+        std::array<T, 3> cand = { 0, 0, 0 };
+        const auto minIdx = vectormath::argmin3(m_dir);
+        cand[minIdx] = 1;
+
+        std::array<std::array<T, 3>, 2> cos;
+        cos[0] = vectormath::cross(m_dir, cand);
+        vectormath::normalize(cos[0]);
+        cos[1] = vectormath::cross(m_dir, cos[0]);
+        return cos;
+    }
+
     void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
     {
         m_dir = vectormath::cross(dir[0], dir[1]);
@@ -102,6 +115,11 @@ public:
     {
         m_dir = vectormath::cross(xdir, ydir);
         vectormath::normalize(m_dir);
+    }
+
+    const std::array<T, 4> collimationAngles() const
+    {
+        return std::array { T { 0 }, T { 0 }, T { 0 }, T { 0 } };
     }
 
     void setParticleWeight(T weight = 1)

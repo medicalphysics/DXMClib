@@ -56,7 +56,7 @@ public:
 
         const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
-        
+
         const auto sinx = std::sin(angx);
         const auto siny = std::sin(angy);
         const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
@@ -66,7 +66,7 @@ public:
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
         };
 
-        //auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
+        // auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
 
         Particle<T> p = { .pos = m_pos,
             .dir = pdir,
@@ -100,6 +100,11 @@ public:
 
     void setPosition(const std::array<T, 3>& pos) { m_pos = pos; }
 
+    const std::array<std::array<T, 3>, 2>& directionCosines() const
+    {
+        return m_dirCosines;
+    }
+
     void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
     {
         m_dirCosines = dir;
@@ -119,6 +124,8 @@ public:
     {
         m_specter = SpecterDistribution(specter);
     }
+
+    const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
 
     void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
     void setCollimationAngles(T minX, T minY, T maxX, T maxY)

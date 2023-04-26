@@ -509,6 +509,12 @@ template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
     requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
 TG195Case3AbsorbedEnergy(bool tomo = false)
 {
+    ResultKeys<T> res;
+    res.rCase = "Case 2";
+    res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "120kVp" : "56.4keV";
+    res.modus = tomo ? "tomosyntesis" : "radiography";
+
+    std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n ";
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
@@ -575,28 +581,65 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         const T collangley = std::atan(T { 13 } / T { 66 });
         beam.setCollimationAngles(0, -collangley, collanglex, collangley);
     }
-    //    Transport transport;
-    //    auto time_elapsed = runDispatcher(transport, world, beam);
 
-    double sim_ev;
-    std::array<double, 7> sim_subvol;
-    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
-        // specter
-        if (tomo) {
-            sim_ev = 4188.833;
-            sim_subvol = { 14.390, 15.825, 15.972, 15.445, 17.171, 5.619, 49.022 };
+    Transport transport;
+    auto time_elapsed = runDispatcher(transport, world, beam);
+
+    ResultPrint print;
+    if constexpr (LOWENERGYCORRECTION == 0) {
+        double sim_ev;
+        std::array<double, 7> sim_subvol;
+        if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
+            // specter
+            if (tomo) {
+                sim_ev = 4188.833;
+                sim_subvol = { 14.390, 15.825, 15.972, 15.445, 17.171, 5.619, 49.022 };
+            } else {
+                sim_ev = 4293.433;
+                sim_subvol = { 16.502, 16.658, 16.814, 16.249, 16.521, 6.041, 50.041 };
+            }
         } else {
-            sim_ev = 4293.433;
-            sim_subvol = { 16.502, 16.658, 16.814, 16.249, 16.521, 6.041, 50.041 };
+            if (tomo) {
+                sim_ev = 4577.743;
+                sim_subvol = { 15.217, 16.836, 16.943, 16.431, 18.370, 5.043, 54.974 };
+            } else {
+                sim_ev = 4697.333;
+                sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
+            }
         }
-    } else {
-        if (tomo) {
-            sim_ev = 4577.743;
-            sim_subvol = { 15.217, 16.836, 16.943, 16.431, 18.370, 5.043, 54.974 };
-        } else {
-            sim_ev = 4697.333;
-            sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
+        res.model = "TG195";
+        res.result = sim_ev;
+        res.volume = "Total body";
+        res.result_std = 0;
+        res.nEvents = 0;
+        print(res);
+        for (int i = 0; i < sim_subvol.size(); ++i) {
+            res.volume = "VOI " + std::to_string(i + 1);
+            res.result = sim_subvol[i];
+            print(res, false);
         }
+    }
+    std::string model;
+    if (LOWENERGYCORRECTION == 0)
+        model = "NoneLC";
+    if (LOWENERGYCORRECTION == 1)
+        model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        model = "IA";
+    res.model = model;
+
+    constexpr T evNormal = T { 1000 } / (N_HISTORIES * N_EXPOSURES);
+
+    res.volume = "Total body";
+    res.result = breast.dose(7).energyImparted() * evNormal;
+    res.result_std = breast.dose(7).stdEnergyImparted() * evNormal;
+    res.nEvents = breast.dose(7).numberOfEvents();
+    print(res, false);
+    for (int i = 0; i < 7; ++i) {
+        res.result = breast.dose(i).energyImparted() * evNormal;
+        res.result_std = breast.dose(i).stdEnergyImparted() * evNormal;
+        res.nEvents = breast.dose(i).numberOfEvents();
+        print(res, false);
     }
 
     VisualizeWorld<T> viz(world);

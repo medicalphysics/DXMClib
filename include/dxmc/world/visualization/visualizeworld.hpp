@@ -17,6 +17,7 @@ Copyright 2023 Erlend Andersen
 */
 
 #pragma once
+#include "dxmc/beams/beamtype.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -71,7 +72,7 @@ public:
 
     template <WorldType<T> W, typename U>
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
-    void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512)
+    void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512) const
     {
         std::vector<std::pair<WorldItemBase<T>*, std::array<U, 3>>> colors;
         auto items = world.getItemPointers();
@@ -152,6 +153,45 @@ public:
     }
 
 protected:
+    template <BeamType<T> B, typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    void drawBeam(const B& beam, std::vector<U>& buffer, int width = 512, int height = 512) const
+    {
+        const auto normal = vectormath::cross(m_camera_xcosine, m_camera_ycosine);
+
+        const auto& pstart3 = beam.position();
+        const auto len = std::max(vectormath::lenght(vectormath::subtract(m_center, pstart3)), T { 10 });
+        const auto& beam_angles = beam.collimationAngles();
+        std::array<std::pair<T, T>, 4> angs = {
+            std::make_pair(beam_angles[0], beam_angles[1]),
+            std::make_pair(beam_angles[0], beam_angles[3]),
+            std::make_pair(beam_angles[2], beam_angles[1]),
+            std::make_pair(beam_angles[2], beam_angles[3])
+        };
+
+        const auto dirCosines = beam.directionCosines();
+        const auto dir = vectormath::cross(dirCosines[0], dirCosines[1]);
+        for (const auto& p : angs) {
+            const auto angx = p.first;
+            const auto angy = p.second;
+            const auto sinx = std::sin(angx);
+            const auto siny = std::sin(angy);
+            const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
+            const std::array pdir = {
+                dirCosines[0][0] * sinx + dirCosines[1][0] * siny + dir[0] * sinz,
+                dirCosines[0][1] * sinx + dirCosines[1][1] * siny + dir[1] * sinz,
+                dirCosines[0][2] * sinx + dirCosines[1][2] * siny + dir[2] * sinz
+            };
+            const auto pend3 = vectormath::add(pstart3, vectormath::scale(pdir, len));
+            drawLine(pstart3, pend3, buffer, width, height);
+        }
+    }
+    template <typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    void drawLine(const std::array<T, 3> start, const std::array<T, 3> end, std::vector<U>& buffer, int width = 512, int height = 512) const
+    {
+    }
+
     static std::array<std::uint8_t, 3> HSVtoRGB(const std::uint8_t H, const std::uint8_t S, const std::uint8_t V = 255)
     {
         // H in [0, 255], S in [0, 255], V in [0, 255]

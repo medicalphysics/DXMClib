@@ -44,5 +44,11 @@ concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomS
                        {
                            beam.numberOfParticles()
                            } -> std::same_as<std::uint64_t>;
+                       {
+                           beam.collimationAngles()
+                           } -> std::convertible_to<std::array<T, 4>>;
+                       {
+                           beam.directionCosines()
+                           } -> std::convertible_to<std::array<std::array<T, 3>, 2>>;
                    };
 }
