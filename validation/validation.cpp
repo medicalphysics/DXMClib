@@ -510,14 +510,14 @@ template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
 TG195Case3AbsorbedEnergy(bool tomo = false)
 {
     ResultKeys<T> res;
-    res.rCase = "Case 2";
-    res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "120kVp" : "56.4keV";
+    res.rCase = "Case 3";
+    res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "30kVp" : "16.8keV";
     res.modus = tomo ? "tomosyntesis" : "radiography";
 
-    std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n ";
+    std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons\n";
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr int NShells = 5;
     using Box = WorldBox<T, NShells, LOWENERGYCORRECTION>;
@@ -564,8 +564,8 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         constexpr T alpha = 15 * DEG_TO_RAD<T>();
         const auto beampos = vectormath::subtract(vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha), { 0, 0, 4 });
         beam.setPosition(beampos);
-        const auto cosy = vectormath::rotate({ 0, 1, 0 }, { 1, 0, 0 }, alpha);
-        beam.setDirectionCosines({ -1, 0, 0 }, cosy);
+        const auto cosy = vectormath::rotate({ 0, -1, 0 }, { 1, 0, 0 }, alpha);
+        beam.setDirectionCosines({ 1, 0, 0 }, cosy);
 
         const auto d_vec = vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
         const auto l_vec = vectormath::add(d_vec, { 0, 13, 0 });
@@ -575,44 +575,47 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         const T x_ang = std::atan(T { 14 } / T { 66 });
         beam.setCollimationAngles(0, -y_ang_min, x_ang, y_ang_max);
     } else {
-        beam.setPosition({ 0, 0, 62 });
-        beam.setDirectionCosines({ -1, 0, 0 }, { 0, 1, 0 });
+        beam.setPosition({ 4, 0, 62 });
+        beam.setDirectionCosines({ 1, 0, 0 }, { 0, -1, 0 });
         const T collanglex = std::atan(T { 14 } / T { 66 });
         const T collangley = std::atan(T { 13 } / T { 66 });
         beam.setCollimationAngles(0, -collangley, collanglex, collangley);
+        beam.setCollimationAngles(0, 0, 0, 0);
     }
 
     Transport transport;
+    transport.setNumberOfThreads(1);
     auto time_elapsed = runDispatcher(transport, world, beam);
 
     ResultPrint print;
-    if constexpr (LOWENERGYCORRECTION == 0) {
-        double sim_ev;
-        std::array<double, 7> sim_subvol;
-        if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
-            // specter
-            if (tomo) {
-                sim_ev = 4188.833;
-                sim_subvol = { 14.390, 15.825, 15.972, 15.445, 17.171, 5.619, 49.022 };
-            } else {
-                sim_ev = 4293.433;
-                sim_subvol = { 16.502, 16.658, 16.814, 16.249, 16.521, 6.041, 50.041 };
-            }
+
+    double sim_ev;
+    std::array<double, 7> sim_subvol;
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
+        // specter
+        if (tomo) {
+            sim_ev = 4188.833;
+            sim_subvol = { 14.390, 15.825, 15.972, 15.445, 17.171, 5.619, 49.022 };
         } else {
-            if (tomo) {
-                sim_ev = 4577.743;
-                sim_subvol = { 15.217, 16.836, 16.943, 16.431, 18.370, 5.043, 54.974 };
-            } else {
-                sim_ev = 4697.333;
-                sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
-            }
+            sim_ev = 4293.433;
+            sim_subvol = { 16.502, 16.658, 16.814, 16.249, 16.521, 6.041, 50.041 };
         }
+    } else {
+        if (tomo) {
+            sim_ev = 4577.743;
+            sim_subvol = { 15.217, 16.836, 16.943, 16.431, 18.370, 5.043, 54.974 };
+        } else {
+            sim_ev = 4697.333;
+            sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
+        }
+    }
+    if constexpr (LOWENERGYCORRECTION == 0) {
         res.model = "TG195";
         res.result = sim_ev;
         res.volume = "Total body";
         res.result_std = 0;
         res.nEvents = 0;
-        print(res);
+        print(res, false);
         for (int i = 0; i < sim_subvol.size(); ++i) {
             res.volume = "VOI " + std::to_string(i + 1);
             res.result = sim_subvol[i];
@@ -635,11 +638,14 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     res.result_std = breast.dose(7).stdEnergyImparted() * evNormal;
     res.nEvents = breast.dose(7).numberOfEvents();
     print(res, false);
+    std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_ev << ", difference: [" << (res.result / sim_ev - 1) * 100 << "%]\n";
     for (int i = 0; i < 7; ++i) {
+        res.volume = "VOI " + std::to_string(i + 1);
         res.result = breast.dose(i).energyImparted() * evNormal;
         res.result_std = breast.dose(i).stdEnergyImparted() * evNormal;
         res.nEvents = breast.dose(i).numberOfEvents();
         print(res, false);
+        std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_subvol[i] << ", difference: [" << (res.result / sim_subvol[i] - 1) * 100 << "%]\n";
     }
 
     VisualizeWorld<T> viz(world);
