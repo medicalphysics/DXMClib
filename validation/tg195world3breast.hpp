@@ -55,13 +55,13 @@ public:
     void setTissueMaterial(const Material2<T, NMaterialShells>& material, T dens)
     {
         m_tissue_material = material;
-        T m_tissue_density = std::abs(dens);
+        m_tissue_density = std::abs(dens);
     }
 
     void setSkinMaterial(const Material2<T, NMaterialShells>& material, T dens)
     {
         m_skin_material = material;
-        T m_skin_density = std::abs(dens);
+        m_skin_density = std::abs(dens);
     }
 
     void translate(const std::array<T, 3>& dist) override
@@ -134,51 +134,53 @@ public:
         bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
         while (cont) {
             const auto intBreast = intersectHalfCylindar(p, m_center, m_radius, m_halfHeight);
-            const auto intTissue = intersectHalfCylindar(p, m_center, m_radius - m_skin_thick, m_halfHeight - m_skin_thick);
-
-            // should always be inside intbreast
-            // are we inside tissue
-            if (intTissue.valid()) {
-                if (intTissue.rayOriginIsInsideItem) {
-                    // only inside tissue
-                    const auto att = m_tissue_material.attenuationValues(p.energy);
-                    const auto attSumInv = 1 / (att.sum() * m_tissue_density);
-                    const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-                    if (stepLen < intTissue.intersection) {
-                        p.translate(stepLen);
-                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_tissue_material, state);
-                        cont = intRes.particleAlive;
-                        scoreDose(p, intRes.energyImparted);
+            if (intBreast.valid()) {
+                const auto intTissue = intersectHalfCylindar(p, m_center, m_radius - m_skin_thick, m_halfHeight - m_skin_thick);
+                if (intTissue.valid()) {
+                    if (intTissue.rayOriginIsInsideItem) {
+                        // only inside tissue
+                        const auto att = m_tissue_material.attenuationValues(p.energy);
+                        const auto attSumInv = 1 / (att.sum() * m_tissue_density);
+                        const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+                        if (stepLen < intTissue.intersection) {
+                            p.translate(stepLen);
+                            const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_tissue_material, state);
+                            cont = intRes.particleAlive;
+                            scoreDose(p, intRes.energyImparted);
+                        } else {
+                            p.border_translate(intTissue.intersection);
+                        }
                     } else {
-                        p.border_translate(intTissue.intersection);
+                        // starts in skin and goes to tissue
+                        const auto att = m_skin_material.attenuationValues(p.energy);
+                        const auto attSumInv = 1 / (att.sum() * m_skin_density);
+                        const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+                        if (stepLen < intTissue.intersection) {
+                            p.translate(stepLen);
+                            const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
+                            cont = intRes.particleAlive;
+                            // no dose scoring in skin
+                        } else {
+                            p.border_translate(intTissue.intersection);
+                        }
                     }
                 } else {
-                    // starts in skin and goes to tissue
+                    // only intersects skin
                     const auto att = m_skin_material.attenuationValues(p.energy);
                     const auto attSumInv = 1 / (att.sum() * m_skin_density);
                     const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-                    if (stepLen < intTissue.intersection) {
+                    if (stepLen < intBreast.intersection) {
                         p.translate(stepLen);
                         const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                         cont = intRes.particleAlive;
                         // no dose scoring in skin
                     } else {
-                        p.border_translate(intTissue.intersection);
+                        p.border_translate(intBreast.intersection);
+                        cont = false;
                     }
                 }
             } else {
-                // only intersects skin
-                const auto att = m_skin_material.attenuationValues(p.energy);
-                const auto attSumInv = 1 / (att.sum() * m_skin_density);
-                const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-                if (stepLen < intBreast.intersection) {
-                    p.translate(stepLen);
-                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
-                    cont = intRes.particleAlive;
-                    // no dose scoring in skin
-                } else {
-                    p.border_translate(intBreast.intersection);
-                }
+                cont = false;
             }
         }
     }
