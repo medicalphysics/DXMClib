@@ -154,7 +154,8 @@ public:
             for (auto& item : m_items) {
                 const auto t_cand = item->intersect(particle);
                 if (t_cand.valid()) {
-                    if (t_cand.intersection < res.intersection) {
+                    const T border_delta = t_cand.rayOriginIsInsideItem ? T { -1E-6 } : T { 1E-6 };
+                    if (t_cand.intersection + border_delta < res.intersection) {
                         if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
                             res.intersection = t_cand.intersection;
                             res.item = item;
