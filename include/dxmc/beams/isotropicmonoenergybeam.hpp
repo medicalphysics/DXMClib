@@ -48,7 +48,7 @@ public:
 
     Particle<T> sampleParticle(RandomState& state) const noexcept
     {
-        auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
+        const auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
         const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
 
@@ -60,8 +60,6 @@ public:
             m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + dir[1] * sinz,
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
         };
-
-        // auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
 
         Particle<T> p = { .pos = m_pos,
             .dir = pdir,
