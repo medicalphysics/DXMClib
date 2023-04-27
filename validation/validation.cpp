@@ -517,7 +517,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons\n";
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     constexpr int NShells = 5;
     using Box = WorldBox<T, NShells, LOWENERGYCORRECTION>;
@@ -575,16 +575,15 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         const T x_ang = std::atan(T { 14 } / T { 66 });
         beam.setCollimationAngles(0, -y_ang_min, x_ang, y_ang_max);
     } else {
-        beam.setPosition({ 4, 0, 62 });
+        beam.setPosition({ 0, 0, 62 });
         beam.setDirectionCosines({ 1, 0, 0 }, { 0, -1, 0 });
         const T collanglex = std::atan(T { 14 } / T { 66 });
         const T collangley = std::atan(T { 13 } / T { 66 });
-        beam.setCollimationAngles(0, -collangley, collanglex, collangley);
-        beam.setCollimationAngles(0, 0, 0, 0);
+        beam.setCollimationAngles(0, -collangley, collanglex, collangley);        
     }
 
     Transport transport;
-    transport.setNumberOfThreads(1);
+    //transport.setNumberOfThreads(1);
     auto time_elapsed = runDispatcher(transport, world, beam);
 
     ResultPrint print;
