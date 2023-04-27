@@ -48,6 +48,20 @@ public:
     {
     }
 
+    void setMaterial(const Material2<T>& mat)
+    {
+        m_fillMaterial = mat;
+    }
+    void setMaterial(const Material2<T>& mat, T dens)
+    {
+        m_fillMaterial = mat;
+        m_fillMaterialDensity = std::abs(dens);
+    }
+    void setMaterialDensity(T dens)
+    {
+        m_fillMaterialDensity = std::abs(dens);
+    }
+
     template <AnyWorldItemType<Us...> U>
     auto& addItem(U& item)
     {
@@ -186,7 +200,7 @@ public:
                     continueSampling = p.energy > 0;
                 } else { // Free path is closer than object, we interact in the world empty space
                     p.translate(stepLenght);
-                    const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
+                    const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
                     m_dose.scoreEnergy(interactionResult.energyImparted);
@@ -194,7 +208,7 @@ public:
             } else { // We do not intersect any object
                 p.translate(stepLenght);
                 if (basicshape::AABB::pointInside(p.pos, m_aabb)) { // Are we still inside world?
-                    const auto interactionResult = interactions::interact(att, p, m_fillMaterial, state);
+                    const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
                     m_dose.scoreEnergy(interactionResult.energyImparted);

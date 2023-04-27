@@ -159,7 +159,7 @@ public:
                             p.translate(stepLen);
                             const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                             cont = intRes.particleAlive;
-                            // no dose scoring in skin
+                            m_skin_dose.scoreEnergy(intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
                         }
@@ -173,7 +173,7 @@ public:
                         p.translate(stepLen);
                         const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                         cont = intRes.particleAlive;
-                        // no dose scoring in skin
+                        m_skin_dose.scoreEnergy(intRes.energyImparted);
                     } else {
                         p.border_translate(intBreast.intersection);
                         cont = false;
@@ -187,9 +187,11 @@ public:
 
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
-        if (index >= m_dose_boxes.size())
-            return m_dose;
-        return m_dose_boxes[index].dose;
+        if (index < m_dose_boxes.size())
+            return m_dose_boxes[index].dose;
+        else if (index == m_dose_boxes.size())
+            return m_skin_dose;
+        return m_dose;
     }
 
 protected:
@@ -254,6 +256,7 @@ private:
     Material2<T, NMaterialShells> m_skin_material;
     Material2<T, NMaterialShells> m_tissue_material;
     DoseScore<T> m_dose;
+    DoseScore<T> m_skin_dose;
     std::array<DoseBoxChild, 7> m_dose_boxes;
 };
 }

@@ -115,7 +115,7 @@ public:
 
     void setEnergy(T energy) { m_energy = std::min(std::max(MIN_ENERGY<T>(), energy), MAX_ENERGY<T>()); }
 
-    T energy() { return m_energy; }
+    T energy() const { return m_energy; }
 
     const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
 
@@ -130,7 +130,6 @@ public:
 
     IsotropicMonoEnergyBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-
         IsotropicMonoEnergyBeamExposure<T> exp(m_pos, m_dirCosines, m_energy, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
         return exp;

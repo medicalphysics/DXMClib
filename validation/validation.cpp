@@ -517,7 +517,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons\n";
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     constexpr int NShells = 5;
     using Box = WorldBox<T, NShells, LOWENERGYCORRECTION>;
@@ -533,7 +533,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     auto water = Material::byWeight(water_w).value();
     auto pmma = Material::byWeight(pmma_w).value();
-    auto air = Material::byWeight(air_w).value();
+    auto air = Material2<T,5>::byWeight(air_w).value();
     auto breasttissue = Material::byWeight(breast_w).value();
     auto skin = Material::byWeight(skin_w).value();
 
@@ -548,6 +548,8 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     auto& breast = world.addItem<Breast>();
     breast.setSkinMaterial(skin, skin_d);
     breast.setTissueMaterial(breasttissue, breast_d);
+
+    world.setMaterial(air, air_d);
 
     world.build(std::sqrt(T { 66 } * T { 66 } * 2));
 
@@ -632,9 +634,9 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     constexpr T evNormal = T { 1000 } / (N_HISTORIES * N_EXPOSURES);
 
     res.volume = "Total body";
-    res.result = breast.dose(7).energyImparted() * evNormal;
-    res.result_std = breast.dose(7).stdEnergyImparted() * evNormal;
-    res.nEvents = breast.dose(7).numberOfEvents();
+    res.result = breast.dose(8).energyImparted() * evNormal;
+    res.result_std = breast.dose(8).stdEnergyImparted() * evNormal;
+    res.nEvents = breast.dose(8).numberOfEvents();
     print(res, false);
     std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_ev << ", difference: [" << (res.result / sim_ev - 1) * 100 << "%]\n";
     for (int i = 0; i < 7; ++i) {
@@ -647,8 +649,8 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     }
 
     VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4 + .2f);
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T { 0.1 });
+    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4 );
+    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 );
     viz.setDistance(600);
     viz.suggestFOV(5);
     int height = 1024;
@@ -1149,7 +1151,7 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
 
     /*
     success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
