@@ -149,6 +149,7 @@ public:
                             scoreDose(p, intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
+                            cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
                         }
                     } else {
                         // starts in skin and goes to tissue
@@ -162,6 +163,7 @@ public:
                             m_skin_dose.scoreEnergy(intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
+                            cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
                         }
                     }
                 } else {
@@ -229,20 +231,23 @@ protected:
             center[1] + radius,
             center[2] + halfHeight
         };
-        auto cyl = basicshape::cylinder::template intersect(p, center, radius, halfHeight);
-        const auto box = basicshape::AABB::template intersect(p, aabb);
-        if (cyl.valid() && box.valid()) {
-            if (basicshape::AABB::pointInside(p.pos, aabb)) {
-                cyl.intersection = std::min(cyl.intersection, box.intersection);
+        auto box = basicshape::AABB::template intersect(p, aabb);
+        if (box.valid()) {
+            const auto cyl = basicshape::cylinder::template intersect(p, center, radius, halfHeight);
+            if (cyl.valid()) {
+                box.rayOriginIsInsideItem = box.rayOriginIsInsideItem && cyl.rayOriginIsInsideItem;
+                if (box.rayOriginIsInsideItem) {
+                    box.intersection = std::min(cyl.intersection, box.intersection);
+                } else {
+                    box.intersection = std::max(cyl.intersection, box.intersection);
+                }
             } else {
-                cyl.intersection = std::max(cyl.intersection, box.intersection);
-                cyl.rayOriginIsInsideItem = false;
+                box.intersectionValid = false;
+                box.intersection = 0;
+                box.rayOriginIsInsideItem = false;
             }
-        } else {
-            cyl.intersectionValid = false;
         }
-
-        return cyl;
+        return box;
     }
 
 private:

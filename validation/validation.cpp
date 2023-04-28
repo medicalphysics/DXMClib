@@ -312,7 +312,7 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
 {
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr int NShells = 5;
     using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
@@ -354,7 +354,7 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
         beam.setPosition({ 0, -h, 0 });
         const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
         const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
-        const T x_ang = std::atan(T { 39 } / (2 * 180));
+        const T x_ang = std::tan(T { 39 } / (2 * 180));
         beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
     } else {
         const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
@@ -503,7 +503,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons\n";
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr int NShells = 5;
     using Box = WorldBox<T, NShells, LOWENERGYCORRECTION>;
@@ -525,7 +525,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     World world;
 
-    auto& body = world.addItem<Box>({ { -T { 17 }, -T { 15 }, -T { 15 }, T { 0 }, T { 15 }, T { 15 } } });
+    auto& body = world.addItem<Box>({ { -T { 17 }, -T { 15 }, -T { 15 }, T { 0}, T { 15 }, T { 15 } } });
     body.setMaterial(water, water_d);
     auto& uplate = world.addItem<Box>({ { T { 0 }, -T { 13 }, T { 2.5 }, T { 14 }, T { 13 }, T { 2.52 } } });
     uplate.setMaterial(pmma, pmma_d);
@@ -560,7 +560,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         const auto y_ang_min = std::acos(vectormath::angleBetween(d_vec, l_vec));
         const auto h_vec = vectormath::subtract(d_vec, { 0, 13, 0 });
         const auto y_ang_max = std::acos(vectormath::angleBetween(d_vec, h_vec));
-        const T x_ang = std::atan(T { 14 } / T { 66 });
+        const T x_ang = std::tan(T { 14 } / T { 66 });
         beam.setCollimationAngles(0, -y_ang_min, x_ang, y_ang_max);
     } else {
         beam.setPosition({ 0, 0, 62 });
@@ -571,6 +571,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     }
 
     Transport transport;
+    //transport.setNumberOfThreads(1);
     auto time_elapsed = runDispatcher(transport, world, beam);
 
     ResultPrint print;
@@ -1137,10 +1138,12 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
     success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
 
     /*
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
