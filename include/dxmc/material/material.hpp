@@ -351,8 +351,8 @@ protected:
 
         if (loglog) {
             // removing zero and negative items
-            auto last = std::remove_if(arr.begin(), arr.end(), [](const auto pair) -> bool {
-                return pair.first <= T { 0 };
+            auto last = std::remove_if(arr.begin(), arr.end(), [](const auto& pair) -> bool {
+                return pair.first <= T { 0 } || pair.second <= T { 0 };
             });
             arr.erase(last, arr.end());
 
@@ -380,6 +380,12 @@ protected:
         });
         if (std::distance(erase_from, arr.end()) != 0)
             arr.erase(erase_from, arr.end());
+
+        // we may encounter nan numbers, remove them:
+        auto last = std::remove_if(arr.begin(), arr.end(), [](const auto& pair) -> bool {
+            return !(std::isfinite(pair.first) && std::isfinite(pair.second));
+        });
+        arr.erase(last, arr.end());
 
         auto interpolator = CubicLSInterpolator(arr, nknots, true);
         return interpolator;
