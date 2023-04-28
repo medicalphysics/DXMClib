@@ -62,17 +62,16 @@ def plotCase2(dt_full, show=False):
 def plotCase3(dt_full, show=False):
     dt=dt_full[dt_full['Case']=="Case 3"]    
     dt_vol=dt[dt['Volume'] != 'Total body']
-    for forced in [0, 1]:
-        dt_f=dt_vol[dt_vol['Forced']==forced]
-        g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt_f )
-        fix_axis(g) 
-        plt.savefig("plots/Case3_volume{}.png".format("_forced" if forced==1 else ""), dpi=900)              
-        if show:
-            plt.show()
-        plt.clf()
+   
+    g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt_vol )
+    fix_axis(g)
+    plt.savefig("plots/Case3_volume.png", dpi=900)
+    if show:
+        plt.show()
+    plt.clf()
 
     dt_tot = dt[dt['Volume'] == "Total body"]
-    g = sns.catplot(x="Forced", y="Result",hue='Model', row='Specter', col='Mode', data=dt_tot )
+    g = sns.catplot(x="Specter", y="Result",hue='Model', col='Mode',  data=dt_tot )
     fix_axis(g, False)
     plt.savefig("plots/Case3_total_body.png", dpi=900)
     if show:

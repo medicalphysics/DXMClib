@@ -267,7 +267,7 @@ std::pair<T, std::map<std::size_t, T>> TG195_breast_tissue()
 
     const T gland_d = T { 1.04 };
 
-    // weighetd 20%gland 80% adipose
+    // weighetd 20% gland 80% adipose
     std::map<std::size_t, T> w;
     for (const auto [Z, n] : adipose_w) {
         if (!w.contains(Z))
@@ -306,8 +306,9 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-template <Floating T, int LOWENERGYCORRECTION = 2>
-bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
+template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case2AbsorbedEnergy(bool tomo = false)
 {
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
@@ -335,48 +336,66 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
     }
 
     world.build(T { 160 });
-    if (specter) {
-        IsotropicBeam<T> beam;
+
+    Beam beam;
+
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
         const auto specter = TG195_120KV<T>();
         beam.setEnergySpecter(specter);
-        beam.setNumberOfExposures(N_EXPOSURES);
-        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-        if (tomo) {
-            constexpr T alpha = 15 * DEG_TO_RAD<T>();
-            const T h = 180 * std::atan(alpha);
-            beam.setPosition({ 0, -h, 0 });
-            const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
-            const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
-            const T x_ang = std::atan(T { 39 } / (2 * 180));
-            beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
-        } else {
-            const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
-            beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
-        }
-        Transport transport;
-        auto time_elapsed = runDispatcher(transport, world, beam);
     } else {
-        IsotropicMonoEnergyBeam<T> beam;
         beam.setEnergy(T { 56.4 });
-        beam.setNumberOfExposures(N_EXPOSURES);
-        beam.setNumberOfParticlesPerExposure(N_HISTORIES);
-
-        if (tomo) {
-            constexpr T alpha = 15 * DEG_TO_RAD<T>();
-            const T h = 180 * std::atan(alpha);
-            beam.setPosition({ 0, -h, 0 });
-            const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
-            const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
-            const T x_ang = std::atan(T { 39 } / (2 * 180));
-            beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
-        } else {
-            const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
-            beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
-        }
-
-        Transport transport;
-        auto time_elapsed = runDispatcher(transport, world, beam);
     }
+    beam.setNumberOfExposures(N_EXPOSURES);
+    beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+
+    if (tomo) {
+        constexpr T alpha = 15 * DEG_TO_RAD<T>();
+        const T h = 180 * std::atan(alpha);
+        beam.setPosition({ 0, -h, 0 });
+        const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
+        const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
+        const T x_ang = std::atan(T { 39 } / (2 * 180));
+        beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
+    } else {
+        const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
+        beam.setCollimationAngles(-collangle, -collangle, collangle, collangle);
+    }
+
+    ResultKeys<T> res;
+    res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "120kVp" : "56.4keV";
+    res.rCase = "Case 2";
+    res.modus = tomo ? "tomosyntesis" : "radiography";
+    if (LOWENERGYCORRECTION == 0)
+        res.model = "NoneLC";
+    if (LOWENERGYCORRECTION == 1)
+        res.model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        res.model = "IA";
+
+    std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons with low en model: " << res.model << std::endl;
+
+    double TG195_value;
+    std::array<double, 9> TG195_voi_values;
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
+        if (tomo) {
+            TG195_value = 30923.13;
+            TG195_voi_values = { 30.35, 23.52, 31.64, 23.52, 8.90, 70.53, 47.74, 20.31, 12.51 };
+        } else {
+            TG195_value = 33125.98;
+            TG195_voi_values = { 24.97, 24.95, 33.52, 24.96, 24.97, 72.70, 49.99, 21.73, 13.48 };
+        }
+    } else {
+        if (tomo) {
+            TG195_value = 30883.83;
+            TG195_voi_values = { 33.08, 25.48, 34.63, 25.51, 9.79, 70.80, 51.06, 22.28, 13.54 };
+        } else {
+            TG195_value = 33171.40;
+            TG195_voi_values = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
+        }
+    }
+
+    Transport transport;
+    auto time_elapsed = runDispatcher(transport, world, beam);
 
     const auto& boxes = world.getItems<Box>();
     const auto& box = boxes.front();
@@ -398,28 +417,16 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         ev_events_vector[i] = box.dose(i).numberOfEvents();
     }
 
-    const auto ev_history = total_ev / (total_hist / 1000);
-    const auto ev_history_var = std::sqrt(total_ev_var) / (total_hist / 1000);
-
-    std::string model;
-    if (LOWENERGYCORRECTION == 0)
-        model = "NoneLC";
-    if (LOWENERGYCORRECTION == 1)
-        model = "Livermore";
-    if (LOWENERGYCORRECTION == 2)
-        model = "IA";
-
-    ResultKeys<T> res;
-    res.specter = specter ? "120kVp" : "56.4keV";
-    res.rCase = "Case 2";
     res.volume = "Total body";
-    res.model = model;
-    res.result = ev_history;
-    res.result_std = ev_history_var;
-    res.modus = tomo ? "tomosyntesis" : "radiography";
+    res.result = total_ev / (total_hist / 1000);
+    res.result_std = std::sqrt(total_ev_var) / (total_hist / 1000);
     res.nEvents = total_number_events;
+
     ResultPrint print;
     print(res, false);
+
+    std::cout << "Whole body: " << res.result << " eV/history, TG195: " << TG195_value << " eV/history";
+    std::cout << ", difference: " << res.result - TG195_value << " ev/history [" << (res.result / TG195_value - 1) * 100 << "]%  \n";
 
     std::map<std::size_t, std::array<T, 3>> vois;
     vois[3] = { 0, 0, 0 };
@@ -461,27 +468,10 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
         }
         res.result /= (total_hist / 1000);
         res.result_std = std::sqrt(res.result_std) / (total_hist / 1000);
+        const auto TG195_sub_value = TG195_voi_values[ind - 1];
+        std::cout << res.volume << ": " << res.result << " eV/history, TG195: " << TG195_sub_value << " eV/history";
+        std::cout << ", difference: " << res.result - TG195_sub_value << " ev/history [" << (res.result / TG195_sub_value - 1) * 100 << "]%  \n";
         print(res, false);
-    }
-
-    double TG195_value;
-    std::array<double, 9> TG195_voi_values;
-    if (specter) {
-        if (tomo) {
-            TG195_value = 30923.13;
-            TG195_voi_values = { 30.35, 23.52, 31.64, 23.52, 8.90, 70.53, 47.74, 20.31, 12.51 };
-        } else {
-            TG195_value = 33125.98;
-            TG195_voi_values = { 24.97, 24.95, 33.52, 24.96, 24.97, 72.70, 49.99, 21.73, 13.48 };
-        }
-    } else {
-        if (tomo) {
-            TG195_value = 30883.83;
-            TG195_voi_values = { 33.08, 25.48, 34.63, 25.51, 9.79, 70.80, 51.06, 22.28, 13.54 };
-        } else {
-            TG195_value = 33171.40;
-            TG195_voi_values = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
-        }
     }
 
     if (LOWENERGYCORRECTION == 0) {
@@ -497,10 +487,6 @@ bool TG195Case2AbsorbedEnergy(bool specter = false, bool tomo = false)
             print(res, false);
         }
     }
-
-    std::cout << "TG195 Case 2 for " << res.modus << " orientation and " << res.specter << " photons\n";
-    std::cout << "Whole body: " << ev_history << " eV/history, TG195: " << TG195_value << " eV/history";
-    std::cout << ", difference: " << ev_history - TG195_value << " ev/history [" << (ev_history / TG195_value - 1) * 100 << "]%  \n";
 
     return true;
 }
@@ -533,7 +519,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     auto water = Material::byWeight(water_w).value();
     auto pmma = Material::byWeight(pmma_w).value();
-    auto air = Material2<T,5>::byWeight(air_w).value();
+    auto air = Material2<T, 5>::byWeight(air_w).value();
     auto breasttissue = Material::byWeight(breast_w).value();
     auto skin = Material::byWeight(skin_w).value();
 
@@ -649,8 +635,8 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     }
 
     VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4 );
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 );
+    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4);
+    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4);
     viz.setDistance(600);
     viz.suggestFOV(5);
     int height = 1024;
@@ -1152,22 +1138,40 @@ bool runAll()
 {
     auto success = true;
     success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
 
     /*
-    success = success && TG195Case2AbsorbedEnergy<T, 0>(false, false);
-    success = success && TG195Case2AbsorbedEnergy<T, 0>(true, false);
-    success = success && TG195Case2AbsorbedEnergy<T, 0>(false, true);
-    success = success && TG195Case2AbsorbedEnergy<T, 0>(true, true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 0>(true);
 
-    success = success && TG195Case2AbsorbedEnergy<T, 1>(false, false);
-    success = success && TG195Case2AbsorbedEnergy<T, 1>(true, false);
-    success = success && TG195Case2AbsorbedEnergy<T, 1>(false, true);
-    success = success && TG195Case2AbsorbedEnergy<T, 1>(true, true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
 
-    success = success && TG195Case2AbsorbedEnergy<T, 2>(false, false);
-    success = success && TG195Case2AbsorbedEnergy<T, 2>(true, false);
-    success = success && TG195Case2AbsorbedEnergy<T, 2>(false, true);
-    success = success && TG195Case2AbsorbedEnergy<T, 2>(true, true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 3>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 3>(true);
+
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 0>(true);
+
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
+
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 3>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 3>(true);
 
     success = success && TG195Case41AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case41AbsorbedEnergy<T, 1>(false, false);
