@@ -30,6 +30,7 @@ Copyright 2023 Erlend Andersen
 #include <fstream>
 #include <iostream>
 #include <numbers>
+#include <map>
 
 using namespace dxmc;
 
@@ -217,6 +218,8 @@ bool testCompoundAttenuation()
                 static_cast<T>(CS_Compt_CP(n_c, e, nullptr)),
             };
 
+            
+
             valid = valid && std::abs(xlib[0] / att.photoelectric - 1) < lim;
             // valid = valid && std::abs(xlib[1] / att.coherent - 1) < lim;
             valid = valid && std::abs(xlib[2] / att.incoherent - 1) < lim;
@@ -257,10 +260,99 @@ bool testTotalAttenuationWater()
     return max_diff < 0.01;
 }
 
+template <dxmc::Floating T>
+std::pair<T, std::map<std::size_t, T>> TG195_breast_tissue()
+{
+    std::map<std::size_t, T> adipose_w;
+    adipose_w[1] = T { 11.2 };
+    adipose_w[6] = T { 61.9 };
+    adipose_w[7] = T { 1.7 };
+    adipose_w[8] = T { 25.1 };
+    adipose_w[15] = T { 0.025 };
+    adipose_w[16] = T { 0.025 };
+    adipose_w[19] = T { 0.025 };
+    adipose_w[20] = T { 0.025 };
+
+    const T adipose_d = T { 0.93 };
+
+    std::map<std::size_t, T> gland_w;
+    gland_w[1] = T { 10.2 };
+    gland_w[6] = T { 18.4 };
+    gland_w[7] = T { 3.2 };
+    gland_w[8] = T { 67.7 };
+    gland_w[15] = T { 0.125 };
+    gland_w[16] = T { 0.125 };
+    gland_w[19] = T { 0.125 };
+    gland_w[20] = T { 0.125 };
+
+    const T gland_d = T { 1.04 };
+
+    // weighetd 20% gland 80% adipose
+    std::map<std::size_t, T> w;
+    for (const auto [Z, n] : adipose_w) {
+        if (!w.contains(Z))
+            w[Z] = T { 0 };
+        w[Z] += n * T { 0.8 };
+    }
+    for (const auto [Z, n] : gland_w) {
+        if (!w.contains(Z))
+            w[Z] = T { 0 };
+        w[Z] += n * T { 0.2 };
+    }
+    const T d = adipose_d * T { 0.8 } + gland_d * T { 0.2 };
+
+    return std::make_pair(d, w);
+}
+
+template <dxmc::Floating T>
+bool testAttenuationTG195Breast()
+{
+
+    auto [d, w] = TG195_breast_tissue<T>();
+
+    T wsum = 0;
+    for (auto [n, ww] : w) {
+        wsum += ww;
+    }
+
+    auto mat = dxmc::Material2<T, 5>::byWeight(w).value();
+    std::cout << "E, Photo_dxmc, Comp_dxmc, Ray_dxmc, Photo_xlib, Comp_xlib, Ray_xlib\n";
+    for (T e = dxmc::MIN_ENERGY<T>(); e < dxmc::MAX_ENERGY<T>(); e = e + T { 1 }) {
+        auto att = mat.attenuationValues(e);
+        std::cout << e << ", ";
+        std::cout << att.photoelectric << ", " << att.incoherent << ", " << att.coherent << ", ";
+
+        std::array<T, 3> xlib = { 0, 0, 0 };
+
+        for (auto [n, ww] : w) {
+            /* std::array<T, 3> part = {
+                static_cast<T>(CS_Photo(n, e, nullptr)),                
+                static_cast<T>(CS_Compt(n, e, nullptr)),
+                static_cast<T>(CS_Rayl(n, e, nullptr))
+            };*/
+
+            auto atom = dxmc::AtomHandler<T>::Atom(n);
+            std::array<T, 3> part = {
+                dxmc::interpolate(atom.photoel, e),
+                dxmc::interpolate(atom.incoherent, e),
+                dxmc::interpolate(atom.coherent, e)
+            };
+            for (int i = 0; i < 3; ++i)
+                xlib[i] += part[i] * ww;
+        }
+        for (int i = 0; i < 3; ++i)
+            xlib[i] /= wsum;
+        std::cout << xlib[0] << ", " << xlib[1] << ", " << xlib[2] << "\n";
+    }
+    return false;
+}
+
 int main(int argc, char* argv[])
 {
 
     auto success = true;
+
+    success = success && testAttenuationTG195Breast<double>();
 
     success = success && testTotalAttenuationWater();
 
