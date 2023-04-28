@@ -29,8 +29,8 @@ Copyright 2023 Erlend Andersen
 #include <format>
 #include <fstream>
 #include <iostream>
-#include <numbers>
 #include <map>
+#include <numbers>
 
 using namespace dxmc;
 
@@ -218,8 +218,6 @@ bool testCompoundAttenuation()
                 static_cast<T>(CS_Compt_CP(n_c, e, nullptr)),
             };
 
-            
-
             valid = valid && std::abs(xlib[0] / att.photoelectric - 1) < lim;
             // valid = valid && std::abs(xlib[1] / att.coherent - 1) < lim;
             valid = valid && std::abs(xlib[2] / att.incoherent - 1) < lim;
@@ -326,7 +324,7 @@ bool testAttenuationTG195Breast()
 
         for (auto [n, ww] : w) {
             /* std::array<T, 3> part = {
-                static_cast<T>(CS_Photo(n, e, nullptr)),                
+                static_cast<T>(CS_Photo(n, e, nullptr)),
                 static_cast<T>(CS_Compt(n, e, nullptr)),
                 static_cast<T>(CS_Rayl(n, e, nullptr))
             };*/

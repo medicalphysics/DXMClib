@@ -234,7 +234,6 @@ protected:
         if (cyl.valid() && box.valid()) {
             if (basicshape::AABB::pointInside(p.pos, aabb)) {
                 cyl.intersection = std::min(cyl.intersection, box.intersection);
-                cyl.rayOriginIsInsideItem = true;
             } else {
                 cyl.intersection = std::max(cyl.intersection, box.intersection);
                 cyl.rayOriginIsInsideItem = false;
