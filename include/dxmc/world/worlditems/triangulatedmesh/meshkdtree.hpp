@@ -192,7 +192,7 @@ protected:
                         if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
                             res.intersection = *t_cand;
                             res.item = &triangle;
-                            res.rayOriginIsInsideItem = vectormath::dot(p.dir, triangle.planeVector()) > 0;
+                            res.rayOriginIsInsideItem = vectormath::dot(particle.dir, triangle.planeVector()) > 0;
                         }
                     }
                 }

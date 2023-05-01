@@ -19,10 +19,12 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
+#include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
@@ -49,6 +51,56 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     job.join();
     std::cout << std::string(message.length(), ' ') << "\r";
     return progress.totalTime();
+}
+
+template <typename T>
+void saveBinaryArray(const std::vector<T>& data, const std::string& name)
+{
+    auto myfile = std::fstream(name, std::ios::out | std::ios::binary);
+    const auto bytes = data.size() * sizeof(T);
+    myfile.write((char*)&data[0], bytes);
+    myfile.close();
+}
+
+template <dxmc::Floating T>
+bool testTriangularMesh()
+{
+    using Mesh = dxmc::TriangulatedMesh<T, 5, 1>;
+    using World = dxmc::World2<T, Mesh>;
+    using Triangle = dxmc::Triangle<T>;
+
+    std::vector<Triangle> triangles;
+    triangles.emplace_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
+    triangles.emplace_back({ { 1, 1, 1 }, { -1, -1, 1 }, { 1, -1, 1 } });
+    triangles.emplace_back({ { 1, -1, -1 }, { 1, -1, 1 }, { -1, -1, 1 } });
+    triangles.emplace_back({ { 1, -1, -1 }, { -1, -1, 1 }, { -1, -1, -1 } });
+    triangles.emplace_back({ { -1, -1, -1 }, { -1, -1, 1 }, { -1, 1, 1 } });
+    triangles.emplace_back({ { -1, -1, -1 }, { -1, 1, 1 }, { -1, 1, -1 } });
+    triangles.emplace_back({ { -1, 1, -1 }, { 1, 1, -1 }, { 1, -1, -1 } });
+    triangles.emplace_back({ { -1, 1, -1 }, { 1, -1, -1 }, { -1, -1, -1 } });
+    triangles.emplace_back({ { 1, 1, -1 }, { 1, 1, 1 }, { 1, -1, 1 } });
+    triangles.emplace_back({ { 1, 1, -1 }, { 1, -1, 1 }, { 1, -1, -1 } });
+    triangles.emplace_back({ { -1, 1, -1 }, { -1, 1, 1 }, { 1, 1, 1 } });
+    triangles.emplace_back({ { -1, 1, -1 }, { 1, 1, 1 }, { 1, 1, -1 } });
+    Mesh mesh(triangles);
+
+    World world;
+    world.addItem(mesh);
+
+    world.build();
+
+    dxmc::VisualizeWorld<T> viz(world);
+    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4);
+    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4);
+    viz.setDistance(600);
+    viz.suggestFOV(5);
+    int height = 1024;
+    int width = 1024;
+    std::vector<T> buffer(height * width * 4, T { 1 });
+    viz.generate(world, buffer, width, height);
+    saveBinaryArray(buffer, "color.bin");
+
+    return false;
 }
 
 template <typename T>
@@ -344,7 +396,6 @@ bool testAAVoxelGridTransport()
 template <typename T>
 bool testAAVoxelGrid()
 {
-
     dxmc::AAVoxelGrid<T, 5> item;
 
     auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
@@ -417,11 +468,11 @@ int main()
 {
     bool success = true;
     success = success && testCylinder<double>();
-    // success = success && testCTDI<double>();
+    success = success && testCTDI<double>();
 
-    // success = success && testAAVoxelGridTransport<double, 0>();
-    //  success = success && testAAVoxelGridTransport<float, 0>();
-    /* success = success && testAAVoxelGridTransport<float, 255>();
+    success = success && testAAVoxelGridTransport<double, 0>();
+    success = success && testAAVoxelGridTransport<float, 0>();
+    success = success && testAAVoxelGridTransport<float, 255>();
 
     success = success && testAAVoxelGrid<float>();
     success = success && testAAVoxelGrid<double>();
@@ -429,13 +480,6 @@ int main()
     success = success && testDepth<float>();
     success = success && testDepth<double>();
 
-    success = success && testTransport<float>();
-    success = success && testTransport<float>();
-    success = success && testTransport<float>();
-    success = success && testTransport<double>();
-    success = success && testTransport<double>();
-    success = success && testTransport<double>();
-    */
     if (success)
         return EXIT_SUCCESS;
 

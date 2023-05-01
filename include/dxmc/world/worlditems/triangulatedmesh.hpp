@@ -19,6 +19,9 @@ Copyright 2022 Erlend Andersen
 #pragma once
 
 #include "dxmc/floating.hpp"
+#include "dxmc/interactions.hpp"
+#include "dxmc/material/material.hpp"
+#include "dxmc/material/nistmaterials.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/meshkdtree.hpp"
@@ -31,11 +34,13 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class TriangulatedMesh final : public WorldItemBase<T> {
 public:
     TriangulatedMesh()
         : WorldItemBase<T>()
+        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
     {
     }
 
@@ -108,11 +113,11 @@ public:
         return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
 
-    VisualizationIntersectionResult<T, WorldBaseItem<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
         auto res = m_kdtree.intersect(p, m_aabb);
-        VisualizationIntersectionResult<T, WorldBaseItem<T>> res_int if (res.valid())
-        {
+        VisualizationIntersectionResult<T, WorldItemBase<T>> res_int;
+        if (res.valid()) {
             auto normal = res.item->planeVector();
             vectormath::normalize(normal);
             res_int.normal = normal;
@@ -123,9 +128,40 @@ public:
         return res_int;
     }
 
-    T transport(Particle<T>& p, RandomState& state) override
+    void transport(Particle<T>& p, RandomState& state) override
     {
-        return 0;
+        bool cont = true;
+        bool updateAtt = true;
+        dxmc::AttenuationValues<T> att;
+        T attSumInv;
+        while (cont) {
+            if (updateAtt) {
+                att = m_material.attenuationValues(p.energy);
+                attSumInv = 1 / (att * m_materialDensity);
+                updateAtt = false;
+            }
+
+            const auto intM = intersect(p);
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+            if (intM.intersection < stepLen) {
+                // transport to edge
+                p.border_translate(intM.intersection);
+                cont = false;
+            } else {
+                p.translate(stepLen);
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                updateAtt = intRes.particleEnergyChanged;
+                cont = intRes.particleAlive;
+                if (intRes.particleEnergyChanged) {
+                    m_dose.scoreEnergy(intRes.energyImparted);
+                }
+            }
+        }
+    }
+
+    void clearDose()
+    {
+        m_dose.clear();
     }
 
     std::array<T, 6> AABB() const override
@@ -134,7 +170,10 @@ public:
     }
 
 private:
+    T m_materialDensity = 1;
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    DoseScore<T> m_dose;
     MeshKDTree<T, Triangle<T>> m_kdtree;
+    Material2<T, NMaterialShells> m_material;
 };
 }
