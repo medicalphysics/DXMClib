@@ -43,11 +43,11 @@ public:
         , m_skin_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_tissue_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        translateBox(m_dose_boxes[0], { T { 5 }, T { -5 }, T { 0 } });
+        translateBox(m_dose_boxes[0], { T { 5 }, T { 5 }, T { 0 } });
         translateBox(m_dose_boxes[1], { T { 2 }, T { 0 }, T { 0 } });
         translateBox(m_dose_boxes[2], { T { 5 }, T { 0 }, T { 0 } });
         translateBox(m_dose_boxes[3], { T { 8 }, T { 0 }, T { 0 } });
-        translateBox(m_dose_boxes[4], { T { 5 }, T { 5 }, T { 0 } });
+        translateBox(m_dose_boxes[4], { T { 5 }, T { -5 }, T { 0 } });
         translateBox(m_dose_boxes[5], { T { 5 }, T { 0 }, T { -1.5f } });
         translateBox(m_dose_boxes[6], { T { 5 }, T { 0 }, T { 1.5f } });
     }

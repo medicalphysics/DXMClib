@@ -525,7 +525,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     World world;
 
-    auto& body = world.addItem<Box>({ { -T { 17 }, -T { 15 }, -T { 15 }, T { 0}, T { 15 }, T { 15 } } });
+    auto& body = world.addItem<Box>({ { -T { 17 }, -T { 15 }, -T { 15 }, T { 0 }, T { 15 }, T { 15 } } });
     body.setMaterial(water, water_d);
     auto& uplate = world.addItem<Box>({ { T { 0 }, -T { 13 }, T { 2.5 }, T { 14 }, T { 13 }, T { 2.52 } } });
     uplate.setMaterial(pmma, pmma_d);
@@ -537,7 +537,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     world.setMaterial(air, air_d);
 
-    world.build(std::sqrt(T { 66 } * T { 66 } * 2));
+    world.build(std::sqrt(T { 66 } * T { 66 }));
 
     Beam beam;
     if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
@@ -550,20 +550,20 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     beam.setNumberOfParticlesPerExposure(N_HISTORIES);
     if (tomo) {
         constexpr T alpha = 15 * DEG_TO_RAD<T>();
-        const auto beampos = vectormath::subtract(vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha), { 0, 0, 4 });
+        const auto beampos = vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
         beam.setPosition(beampos);
         const auto cosy = vectormath::rotate({ 0, -1, 0 }, { 1, 0, 0 }, alpha);
         beam.setDirectionCosines({ 1, 0, 0 }, cosy);
 
         const auto d_vec = vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
         const auto l_vec = vectormath::add(d_vec, { 0, 13, 0 });
-        const auto y_ang_min = std::acos(vectormath::angleBetween(d_vec, l_vec));
+        const auto y_ang_min = std::acos(vectormath::dot(d_vec, l_vec) / vectormath::lenght(d_vec) / vectormath::lenght(l_vec));
         const auto h_vec = vectormath::subtract(d_vec, { 0, 13, 0 });
-        const auto y_ang_max = std::acos(vectormath::angleBetween(d_vec, h_vec));
+        const auto y_ang_max = std::acos(vectormath::dot(d_vec, h_vec) / vectormath::lenght(d_vec) / vectormath::lenght(h_vec));
         const T x_ang = std::tan(T { 14 } / T { 66 });
         beam.setCollimationAngles(0, -y_ang_min, x_ang, y_ang_max);
     } else {
-        beam.setPosition({ 0, 0, 62 });
+        beam.setPosition({ 0, 0, T { 66.0 } });
         beam.setDirectionCosines({ 1, 0, 0 }, { 0, -1, 0 });
         const T collanglex = std::atan(T { 14 } / T { 66 });
         const T collangley = std::atan(T { 13 } / T { 66 });
@@ -571,7 +571,6 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     }
 
     Transport transport;
-    //transport.setNumberOfThreads(1);
     auto time_elapsed = runDispatcher(transport, world, beam);
 
     ResultPrint print;
@@ -926,10 +925,6 @@ std::vector<T> readBinaryArray(const std::string& path, std::size_t array_size)
 template <Floating T, std::size_t NMATSHELLS = 5, int LOWENERGYCORRECTION = 2, int TRANSPARENTVOXEL = 255>
 std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::vector<std::pair<T, std::string>>> generateTG195World5()
 {
-    std::vector<std::map<std::size_t, T>> mat;
-    mat.push_back({ { 6, .0124f }, { 7, 75.5268 }, { 18, 1.2827 } }); // air
-    mat.push_back({ { 1, 7.8f }, { 6, 64.7 }, { 7, 8.4 }, { 8, 19.1 } }); // foam
-
     std::vector<std::string> matFormula = {
         "C0.015019N78.443071O21.074800Ar0.467110",
         "H51.869709C36.108118N4.019974O8.002200",
@@ -1138,14 +1133,7 @@ template <typename T>
 bool runAll()
 {
     auto success = true;
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
 
-    /*
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
@@ -1192,22 +1180,20 @@ bool runAll()
     success = success && TG195Case41AbsorbedEnergy<T, 1>(true, true);
     success = success && TG195Case41AbsorbedEnergy<T, 2>(true, true);
 
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>( false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>( true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>( false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>( true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>(true);
 
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
 
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>( false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>( true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>( false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>( true);
-
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>( false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>( true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>( false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>( true);
-
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>(true);
 
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 0>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
@@ -1215,7 +1201,7 @@ bool runAll()
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 2>();
     success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>();
-    */
+
     return success;
 }
 
