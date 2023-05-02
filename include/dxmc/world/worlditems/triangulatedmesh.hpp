@@ -46,12 +46,16 @@ public:
 
     TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
+        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
     {
         setData(triangles, max_tree_dept);
     }
 
     TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
+        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
     {
         STLReader<T> reader;
         auto triangles = reader(path);
@@ -60,6 +64,8 @@ public:
 
     TriangulatedMesh(const std::string& path, T scale, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
+        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
     {
         STLReader<T> reader;
         auto triangles = reader(path);
@@ -137,7 +143,7 @@ public:
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att * m_materialDensity);
+                attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
 
@@ -157,6 +163,10 @@ public:
                 }
             }
         }
+    }
+    const DoseScore<T>& dose(std::size_t index) const override
+    {
+        return m_dose;
     }
 
     void clearDose()

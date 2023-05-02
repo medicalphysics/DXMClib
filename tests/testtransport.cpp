@@ -70,28 +70,28 @@ bool testTriangularMesh()
     using Triangle = dxmc::Triangle<T>;
 
     std::vector<Triangle> triangles;
-    triangles.emplace_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
-    triangles.emplace_back({ { 1, 1, 1 }, { -1, -1, 1 }, { 1, -1, 1 } });
-    triangles.emplace_back({ { 1, -1, -1 }, { 1, -1, 1 }, { -1, -1, 1 } });
-    triangles.emplace_back({ { 1, -1, -1 }, { -1, -1, 1 }, { -1, -1, -1 } });
-    triangles.emplace_back({ { -1, -1, -1 }, { -1, -1, 1 }, { -1, 1, 1 } });
-    triangles.emplace_back({ { -1, -1, -1 }, { -1, 1, 1 }, { -1, 1, -1 } });
-    triangles.emplace_back({ { -1, 1, -1 }, { 1, 1, -1 }, { 1, -1, -1 } });
-    triangles.emplace_back({ { -1, 1, -1 }, { 1, -1, -1 }, { -1, -1, -1 } });
-    triangles.emplace_back({ { 1, 1, -1 }, { 1, 1, 1 }, { 1, -1, 1 } });
-    triangles.emplace_back({ { 1, 1, -1 }, { 1, -1, 1 }, { 1, -1, -1 } });
-    triangles.emplace_back({ { -1, 1, -1 }, { -1, 1, 1 }, { 1, 1, 1 } });
-    triangles.emplace_back({ { -1, 1, -1 }, { 1, 1, 1 }, { 1, 1, -1 } });
-    Mesh mesh(triangles);
+    triangles.push_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
+    triangles.push_back({ { 1, 1, 1 }, { -1, -1, 1 }, { 1, -1, 1 } });
+    triangles.push_back({ { 1, -1, -1 }, { 1, -1, 1 }, { -1, -1, 1 } });
+    triangles.push_back({ { 1, -1, -1 }, { -1, -1, 1 }, { -1, -1, -1 } });
+    triangles.push_back({ { -1, -1, -1 }, { -1, -1, 1 }, { -1, 1, 1 } });
+    triangles.push_back({ { -1, -1, -1 }, { -1, 1, 1 }, { -1, 1, -1 } });
+    triangles.push_back({ { -1, 1, -1 }, { 1, 1, -1 }, { 1, -1, -1 } });
+    triangles.push_back({ { -1, 1, -1 }, { 1, -1, -1 }, { -1, -1, -1 } });
+    triangles.push_back({ { 1, 1, -1 }, { 1, 1, 1 }, { 1, -1, 1 } });
+    triangles.push_back({ { 1, 1, -1 }, { 1, -1, 1 }, { 1, -1, -1 } });
+    triangles.push_back({ { -1, 1, -1 }, { -1, 1, 1 }, { 1, 1, 1 } });
+    triangles.push_back({ { -1, 1, -1 }, { 1, 1, 1 }, { 1, 1, -1 } });
 
     World world;
-    world.addItem(mesh);
+    // Mesh mesh(triangles);
+    auto& mesh = world.addItem<Mesh>({ triangles });
 
     world.build();
 
     dxmc::VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4);
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4);
+    viz.setPolarAngle(std::numbers::pi_v<T> * 1.0f / 3.0f);
+    viz.setAzimuthalAngle(std::numbers::pi_v<T> * 2.0f / 3.0f);
     viz.setDistance(600);
     viz.suggestFOV(5);
     int height = 1024;
@@ -467,6 +467,9 @@ bool testAAVoxelGrid()
 int main()
 {
     bool success = true;
+
+    success = success && testTriangularMesh<double>();
+
     success = success && testCylinder<double>();
     success = success && testCTDI<double>();
 

@@ -202,11 +202,11 @@ protected:
 
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            const auto hit_left = m_left->intersect(particle, tbox);
-            const auto hit_right = m_right->intersect(particle, tbox);
-            if (hit_left && hit_right)
-                return std::min(hit_left, hit_right);
-            if (!hit_left)
+            auto hit_left = m_left->intersect(particle, tbox);
+            auto hit_right = m_right->intersect(particle, tbox);
+            if (hit_left.valid() && hit_right.valid())
+                return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
+            if (hit_right.valid())
                 return hit_right;
             return hit_left;
         }
@@ -226,9 +226,9 @@ protected:
 
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
-        const auto hit = front->intersect(particle, t_front);
-        if (hit) {
-            if (*hit <= t) {
+        auto hit = front->intersect(particle, t_front);
+        if (hit.valid()) {
+            if (hit.intersection <= t) {
                 return hit;
             }
         }
