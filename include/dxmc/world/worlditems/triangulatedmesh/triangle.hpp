@@ -51,7 +51,7 @@ public:
             }
     }
     auto operator<=>(const Triangle<T>& other) const = default;
-    
+
     void translate(const std::array<T, 3>& dist)
     {
         std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
@@ -68,10 +68,14 @@ public:
             }
         });
     }
-    
+
     std::array<T, 3> planeVector() const noexcept
     {
-        return vectormath::cross(m_vertices[0], m_vertices[1]);
+        const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
+        const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
+        auto n = vectormath::cross(a, b);
+        vectormath::normalize(n);
+        return n;
     }
 
     const std::array<std::array<T, 3>, 3>& vertices() const

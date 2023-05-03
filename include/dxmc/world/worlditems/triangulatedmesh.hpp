@@ -164,6 +164,7 @@ public:
             }
         }
     }
+
     const DoseScore<T>& dose(std::size_t index) const override
     {
         return m_dose;

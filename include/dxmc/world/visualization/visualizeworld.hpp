@@ -110,7 +110,7 @@ public:
                 p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
                 const auto res = world.intersectVisualization(p);
                 if (res.valid()) {
-                    const auto scaling = std::clamp(vectormath::dot(p.dir, res.normal), T { 0.5 }, T { 1 });
+                    const auto scaling = std::abs(vectormath::dot(p.dir, res.normal));
                     for (const auto& cmap : colors) {
                         if (cmap.first == res.item) {
                             for (int i = 0; i < 3; ++i) {
