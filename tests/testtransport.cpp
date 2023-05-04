@@ -68,6 +68,7 @@ bool testTriangularMesh()
     using Mesh = dxmc::TriangulatedMesh<T, 5, 1>;
     using World = dxmc::World2<T, Mesh>;
     using Triangle = dxmc::Triangle<T>;
+    using Box = dxmc::WorldBox<T, 5, 1>;
 
     std::vector<Triangle> triangles;
     triangles.push_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
@@ -86,8 +87,34 @@ bool testTriangularMesh()
     World world;
     // Mesh mesh(triangles);
     auto& mesh = world.addItem<Mesh>({ triangles });
-
+    mesh.setNistMaterial("Water, Liquid");
     world.build();
+
+    dxmc::World2<T, Box> worldBox;
+    auto& box = worldBox.addItem<Box>({ 1 });
+    box.setNistMaterial("Water, Liquid");
+    worldBox.build();
+
+    using Beam = dxmc::IsotropicMonoEnergyBeam<T>;
+
+    Beam beam;
+    beam.setPosition({ 0, 0, -1 });
+    beam.setDirectionCosines({ 1, 0, 0, 0, 1, 0 });
+    beam.setEnergy(60);
+    beam.setNumberOfExposures(32);
+    beam.setNumberOfParticlesPerExposure(1E5);
+
+    dxmc::Transport transport;
+    transport(world, beam);
+    transport(worldBox, beam);
+
+    const auto& dose = mesh.dose();
+    const auto& doseBox = box.dose();
+
+    std::cout << "Mesh: " << dose.energyImparted() << ", [" << dose.stdEnergyImparted() << "]\n";
+    std::cout << "Box: " << doseBox.energyImparted() << ", [" << doseBox.stdEnergyImparted() << "]\n";
+    auto test = (dose.energyImparted() - doseBox.energyImparted()) / std::sqrt((dose.varianceEnergyImparted() + doseBox.varianceEnergyImparted()) / 2);
+    std::cout << "t-test: " << test << "\n";
 
     dxmc::VisualizeWorld<T> viz(world);
     viz.setPolarAngle(std::numbers::pi_v<T> * 1.0f / 3.0f);
