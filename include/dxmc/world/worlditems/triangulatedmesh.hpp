@@ -75,6 +75,33 @@ public:
         setData(triangles, max_tree_dept);
     }
 
+    void setMaterial(const Material2<T, NMaterialShells>& mat)
+    {
+        m_material = mat;
+    }
+
+    void setMaterialDensity(T dens)
+    {
+        m_materialDensity = std::abs(dens);
+    }
+
+    void setMaterial(const Material2<T, NMaterialShells>& mat, T dens)
+    {
+        m_material = mat;
+        setMaterialDensity(dens);
+    }
+
+    bool setNistMaterial(const std::string& nist_name)
+    {
+        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
+        if (mat) {
+            m_material = mat.value();
+            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            return true;
+        }
+        return false;
+    }
+
     const MeshKDTree<T, Triangle<T>>& kdtree() const
     {
         return m_kdtree;
@@ -165,7 +192,7 @@ public:
         }
     }
 
-    const DoseScore<T>& dose(std::size_t index) const override
+    const DoseScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
     }
