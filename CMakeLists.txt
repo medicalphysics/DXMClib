@@ -111,6 +111,8 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/stlreader.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/meshkdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/thetrahedalmesh.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/thetrahedalmesh/thetrahedron.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/aabb.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/cylinder.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/sphere.hpp"

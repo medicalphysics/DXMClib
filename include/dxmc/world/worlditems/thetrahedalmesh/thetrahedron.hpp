@@ -13,7 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #pragma once
@@ -24,40 +24,40 @@ Copyright 2022 Erlend Andersen
 
 #include <algorithm>
 #include <array>
-#include <execution>
 #include <optional>
 
 namespace dxmc {
 
 template <Floating T>
-class Triangle {
+class Thetrahedron {
 public:
-    Triangle(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third)
+    Thetrahedron(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third, const std::array<T, 3>& fourth)
     {
         m_vertices[0] = first;
         m_vertices[1] = second;
         m_vertices[2] = third;
+        m_vertices[3] = fourth;
     }
 
-    Triangle(const std::array<std::array<T, 3>, 3>& vertices)
+    Thetrahedron(const std::array<std::array<T, 3>, 4>& vertices)
         : m_vertices(vertices)
     {
     }
 
-    Triangle(const T* first_element)
+    Thetrahedron(const T* first_element)
     {
-        for (std::size_t i = 0; i < 3; ++i)
+        for (std::size_t i = 0; i < 4; ++i)
             for (std::size_t j = 0; j < 3; ++j) {
                 const auto flatIdx = i * 3 + j;
                 m_vertices[i][j] = *(first_element + flatIdx);
             }
     }
 
-    auto operator<=>(const Triangle<T>& other) const = default;
+    auto operator<=>(const Thetrahedron<T>& other) const = default;
 
     void translate(const std::array<T, 3>& dist)
     {
-        std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
+        std::for_each(m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
                 vert[i] += dist[i];
             }
@@ -66,23 +66,14 @@ public:
 
     void scale(T scale)
     {
-        std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
+        std::for_each(m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
                 vert[i] *= scale;
             }
         });
     }
 
-    std::array<T, 3> planeVector() const noexcept
-    {
-        const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
-        const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
-        auto n = vectormath::cross(a, b);
-        vectormath::normalize(n);
-        return n;
-    }
-
-    const std::array<std::array<T, 3>, 3>& vertices() const
+    const std::array<std::array<T, 4>, 3>& vertices() const
     {
         return m_vertices;
     }
@@ -94,7 +85,7 @@ public:
             for (std::size_t i = 0; i < 3; i++)
                 cent[i] += vert[i];
         }
-        constexpr T factor { 1 / 3.0 };
+        constexpr T factor { 1 / 4.0 };
         for (std::size_t i = 0; i < 3; i++)
             cent[i] *= factor;
         return cent;
@@ -109,7 +100,7 @@ public:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
         };
-        for (std::size_t j = 0; j < 3; j++) {
+        for (std::size_t j = 0; j < 4; j++) {
             for (std::size_t i = 0; i < 3; i++) {
                 aabb[i] = std::min(aabb[i], m_vertices[j][i]);
             }
@@ -121,40 +112,38 @@ public:
         return aabb;
     }
 
-    template <int FORWARD = 1>
     std::optional<T> intersect(const Particle<T>& particle) const
     {
-        const auto& v1 = m_vertices[0];
-        const auto& v2 = m_vertices[1];
-        const auto& v3 = m_vertices[2];
+        // Plucker coordinates
+        std::array<std::array<T, 3>, 2> p = { particle.dir, vectormath::cross(particle.dir, particle.pos) };
 
-        const std::array<T, 3> v1v2 { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
-        const std::array<T, 3> v1v3 { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
-        const auto& pvec = vectormath::cross(particle.dir, v1v3);
-        const auto det = vectormath::dot(v1v2, pvec);
+        auto s0_dir = vectormath::subtract(m_vertices[2], m_vertices[1]);
+        std::array<std::array<T, 3>, 2> s0 = { s0_dir, vectormath::cross(s0_dir, m_vertices[1]) };
+        auto s1_dir = vectormath::subtract(m_vertices[0], m_vertices[2]);
+        std::array<std::array<T, 3>, 2> s1 = { s1_dir, vectormath::cross(s1_dir, m_vertices[2]) };
+        auto s2_dir = vectormath::subtract(m_vertices[1], m_vertices[0]);
+        std::array<std::array<T, 3>, 2> s2 = { s2_dir, vectormath::cross(s2_dir, m_vertices[0]) };
 
-        if (std::abs(det) <= std::numeric_limits<T>::epsilon())
-            return std::nullopt;
+        auto r0 = inner_product(p, s0);
+        auto r1 = inner_product(p, s1);
+        auto r2 = inner_product(p, s2);
 
-        const T invDet = T { 1 } / det;
+        constexpr T e = sizeof(T) == 4 ? 1e-5 : 1E-7;
 
-        const std::array<T, 3> tvec { particle.pos[0] - v1[0], particle.pos[1] - v1[1], particle.pos[2] - v1[2] };
-        const T u = vectormath::dot(tvec, pvec) * invDet;
-        if (u < T { 0 } || u > T { 1 })
-            return std::nullopt;
+        if ((r0 >= -e && r1 >= -e && r2 >= -e) || (r0 <= e && r1 <= e && r2 <= e)) {
+            const auto idx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
+            const auto pend = (r0 * m_vertices[0][idx] + r1 * m_vertices[1][idx] + r2 * m_vertices[2][idx]) / (r0 + r1 + r2);
+            auto t = (pend - particle.pos[idx]) / particle.dir[idx];
 
-        const auto qvec = vectormath::cross(tvec, v1v2);
-        const T v = vectormath::dot(particle.dir, qvec) * invDet;
-        if (v < T { 0 } || u + v > T { 1 })
-            return std::nullopt;
-
-        const auto t = vectormath::dot(v1v3, qvec) * invDet;
-        if constexpr (FORWARD == 1)
-            return t > T { 0 } ? std::make_optional(t) : std::nullopt;
-        else if constexpr (FORWARD == -1)
-            return t < T { 0 } ? std::make_optional(t) : std::nullopt;
-        else
             return std::make_optional(t);
+        }
+        return std::nullopt;
+    }
+
+protected:
+    static T inner_product(const std::array<std::array<T, 3>, 2>& lh, const std::array<std::array<T, 3>, 2>& rh)
+    {
+        return vectormath::dot(lh[0], rh[1]) + vectormath::dot(lh[1], rh[0]);
     }
 
 private:
