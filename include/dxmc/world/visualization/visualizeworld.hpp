@@ -71,6 +71,7 @@ public:
         m_camera_pos[2] = std::acos(c[0] / std::sqrt(c[0] * c[0] + c[1] * c[1]));
         if (c[1] < 0)
             m_camera_pos[2] = -m_camera_pos[2];
+
     }
 
     void suggestFOV(T zoom = 1)
@@ -169,7 +170,10 @@ protected:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     void drawBeam(const B& beam, std::vector<U>& buffer, int width = 512, int height = 512) const
     {
-        const auto normal = vectormath::cross(m_camera_xcosine, m_camera_ycosine);
+        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
+        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
+
+        const auto normal = vectormath::cross(xcos, ycos);
 
         const auto& pstart3 = beam.position();
         const auto len = std::max(vectormath::lenght(vectormath::subtract(m_center, pstart3)), T { 10 });
@@ -285,8 +289,6 @@ private:
     std::array<T, 6> m_world_aabb;
     std::array<T, 3> m_center = { 0, 0, 0 };
     std::array<T, 3> m_camera_pos = { 100, 1.4, 1 };
-    std::array<T, 3> m_camera_xcosine = { 1, 0, 0 };
-    std::array<T, 3> m_camera_ycosine = { 0, 1, 0 };
     T m_fov = -1;
 };
 

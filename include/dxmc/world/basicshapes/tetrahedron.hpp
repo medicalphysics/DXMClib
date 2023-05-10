@@ -35,16 +35,19 @@ namespace basicshape {
         bool planeSidePositive(const std::array<T, 3>& po, const std::array<T, 3>& v0, const std::array<T, 3>& v1)
         {
             // v0 and v1 spans the plane
-            // o is point on plane
-            const auto op = vectormath::subtract(p, o);
+            // po is vector from ray pos and a point on the plane
 
             // (v0 x op) * (v0 x v1) = (v0*v0)*(op*v1) - (v0*v1)*(op*v0)
             //                       =       1*(op*v1) - (v0*v1)*(op*v0)
-            return vectormath::dot(op, v1) - vectormath::dot(v0, v1) * vectormath::dot(op, v0) > 0;
+            return vectormath::dot(po, v1) - vectormath::dot(v0, v1) * vectormath::dot(po, v0) > 0;
         }
 
         template <Floating T>
-        bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2, const std::array<T, 3>& v3)
+        bool pointInside(const std::array<T, 3>& pos,
+            const std::array<T, 3>& v0,
+            const std::array<T, 3>& v1,
+            const std::array<T, 3>& v2,
+            const std::array<T, 3>& v3)
         {
             const auto v0v1 = vectormath::subtract(v1, v0);
             const auto v1v2 = vectormath::subtract(v2, v1);
@@ -63,46 +66,37 @@ namespace basicshape {
             return pd0 && pd1 && pd2 && pd3;
         }
 
-        template <Floating T>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        template<Floating T>
+        inline T permuted_inner_product(const std::array<std::array<T, 3>, 2>& lh, const std::array<std::array<T, 3>, 2>& rh)
         {
+            // triple product a*(b x c)
+            return vectormath::dot(lh[0], rh[1]) + vectormath::dot(lh[1], rh[0]);
+        }
+
+        template <Floating T>
+        WorldIntersectionResult<T> intersect(const Particle<T>& p,
+            const std::array<T, 3>& v0,
+            const std::array<T, 3>& v1,
+            const std::array<T, 3>& v2,
+            const std::array<T, 3>& v3)
+        {
+            // intersection uing plucker coordinates
+
+            const std::array<std::array<T, 3>, 2> p = { particle.dir, vectormath::cross(particle.dir, particle.pos) };
+
+            // Faces: F3=(V0 V1 V2), F2=(V1 V0 V3), F1=(V2 V3 V0), F0=(V3 V2 V1)
+            // Edges: E30=(V1 V2), E31=(V2 V0), E32=(V0 V1)
+            // Edges: E20=(V0 V3), E21=(V3 V1), E22=(V1 V0)
+            // Edges: E10=(V3 V0), E11=(V0 V2), E12=(V2 V3)
+            // Edges: E00=(V2 V1), E01=(V1 V3), E02=(V3 V2)
+            
+            // Plucker coordinates for edges
+            const auto e30 = vectormath::subtract(v2, v1);
+            const std::array<std::array<T, 3>, 2> pe30 = { e30, vectormath::cross(e30, v1) };
+
+
+
             WorldIntersectionResult<T> res;
-            // nummeric stable ray sphere intersection
-            const auto r2 = radii * radii;
-            const auto f = vectormath::subtract(p.pos, center);
-
-            // positive b mean center of sphere is in front of ray
-            const auto b = -vectormath::dot(f, p.dir);
-
-            // positive c means ray starts outside of sphere
-            const auto c = vectormath::lenght_sqr(f) - r2;
-
-            if ((c > 0) && (b < 0)) {
-                // if ray starts outside sphere and center is begind ray
-                // we exit early
-                return res;
-            }
-
-            const auto delta1 = vectormath::lenght_sqr(vectormath::add(f, vectormath::scale(p.dir, b)));
-
-            const auto delta = r2 - delta1;
-
-            if (delta < 0) {
-                // no solution to the quadratic equation (we miss)
-                return res;
-            }
-
-            const int sign = b > 0 ? 1 : -1;
-            const auto q = b + sign * std::sqrt(delta);
-
-            if (c < 0 && b > 0) {
-                // inside sphere
-                res.rayOriginIsInsideItem = true;
-                res.intersection = q;
-            } else {
-                res.intersection = c / q;
-            }
-            res.intersectionValid = true;
             return res;
         }
 

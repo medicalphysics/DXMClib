@@ -71,7 +71,7 @@ bool testTriangularMesh()
     using Box = dxmc::WorldBox<T, 5, 1>;
 
     std::vector<Triangle> triangles;
-    triangles.push_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
+    /* triangles.push_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
     triangles.push_back({ { 1, 1, 1 }, { -1, -1, 1 }, { 1, -1, 1 } });
     triangles.push_back({ { 1, -1, -1 }, { 1, -1, 1 }, { -1, -1, 1 } });
     triangles.push_back({ { 1, -1, -1 }, { -1, -1, 1 }, { -1, -1, -1 } });
@@ -83,6 +83,12 @@ bool testTriangularMesh()
     triangles.push_back({ { 1, 1, -1 }, { 1, -1, 1 }, { 1, -1, -1 } });
     triangles.push_back({ { -1, 1, -1 }, { -1, 1, 1 }, { 1, 1, 1 } });
     triangles.push_back({ { -1, 1, -1 }, { 1, 1, 1 }, { 1, 1, -1 } });
+    */
+
+    triangles.push_back({ { 0, 0, 0 }, { 5, 0, 0 }, { 0, 5, 0 } });
+    triangles.push_back({ { 0, 0, 0 }, { 5, 0, 0 }, { 0, 0, 5 } });
+    triangles.push_back({ { 5, 0, 0 }, { 0, 5, 0 }, { 0, 0, 5 } });
+    triangles.push_back({ { 0, 0, 0 }, { 0, 0, 5 }, { 0, 5, 0 } });
 
     World world;
     // Mesh mesh(triangles);
@@ -105,8 +111,8 @@ bool testTriangularMesh()
     beam.setNumberOfParticlesPerExposure(1E5);
 
     dxmc::Transport transport;
-    transport(world, beam);
-    transport(worldBox, beam);
+    // transport(world, beam);
+    // transport(worldBox, beam);
 
     const auto& dose = mesh.dose();
     const auto& doseBox = box.dose();
@@ -118,8 +124,9 @@ bool testTriangularMesh()
 
     dxmc::VisualizeWorld<T> viz(world);
     viz.setPolarAngle(std::numbers::pi_v<T> * 1.0f / 3.0f);
-    viz.setAzimuthalAngle(std::numbers::pi_v<T> * 2.0f / 3.0f);
-    viz.setDistance(600);
+    viz.setAzimuthalAngle(std::numbers::pi_v<T> * 1.0f / 3.0f);    
+    viz.setDistance(60);
+    viz.setCameraPosition({ 30, 30,-10 });
     viz.suggestFOV(5);
     int height = 1024;
     int width = 1024;
