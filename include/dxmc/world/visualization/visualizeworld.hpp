@@ -62,6 +62,17 @@ public:
         m_camera_pos[2] = azimuthal;
     }
 
+    void setCameraPosition(const std::array<T, 3>& pos)
+    {
+        const auto c = vectormath::subtract(m_center, pos);
+        const auto l = vectormath::lenght(c);
+        m_camera_pos[0] = l;
+        m_camera_pos[1] = std::acos(c[2] / l);
+        m_camera_pos[2] = std::acos(c[0] / std::sqrt(c[0] * c[0] + c[1] * c[1]));
+        if (c[1] < 0)
+            m_camera_pos[2] = -m_camera_pos[2];
+    }
+
     void suggestFOV(T zoom = 1)
     {
         const auto [p1, p2] = vectormath::splice(m_world_aabb);
@@ -122,6 +133,7 @@ public:
                             }
                         }
                     }
+
                 } else {
                     for (int i = 0; i < 3; ++i) {
                         if constexpr (std::is_same<U, std::uint8_t>::value) {
