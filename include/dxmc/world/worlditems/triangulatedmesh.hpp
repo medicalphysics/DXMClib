@@ -115,13 +115,13 @@ public:
     void translate(const std::array<T, 3>& dist) override
     {
         m_kdtree.translate(dist);
-        m_aabb = m_kdtree.AABB();
+        m_aabb = expandAABB(m_kdtree.AABB());
     }
 
     void setData(std::vector<Triangle<T>> triangles, const std::size_t max_tree_dept)
     {
         m_kdtree.setData(triangles, max_tree_dept);
-        m_aabb = m_kdtree.AABB();
+        m_aabb = expandAABB(m_kdtree.AABB());
     }
 
     std::array<T, 3> center() const override
@@ -205,6 +205,17 @@ public:
     std::array<T, 6> AABB() const override
     {
         return m_aabb;
+    }
+
+protected:
+    static std::array<T, 6> expandAABB(std::array<T, 6> aabb)
+    {
+        // note we take copy of aabb
+        for (std::size_t i = 0; i < 3; ++i) {
+            aabb[i] -= GEOMETRIC_ERROR<T>();
+            aabb[i + 3] += GEOMETRIC_ERROR<T>();
+        }
+        return aabb;
     }
 
 private:
