@@ -27,6 +27,12 @@ Copyright 2020 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
+constexpr T GEOMETRIC_ERROR()
+{
+    return sizeof(T) == 4 ? T { 1E-5 } : T { 1E-6 };
+}
+
+template <Floating T>
 constexpr T MAX_ENERGY()
 {
     return T { DXMCLIB_MAXENERGY };
