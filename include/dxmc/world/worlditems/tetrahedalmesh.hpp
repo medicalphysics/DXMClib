@@ -25,7 +25,12 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
+
 #include <array>
+#include <string>
+#include <string_view>
 #include <vector>
 
 namespace dxmc {
@@ -37,5 +42,39 @@ public:
         : WorldItemBase<T>()
     {
     }
+
+    void readVertices(const std::string& path)
+    {
+        TetrahedalmeshReader<T> reader;
+        reader.readVertices(path);
+    }
+
+    void translate(const std::array<T, 3>& dist) override
+    {
+    }
+    std::array<T, 3> center() const override
+    {
+        return std::array<T, 3> { 0, 0, 0 };
+    }
+    std::array<T, 6> AABB() const override
+    {
+        return std::array<T, 6> { 0, 0, 0, 0, 0, 0 };
+    }
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
+    {
+        WorldIntersectionResult<T> res;
+        return res;
+    }
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
+    {
+        VisualizationIntersectionResult<T, WorldItemBase<T>> res;
+        return res;
+    }
+    const DoseScore<T>& dose(std::size_t index = 0) const override
+    {
+        return DoseScore<T> {};
+    }
+    void clearDose() override { }
+    void transport(Particle<T>& p, RandomState& state) override { }
 };
 }

@@ -5,6 +5,7 @@ set(TEST_SOURCES
     "testworld.cpp"
     "testbeams.cpp"
     "testtriangulatedmesh.cpp"
+    "testtetrahedalmesh.cpp"
     "testkdtree.cpp"
     "teststatickdtree.cpp"
     "testworlditems.cpp"
