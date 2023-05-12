@@ -20,11 +20,13 @@ Copyright 2022 Erlend Andersen
 
 #include <iostream>
 
-template<typename T>
-bool testReader() {
+template <typename T>
+bool testReader()
+{
 
     dxmc::ThetrahedalMesh<T> mesh;
-    mesh.readVertices("MRCP_AM.node");
+    mesh.readMesh("MRCP_AM.node", "MRCP_AM.ele");
+
     return false;
 }
 

@@ -43,10 +43,12 @@ public:
     {
     }
 
-    void readVertices(const std::string& path)
+    void readMesh(const std::string& vertices, const std::string& tetrahedalIndices)
     {
         TetrahedalmeshReader<T> reader;
-        reader.readVertices(path);
+        reader.readTetrahedalIndices(tetrahedalIndices);
+        reader.readVertices(vertices);
+        
     }
 
     void translate(const std::array<T, 3>& dist) override
