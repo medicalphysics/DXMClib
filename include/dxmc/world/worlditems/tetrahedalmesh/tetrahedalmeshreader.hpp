@@ -33,23 +33,26 @@ template <Floating T>
 class TetrahedalmeshReader {
 public:
     TetrahedalmeshReader() { }
-    bool readTetrahedalIndices(const std::string& path, int nHeaderLines = 1)
+
+    bool readICRP145Phantom(const std::string& nodeFile, const std::string& elementFile)
+    {
+        bool valid = readTetrahedalIndices(elementFile, 1, 80);
+        valid = valid && readVertices(nodeFile, 1, 80);
+        valid = valid && validateIndices();
+        return valid;
+    }
+
+    bool readTetrahedalIndices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
     {
         // reads a file formatted as <index n0 n1 n2 n3 matIdx000>, i.e "512 51 80 90 101"
 
-        // Open the file for reading
-        std::ifstream file(path);
-        if (!file.is_open()) {
+        const auto data = readBufferFromFile(path);
+        if (data.size() == 0)
             return false;
-        }
-
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        const auto data = buffer.str();
-        file.close();
 
         // finding line endings
         std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
+        lineIdx.reserve(data.size() / colLenght);
         std::size_t start = 0;
         for (std::size_t i = 0; i < data.size(); ++i) {
             if (data[i] == '\n') {
@@ -62,14 +65,21 @@ public:
         if (end - begin < 4)
             return false;
 
-        std::vector<std::array<std::size_t, 6>> nodes(lineIdx.size());
+        std::vector<std::array<std::size_t, 6>> nodes(end - begin);
 
         std::transform(std::execution::par_unseq, begin, end, nodes.begin(), [&data](const auto& idx) {
             const auto start = data.cbegin() + idx.first + 1;
             const auto stop = data.cbegin() + idx.second;
             const std::string_view line { start, stop };
 
-            std::array<std::size_t, 6> v;
+            std::array<std::size_t, 6> v {
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max()
+            };
 
             int arrIdx = 0;
 
@@ -78,6 +88,9 @@ public:
             while (word_start != line_end) {
                 if (*word_start == ' ') {
                     ++word_start;
+                } else if (*word_start == '#') {
+                    // we exits if we find #
+                    word_start = line_end;
                 } else {
                     if (arrIdx < 6) {
                         auto [ptr, ec] = std::from_chars(word_start, line_end, v[arrIdx]);
@@ -117,23 +130,18 @@ public:
         return true;
     }
 
-    bool readVertices(const std::string& path, int nHeaderLines = 1)
+    bool readVertices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
     {
         // reads a file formatted as <index v0 v1 v2>, i.e "512 0.2 0.4523 -0.974"
+        // # is treated as comment start
 
-        // Open the file for reading
-        std::ifstream file(path);
-        if (!file.is_open()) {
+        const auto data = readBufferFromFile(path);
+        if (data.size() == 0)
             return false;
-        }
-
-        std::stringstream buffer;
-        buffer << file.rdbuf();
-        const auto data = buffer.str();
-        file.close();
 
         // finding line endings
         std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
+        lineIdx.reserve(data.size() / colLenght);
         std::size_t start = 0;
         for (std::size_t i = 0; i < data.size(); ++i) {
             if (data[i] == '\n') {
@@ -146,7 +154,7 @@ public:
         if (end - begin < 4)
             return false;
 
-        std::vector<std::pair<std::size_t, std::array<T, 3>>> vertices(lineIdx.size());
+        std::vector<std::pair<std::size_t, std::array<T, 3>>> vertices(end - begin);
 
         std::transform(std::execution::par_unseq, begin, end, vertices.begin(), [&data](const auto& idx) {
             const auto start = data.cbegin() + idx.first + 1;
@@ -162,10 +170,13 @@ public:
             int arrIdx = -1;
 
             auto word_start = line.data();
-            auto line_end = line.data() + line.size();
+            const auto line_end = line.data() + line.size();
             while (word_start != line_end) {
                 if (*word_start == ' ') {
                     ++word_start;
+                } else if (*word_start == '#') {
+                    // we exits if we find #
+                    word_start = line_end;
                 } else {
                     if (arrIdx < 0) {
                         auto [ptr, ec] = std::from_chars(word_start, line_end, index);
@@ -204,6 +215,39 @@ public:
         }
 
         return true;
+    }
+
+    bool validateIndices() const
+    {
+        std::vector<std::uint8_t> testIdx(m_vertices.size(), 0);
+        const auto maxInd = m_vertices.size();
+        bool valid = true;
+        for (const auto& v : m_tetrahedalIdx) {
+            for (const auto& t : v) {
+                if (t < maxInd)
+                    testIdx[t] = 1;
+                else
+                    valid = false;
+            }
+        }
+        valid = valid && std::all_of(std::execution::par_unseq, testIdx.cbegin(), testIdx.cend(), [](const auto i) { return i > 0; });
+        return valid;
+    }
+
+protected:
+    static std::string readBufferFromFile(const std::string& path)
+    {
+        std::string buffer_str;
+
+        // Open the file for reading
+        std::ifstream file(path);
+        if (file.is_open()) {
+            std::stringstream buffer;
+            buffer << file.rdbuf();
+            buffer_str = buffer.str();
+            file.close();
+        }
+        return buffer_str;
     }
 
 private:
