@@ -23,10 +23,8 @@ Copyright 2022 Erlend Andersen
 template <typename T>
 bool testReader()
 {
-
     dxmc::ThetrahedalMesh<T> mesh;
-    mesh.readMesh("MRCP_AM.node", "MRCP_AM.ele");
-
+    mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
     return false;
 }
 

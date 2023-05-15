@@ -43,21 +43,21 @@ public:
     {
     }
 
-    void readMesh(const std::string& vertices, const std::string& tetrahedalIndices)
+    void readICRP145Phantom(const std::string& nodeFile, const std::string& elementsFile)
     {
         TetrahedalmeshReader<T> reader;
-        reader.readTetrahedalIndices(tetrahedalIndices);
-        reader.readVertices(vertices);
-        
+        bool success = reader.readICRP145Phantom(nodeFile, elementsFile);
     }
 
     void translate(const std::array<T, 3>& dist) override
     {
     }
+
     std::array<T, 3> center() const override
     {
         return std::array<T, 3> { 0, 0, 0 };
     }
+
     std::array<T, 6> AABB() const override
     {
         return std::array<T, 6> { 0, 0, 0, 0, 0, 0 };
@@ -78,5 +78,8 @@ public:
     }
     void clearDose() override { }
     void transport(Particle<T>& p, RandomState& state) override { }
+    protected:
+        private:
+
 };
 }
