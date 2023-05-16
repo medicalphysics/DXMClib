@@ -19,13 +19,14 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/floating.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 
 #include <execution>
 #include <fstream>
 #include <limits>
-#include <ranges>
 #include <string>
 #include <string_view>
+#include <tuple>
 #include <vector>
 
 namespace dxmc {
@@ -34,21 +35,44 @@ class TetrahedalmeshReader {
 public:
     TetrahedalmeshReader() { }
 
-    bool readICRP145Phantom(const std::string& nodeFile, const std::string& elementFile)
+    std::vector<Tetrahedron<T>> readICRP145Phantom(const std::string& nodeFile, const std::string& elementFile)
     {
-        bool valid = readTetrahedalIndices(elementFile, 1, 80);
-        valid = valid && readVertices(nodeFile, 1, 80);
-        valid = valid && validateIndices();
-        return valid;
+        auto vertices = readVertices(nodeFile, 1, 80);
+        auto nodes = readTetrahedalIndices(elementFile, 1, 80);
+
+        const auto max_ind = std::transform_reduce(
+            std::execution::par_unseq, nodes.cbegin(), nodes.cend(), std::size_t { 0 }, [](const auto lh, const auto rh) { return std::max(rh, lh); }, [](const auto& node) {
+                const auto& v = std::get<1>(node);
+                return std::max(v[0], std::max(v[1], v[2])); });
+
+        std::vector<Tetrahedron<T>> tets;
+        if (max_ind < vertices.size()) {
+            tets.resize(nodes.size());
+            std::transform(std::execution::par_unseq, nodes.cbegin(), nodes.cend(), tets.begin(), [&vertices](const auto& n) {
+                const auto& vIdx = std::get<1>(n);
+                const auto collection = static_cast<std::uint8_t>(std::get<2>(n) / 1000);
+
+                const auto& v0 = vertices[vIdx[0]].second;
+                const auto& v1 = vertices[vIdx[1]].second;
+                const auto& v2 = vertices[vIdx[2]].second;
+                const auto& v3 = vertices[vIdx[3]].second;
+
+                return Tetrahedron<T> { v0, v1, v2, v3, collection };
+            });
+        }
+
+        return tets;
     }
 
-    bool readTetrahedalIndices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
+    static std::vector<std::tuple<std::size_t, std::array<std::size_t, 4>, std::size_t>> readTetrahedalIndices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
     {
         // reads a file formatted as <index n0 n1 n2 n3 matIdx000>, i.e "512 51 80 90 101"
 
+        std::vector<std::tuple<std::size_t, std::array<std::size_t, 4>, std::size_t>> nodes;
+
         const auto data = readBufferFromFile(path);
         if (data.size() == 0)
-            return false;
+            return nodes;
 
         // finding line endings
         std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
@@ -63,25 +87,26 @@ public:
         auto begin = lineIdx.cbegin() + nHeaderLines;
         auto end = lineIdx.cend();
         if (end - begin < 4)
-            return false;
+            return nodes;
 
-        std::vector<std::array<std::size_t, 6>> nodes(end - begin);
+        nodes.resize(end - begin);
 
         std::transform(std::execution::par_unseq, begin, end, nodes.begin(), [&data](const auto& idx) {
             const auto start = data.cbegin() + idx.first + 1;
             const auto stop = data.cbegin() + idx.second;
             const std::string_view line { start, stop };
 
-            std::array<std::size_t, 6> v {
-                std::numeric_limits<std::size_t>::max(),
-                std::numeric_limits<std::size_t>::max(),
+            std::size_t index = std::numeric_limits<std::size_t>::max();
+
+            std::array<std::size_t, 4> v {
                 std::numeric_limits<std::size_t>::max(),
                 std::numeric_limits<std::size_t>::max(),
                 std::numeric_limits<std::size_t>::max(),
                 std::numeric_limits<std::size_t>::max()
             };
+            std::size_t collection = std::numeric_limits<std::size_t>::max();
 
-            int arrIdx = 0;
+            int arrIdx = -1;
 
             auto word_start = line.data();
             auto line_end = line.data() + line.size();
@@ -92,10 +117,18 @@ public:
                     // we exits if we find #
                     word_start = line_end;
                 } else {
-                    if (arrIdx < 6) {
-                        auto [ptr, ec] = std::from_chars(word_start, line_end, v[arrIdx]);
+                    if (arrIdx < 5) {
+                        std::size_t val;
+                        auto [ptr, ec] = std::from_chars(word_start, line_end, val);
                         if (ec == std::errc()) {
                             word_start = ptr;
+                            if (arrIdx < 0) {
+                                index = val;
+                            } else if (arrIdx < 4) {
+                                v[arrIdx] = val;
+                            } else {
+                                collection = val;
+                            }
                             ++arrIdx;
                         } else if (ec == std::errc::invalid_argument)
                             ++word_start;
@@ -104,40 +137,36 @@ public:
                     }
                 }
             }
-            return v;
+            return std::make_tuple(index, v, collection);
         });
 
         // sort nodes
-        std::sort(std::execution::par_unseq, nodes.begin(), nodes.end(), [](const auto& lh, const auto& rh) { return lh[0] < rh[0]; });
+        std::sort(std::execution::par_unseq, nodes.begin(), nodes.end(), [](const auto& lh, const auto& rh) { return std::get<0>(lh) < std::get<0>(rh); });
 
         // removing nan values and validating;
-        m_tetrahedalIdx.clear();
-        m_materialIdx.clear();
-
-        m_tetrahedalIdx.reserve(nodes.size());
-        m_materialIdx.reserve(nodes.size());
-
-        for (std::size_t i = 0; i < nodes.size(); ++i) {
-            if (i == nodes[i][0]) {
-                std::array<std::size_t, 4> v;
-                for (std::size_t j = 0; j < 4; ++j)
-                    v[j] = nodes[i][j + 1];
-                m_tetrahedalIdx.push_back(v);
-                m_materialIdx.push_back(nodes[i][5]);
-            }
+        auto delete_from = nodes.cbegin();
+        std::size_t index = 0;
+        while (delete_from != nodes.cend() && index == std::get<0>(*delete_from)) {
+            ++index;
+            ++delete_from;
         }
 
-        return true;
+        if (delete_from != nodes.cend())
+            nodes.erase(delete_from, nodes.cend());
+
+        return nodes;
     }
 
-    bool readVertices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
+    static std::vector<std::pair<std::size_t, std::array<T, 3>>> readVertices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
     {
         // reads a file formatted as <index v0 v1 v2>, i.e "512 0.2 0.4523 -0.974"
         // # is treated as comment start
 
+        std::vector<std::pair<std::size_t, std::array<T, 3>>> vertices;
+
         const auto data = readBufferFromFile(path);
         if (data.size() == 0)
-            return false;
+            return vertices;
 
         // finding line endings
         std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
@@ -152,9 +181,9 @@ public:
         auto begin = lineIdx.cbegin() + nHeaderLines;
         auto end = lineIdx.cend();
         if (end - begin < 4)
-            return false;
+            return vertices;
 
-        std::vector<std::pair<std::size_t, std::array<T, 3>>> vertices(end - begin);
+        vertices.resize(end - begin);
 
         std::transform(std::execution::par_unseq, begin, end, vertices.begin(), [&data](const auto& idx) {
             const auto start = data.cbegin() + idx.first + 1;
@@ -206,15 +235,17 @@ public:
         std::sort(std::execution::par_unseq, vertices.begin(), vertices.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
 
         // removing nan values and validating;
-        m_vertices.clear();
-        m_vertices.reserve(vertices.size());
-        for (std::size_t i = 0; i < vertices.size(); ++i) {
-            const auto& [ind, v] = vertices[i];
-            if (v[0] == v[0] && v[1] == v[1] && v[2] == v[2] && ind == i) // test for NaNs
-                m_vertices.push_back(v);
+        auto delete_from = vertices.cbegin();
+        std::size_t index = 0;
+        while (delete_from != vertices.cend() && index == delete_from->first) {
+            ++index;
+            ++delete_from;
         }
 
-        return true;
+        if (delete_from != vertices.cend())
+            vertices.erase(delete_from, vertices.cend());
+
+        return vertices;
     }
 
     bool validateIndices() const

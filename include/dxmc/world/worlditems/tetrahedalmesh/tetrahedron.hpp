@@ -49,7 +49,13 @@ public:
     {
     }
 
-    auto operator<=>(const Triangle<T>& other) const = default;
+    Tetrahedron()
+    {
+    }
+
+    std::uint8_t collection() const { return m_collectionIdx; }
+
+    auto operator<=>(const Tetrahedron<T>& other) const = default;
 
     void translate(const std::array<T, 3>& dist)
     {
@@ -110,8 +116,7 @@ public:
 
     WorldIntersectionResult<T> intersect(const Particle<T>& particle) const
     {
-        return basicshapes::Tetrahedron::intersect(p, m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
-
+        return basicshape::tetrahedron::intersect(particle, m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
     }
 
 private:

@@ -26,6 +26,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
@@ -46,7 +47,7 @@ public:
     void readICRP145Phantom(const std::string& nodeFile, const std::string& elementsFile)
     {
         TetrahedalmeshReader<T> reader;
-        bool success = reader.readICRP145Phantom(nodeFile, elementsFile);
+        auto tets = reader.readICRP145Phantom(nodeFile, elementsFile);
     }
 
     void translate(const std::array<T, 3>& dist) override
@@ -78,8 +79,8 @@ public:
     }
     void clearDose() override { }
     void transport(Particle<T>& p, RandomState& state) override { }
-    protected:
-        private:
 
+protected:
+private:
 };
 }

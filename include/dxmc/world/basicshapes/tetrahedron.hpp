@@ -75,7 +75,7 @@ namespace basicshape {
 
         template <Floating T>
         std::optional<std::array<T, 2>> intersectForwardInterval(
-            const Particle<T>& p,
+            const Particle<T>& particle,
             const std::array<T, 3>& v0,
             const std::array<T, 3>& v1,
             const std::array<T, 3>& v2,
@@ -148,7 +148,7 @@ namespace basicshape {
                     t[0] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_enter = false;
                 }
-                if (r30 <= 0 && r31 <= 0 && r23 <= 0) {
+                if (r30 <= 0 && r31 <= 0 && r32 <= 0) {
                     const auto wsum_inv = 1 / (r30 + r31 + r32);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
                     t[1] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
@@ -232,7 +232,7 @@ namespace basicshape {
 
         template <Floating T, typename U>
         VisualizationIntersectionResult<T, U> intersectVisualization(
-            const Particle<T>& p,
+            const Particle<T>& particle,
             const std::array<T, 3>& v0,
             const std::array<T, 3>& v1,
             const std::array<T, 3>& v2,
@@ -309,7 +309,7 @@ namespace basicshape {
                     normal_enter = vectormath::cross(v1, v2);
                     vectormath::normalize(normal_enter);
                 }
-                if (r30 <= 0 && r31 <= 0 && r23 <= 0) {
+                if (r30 <= 0 && r31 <= 0 && r32 <= 0) {
                     const auto wsum_inv = 1 / (r30 + r31 + r32);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
                     t[1] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
@@ -381,7 +381,6 @@ namespace basicshape {
             }
             if (!search_enter && !search_exit) {
                 res.intersectionValid = true;
-                const auto& t = *t_opt;
                 res.rayOriginIsInsideItem = t[0] < 0 && 0 < t[1];
                 res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
                 res.normal = res.rayOriginIsInsideItem ? normal_exit : normal_enter;
@@ -389,6 +388,5 @@ namespace basicshape {
             return res;
         }
     }
-}
 }
 }
