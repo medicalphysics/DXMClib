@@ -72,7 +72,7 @@ public:
             std::numeric_limits<T>::lowest(),
         };
         for (const auto& tet : tets) {
-            for (const auto v : tet) {
+            for (const auto& v : tet) {
                 for (std::size_t i = 0; i < 3; ++i) {
                     aabb[i] = std::min(aabb[i], v[i]);
                     aabb[i + 3] = std::max(aabb[i + 3], v[i]);
@@ -88,13 +88,15 @@ public:
         const auto fom = figureOfMerit(tets, split);
 
         if (fom == tets.size() || max_depth <= 1 || tets.size() <= 1) {
-            m_tets = tets;
+            m_tets = std::move(tets);
             m_left = nullptr;
             m_right = nullptr;
         } else {
             m_plane = split;
             std::vector<Tetrahedron<T>> left;
+            left.reserve(tets.size() / 2);
             std::vector<Tetrahedron<T>> right;
+            right.reserve(tets.size() / 2);
             for (const auto& tet : tets) {
                 const auto side = planeSide(tet, m_plane, m_D);
                 if (side <= 0)
@@ -103,6 +105,7 @@ public:
                     right.push_back(tet);
             }
             tets.clear();
+            tets.shrink_to_fit(); // clear does not free memory, we shrink to avoid memory explosion
             m_left = std::make_unique<TetrahedalMeshKDTree<T>>(std::move(left), max_depth - 1);
             m_right = std::make_unique<TetrahedalMeshKDTree<T>>(std::move(right), max_depth - 1);
         }
@@ -218,23 +221,23 @@ protected:
         return back->intersect(particle, t_back);
     }
 
-    T planeSplit(const std::vector<Tetrahedron<T>>& tets) const
+    T planeSplit(std::vector<Tetrahedron<T>>& tets) const
     {
+        const auto D = m_D;
+        std::sort(std::execution::par_unseq, tets.begin(), tets.end(), [D](const auto& lh, const auto& rh) {
+            const auto lc = lh.vertices()[0][D];
+            const auto rc = rh.vertices()[0][D];
+            return lc < rc;
+        });
         const auto N = tets.size();
-        std::vector<T> vals;
-        vals.reserve(N);
-
-        for (const auto& tet : tets) {
-            const auto v = tet.center()[m_D];
-            vals.push_back(v);
-        }
-        std::sort(vals.begin(), vals.end());
-
+        T split;
         if (N % 2 == 1) {
-            return vals[N / 2];
+            split = tets[N / 2].center()[D];
         } else {
-            return (vals[N / 2] + vals[N / 2 - 1]) * T { 0.5 };
+            split = (tets[N / 2].center()[D] + tets[N / 2 - 1].center()[D]) / 2;
         }
+
+        return split;
     }
 
     int figureOfMerit(const std::vector<Tetrahedron<T>>& tets, const T planesep) const

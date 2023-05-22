@@ -49,6 +49,7 @@ public:
         TetrahedalmeshReader<T> reader;
         m_kdtree.setData(reader.readICRP145Phantom(nodeFile, elementsFile));
         m_aabb = m_kdtree.AABB();
+        return;
     }
 
     void translate(const std::array<T, 3>& dist) override
