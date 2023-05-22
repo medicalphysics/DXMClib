@@ -90,6 +90,7 @@ public:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
         };
+
         for (const auto& tri : triangles) {
             std::array<T, 6> aabb_tri;
 
@@ -129,6 +130,7 @@ public:
             m_right = std::make_unique<MeshKDTree<T, U>>(right, max_depth - 1);
         }
     }
+
     std::array<T, 6> AABB() const
     {
         std::array<T, 6> aabb {
@@ -142,12 +144,14 @@ public:
         AABB_iterator(aabb);
         return aabb;
     }
+
     std::size_t depth() const
     {
         std::size_t teller = 0;
         depth_iterator(teller);
         return teller;
     }
+
     std::vector<U> items() const
     {
         std::vector<U> all;
@@ -157,6 +161,7 @@ public:
         all.erase(last, all.end());
         return all;
     }
+
     void translate(const std::array<T, 3>& dist)
     {
         m_plane += dist[m_D];
