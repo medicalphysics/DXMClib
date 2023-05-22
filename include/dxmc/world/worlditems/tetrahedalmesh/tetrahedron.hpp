@@ -87,7 +87,7 @@ public:
             for (std::size_t i = 0; i < 3; i++)
                 cent[i] += vert[i];
         }
-        constexpr T factor { 1 / 4.0 };
+        constexpr T factor = 1 / T { 4 };
         for (std::size_t i = 0; i < 3; i++)
             cent[i] *= factor;
         return cent;
@@ -113,6 +113,13 @@ public:
         }
         return aabb;
     }
+
+    auto begin() { return m_vertices.begin(); }
+    auto begin() const { return m_vertices.begin(); }
+    auto cbegin() const { return m_vertices.cbegin(); }
+    auto end() { return m_vertices.end(); }
+    auto end() const { return m_vertices.end(); }
+    auto cend() const { return m_vertices.cend(); }
 
     WorldIntersectionResult<T> intersect(const Particle<T>& particle) const
     {

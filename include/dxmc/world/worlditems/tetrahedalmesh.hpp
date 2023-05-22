@@ -24,7 +24,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/nistmaterials.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
@@ -47,40 +47,56 @@ public:
     void readICRP145Phantom(const std::string& nodeFile, const std::string& elementsFile)
     {
         TetrahedalmeshReader<T> reader;
-        auto tets = reader.readICRP145Phantom(nodeFile, elementsFile);
+        m_kdtree.setData(reader.readICRP145Phantom(nodeFile, elementsFile));
+        m_aabb = m_kdtree.AABB();
     }
 
     void translate(const std::array<T, 3>& dist) override
     {
+        m_kdtree.translate(dist);
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] += dist[i];
+            m_aabb[i + 3] += dist[i];
+        }
     }
 
     std::array<T, 3> center() const override
     {
-        return std::array<T, 3> { 0, 0, 0 };
+        std::array<T, 3> c;
+        for (std::size_t i = 0; i < 3; ++i) {
+            c[i] = (m_aabb[i] + m_aabb[i + 3]) / 2;
+        }
+        return c;
     }
 
     std::array<T, 6> AABB() const override
     {
-        return std::array<T, 6> { 0, 0, 0, 0, 0, 0 };
+        return m_aabb;
     }
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
         WorldIntersectionResult<T> res;
         return res;
     }
+
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
     {
         VisualizationIntersectionResult<T, WorldItemBase<T>> res;
         return res;
     }
+
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
         return DoseScore<T> {};
     }
+
     void clearDose() override { }
+
     void transport(Particle<T>& p, RandomState& state) override { }
 
 protected:
 private:
+    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    TetrahedalMeshKDTree<T> m_kdtree;
 };
 }
