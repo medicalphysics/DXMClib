@@ -67,10 +67,18 @@ public:
         const auto c = vectormath::subtract(m_center, pos);
         const auto l = vectormath::lenght(c);
         m_camera_pos[0] = l;
-        m_camera_pos[1] = std::acos(c[2] / l);
-        m_camera_pos[2] = std::acos(c[0] / std::sqrt(c[0] * c[0] + c[1] * c[1]));
-        if (c[1] < 0)
-            m_camera_pos[2] = -m_camera_pos[2];
+        const auto k = std::sqrt(c[0] * c[0] + c[1] * c[1]);
+        if (c[2] > k)
+            m_camera_pos[1] = std::atan2(k, c[2]);
+        else
+            m_camera_pos[1] = std::acos(c[2] / l);
+
+        if (std::abs(c[0]) > T { 1e-6 })
+            m_camera_pos[2] = std::atan2(c[1], c[0]);
+        else if (std::abs(c[1]) > T { 1e-6 })
+            m_camera_pos[2] = std::acos(c[0] / k);
+        else
+            m_camera_pos[2] = std::numbers::pi_v<T> / 2;
     }
 
     void suggestFOV(T zoom = 1)
