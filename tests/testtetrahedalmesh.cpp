@@ -78,6 +78,7 @@ bool testMeshVisualization()
     int height = 256;
     int width = 256;
     std::vector<T> buffer(height * width * 4, T { 1 });
+    viz.suggestFOV();
     viz.generate(world, buffer, width, height);
 
     writeImage(buffer, "color.bin");
