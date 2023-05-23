@@ -37,9 +37,9 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class ThetrahedalMesh final : public WorldItemBase<T> {
+class TetrahedalMesh final : public WorldItemBase<T> {
 public:
-    ThetrahedalMesh()
+    TetrahedalMesh()
         : WorldItemBase<T>()
     {
     }
@@ -50,6 +50,29 @@ public:
         m_kdtree.setData(reader.readICRP145Phantom(nodeFile, elementsFile));
         m_aabb = m_kdtree.AABB();
         return;
+    }
+
+    void setData(const std::vector<std::array<std::size_t, 4>>& nodes, const std::vector<std::array<T, 3>>& vertices)
+    {
+        const auto max_ind = std::transform_reduce(
+            std::execution::par_unseq, nodes.cbegin(), nodes.cend(), std::size_t { 0 }, [](auto lh, auto rh) { return std::max(lh, rh); }, [](const auto& t) {
+            std::size_t max = t[3];
+            for (std::size_t i = 0; i < 3; ++i)
+                max = std::max(max, t[i]);
+            return max; });
+        if (max_ind < vertices.size()) {
+            std::vector<Tetrahedron<T>> tets(nodes.size());
+            std::transform(
+                std::execution::par_unseq, nodes.cbegin(), nodes.cend(), tets.begin(), [&vertices](const auto& n) {
+                    std::array<std::array<T, 3>, 4> verts;
+                    for (std::size_t i = 0; i < 4; ++i) {
+                        verts[i] = vertices[n[i]];
+                    }
+                    return Tetrahedron { verts };
+                });
+            m_kdtree.setData(std::move(tets));
+            m_aabb = m_kdtree.AABB();
+        }
     }
 
     void translate(const std::array<T, 3>& dist) override
@@ -76,13 +99,13 @@ public:
     }
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
-        WorldIntersectionResult<T> res;
-        return res;
+        return m_kdtree.intersect<WorldIntersectionResult<T>>(p, m_aabb);
     }
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
     {
-        VisualizationIntersectionResult<T, WorldItemBase<T>> res;
+        auto res = m_kdtree.intersect<VisualizationIntersectionResult<T, WorldItemBase<T>>>(p, m_aabb);
+        res.item = this;
         return res;
     }
 
@@ -93,7 +116,9 @@ public:
 
     void clearDose() override { }
 
-    void transport(Particle<T>& p, RandomState& state) override { }
+    void transport(Particle<T>& p, RandomState& state) override
+    {
+    }
 
 protected:
 private:

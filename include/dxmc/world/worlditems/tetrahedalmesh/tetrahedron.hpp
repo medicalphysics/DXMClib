@@ -125,6 +125,10 @@ public:
     {
         return basicshape::tetrahedron::intersect(particle, m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
     }
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& particle) const
+    {
+        return basicshape::tetrahedron::template intersectVisualization<T, WorldItemBase<T>>(particle, m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
+    }
 
 private:
     std::array<std::array<T, 3>, 4> m_vertices;

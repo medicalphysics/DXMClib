@@ -19,14 +19,17 @@ Copyright 2022 Erlend Andersen
 #pragma once
 
 #include "dxmc/floating.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 
 namespace dxmc {
 
 template <Floating T>
-struct WorldIntersectionResult {
+struct TetrahedalMeshIntersectionResult {
+    const Tetrahedron<T>* item = nullptr;
     T intersection = 0;
     bool rayOriginIsInsideItem = false;
     bool intersectionValid = false;
+
     inline bool valid() const
     {
         return intersectionValid;

@@ -23,6 +23,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/visualizationintersectionresult.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
+#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 #include <optional>
