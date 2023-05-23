@@ -142,47 +142,47 @@ namespace basicshape {
             constexpr auto e = GEOMETRIC_ERROR<T>();
 
             // testing Face 3
-            if (std::abs(r30) < e || std::abs(r31) < e || std::abs(r32) < e) {
-                if (r30 >= 0 && r31 >= 0 && r32 >= 0) {
-                    const auto wsum_inv = 1 / (r30 + r31 + r32);
-                    const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[0] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
-                    search_enter = false;
-                }
+            if (std::abs(r30) > e || std::abs(r31) > e || std::abs(r32) > e) {
                 if (r30 <= 0 && r31 <= 0 && r32 <= 0) {
                     const auto wsum_inv = 1 / (r30 + r31 + r32);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[1] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[0] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] + r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    search_enter = false;
+                }
+                if (r30 >= 0 && r31 >= 0 && r32 >= 0) {
+                    const auto wsum_inv = 1 / (r30 + r31 + r32);
+                    const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
+                    t[1] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] + r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_exit = false;
                 }
             }
             // testing Face 2
-            if (std::abs(r20) < e || std::abs(r21) < e || std::abs(r22) < e) {
-                if (search_enter && r20 >= 0 && r21 >= 0 && r22 >= 0) {
+            if (std::abs(r20) > e || std::abs(r21) > e || std::abs(r22) > e) {
+                if (search_enter && r20 <= 0 && r21 <= 0 && r22 <= 0) {
                     const auto wsum_inv = 1 / (r20 + r21 + r22);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[0] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] * r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[0] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] + r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_enter = false;
                 }
-                if (search_exit && r20 <= 0 && r21 <= 0 && r22 <= 0) {
+                if (search_exit && r20 >= 0 && r21 >= 0 && r22 >= 0) {
                     const auto wsum_inv = 1 / (r20 + r21 + r22);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[1] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] * r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[1] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] + r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_exit = false;
                 }
             }
             // testing Face 1
-            if (std::abs(r10) < e || std::abs(r11) < e || std::abs(r12) < e) {
-                if (search_enter && r10 >= 0 && r11 >= 0 && r12 >= 0) {
+            if (std::abs(r10) > e || std::abs(r11) > e || std::abs(r12) > e) {
+                if (search_enter && r10 <= 0 && r11 <= 0 && r12 <= 0) {
                     const auto wsum_inv = 1 / (r10 + r11 + r12);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[0] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] * r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[0] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] + r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_enter = false;
                 }
-                if (search_exit && r10 <= 0 && r11 <= 0 && r12 <= 0) {
+                if (search_exit && r10 >= 0 && r11 >= 0 && r12 >= 0) {
                     const auto wsum_inv = 1 / (r10 + r11 + r12);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[1] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] * r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[1] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] + r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_exit = false;
                 }
             }
@@ -190,17 +190,17 @@ namespace basicshape {
                 return std::nullopt;
             } else {
                 // testing Face 0
-                if (std::abs(r00) < e || std::abs(r01) < e || std::abs(r02) < e) {
-                    if (search_enter && r00 >= 0 && r01 >= 0 && r02 >= 0) {
+                if (std::abs(r00) > e || std::abs(r01) > e || std::abs(r02) > e) {
+                    if (search_enter && r00 <= 0 && r01 <= 0 && r02 <= 0) {
                         const auto wsum_inv = 1 / (r00 + r01 + r02);
                         const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                        t[0] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] * r02 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                        t[0] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] + r02 * wsum_inv * v3[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                         search_enter = false;
                     }
-                    if (search_exit && r00 <= 0 && r01 <= 0 && r02 <= 0) {
+                    if (search_exit && r00 >= 0 && r01 >= 0 && r02 >= 0) {
                         const auto wsum_inv = 1 / (r00 + r01 + r02);
                         const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                        t[1] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] * r02 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                        t[1] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] + r02 * wsum_inv * v3[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                         search_exit = false;
                     }
                 }
@@ -301,59 +301,59 @@ namespace basicshape {
             constexpr auto e = GEOMETRIC_ERROR<T>();
 
             // testing Face 3
-            if (std::abs(r30) < e || std::abs(r31) < e || std::abs(r32) < e) {
-                if (r30 >= 0 && r31 >= 0 && r32 >= 0) {
-                    const auto wsum_inv = 1 / (r30 + r31 + r32);
-                    const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[0] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
-                    search_enter = false;
-                    normal_enter = vectormath::cross(v1, v2);
-                    vectormath::normalize(normal_enter);
-                }
+            if (std::abs(r30) > e || std::abs(r31) > e || std::abs(r32) > e) {
                 if (r30 <= 0 && r31 <= 0 && r32 <= 0) {
                     const auto wsum_inv = 1 / (r30 + r31 + r32);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[1] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] * r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[0] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] + r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    search_enter = false;
+                    normal_enter = vectormath::cross(e30, e31);
+                    vectormath::normalize(normal_enter);
+                }
+                if (r30 >= 0 && r31 >= 0 && r32 >= 0) {
+                    const auto wsum_inv = 1 / (r30 + r31 + r32);
+                    const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
+                    t[1] = (r30 * wsum_inv * v1[vIdx] + r31 * wsum_inv * v2[vIdx] + r32 * wsum_inv * v0[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_exit = false;
-                    normal_exit = vectormath::cross(v1, v2);
+                    normal_exit = vectormath::cross(e30, e31);
                     vectormath::normalize(normal_exit);
                 }
             }
             // testing Face 2
-            if (std::abs(r20) < e || std::abs(r21) < e || std::abs(r22) < e) {
-                if (search_enter && r20 >= 0 && r21 >= 0 && r22 >= 0) {
+            if (std::abs(r20) > e || std::abs(r21) > e || std::abs(r22) > e) {
+                if (search_enter && r20 <= 0 && r21 <= 0 && r22 <= 0) {
                     const auto wsum_inv = 1 / (r20 + r21 + r22);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[0] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] * r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[0] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] + r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_enter = false;
-                    normal_enter = vectormath::cross(v0, v3);
+                    normal_enter = vectormath::cross(e20, e21);
                     vectormath::normalize(normal_enter);
                 }
-                if (search_exit && r20 <= 0 && r21 <= 0 && r22 <= 0) {
+                if (search_exit && r20 >= 0 && r21 >= 0 && r22 >= 0) {
                     const auto wsum_inv = 1 / (r20 + r21 + r22);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[1] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] * r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[1] = (r20 * wsum_inv * v0[vIdx] + r21 * wsum_inv * v3[vIdx] + r22 * wsum_inv * v1[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_exit = false;
-                    normal_exit = vectormath::cross(v0, v3);
+                    normal_exit = vectormath::cross(e20, e21);
                     vectormath::normalize(normal_exit);
                 }
             }
             // testing Face 1
-            if (std::abs(r10) < e || std::abs(r11) < e || std::abs(r12) < e) {
-                if (search_enter && r10 >= 0 && r11 >= 0 && r12 >= 0) {
+            if (std::abs(r10) > e || std::abs(r11) > e || std::abs(r12) > e) {
+                if (search_enter && r10 <= 0 && r11 <= 0 && r12 <= 0) {
                     const auto wsum_inv = 1 / (r10 + r11 + r12);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[0] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] * r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[0] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] + r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_enter = false;
-                    normal_enter = vectormath::cross(v3, v0);
+                    normal_enter = vectormath::cross(e10, e11);
                     vectormath::normalize(normal_enter);
                 }
-                if (search_exit && r10 <= 0 && r11 <= 0 && r12 <= 0) {
+                if (search_exit && r10 >= 0 && r11 >= 0 && r12 >= 0) {
                     const auto wsum_inv = 1 / (r10 + r11 + r12);
                     const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                    t[1] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] * r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                    t[1] = (r10 * wsum_inv * v3[vIdx] + r11 * wsum_inv * v0[vIdx] + r12 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                     search_exit = false;
-                    normal_exit = vectormath::cross(v3, v0);
+                    normal_exit = vectormath::cross(e10, e11);
                     vectormath::normalize(normal_exit);
                 }
             }
@@ -361,25 +361,26 @@ namespace basicshape {
                 return res;
             } else {
                 // testing Face 0
-                if (std::abs(r00) < e || std::abs(r01) < e || std::abs(r02) < e) {
-                    if (search_enter && r00 >= 0 && r01 >= 0 && r02 >= 0) {
+                if (std::abs(r00) > e || std::abs(r01) > e || std::abs(r02) > e) {
+                    if (search_enter && r00 <= 0 && r01 <= 0 && r02 <= 0) {
                         const auto wsum_inv = 1 / (r00 + r01 + r02);
                         const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                        t[0] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] * r02 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                        t[0] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] + r02 * wsum_inv * v3[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                         search_enter = false;
-                        normal_enter = vectormath::cross(v2, v1);
+                        normal_enter = vectormath::cross(e00, e01);
                         vectormath::normalize(normal_enter);
                     }
-                    if (search_exit && r00 <= 0 && r01 <= 0 && r02 <= 0) {
+                    if (search_exit && r00 >= 0 && r01 >= 0 && r02 >= 0) {
                         const auto wsum_inv = 1 / (r00 + r01 + r02);
                         const auto vIdx = vectormath::argmax3<std::uint_fast32_t>(particle.dir);
-                        t[1] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] * r02 * wsum_inv * v2[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
+                        t[1] = (r00 * wsum_inv * v2[vIdx] + r01 * wsum_inv * v1[vIdx] + r02 * wsum_inv * v3[vIdx] - particle.pos[vIdx]) / particle.dir[vIdx];
                         search_exit = false;
-                        normal_exit = vectormath::cross(v2, v1);
+                        normal_exit = vectormath::cross(e00, e01);
                         vectormath::normalize(normal_exit);
                     }
                 }
             }
+
             if (!search_enter && !search_exit) {
                 res.intersectionValid = true;
                 res.rayOriginIsInsideItem = t[0] < 0 && 0 < t[1];
