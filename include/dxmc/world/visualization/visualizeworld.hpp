@@ -71,7 +71,6 @@ public:
         m_camera_pos[2] = std::acos(c[0] / std::sqrt(c[0] * c[0] + c[1] * c[1]));
         if (c[1] < 0)
             m_camera_pos[2] = -m_camera_pos[2];
-
     }
 
     void suggestFOV(T zoom = 1)
@@ -234,26 +233,26 @@ protected:
         return rgb;
     }
 
-    static std::array<T, 3> HSVtoRGB(T h, T s = 1, T v = 1)
+    static std::array<T, 3> HSVtoRGB(T h, T s = 1f, T v = 1f)
     {
-        const auto c = v * s;
-        const auto h_prime = (h * 3) / std::numbers::pi_v<T>;
-        const auto x = c * (1 - std::abs(std::fmod(h_prime, 2) - 1));
-        const auto m = v - c;
+        const T c = v * s;
+        const T h_prime = (h * 3) / std::numbers::pi_v<T>;
+        const T x = c * (1 - std::abs(std::fmod(h_prime, 2) - 1));
+        const T m = v - c;
 
         std::array<T, 3> rgb;
         if (h_prime >= 0 && h_prime < 1) {
-            rgb = { c, x, 0 };
+            rgb = { c, x, T { 0 } };
         } else if (h_prime >= 1 && h_prime < 2) {
-            rgb = { x, c, 0 };
+            rgb = { x, c, T { 0 } };
         } else if (h_prime >= 2 && h_prime < 3) {
-            rgb = { 0, c, x };
+            rgb = { T { 0 }, c, x };
         } else if (h_prime >= 3 && h_prime < 4) {
-            rgb = { 0, x, c };
+            rgb = { T { 0 }, x, c };
         } else if (h_prime >= 4 && h_prime < 5) {
-            rgb = { x, 0, c };
+            rgb = { x, T { 0 }, c };
         } else {
-            rgb = { c, 0, x };
+            rgb = { c, T { 0 }, x };
         }
         return rgb;
     }
