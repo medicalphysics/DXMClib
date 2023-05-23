@@ -59,11 +59,7 @@ public:
         setData(std::move(tets), max_depth);
     }
 
-    /* TetrahedalMeshKDTree(std::vector<Tetrahedron<T>> tets, const std::size_t max_depth = 8)
-        {
-            setData(std::move(tets), max_depth);
-        }
-            */
+    
     void setData(std::vector<Tetrahedron<T>>&& tets, const std::size_t max_depth = 8)
     {
         if (tets.size() == 0)

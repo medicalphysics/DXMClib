@@ -19,6 +19,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/cylinder.hpp"
 #include "dxmc/world/basicshapes/sphere.hpp"
+#include "dxmc/world/basicshapes/tetrahedron.hpp"
 
 #include "dxmc/dxmcrandom.hpp"
 
@@ -251,11 +252,74 @@ bool testCylinderForwardIntersection()
     return success;
 }
 
+
+template <typename T>
+bool testTetrahedronIntersection()
+{
+    bool success = true;
+    dxmc::Particle<T> p;
+
+    std::array<T, 3> v0 = { 0, 0, 0 };
+    std::array<T, 3> v1 = { 1, 0, 0 };
+    std::array<T, 3> v2 = { 0, 1, 0 };
+    std::array<T, 3> v3 = { 0, 0, 1 };
+    
+
+    
+
+    p.pos = { .1, .1, -8000 };
+    p.dir = { 0, 0, 1 };
+    auto t = dxmc::basicshape::tetrahedron::intersect(p, v0, v1, v2, v3);
+    success = success && t.valid() && t.intersection == 8000 && !t.rayOriginIsInsideItem;
+
+    /* p.pos = { 0, 0, 1 };
+    p.dir = { 0, 0, 1 };
+    t = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && t.valid() && t.intersection == 1 && t.rayOriginIsInsideItem;
+
+    p.pos = { 0, 0, 1 };
+    p.dir = { 0, 0, -1 };
+    t = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && t.valid() && t.intersection == 3 && t.rayOriginIsInsideItem;
+
+    p.pos = { 0, 0, -1 };
+    p.dir = { 0, 0, 1 };
+    t = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && t.valid() && t.intersection == 3 && t.rayOriginIsInsideItem;
+
+    p.pos = { 0, 0, -1 };
+    p.dir = { 0, 0, -1 };
+    t = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && t.valid() && t.intersection == 1 && t.rayOriginIsInsideItem;
+
+    p.pos = { 0, 0, 8000 };
+    p.dir = { 0, 0, -1 };
+    t = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && t.valid() && t.intersection == 7998 && !t.rayOriginIsInsideItem;
+
+    p.pos = { 0, 0, 8000 };
+    p.dir = { 0, 0, 1 };
+    t = dxmc::basicshape::AABB::intersect(p, aabb);
+    success = success && !t.valid();
+    */
+    if (success)
+        std::cout << "SUCCESS";
+    else
+        std::cout << "FAILURE";
+    std::cout << " Test for ray tetrahedron intersections with sizeof(T): " << sizeof(T) << std::endl;
+
+    return success;
+}
+
+
 int main()
 {
     std::cout << "Testing ray intersection on basic shapes\n";
 
     bool success = true;
+
+    success = success && testTetrahedronIntersection<double>();
+    success = success && testTetrahedronIntersection<float>();
 
     success = success && testCylinderForwardIntersection<double>();
     success = success && testCylinderForwardIntersection<float>();

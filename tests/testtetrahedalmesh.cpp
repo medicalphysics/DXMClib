@@ -75,9 +75,11 @@ bool testMeshVisualization()
     dxmc::VisualizeWorld<T> viz(world);
     viz.setPolarAngle(std::numbers::pi_v<T> / 4);
     viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T { 0.1 });
-    int height = 256;
-    int width = 256;
+    int height = 1024;
+    int width = 1024;
     std::vector<T> buffer(height * width * 4, T { 1 });
+
+    viz.setCameraPosition({ 5, 5, -800 });
     viz.suggestFOV();
     viz.generate(world, buffer, width, height);
 
@@ -89,7 +91,7 @@ int main()
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
     bool success = true;
-    success = success && testMeshVisualization<float>();
+    success = success && testMeshVisualization<double>();
     success = success && testReader<double>();
     success = success && testReader<float>();
 
