@@ -59,7 +59,6 @@ public:
         setData(std::move(tets), max_depth);
     }
 
-    
     void setData(std::vector<Tetrahedron<T>>&& tets, const std::size_t max_depth = 8)
     {
         if (tets.size() == 0)
@@ -157,53 +156,26 @@ public:
         }
     }
 
-    template <typename U>
-        requires std::same_as<U, TetrahedalMeshIntersectionResult<T>> || std::same_as<U, VisualizationIntersectionResult<T, WorldItemBase<T>>> || std::same_as<U, WorldIntersectionResult<T>>
-    U intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersect<U>(particle, *inter) : U {};
+        return inter ? intersect(particle, *inter) : TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> {};
     }
 
 protected:
-    template <typename U>
-        requires std::same_as<U, TetrahedalMeshIntersectionResult<T>> || std::same_as<U, VisualizationIntersectionResult<T, WorldItemBase<T>>> || std::same_as<U, WorldIntersectionResult<T>>
-    U intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
 
             // intersect triangles between tbox and return;
-            U res;
+            TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res;
             res.intersection = std::numeric_limits<T>::max();
             for (const auto& tet : m_tets) {
-                if constexpr (std::same_as<U, TetrahedalMeshIntersectionResult<T>>) {
-                    const auto t_cand = tet.intersect(particle);
-                    if (t_cand.valid()) {
-                        if (t_cand.intersection < res.intersection) {
-                            if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
-                                res.item = &tet;
-                                res.intersection = t_cand.intersection;
-                                res.rayOriginIsInsideItem = t_cand.rayOriginIsInsideItem;
-                                res.intersectionValid = t_cand.intersectionValid;
-                            }
-                        }
-                    }
-                } else if constexpr (std::same_as<U, VisualizationIntersectionResult<T, WorldItemBase<T>>>) {
-                    const auto t_cand = tet.intersectVisualization(particle);
-                    if (t_cand.valid()) {
-                        if (t_cand.intersection < res.intersection) {
-                            if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
-                                res = t_cand;
-                            }
-                        }
-                    }
-                } else { // WorldIntersectionResult<T>
-                    const auto t_cand = tet.intersect(particle);
-                    if (t_cand.valid()) {
-                        if (t_cand.intersection < res.intersection) {
-                            if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
-                                res = t_cand;
-                            }
+                auto t_cand = tet.intersect(particle);
+                if (t_cand.valid()) {
+                    if (t_cand.intersection < res.intersection) {
+                        if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                            std::swap(res, t_cand);
                         }
                     }
                 }
@@ -213,8 +185,8 @@ protected:
 
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            auto hit_left = m_left->intersect<U>(particle, tbox);
-            auto hit_right = m_right->intersect<U>(particle, tbox);
+            auto hit_left = m_left->intersect(particle, tbox);
+            auto hit_right = m_right->intersect(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
                 return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
             if (hit_right.valid())
@@ -229,22 +201,22 @@ protected:
 
         if (t <= tbox[0]) {
             // back only
-            return back->intersect<U>(particle, tbox);
+            return back->intersect(particle, tbox);
         } else if (t >= tbox[1]) {
             // front only
-            return front->intersect<U>(particle, tbox);
+            return front->intersect(particle, tbox);
         }
 
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
-        auto hit = front->intersect<U>(particle, t_front);
+        auto hit = front->intersect(particle, t_front);
         if (hit.valid()) {
             if (hit.intersection <= t) {
                 return hit;
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
-        return back->intersect<U>(particle, t_back);
+        return back->intersect(particle, t_back);
     }
 
     T planeSplit(std::vector<Tetrahedron<T>>& tets) const

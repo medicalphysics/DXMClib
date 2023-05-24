@@ -45,10 +45,10 @@ template <typename T>
 std::tuple<std::vector<std::array<std::size_t, 4>>, std::vector<std::array<T, 3>>> tetrahedron()
 {
     std::vector<std::array<T, 3>> vertices;
-    vertices.push_back({ 0, 0, 0 }); // 0
-    vertices.push_back({ 10, 0, 0 }); // 1
-    vertices.push_back({ 0, 10, 0 }); // 2
-    vertices.push_back({ 0, 0, 10 }); // 3
+    vertices.push_back({ -5, 0, -5 }); // 0
+    vertices.push_back({ 0, -5, -5 }); // 1
+    vertices.push_back({ 5, 5, -5 }); // 2
+    vertices.push_back({ 0, 0, 5 }); // 3
 
     std::vector<std::array<std::size_t, 4>> nodes;
     nodes.push_back({ 0, 1, 2, 3 });
@@ -73,13 +73,13 @@ bool testMeshVisualization()
     world.build(T { 0 });
 
     dxmc::VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> / 4);
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T { 0.1 });
+    viz.setPolarAngle(std::numbers::pi_v<T> * 0);
+    viz.setAzimuthalAngle(std::numbers::pi_v<T> / 2);
     int height = 1024;
     int width = 1024;
     std::vector<T> buffer(height * width * 4, T { 1 });
 
-    viz.setCameraPosition({ 5, 5, -800 });
+    // viz.setCameraPosition({ 0, -800, -800 });
     viz.suggestFOV();
     viz.generate(world, buffer, width, height);
 

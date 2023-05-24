@@ -49,6 +49,7 @@ public:
         TetrahedalmeshReader<T> reader;
         m_kdtree.setData(reader.readICRP145Phantom(nodeFile, elementsFile));
         m_aabb = m_kdtree.AABB();
+        expandAABB();
         return;
     }
 
@@ -72,6 +73,7 @@ public:
                 });
             m_kdtree.setData(std::move(tets));
             m_aabb = m_kdtree.AABB();
+            expandAABB();
         }
     }
 
@@ -99,14 +101,28 @@ public:
     }
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
-        return m_kdtree.intersect<WorldIntersectionResult<T>>(p, m_aabb);
+        const auto res = m_kdtree.intersect(p, m_aabb);
+        WorldIntersectionResult<T> w;
+        if (res.valid()) {
+            w.intersection = res.intersection;
+            w.intersectionValid = true;
+            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+        }
+        return w;
     }
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
     {
-        auto res = m_kdtree.intersect<VisualizationIntersectionResult<T, WorldItemBase<T>>>(p, m_aabb);
-        res.item = this;
-        return res;
+        const auto res = m_kdtree.intersect(p, m_aabb);
+        VisualizationIntersectionResult<T, WorldItemBase<T>> w;
+        if (res.valid()) {
+            w.intersection = res.intersection;
+            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+            w.intersectionValid = true;
+            w.item = this;
+            w.normal = res.normal;
+        }
+        return w;
     }
 
     const DoseScore<T>& dose(std::size_t index = 0) const override
@@ -121,6 +137,14 @@ public:
     }
 
 protected:
+    void expandAABB(T extra = 0.0001f)
+    {
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] -= extra;
+            m_aabb[i + 3] += extra;
+        }
+    }
+
 private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     TetrahedalMeshKDTree<T> m_kdtree;

@@ -136,6 +136,12 @@ namespace vectormath {
     }
 
     template <Floating T>
+    [[nodiscard]] inline constexpr T tripleProduct(const std::array<T, 3>& v1, const std::array<T, 3>& v2, const std::array<T, 3>& v3) noexcept
+    {
+        return dot(v1, cross(v2, v3));
+    }
+
+    template <Floating T>
     [[nodiscard]] inline constexpr std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T sinAngle, const T cosAngle) noexcept
     {
         /* const auto ax = cross(axis, vec);
