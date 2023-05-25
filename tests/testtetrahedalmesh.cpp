@@ -65,18 +65,19 @@ bool testMeshVisualization()
 
     World world;
     auto& mesh = world.addItem<Mesh>({});
-    // mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
+    mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
 
-    const auto [nodes, vertices] = tetrahedron<T>();
-    mesh.setData(nodes, vertices);
+    // const auto [nodes, vertices] = tetrahedron<T>();
+    // mesh.setData(nodes, vertices);
 
     world.build(T { 0 });
 
     dxmc::VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 0);
+    viz.setDistance(500);
+    viz.setPolarAngle(std::numbers::pi_v<T> / 3);
     viz.setAzimuthalAngle(std::numbers::pi_v<T> / 2);
-    int height = 1024;
-    int width = 1024;
+    int height = 512;
+    int width = 512;
     std::vector<T> buffer(height * width * 4, T { 1 });
 
     // viz.setCameraPosition({ 0, -800, -800 });

@@ -41,7 +41,8 @@ public:
         auto nodes = readTetrahedalIndices(elementFile, 1, 80);
 
         const auto max_ind = std::transform_reduce(
-            std::execution::par_unseq, nodes.cbegin(), nodes.cend(), std::size_t { 0 }, [](const auto lh, const auto rh) { return std::max(rh, lh); }, [](const auto& node) {
+            std::execution::par_unseq, nodes.cbegin(), nodes.cend(), std::size_t { 0 },
+            [](const auto lh, const auto rh) { return std::max(rh, lh); }, [](const auto& node) {
                 const auto& v = std::get<1>(node);
                 return std::max(v[0], std::max(v[1], v[2])); });
 
@@ -50,7 +51,7 @@ public:
             tets.resize(nodes.size());
             std::transform(std::execution::par_unseq, nodes.cbegin(), nodes.cend(), tets.begin(), [&vertices](const auto& n) {
                 const auto& vIdx = std::get<1>(n);
-                const auto collection = static_cast<std::uint8_t>(std::get<2>(n) / 1000);
+                const auto collection = static_cast<std::uint16_t>(std::get<2>(n));
 
                 const auto& v0 = vertices[vIdx[0]].second;
                 const auto& v1 = vertices[vIdx[1]].second;
