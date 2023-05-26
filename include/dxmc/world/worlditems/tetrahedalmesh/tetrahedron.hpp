@@ -44,8 +44,9 @@ struct TetrahedalMeshIntersectionResult {
 template <Floating T>
 class Tetrahedron {
 public:
-    Tetrahedron(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third, const std::array<T, 3>& fourth, std::uint16_t collectionIdx = 0)
+    Tetrahedron(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third, const std::array<T, 3>& fourth, std::uint16_t collectionIdx = 0, std::uint16_t materialIdx = 0)
         : m_collectionIdx(collectionIdx)
+        , m_materialIdx(materialIdx)
     {
         m_vertices[0] = first;
         m_vertices[1] = second;
@@ -53,9 +54,10 @@ public:
         m_vertices[3] = fourth;
     }
 
-    Tetrahedron(const std::array<std::array<T, 3>, 4>& vertices, std::uint16_t collectionIdx = 0)
+    Tetrahedron(const std::array<std::array<T, 3>, 4>& vertices, std::uint16_t collectionIdx = 0, std::uint16_t materialIdx = 0)
         : m_vertices(vertices)
         , m_collectionIdx(collectionIdx)
+        , m_materialIdx(materialIdx)
     {
     }
 
@@ -288,5 +290,6 @@ protected:
 private:
     std::array<std::array<T, 3>, 4> m_vertices;
     std::uint16_t m_collectionIdx = 0;
+    std::uint16_t m_materialIdx = 0;
 };
 }
