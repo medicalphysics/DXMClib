@@ -65,7 +65,8 @@ public:
     {
     }
 
-    std::uint8_t collection() const { return m_collectionIdx; }
+    std::uint16_t collection() const { return m_collectionIdx; }
+    std::uint16_t materialIdx() const { return m_materialIdx; }
 
     auto operator<=>(const Tetrahedron<T>& other) const = default;
 

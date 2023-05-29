@@ -124,21 +124,22 @@ public:
         return aabb;
     }
 
+    template <std::regular_invocable<Tetrahedron<T>> F>
+    void apply(const F& func, std::execution policy = std::execution::par_unseq)
+    {
+        if (!m_left) {
+            std::for_each(policy, m_tets.begin(), m_tets.end(), func);
+        } else {
+            m_left->apply(func);
+            m_right->apply(func);
+        }
+    }
+
     std::size_t depth() const
     {
         std::size_t teller = 0;
         depth_iterator(teller);
         return teller;
-    }
-
-    std::vector<Tetrahedron<T>> items() const
-    {
-        std::vector<Tetrahedron<T>> all;
-        item_iterator(all);
-        std::sort(all.begin(), all.end());
-        auto last = std::unique(all.begin(), all.end());
-        all.erase(last, all.end());
-        return all;
     }
 
     void translate(const std::array<T, 3>& dist)
