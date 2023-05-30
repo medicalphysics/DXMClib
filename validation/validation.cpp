@@ -41,11 +41,11 @@ constexpr bool SAMPLE_RUN = true;
 
 template <Floating T>
 struct ResultKeys {
-    std::string rCase;
-    std::string volume;
-    std::string specter;
-    std::string modus;
-    std::string model;
+    std::string rCase = "unknown";
+    std::string volume = "unknown";
+    std::string specter = "unknown";
+    std::string modus = "unknown";
+    std::string model = "unknown";
     T result = 0;
     T result_std = 0;
     std::uint64_t nEvents = 0;
@@ -1144,10 +1144,10 @@ bool runAll()
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
 
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(true);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 3>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 3>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 2>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 2>(true);
 
     success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
     success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
@@ -1159,10 +1159,10 @@ bool runAll()
     success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
     success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
 
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 3>(true);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 3>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 3>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 2>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 2>(true);
 
     success = success && TG195Case41AbsorbedEnergy<T, 0>(false, false);
     success = success && TG195Case41AbsorbedEnergy<T, 1>(false, false);
