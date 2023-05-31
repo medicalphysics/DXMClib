@@ -125,7 +125,7 @@ public:
     }
 
     template <std::regular_invocable<Tetrahedron<T>> F>
-    void apply(const F& func, std::execution policy = std::execution::par_unseq)
+    void apply(const F& func, auto policy = std::execution::par_unseq)
     {
         if (!m_left) {
             std::for_each(policy, m_tets.begin(), m_tets.end(), func);

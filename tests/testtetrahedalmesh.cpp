@@ -19,6 +19,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 
 #include <iostream>
 #include <string>
@@ -36,8 +37,9 @@ void writeImage(const std::vector<T>& buffer, const std::string& name)
 template <typename T>
 bool testReader()
 {
-    dxmc::TetrahedalMesh<T> mesh;
-    mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
+    dxmc::TetrahedalmeshReader<T> reader;
+    reader.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele", "MRCP_AM_media.dat");
+    // mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
     return false;
 }
 
@@ -65,7 +67,6 @@ bool testMeshVisualization()
 
     World world;
     auto& mesh = world.addItem<Mesh>({});
-    mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
 
     // const auto [nodes, vertices] = tetrahedron<T>();
     // mesh.setData(nodes, vertices);
@@ -92,7 +93,7 @@ int main()
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
     bool success = true;
-    success = success && testMeshVisualization<double>();
+    //success = success && testMeshVisualization<double>();
     success = success && testReader<double>();
     success = success && testReader<float>();
 

@@ -25,7 +25,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp"
-#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
@@ -42,39 +41,6 @@ public:
     TetrahedalMesh()
         : WorldItemBase<T>()
     {
-    }
-
-    void readICRP145Phantom(const std::string& nodeFile, const std::string& elementsFile)
-    {
-        TetrahedalmeshReader<T> reader;
-        m_kdtree.setData(reader.readICRP145Phantom(nodeFile, elementsFile));
-        m_aabb = m_kdtree.AABB();
-        expandAABB();
-        return;
-    }
-
-    void setData(const std::vector<std::array<std::size_t, 4>>& nodes, const std::vector<std::array<T, 3>>& vertices)
-    {
-        const auto max_ind = std::transform_reduce(
-            std::execution::par_unseq, nodes.cbegin(), nodes.cend(), std::size_t { 0 }, [](auto lh, auto rh) { return std::max(lh, rh); }, [](const auto& t) {
-            std::size_t max = t[3];
-            for (std::size_t i = 0; i < 3; ++i)
-                max = std::max(max, t[i]);
-            return max; });
-        if (max_ind < vertices.size()) {
-            std::vector<Tetrahedron<T>> tets(nodes.size());
-            std::transform(
-                std::execution::par_unseq, nodes.cbegin(), nodes.cend(), tets.begin(), [&vertices](const auto& n) {
-                    std::array<std::array<T, 3>, 4> verts;
-                    for (std::size_t i = 0; i < 4; ++i) {
-                        verts[i] = vertices[n[i]];
-                    }
-                    return Tetrahedron { verts };
-                });
-            m_kdtree.setData(std::move(tets));
-            m_aabb = m_kdtree.AABB();
-            expandAABB();
-        }
     }
 
     void translate(const std::array<T, 3>& dist) override
@@ -146,7 +112,18 @@ protected:
     }
 
 private:
+    struct Collection {
+        DoseScore<T> dose;
+        const T density = 0;
+        Collection(T dens)
+            : density(dens)
+        {
+        }
+    };
+
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     TetrahedalMeshKDTree<T> m_kdtree;
+    std::vector<Collection> m_collections;
+    std::vector<Material2<T, NMaterialShells>> m_materials;
 };
 }

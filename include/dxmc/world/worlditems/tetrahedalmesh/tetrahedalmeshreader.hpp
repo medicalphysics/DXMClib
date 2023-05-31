@@ -19,6 +19,8 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/floating.hpp"
+#include "dxmc/material/material.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 
 #include <execution>
@@ -30,12 +32,132 @@ Copyright 2023 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-template <Floating T>
+template <Floating T, std::size_t Nshells = 5, int LOWENERGYCORRECTION = 2>
 class TetrahedalmeshReader {
 public:
     TetrahedalmeshReader() { }
 
-    std::vector<Tetrahedron<T>> readICRP145Phantom(const std::string& nodeFile, const std::string& elementFile)
+    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> readICRP145Phantom(
+        const std::string& nodeFile,
+        const std::string& elementFile,
+        const std::string& matfilePath)
+    {
+
+        auto mats = readICRP145PhantomMaterials(matfilePath);
+        // auto tets = readICRP145PhantomGeometry(nodeFile, elementFile);
+
+        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh;
+        return mesh;
+    }
+
+protected:
+    struct ICRP145Organs {
+        std::size_t index = 0;
+        Material2<T, Nshells> material;
+        T density = 1;
+        std::string name;
+
+        ICRP145Organs(Material2<T, Nshells>& mat)
+            : material(mat)
+        {
+        }
+    };
+
+    std::vector<ICRP145Organs> readICRP145PhantomMaterials(const std::string& matfilePath)
+    {
+        std::vector<ICRP145Organs> res;
+        const auto data = readBufferFromFile(matfilePath);
+        if (data.size() == 0)
+            return res;
+
+        // find file lines
+        std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
+        std::size_t start = 0;
+        std::size_t stop = 0;
+        while (stop != data.size()) {
+            const auto c = data[stop];
+            if (c == '\n') {
+                lineIdx.push_back(std::make_pair(start, stop));
+                start = stop + 1;
+            }
+            ++stop;
+        }
+        if (start != data.size()) {
+            lineIdx.push_back(std::make_pair(start, data.size()));
+        }
+
+        if (lineIdx.size() < 5)
+            return res;
+
+        // data start at line 3
+        for (std::size_t i = 3; i < lineIdx.size(); ++i) {
+
+            auto start = lineIdx[i].first;
+            const auto end = lineIdx[i].second;
+
+            auto d = data.data();
+            std::size_t organIndex = 0;
+            // reading material index (we have no use for it)
+            auto [ptr, ec] = std::from_chars(d + start, d + end, organIndex);
+            if (ec == std::errc())
+                start = std::distance(d, ptr);
+            else if (ec == std::errc::invalid_argument)
+                ++start;
+            else if (ec == std::errc::result_out_of_range)
+                start = std::distance(d, ptr);
+
+            // reading to a alpha
+            while (start != end && !std::isalpha(*(d + start))) {
+                ++start;
+            }
+            const auto end_word = data.find("  ", start);
+
+            std::string organName;
+            if (end_word != std::string::npos) {
+                organName = data.substr(start, end_word - start);
+                start = end_word + 1;
+            }
+
+            std::array<std::size_t, 13> Z = { 1, 6, 7, 8, 11, 12, 15, 16, 17, 19, 20, 26, 53 };
+            std::size_t zIdx = 0;
+            std::map<std::size_t, T> frac;
+            while (start < end) {
+                T w = -1;
+                auto [ptr, ec] = std::from_chars(d + start, d + end, w);
+                if (ec == std::errc())
+                    start = std::distance(d, ptr);
+                else if (ec == std::errc::invalid_argument)
+                    ++start;
+                else if (ec == std::errc::result_out_of_range)
+                    start = std::distance(d, ptr);
+
+                if (w > 0)
+                    if (zIdx < Z.size())
+                        frac[Z[zIdx]] = w;
+                    else
+                        frac[0] = w;
+                if (w > -1)
+                    ++zIdx;
+            }
+
+            T organDensity = 1;
+            if (frac.contains(0)) {
+                organDensity = frac.at(0);
+                frac.erase(0);
+            }
+            auto mat = Material2<T, Nshells>::byWeight(frac);
+            if (mat) {
+                ICRP145Organs organ(mat.value());
+                organ.density = organDensity;
+                organ.index = organIndex;
+                organ.name = organName;
+                res.push_back(organ);
+            }
+        }
+        return res;
+    }
+
+    std::vector<Tetrahedron<T>> readICRP145PhantomGeometry(const std::string& nodeFile, const std::string& elementFile)
     {
         auto vertices = readVertices(nodeFile, 1, 80);
         auto nodes = readTetrahedalIndices(elementFile, 1, 80);
@@ -266,7 +388,6 @@ public:
         return valid;
     }
 
-protected:
     static std::string readBufferFromFile(const std::string& path)
     {
         std::string buffer_str;
