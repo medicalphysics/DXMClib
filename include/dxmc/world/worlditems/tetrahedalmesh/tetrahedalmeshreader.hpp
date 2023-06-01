@@ -40,9 +40,10 @@ public:
     TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> readICRP145Phantom(
         const std::string& nodeFile,
         const std::string& elementFile,
-        const std::string& matfilePath)
+        const std::string& matfilePath,
+        const std::string& organFilePath)
     {
-
+        auto orgs = readICRP145PhantomOrgans(organFilePath);
         auto mats = readICRP145PhantomMaterials(matfilePath);
         // auto tets = readICRP145PhantomGeometry(nodeFile, elementFile);
 
@@ -51,21 +52,70 @@ public:
     }
 
 protected:
-    struct ICRP145Organs {
+    template <typename U>
+    static void parseLine(const char* start, const char* end, char sep, U& val)
+    {
+        if constexpr (std::is_arithmetic<U>::value) {
+            while (*start != sep && start != end) {
+                auto [ptr, ec] = std::from_chars(start, end, val);
+                if (ec == std::errc())
+                    return;
+                else if (ec == std::errc::invalid_argument)
+                    ++start;
+                else if (ec == std::errc::result_out_of_range)
+                    return;
+            }
+            return;
+        } else if constexpr (std::is_same<U, std::string>::value) {
+            auto wstart = start;
+            while (std::isspace(*wstart) && *wstart != sep && wstart != end) {
+                ++wstart;
+            }
+            auto wstop = wstart;
+            while (*wstop != sep && wstop != end) {
+                ++wstop;
+            }
+            // trimming spaces
+            if (std::distance(wstart, wstop) > 1) {
+                while (std::isspace(*(wstop - 1)) && wstop - 1 != wstart) {
+                    --wstop;
+                }
+            }
+            val = std::string(wstart, wstop);
+            return;
+        }
+    }
+
+    template <typename U, typename... Args>
+    static void parseLine(const char* start, const char* end, char sep, U& val, Args&... args)
+    {
+        if (start == end)
+            return;
+        auto stop = start;
+        while (*stop != sep && stop != end) {
+            ++stop;
+        }
+        parseLine(start, stop, sep, val);
+        if (stop != end)
+            ++stop; // iterate past sep
+        parseLine(stop, end, sep, args...);
+    }
+
+    struct ICRP145Materials {
         std::size_t index = 0;
         Material2<T, Nshells> material;
         T density = 1;
         std::string name;
 
-        ICRP145Organs(Material2<T, Nshells>& mat)
+        ICRP145Materials(Material2<T, Nshells>& mat)
             : material(mat)
         {
         }
     };
 
-    std::vector<ICRP145Organs> readICRP145PhantomMaterials(const std::string& matfilePath)
+    static std::vector<ICRP145Materials> readICRP145PhantomMaterials(const std::string& matfilePath)
     {
-        std::vector<ICRP145Organs> res;
+        std::vector<ICRP145Materials> res;
         const auto data = readBufferFromFile(matfilePath);
         if (data.size() == 0)
             return res;
@@ -147,12 +197,48 @@ protected:
             }
             auto mat = Material2<T, Nshells>::byWeight(frac);
             if (mat) {
-                ICRP145Organs organ(mat.value());
+                ICRP145Materials organ(mat.value());
                 organ.density = organDensity;
                 organ.index = organIndex;
                 organ.name = organName;
                 res.push_back(organ);
             }
+        }
+        return res;
+    }
+
+    struct ICRP145Organs {
+        std::size_t index = 0;
+        std::size_t materialIdx = 0;
+        std::string name;
+    };
+
+    static std::vector<ICRP145Organs> readICRP145PhantomOrgans(const std::string& organfilePath)
+    {
+        std::vector<ICRP145Organs> res;
+        const std::string data = readBufferFromFile(organfilePath);
+        if (data.size() == 0)
+            return res;
+
+        // find file lines
+        std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
+        std::size_t start = 0;
+        std::size_t stop = 0;
+        while (stop != data.size()) {
+            const auto c = data[stop];
+            if (c == '\n') {
+                lineIdx.push_back(std::make_pair(start, stop));
+                start = stop + 1;
+            }
+            ++stop;
+        }
+        if (start != data.size()) {
+            lineIdx.push_back(std::make_pair(start, data.size()));
+        }
+        res.resize(lineIdx.size() - 1);
+        for (std::size_t i = 1; i < lineIdx.size(); ++i) {
+            auto& organ = res[i - 1];
+            parseLine(data.data() + lineIdx[i].first, data.data() + lineIdx[i].second, ',', organ.index, organ.name, organ.materialIdx);
         }
         return res;
     }
@@ -298,7 +384,7 @@ protected:
         for (std::size_t i = 0; i < data.size(); ++i) {
             if (data[i] == '\n') {
                 lineIdx.push_back({ start, i });
-                start = i;
+                start = i + 1;
             }
         }
         auto begin = lineIdx.cbegin() + nHeaderLines;
@@ -371,23 +457,6 @@ protected:
         return vertices;
     }
 
-    bool validateIndices() const
-    {
-        std::vector<std::uint8_t> testIdx(m_vertices.size(), 0);
-        const auto maxInd = m_vertices.size();
-        bool valid = true;
-        for (const auto& v : m_tetrahedalIdx) {
-            for (const auto& t : v) {
-                if (t < maxInd)
-                    testIdx[t] = 1;
-                else
-                    valid = false;
-            }
-        }
-        valid = valid && std::all_of(std::execution::par_unseq, testIdx.cbegin(), testIdx.cend(), [](const auto i) { return i > 0; });
-        return valid;
-    }
-
     static std::string readBufferFromFile(const std::string& path)
     {
         std::string buffer_str;
@@ -404,9 +473,5 @@ protected:
     }
 
 private:
-    std::vector<std::array<T, 3>> m_vertices;
-    std::vector<std::array<std::size_t, 4>> m_tetrahedalIdx;
-    std::vector<std::size_t> m_materialIdx;
-    std::size_t m_maxNodeIndex = 0;
 };
 }

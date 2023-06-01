@@ -38,7 +38,7 @@ template <typename T>
 bool testReader()
 {
     dxmc::TetrahedalmeshReader<T> reader;
-    reader.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele", "MRCP_AM_media.dat");
+    reader.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele", "MRCP_AM_media.dat", "icrp145organs.csv");
     // mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
     return false;
 }
@@ -93,7 +93,7 @@ int main()
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
     bool success = true;
-    //success = success && testMeshVisualization<double>();
+    // success = success && testMeshVisualization<double>();
     success = success && testReader<double>();
     success = success && testReader<float>();
 

@@ -114,7 +114,9 @@ protected:
 private:
     struct Collection {
         DoseScore<T> dose;
-        const T density = 0;
+        T density = 0;
+        std::uint16_t materialIdx = 0;
+        std::uint16_t organIdx = 0;
         Collection(T dens)
             : density(dens)
         {
@@ -125,5 +127,6 @@ private:
     TetrahedalMeshKDTree<T> m_kdtree;
     std::vector<Collection> m_collections;
     std::vector<Material2<T, NMaterialShells>> m_materials;
+    std::vector<std::string> m_organNames;
 };
 }
