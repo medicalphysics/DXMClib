@@ -350,53 +350,6 @@ protected:
 
             parseLine(start, stop, ' ', index, v[0], v[1], v[2], v[3], collection);
             return std::make_tuple(index, v, collection);
-
-            /* const auto start = data.cbegin() + idx.first + 1;
-            const auto stop = data.cbegin() + idx.second;
-            const std::string_view line { start, stop };
-
-            std::size_t index = std::numeric_limits<std::size_t>::max();
-            std::array<std::size_t, 4> v {
-                std::numeric_limits<std::size_t>::max(),
-                std::numeric_limits<std::size_t>::max(),
-                std::numeric_limits<std::size_t>::max(),
-                std::numeric_limits<std::size_t>::max()
-            };
-            std::size_t collection = std::numeric_limits<std::size_t>::max();
-
-            int arrIdx = -1;
-
-            auto word_start = line.data();
-            auto line_end = line.data() + line.size();
-            while (word_start != line_end) {
-                if (*word_start == ' ') {
-                    ++word_start;
-                } else if (*word_start == '#') {
-                    // we exits if we find #
-                    word_start = line_end;
-                } else {
-                    if (arrIdx < 5) {
-                        std::size_t val;
-                        auto [ptr, ec] = std::from_chars(word_start, line_end, val);
-                        if (ec == std::errc()) {
-                            word_start = ptr;
-                            if (arrIdx < 0) {
-                                index = val;
-                            } else if (arrIdx < 4) {
-                                v[arrIdx] = val;
-                            } else {
-                                collection = val;
-                            }
-                            ++arrIdx;
-                        } else if (ec == std::errc::invalid_argument)
-                            ++word_start;
-                        else if (ec == std::errc::result_out_of_range)
-                            word_start = ptr;
-                    }
-                }
-            }
-            return std::make_tuple(index, v, collection);
-            */
         });
 
         // sort nodes
@@ -455,51 +408,6 @@ protected:
             };
             parseLine(start, stop, ' ', index, v[0], v[1], v[2]);
             return std::make_pair(index, v);
-
-            /* const auto start = data.cbegin() + idx.first + 1;
-            const auto stop = data.cbegin() + idx.second;
-            const std::string_view line { start, stop };
-
-            std::array<T, 3> v = {
-                std::numeric_limits<T>::quiet_NaN(),
-                std::numeric_limits<T>::quiet_NaN(),
-                std::numeric_limits<T>::quiet_NaN()
-            };
-            std::size_t index = std::numeric_limits<std::size_t>::max();
-            int arrIdx = -1;
-
-            auto word_start = line.data();
-            const auto line_end = line.data() + line.size();
-            while (word_start != line_end) {
-                if (*word_start == ' ') {
-                    ++word_start;
-                } else if (*word_start == '#') {
-                    // we exits if we find #
-                    word_start = line_end;
-                } else {
-                    if (arrIdx < 0) {
-                        auto [ptr, ec] = std::from_chars(word_start, line_end, index);
-                        if (ec == std::errc()) {
-                            word_start = ptr;
-                            ++arrIdx;
-                        } else if (ec == std::errc::invalid_argument)
-                            ++word_start;
-                        else if (ec == std::errc::result_out_of_range)
-                            word_start = ptr;
-                    } else if (arrIdx < 3) {
-                        auto [ptr, ec] = std::from_chars(word_start, line_end, v[arrIdx]);
-                        if (ec == std::errc()) {
-                            word_start = ptr;
-                            ++arrIdx;
-                        } else if (ec == std::errc::invalid_argument)
-                            ++word_start;
-                        else if (ec == std::errc::result_out_of_range)
-                            word_start = ptr;
-                    }
-                }
-            }
-            return std::make_pair(index, v);
-            */
         });
 
         // sort vertices
