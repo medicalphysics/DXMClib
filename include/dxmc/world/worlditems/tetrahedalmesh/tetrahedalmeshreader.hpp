@@ -29,6 +29,7 @@ Copyright 2023 Erlend Andersen
 #include <string>
 #include <string_view>
 #include <tuple>
+#include <unordered_map>
 #include <vector>
 
 namespace dxmc {
@@ -45,64 +46,99 @@ public:
     {
         auto orgs = readICRP145PhantomOrgans(organFilePath);
         auto mats = readICRP145PhantomMaterials(matfilePath);
-        // auto tets = readICRP145PhantomGeometry(nodeFile, elementFile);
 
-        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh;
+        // harmonizing organ and material indices
+        std::unordered_map<std::uint16_t, std::uint16_t> mat_lut;
+        for (std::uint16_t i = 0; i < mats.size(); ++i) {
+            const auto& m = mats[i];
+            const auto key = m.index;
+            mat_lut[key] = i;
+        }
+        for (auto& o : orgs) {
+            o.materialIdx = mat_lut[o.materialIdx];
+        }
+        std::unordered_map<std::uint16_t, std::uint16_t> org_lut;
+        for (std::uint16_t i = 0; i < orgs.size(); ++i) {
+            const auto& o = orgs[i];
+            const auto key = o.index;
+            org_lut[key] = i;
+        }
+
+        auto tets = readICRP145PhantomGeometry(nodeFile, elementFile);
+
+        // updating material ond organ indices in tets
+        std::for_each(std::execution::par_unseq, tets.begin(), tets.end(), [&orgs, &org_lut](auto& t) {
+            const auto oldOidx = t.collection();
+            const auto newOidx = org_lut[oldOidx];
+            t.setCollection(newOidx);
+            t.setMaterialIndex(orgs[newOidx].materialIdx);
+        });
+
+        std::vector<T> densities(orgs.size());
+        std::vector<std::string> organNames(orgs.size());
+        for (std::size_t i = 0; i < orgs.size(); ++i) {
+            const auto matIdx = orgs[i].materialIdx;
+            densities[i] = mats[matIdx].density;
+            organNames[i] = orgs[i].name;
+        }
+        std::vector<Material2<T, Nshells>> materials;
+        materials.reserve(mats.size());
+        for (const auto& m : mats)
+            materials.emplace_back(m.material);
+
+        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(std::move(tets), densities, materials, organNames);
         return mesh;
     }
 
 protected:
     template <typename U>
-    static void parseLine(const char* start, const char* end, char sep, U& val)
+    static const char*
+    parseLine(const char* start, const char* end, char sep, U& val)
     {
+        while ((std::isspace(*start) || *start == sep) && start != end)
+            ++start;
+
         if constexpr (std::is_arithmetic<U>::value) {
             while (*start != sep && start != end) {
                 auto [ptr, ec] = std::from_chars(start, end, val);
                 if (ec == std::errc())
-                    return;
+                    return ptr;
                 else if (ec == std::errc::invalid_argument)
                     ++start;
                 else if (ec == std::errc::result_out_of_range)
-                    return;
+                    return ptr;
             }
-            return;
+            return start;
         } else if constexpr (std::is_same<U, std::string>::value) {
-            auto wstart = start;
-            while (std::isspace(*wstart) && *wstart != sep && wstart != end) {
-                ++wstart;
-            }
-            auto wstop = wstart;
+            auto wstop = start;
             while (*wstop != sep && wstop != end) {
                 ++wstop;
             }
-            // trimming spaces
-            if (std::distance(wstart, wstop) > 1) {
-                while (std::isspace(*(wstop - 1)) && wstop - 1 != wstart) {
+            // trimming spaces from back
+            if (std::distance(start, wstop) > 1) {
+                while (std::isspace(*(wstop - 1)) && wstop - 1 != start) {
                     --wstop;
                 }
             }
-            val = std::string(wstart, wstop);
-            return;
+            val = std::string(start, wstop);
+            return wstop;
         }
     }
 
     template <typename U, typename... Args>
-    static void parseLine(const char* start, const char* end, char sep, U& val, Args&... args)
+    static const char* parseLine(const char* start, const char* end, char sep, U& val, Args&... args)
     {
         if (start == end)
-            return;
-        auto stop = start;
-        while (*stop != sep && stop != end) {
-            ++stop;
-        }
-        parseLine(start, stop, sep, val);
-        if (stop != end)
-            ++stop; // iterate past sep
-        parseLine(stop, end, sep, args...);
+            return end;
+
+        auto next_start = parseLine(start, end, sep, val);
+        if (next_start != end)
+            return parseLine(next_start, end, sep, args...);
+        return end;
     }
 
     struct ICRP145Materials {
-        std::size_t index = 0;
+        std::uint16_t index = 0;
         Material2<T, Nshells> material;
         T density = 1;
         std::string name;
@@ -146,8 +182,7 @@ protected:
             const auto end = lineIdx[i].second;
 
             auto d = data.data();
-            std::size_t organIndex = 0;
-            // reading material index (we have no use for it)
+            std::uint16_t organIndex = 0;
             auto [ptr, ec] = std::from_chars(d + start, d + end, organIndex);
             if (ec == std::errc())
                 start = std::distance(d, ptr);
@@ -208,8 +243,8 @@ protected:
     }
 
     struct ICRP145Organs {
-        std::size_t index = 0;
-        std::size_t materialIdx = 0;
+        std::uint16_t index = 0;
+        std::uint16_t materialIdx = 0;
         std::string name;
     };
 
@@ -301,12 +336,26 @@ protected:
         nodes.resize(end - begin);
 
         std::transform(std::execution::par_unseq, begin, end, nodes.begin(), [&data](const auto& idx) {
-            const auto start = data.cbegin() + idx.first + 1;
+            auto start = data.data() + idx.first;
+            auto stop = data.data() + idx.second;
+
+            std::size_t index = std::numeric_limits<std::size_t>::max();
+            std::array<std::size_t, 4> v {
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max(),
+                std::numeric_limits<std::size_t>::max()
+            };
+            std::size_t collection = std::numeric_limits<std::size_t>::max();
+
+            parseLine(start, stop, ' ', index, v[0], v[1], v[2], v[3], collection);
+            return std::make_tuple(index, v, collection);
+
+            /* const auto start = data.cbegin() + idx.first + 1;
             const auto stop = data.cbegin() + idx.second;
             const std::string_view line { start, stop };
 
             std::size_t index = std::numeric_limits<std::size_t>::max();
-
             std::array<std::size_t, 4> v {
                 std::numeric_limits<std::size_t>::max(),
                 std::numeric_limits<std::size_t>::max(),
@@ -347,6 +396,7 @@ protected:
                 }
             }
             return std::make_tuple(index, v, collection);
+            */
         });
 
         // sort nodes
@@ -395,7 +445,18 @@ protected:
         vertices.resize(end - begin);
 
         std::transform(std::execution::par_unseq, begin, end, vertices.begin(), [&data](const auto& idx) {
-            const auto start = data.cbegin() + idx.first + 1;
+            auto start = data.data() + idx.first;
+            auto stop = data.data() + idx.second;
+            std::size_t index = std::numeric_limits<std::size_t>::max();
+            std::array<T, 3> v = {
+                std::numeric_limits<T>::quiet_NaN(),
+                std::numeric_limits<T>::quiet_NaN(),
+                std::numeric_limits<T>::quiet_NaN()
+            };
+            parseLine(start, stop, ' ', index, v[0], v[1], v[2]);
+            return std::make_pair(index, v);
+
+            /* const auto start = data.cbegin() + idx.first + 1;
             const auto stop = data.cbegin() + idx.second;
             const std::string_view line { start, stop };
 
@@ -438,6 +499,7 @@ protected:
                 }
             }
             return std::make_pair(index, v);
+            */
         });
 
         // sort vertices

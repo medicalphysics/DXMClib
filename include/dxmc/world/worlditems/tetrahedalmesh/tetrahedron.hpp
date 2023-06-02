@@ -66,7 +66,9 @@ public:
     }
 
     std::uint16_t collection() const { return m_collectionIdx; }
-    std::uint16_t materialIdx() const { return m_materialIdx; }
+    void setCollection(std::uint16_t coll) { m_collectionIdx = coll; }
+    std::uint16_t materialIndex() const { return m_materialIdx; }
+    void setMaterialIndex(std::uint16_t idx) { m_materialIdx = idx; }
 
     auto operator<=>(const Tetrahedron<T>& other) const = default;
 
