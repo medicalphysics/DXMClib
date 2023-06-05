@@ -198,8 +198,8 @@ protected:
 
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            auto hit_left = m_left->intersect<COLLECTION>(particle, tbox);
-            auto hit_right = m_right->intersect<COLLECTION>(particle, tbox);
+            auto hit_left = m_left->template intersect<COLLECTION>(particle, tbox);
+            auto hit_right = m_right->template intersect<COLLECTION>(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
                 return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
             if (hit_right.valid())

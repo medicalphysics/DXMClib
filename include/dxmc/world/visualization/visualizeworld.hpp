@@ -241,7 +241,7 @@ protected:
         return rgb;
     }
 
-    static std::array<T, 3> HSVtoRGB(T h, T s = 1f, T v = 1f)
+    static std::array<T, 3> HSVtoRGB(T h, T s = 1, T v = 1)
     {
         const T c = v * s;
         const T h_prime = (h * 3) / std::numbers::pi_v<T>;

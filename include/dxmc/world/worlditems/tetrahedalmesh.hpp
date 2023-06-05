@@ -109,7 +109,7 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
     {
-        const auto res = m_kdtree.intersect<6100>(p, m_aabb);
+        const auto res = m_kdtree.template intersect<6100>(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
         if (res.valid()) {
             w.intersection = res.intersection;

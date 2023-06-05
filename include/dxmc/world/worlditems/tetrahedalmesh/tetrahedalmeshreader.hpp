@@ -216,13 +216,16 @@ protected:
                 else if (ec == std::errc::result_out_of_range)
                     start = std::distance(d, ptr);
 
-                if (w > 0)
-                    if (zIdx < Z.size())
+                if (w > 0) {
+                    if (zIdx < Z.size()) {
                         frac[Z[zIdx]] = w;
-                    else
+                    } else {
                         frac[0] = w;
-                if (w > -1)
+                    }
+                }
+                if (w > -1) {
                     ++zIdx;
+                }
             }
 
             T organDensity = 1;
