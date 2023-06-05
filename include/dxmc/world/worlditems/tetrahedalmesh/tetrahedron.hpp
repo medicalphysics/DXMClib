@@ -202,6 +202,7 @@ protected:
         // Write triple scalar product = (p * (q x r)) as [p q r] and Q = p.dir
 
         constexpr T e = sizeof(T) > 4 ? 1e-7 : 1e-5f;
+        constexpr T ne = -e;
         IntersectResult res;
 
         bool noEnter = true;
@@ -212,7 +213,7 @@ protected:
         const auto QAB = vectormath::tripleProduct(p.dir, A, B);
         const auto QBC = vectormath::tripleProduct(p.dir, B, C);
         const auto QCA = vectormath::tripleProduct(p.dir, C, A);
-        if (noEnter && QAB >= e && QBC >= e && QCA >= e) {
+        if (noEnter && QAB >= ne && QBC >= ne && QCA >= ne) {
             // enter
             noEnter = false;
             res.normal_enter = normalVector(A, B, C);
@@ -230,7 +231,7 @@ protected:
         const auto QBA = -QAB; // tp(p.dir, B, A);
         const auto QAD = vectormath::tripleProduct(p.dir, A, D);
         const auto QDB = vectormath::tripleProduct(p.dir, D, B);
-        if (noEnter && QBA >= e && QAD >= e && QDB >= e) {
+        if (noEnter && QBA >= ne && QAD >= ne && QDB >= ne) {
             // enter
             noEnter = false;
             // t[0] = planeIntersect(p, B, A, D);
@@ -249,7 +250,7 @@ protected:
         const auto QCD = vectormath::tripleProduct(p.dir, C, D);
         const auto QDA = -QAD; // tp(p.dir, D, A);
         const auto QAC = -QCA; // tp(p.dir, A, C);
-        if (noEnter && QCD >= e && QDA >= e && QAC >= e) {
+        if (noEnter && QCD >= ne && QDA >= ne && QAC >= ne) {
             // enter
             noEnter = false;
             // t[0] = planeIntersect(p, C, D, A);
@@ -270,7 +271,7 @@ protected:
             const auto QDC = -QCD; // tp(p.dir, D, C);
             const auto QCB = -QBC; // tp(p.dir, C, B);
             const auto QBD = -QDB; // tp(p.dir, B, D);
-            if (noEnter && QDC >= e && QCB >= e && QBD >= e) {
+            if (noEnter && QDC >= ne && QCB >= ne && QBD >= ne) {
                 // enter
                 noEnter = false;
                 // t[0] = planeIntersect(p, D, C, B);

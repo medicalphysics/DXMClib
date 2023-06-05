@@ -47,6 +47,7 @@ public:
     }
 
     TetrahedalMesh(std::vector<Tetrahedron<T>>&& tets, const std::vector<T>& collectionDensities, const std::vector<Material2<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
+        : WorldItemBase<T>()
     {
         // finding mac collectionIdx and Material index
         const auto maxCollectionIdx = std::transform_reduce(
@@ -109,7 +110,7 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
     {
-        const auto res = m_kdtree.template intersect<6100>(p, m_aabb);
+        const auto res = m_kdtree.template intersect(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
         if (res.valid()) {
             w.intersection = res.intersection;
@@ -176,6 +177,14 @@ public:
                     updateAtt = currentCollection != inter.item->collection();
             }
         }
+    }
+
+    std::size_t numberOfCollections() const { return m_collections.size(); }
+    std::size_t numberOfMaterials() const { return m_materials.size(); }
+    void setMaterial(const Material2<T, NMaterialShells>& material, std::size_t index)
+    {
+        if (index < m_materials.size())
+            m_materials[index] = material;
     }
 
 protected:

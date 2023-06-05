@@ -16,10 +16,13 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#include "dxmc/beams/pencilbeam.hpp"
+#include "dxmc/transport.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
+#include "dxmc/world/worlditems/worldbox.hpp"
 
 #include <iostream>
 #include <string>
@@ -44,29 +47,63 @@ bool testReader()
 }
 
 template <typename T>
-std::tuple<std::vector<std::array<std::size_t, 4>>, std::vector<std::array<T, 3>>> tetrahedron()
+std::vector<dxmc::Tetrahedron<T>> tetCube()
 {
-    std::vector<std::array<T, 3>> vertices;
-    vertices.push_back({ -5, 0, -5 }); // 0
-    vertices.push_back({ 0, -5, -5 }); // 1
-    vertices.push_back({ 5, 5, -5 }); // 2
-    vertices.push_back({ 0, 0, 5 }); // 3
+    std::vector<std::array<T, 3>> v(8);
+    v[0] = { -1, -1, -1 };
+    v[1] = { 1, -1, -1 };
+    v[2] = { 1, 1, -1 };
+    v[3] = { -1, 1, -1 };
+    v[4] = { -1, -1, 1 };
+    v[5] = { 1, -1, 1 };
+    v[6] = { 1, 1, 1 };
+    v[7] = { -1, 1, 1 };
 
-    std::vector<std::array<std::size_t, 4>> nodes;
-    nodes.push_back({ 0, 1, 2, 3 });
+    // 0137 0147 1237 1267 1457 1567
+    //    4      7
+    //     _______
+    //   5/|_____/| 6
+    //    ||     ||
+    //    ||0____|| 3
+    //    |/_____|/
+    //    1      2
+    //
 
-    return std::make_pair(nodes, vertices);
+    std::vector<dxmc::Tetrahedron<T>> t(5);
+    t[0] = { v[0], v[1], v[3], v[4] };
+    t[1] = { v[1], v[2], v[3], v[6] };
+    t[2] = { v[1], v[3], v[4], v[6] };
+    t[3] = { v[1], v[4], v[5], v[6] };
+    t[4] = { v[3], v[4], v[6], v[7] };
+
+    return t;
 }
 
-template <typename T>
-bool testMeshVisualization()
+template <typename T, std::size_t N = 5, int L = 2>
+dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
+{
+    auto tets = tetCube<T>();
+
+    std::vector<dxmc::Material2<T, N>> mats;
+    mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
+    std::vector<T> dens(1, 1);
+
+    std::vector<std::string> names(1);
+    dxmc::TetrahedalMesh<T, N, L> mesh(std::move(tets), dens, mats, names);
+
+    return mesh;
+}
+
+template <typename T, std::size_t N = 5, int L = 2>
+bool testMeshCubeVisualization()
 {
 
-    using Mesh = dxmc::TetrahedalMesh<T, 5, 2>;
+    using Mesh = dxmc::TetrahedalMesh<T, N, L>;
     using World = dxmc::World2<T, Mesh>;
 
     World world;
-    auto& mesh = world.addItem<Mesh>({});
+    // auto mesh = tetrahedron<T, N, L>();
+    auto& mesh = world.template addItem<Mesh>(simpletetrahedron<T, N, L>());
 
     // const auto [nodes, vertices] = tetrahedron<T>();
     // mesh.setData(nodes, vertices);
@@ -76,7 +113,7 @@ bool testMeshVisualization()
     dxmc::VisualizeWorld<T> viz(world);
     viz.setDistance(500);
     viz.setPolarAngle(std::numbers::pi_v<T> / 3);
-    viz.setAzimuthalAngle(std::numbers::pi_v<T> / 2);
+    viz.setAzimuthalAngle(std::numbers::pi_v<T> / 3);
     int height = 512;
     int width = 512;
     std::vector<T> buffer(height * width * 4, T { 1 });
@@ -88,14 +125,47 @@ bool testMeshVisualization()
     writeImage(buffer, "color.bin");
     return false;
 }
+
+template <dxmc::Floating T, std::size_t N = 5, int L = 2, bool BOX = false>
+T testDoseScoring()
+{
+    using Mesh = dxmc::TetrahedalMesh<T, N, L>;
+    using Box = dxmc::WorldBox<T, N, L>;
+    using World = dxmc::World2<T, Mesh, Box>;
+    using Material = dxmc::Material2<T, N>;
+    World world;
+
+    if constexpr (BOX) {
+        auto& box = world.template addItem<Box>({});
+        auto water = Material::byNistName("Water, Liquid").value();
+        const T density = 1;
+        box.setMaterial(water, density);
+    } else {
+        world.template addItem<Mesh>(simpletetrahedron<T, N, L>());
+    }
+    world.build();
+
+    dxmc::PencilBeam<T> beam({ -100, .0, 0 }, { 1, 0, 0 });
+
+    dxmc::Transport transport;
+    transport(world, beam);
+    auto items = world.getItemPointers();
+    auto dose = items[0]->dose();
+    return dose.energyImparted();
+}
+
 int main()
 {
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
     bool success = true;
-    // success = success && testMeshVisualization<double>();
-    success = success && testReader<double>();
-    success = success && testReader<float>();
+    success = success && testMeshCubeVisualization<double>();
+
+    auto td = testDoseScoring<double, 5, 1, false>();
+    auto bd = testDoseScoring<double, 5, 1, true>();
+
+    // success = success && testReader<double>();
+    // success = success && testReader<float>();
 
     if (success)
         return EXIT_SUCCESS;
