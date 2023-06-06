@@ -99,6 +99,33 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 }
 
 template <typename T, std::size_t N = 5, int L = 2>
+dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
+{
+    std::vector<dxmc::Tetrahedron<T>> tets;
+
+    std::vector<std::array<T, 3>> p;
+    p.push_back({ -1, 0, -1 });
+    p.push_back({ 1, 0, -1 });
+    p.push_back({ 1, 2, -1 });
+    p.push_back({ 1, 0, 1 });
+
+    tets.push_back({ p[0], p[1], p[2], p[3] });
+
+    bool valid = true;
+    for (const auto& t : tets)
+        valid = valid && t.validVerticeOrientation();
+
+    std::vector<dxmc::Material2<T, N>> mats;
+    mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
+    std::vector<T> dens(1, 1);
+
+    std::vector<std::string> names(1);
+    dxmc::TetrahedalMesh<T, N, L> mesh(std::move(tets), dens, mats, names);
+
+    return mesh;
+}
+
+template <typename T, std::size_t N = 5, int L = 2>
 void testMeshCubeVisualization()
 {
 
@@ -151,7 +178,7 @@ T testDoseScoring()
     }
     world.build();
 
-    dxmc::PencilBeam<T> beam({ -100, -.1, -.1 }, { 1, 0, 0 });
+    dxmc::PencilBeam<T> beam({ 0, -100, 0 }, { 0, 1, 0});
     beam.setNumberOfParticlesPerExposure(1E6);
     beam.setNumberOfExposures(24);
 
