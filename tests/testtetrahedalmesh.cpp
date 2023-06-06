@@ -70,8 +70,8 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
     //
 
     std::vector<dxmc::Tetrahedron<T>> t(5);
-    t[0] = { v[0], v[1], v[3], v[4] };
-    t[1] = { v[1], v[2], v[3], v[6] };
+    t[0] = { v[1], v[2], v[3], v[4] };
+    t[1] = { v[2], v[3], v[1], v[6] };
     t[2] = { v[1], v[3], v[4], v[6] };
     t[3] = { v[1], v[4], v[5], v[6] };
     t[4] = { v[3], v[4], v[6], v[7] };
@@ -84,6 +84,10 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 {
     auto tets = tetCube<T>();
 
+    bool valid = true;
+    for (const auto& t : tets)
+        valid = valid && t.validVerticeOrientation();
+
     std::vector<dxmc::Material2<T, N>> mats;
     mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
     std::vector<T> dens(1, 1);
@@ -95,14 +99,17 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 }
 
 template <typename T, std::size_t N = 5, int L = 2>
-bool testMeshCubeVisualization()
+void testMeshCubeVisualization()
 {
 
     using Mesh = dxmc::TetrahedalMesh<T, N, L>;
     using World = dxmc::World2<T, Mesh>;
 
     World world;
-    // auto mesh = tetrahedron<T, N, L>();
+
+    // dxmc::TetrahedalmeshReader<T> reader;
+    // auto& mesh = world.template addItem<Mesh>(reader.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele", "MRCP_AM_media.dat", "icrp145organs.csv"));
+
     auto& mesh = world.template addItem<Mesh>(simpletetrahedron<T, N, L>());
 
     // const auto [nodes, vertices] = tetrahedron<T>();
@@ -123,7 +130,6 @@ bool testMeshCubeVisualization()
     viz.generate(world, buffer, width, height);
 
     writeImage(buffer, "color.bin");
-    return false;
 }
 
 template <dxmc::Floating T, std::size_t N = 5, int L = 2, bool BOX = false>
@@ -145,9 +151,12 @@ T testDoseScoring()
     }
     world.build();
 
-    dxmc::PencilBeam<T> beam({ -100, .0, 0 }, { 1, 0, 0 });
+    dxmc::PencilBeam<T> beam({ -100, -.1, -.1 }, { 1, 0, 0 });
+    beam.setNumberOfParticlesPerExposure(1E6);
+    beam.setNumberOfExposures(24);
 
     dxmc::Transport transport;
+    transport.setNumberOfThreads(1);
     transport(world, beam);
     auto items = world.getItemPointers();
     auto dose = items[0]->dose();
@@ -158,11 +167,21 @@ int main()
 {
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
-    bool success = true;
-    success = success && testMeshCubeVisualization<double>();
+    // testMeshCubeVisualization<double>();
 
+    bool success = true;
+    std::cout << "Test tetrahedalmesh dose scoring\n";
     auto td = testDoseScoring<double, 5, 1, false>();
     auto bd = testDoseScoring<double, 5, 1, true>();
+    std::cout << "Dose to mesh cube: " << td << "\n";
+    std::cout << "Dose to stdw cube: " << bd << "\n";
+    success = success && (1 - td / bd) < 0.01;
+    if (success)
+        std::cout << "SUCCESS ";
+    else
+        std::cout << "FAILURE ";
+    std::cout << "difference: " << bd - td << " [" << 100 - 100 * td / bd << "]%\n";
+    success = success && std::abs((1 - td / bd)) < 0.01;
 
     // success = success && testReader<double>();
     // success = success && testReader<float>();

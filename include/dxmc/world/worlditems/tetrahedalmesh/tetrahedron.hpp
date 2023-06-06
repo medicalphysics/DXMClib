@@ -150,6 +150,52 @@ public:
         return w;
     }
 
+    bool validVerticeOrientation() const
+    {
+        auto center = std::reduce(m_vertices.cbegin(), m_vertices.cend(), std::array<T, 3> { 0, 0, 0 }, [](const auto& lh, const auto& rh) { return vectormath::add(lh, rh); });
+        for (auto& c : center)
+            c /= T { 4 };
+
+        std::array<T, 3> pv0, pv1;
+        std::array<T, 4> proj;
+
+        // F3 (V0V1V2), F2 (V1V0V3), F1 (V2V3V0), F0 (V3V2V1)
+        {
+            const auto d = vectormath::subtract(center, m_vertices[3]);
+            const auto pv0 = vectormath::subtract(m_vertices[1], m_vertices[0]);
+            const auto pv1 = vectormath::subtract(m_vertices[2], m_vertices[0]);
+            const auto n = vectormath::cross(pv0, pv1);
+            proj[3] = vectormath::dot(d, n);
+        }
+        {
+            const auto d = vectormath::subtract(center, m_vertices[2]);
+            const auto pv0 = vectormath::subtract(m_vertices[0], m_vertices[1]);
+            const auto pv1 = vectormath::subtract(m_vertices[3], m_vertices[1]);
+            const auto n = vectormath::cross(pv0, pv1);
+            proj[2] = vectormath::dot(d, n);
+        }
+        {
+            const auto d = vectormath::subtract(center, m_vertices[1]);
+            const auto pv0 = vectormath::subtract(m_vertices[3], m_vertices[2]);
+            const auto pv1 = vectormath::subtract(m_vertices[0], m_vertices[2]);
+            const auto n = vectormath::cross(pv0, pv1);
+            proj[1] = vectormath::dot(d, n);
+        }
+        {
+            const auto d = vectormath::subtract(center, m_vertices[0]);
+            const auto pv0 = vectormath::subtract(m_vertices[2], m_vertices[3]);
+            const auto pv1 = vectormath::subtract(m_vertices[1], m_vertices[3]);
+            const auto n = vectormath::cross(pv0, pv1);
+            proj[0] = vectormath::dot(d, n);
+        }
+
+        bool valid = true;
+        for (auto p : proj)
+            valid = valid && p <= T { 0 };
+
+        return valid;
+    }
+
 protected:
     static std::array<T, 3> normalVector(const std::array<T, 3>& p0, const std::array<T, 3>& p1, const std::array<T, 3>& p2)
     {
@@ -221,7 +267,6 @@ protected:
         } else if (noExit && QAB <= e && QBC <= e && QCA <= e) {
             // exit
             noExit = false;
-            // t[1] = planeIntersect(p, A, B, C);
             res.normal_exit = normalVector(A, B, C);
             res.t_exit = planeIntersect(p, A, res.normal_exit);
         }
@@ -234,13 +279,11 @@ protected:
         if (noEnter && QBA >= ne && QAD >= ne && QDB >= ne) {
             // enter
             noEnter = false;
-            // t[0] = planeIntersect(p, B, A, D);
             res.normal_enter = normalVector(B, A, D);
             res.t_enter = planeIntersect(p, B, res.normal_enter);
         } else if (noExit && QBA <= e && QAD <= e && QDB <= e) {
             // exit
             noExit = false;
-            // t[1] = planeIntersect(p, B, A, D);
             res.normal_exit = normalVector(B, A, D);
             res.t_exit = planeIntersect(p, B, res.normal_exit);
         }
@@ -253,13 +296,11 @@ protected:
         if (noEnter && QCD >= ne && QDA >= ne && QAC >= ne) {
             // enter
             noEnter = false;
-            // t[0] = planeIntersect(p, C, D, A);
             res.normal_enter = normalVector(C, D, A);
             res.t_enter = planeIntersect(p, C, res.normal_enter);
         } else if (noExit && QCD <= e && QDA <= e && QAC <= e) {
             // exit
             noExit = false;
-            // t[1] = planeIntersect(p, C, D, A);
             res.normal_exit = normalVector(C, D, A);
             res.t_exit = planeIntersect(p, C, res.normal_exit);
         }
@@ -274,13 +315,11 @@ protected:
             if (noEnter && QDC >= ne && QCB >= ne && QBD >= ne) {
                 // enter
                 noEnter = false;
-                // t[0] = planeIntersect(p, D, C, B);
                 res.normal_enter = normalVector(D, C, B);
                 res.t_enter = planeIntersect(p, D, res.normal_enter);
             } else if (noExit && QDC <= e && QCB <= e && QBD <= e) {
                 // exit
                 noExit = false;
-                // t[1] = planeIntersect(p, D, C, B);
                 res.normal_exit = normalVector(D, C, B);
                 res.t_exit = planeIntersect(p, D, res.normal_exit);
             }

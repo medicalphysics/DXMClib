@@ -158,7 +158,7 @@ public:
     template <std::uint16_t COLLECTION = 65535>
     TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
-        const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
+        const auto inter = basicshape::AABB::intersectForwardInterval<T, false>(particle, aabb);
         return inter ? intersect<COLLECTION>(particle, *inter) : TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> {};
     }
 

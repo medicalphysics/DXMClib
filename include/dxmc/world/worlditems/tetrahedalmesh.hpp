@@ -110,7 +110,7 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
     {
-        const auto res = m_kdtree.template intersect(p, m_aabb);
+        const auto res = m_kdtree.intersect(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
         if (res.valid()) {
             w.intersection = res.intersection;
@@ -161,13 +161,14 @@ public:
             if (stepLen < inter.intersection) {
                 // interaction happends
                 p.translate(stepLen);
-                inter.intersection -= stepLen;
                 const auto& material = m_materials[currentMaterialIdx];
                 const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, material, state);
                 auto& dose = m_collections[currentCollection].dose;
                 dose.scoreEnergy(intRes.energyImparted);
                 updateAtt = intRes.particleEnergyChanged;
-                if (!intRes.particleAlive)
+                if (intRes.particleAlive)
+                    inter = m_kdtree.intersect(p, m_aabb);
+                else
                     inter.rayOriginIsInsideItem = false; // we exits
             } else {
                 // transport to border of tetrahedron

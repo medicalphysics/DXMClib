@@ -38,7 +38,7 @@ namespace basicshape {
             return aabb[0] <= p[0] && p[0] <= aabb[3] && aabb[1] <= p[1] && p[1] <= aabb[4] && aabb[2] <= p[2] && p[2] <= aabb[5];
         }
 
-        template <Floating T>
+        template <Floating T, bool FORWARD = true>
         std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             std::array<T, 2> t;
@@ -86,8 +86,10 @@ namespace basicshape {
                 t[1] = tzmax;
             if (t[1] < 0)
                 return std::nullopt;
-            if (t[0] < T { 0 })
-                t[0] = T { 0 };
+            if constexpr (FORWARD) {
+                if (t[0] < T { 0 })
+                    t[0] = T { 0 };
+            }
 
             return std::make_optional(t);
         }
