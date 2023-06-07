@@ -171,6 +171,56 @@ public:
             t.join();
         }
     }
+    template <WorldType<T> W>
+    void generateDistance(W& world, std::vector<T>& buffer, int width = 512, int height = 512) const
+    {
+
+        const auto step = std::max(m_fov / width, m_fov / height);
+        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
+        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
+        const auto dir = vectormath::cross(ycos, xcos);
+        const std::array pos = {
+            m_camera_pos[0] * std::cos(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[0],
+            m_camera_pos[0] * std::sin(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[1],
+            m_camera_pos[0] * std::cos(m_camera_pos[2]) + m_center[2]
+        };
+
+        auto worker = [&](std::size_t start, std::size_t stop) {
+            Particle<T> p;
+            p.pos = pos;
+
+            for (std::size_t j = start; j < stop; ++j) {
+                const auto y = j / width;
+                const auto x = j - y * width;
+                const auto yang = -step * height * T { 0.5 } + y * step;
+                const auto xang = -step * width * T { 0.5 } + x * step;
+                p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
+                const auto res = world.intersectVisualization(p);
+                if (res.valid()) {
+                    buffer[j] = res.intersection;
+                } else {
+                    buffer[j] = 0;
+                }
+            }
+        };
+
+        int nThreads = std::thread::hardware_concurrency();
+        const auto jobsize = static_cast<std::size_t>(width * height / nThreads);
+        std::vector<std::jthread> threads;
+        threads.reserve(nThreads - 1);
+        std::size_t start = 0;
+        auto stop = jobsize;
+        for (auto i = nThreads - 1; i > 0; --i) {
+            threads.emplace_back(std::jthread(worker, start, stop));
+            start = stop;
+            stop += jobsize;
+        }
+
+        worker(start, static_cast<std::size_t>(height * width));
+        for (auto& t : threads) {
+            t.join();
+        }
+    }
 
 protected:
     template <BeamType<T> B, typename U>
