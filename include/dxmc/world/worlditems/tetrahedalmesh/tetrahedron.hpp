@@ -261,17 +261,22 @@ protected:
         const auto QCA = vectormath::tripleProduct(p.dir, C, A);
         if (noEnter && QAB >= ne && QBC >= ne && QCA >= ne) {
             // enter
-            noEnter = false;
             res.normal_enter = normalVector(A, B, C);
-            fix where normal and p.dir is normal
-            const auto t = planeIntersect(p, A, res.normal_enter);
-            res.t_enter = t;
+            const auto den = vectormath::dot(p.dir, res.normal_enter);
+            if (std::abs(den) > e) {
+                noEnter = false;
+                const auto t = vectormath::dot(A, res.normal_enter) / den;
+                res.t_enter = t;
+            }
         } else if (noExit && QAB <= e && QBC <= e && QCA <= e) {
             // exit
-            noExit = false;
             res.normal_exit = normalVector(A, B, C);
-            const auto t = planeIntersect(p, A, res.normal_exit);
-            res.t_exit = t;
+            const auto den = vectormath::dot(p.dir, res.normal_exit);
+            if (std::abs(den) > e) {
+                noExit = false;
+                const auto t = vectormath::dot(A, res.normal_exit) / den;
+                res.t_exit = t;
+            }
         }
 
         // test for F2
@@ -281,16 +286,22 @@ protected:
         const auto QDB = vectormath::tripleProduct(p.dir, D, B);
         if (noEnter && QBA >= ne && QAD >= ne && QDB >= ne) {
             // enter
-            noEnter = false;
             res.normal_enter = normalVector(B, A, D);
-            const auto t = planeIntersect(p, B, res.normal_enter);
-            res.t_enter = t;
+            const auto den = vectormath::dot(p.dir, res.normal_enter);
+            if (std::abs(den) > e) {
+                noEnter = false;
+                const auto t = vectormath::dot(B, res.normal_enter) / den;
+                res.t_enter = t;
+            }
         } else if (noExit && QBA <= e && QAD <= e && QDB <= e) {
             // exit
-            noExit = false;
             res.normal_exit = normalVector(B, A, D);
-            const auto t = planeIntersect(p, B, res.normal_exit);
-            res.t_exit = t;
+            const auto den = vectormath::dot(p.dir, res.normal_exit);
+            if (std::abs(den) > e) {
+                noExit = false;
+                const auto t = vectormath::dot(B, res.normal_exit) / den;
+                res.t_exit = t;
+            }
         }
 
         // test for F1
@@ -300,16 +311,22 @@ protected:
         const auto QAC = -QCA; // tp(p.dir, A, C);
         if (noEnter && QCD >= ne && QDA >= ne && QAC >= ne) {
             // enter
-            noEnter = false;
             res.normal_enter = normalVector(C, D, A);
-            const auto t = planeIntersect(p, C, res.normal_enter);
-            res.t_enter = t;
+            const auto den = vectormath::dot(p.dir, res.normal_enter);
+            if (std::abs(den) > e) {
+                noEnter = false;
+                const auto t = vectormath::dot(C, res.normal_enter) / den;
+                res.t_enter = t;
+            }
         } else if (noExit && QCD <= e && QDA <= e && QAC <= e) {
             // exit
-            noExit = false;
             res.normal_exit = normalVector(C, D, A);
-            const auto t = planeIntersect(p, C, res.normal_exit);
-            res.t_exit = t;
+            const auto den = vectormath::dot(p.dir, res.normal_exit);
+            if (std::abs(den) > e) {
+                noExit = false;
+                const auto t = vectormath::dot(C, res.normal_exit) / den;
+                res.t_exit = t;
+            }
         }
 
         const auto oneIntersection = (noEnter || noExit) || (!noEnter && !noExit);
@@ -321,20 +338,26 @@ protected:
             const auto QBD = -QDB; // tp(p.dir, B, D);
             if (noEnter && QDC >= ne && QCB >= ne && QBD >= ne) {
                 // enter
-                noEnter = false;
                 res.normal_enter = normalVector(D, C, B);
-                const auto t = planeIntersect(p, D, res.normal_enter);
-                res.t_enter = t;
+                const auto den = vectormath::dot(p.dir, res.normal_enter);
+                if (std::abs(den) > e) {
+                    noEnter = false;
+                    const auto t = vectormath::dot(D, res.normal_enter) / den;
+                    res.t_enter = t;
+                }
             } else if (noExit && QDC <= e && QCB <= e && QBD <= e) {
                 // exit
-                noExit = false;
                 res.normal_exit = normalVector(D, C, B);
-                const auto t = planeIntersect(p, D, res.normal_exit);
-                res.t_exit = t;
+                const auto den = vectormath::dot(p.dir, res.normal_exit);
+                if (std::abs(den) > e) {
+                    noExit = false;
+                    const auto t = vectormath::dot(D, res.normal_exit) / den;
+                    res.t_exit = t;
+                }
             }
         }
         if (!noEnter && !noExit) { // two intersections
-            res.valid = true;
+            res.valid = res.t_exit > res.t_enter; // we ignore glancing hits
         }
         return res;
     }
