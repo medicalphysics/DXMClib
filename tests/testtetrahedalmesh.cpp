@@ -70,11 +70,11 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
     //
 
     std::vector<dxmc::Tetrahedron<T>> t(5);
-    t[0] = { v[1], v[2], v[3], v[4] };
-    t[1] = { v[2], v[3], v[1], v[6] };
-    t[2] = { v[1], v[3], v[4], v[6] };
-    t[3] = { v[1], v[4], v[5], v[6] };
-    t[4] = { v[3], v[4], v[6], v[7] };
+    t[0] = { v[1], v[2], v[3], v[4], 0, 0 };
+    t[1] = { v[2], v[3], v[1], v[6], 1, 0 };
+    t[2] = { v[1], v[3], v[4], v[6], 2, 0 };
+    t[3] = { v[1], v[4], v[5], v[6], 3, 0 };
+    t[4] = { v[3], v[4], v[6], v[7], 4, 0 };
 
     return t;
 }
@@ -90,7 +90,7 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 
     std::vector<dxmc::Material2<T, N>> mats;
     mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
-    std::vector<T> dens(1, 1);
+    std::vector<T> dens(5, 1);
 
     std::vector<std::string> names(1);
     dxmc::TetrahedalMesh<T, N, L> mesh(std::move(tets), dens, mats, names);
@@ -152,7 +152,7 @@ void testMeshCubeVisualization()
     int width = 512;
     std::vector<T> buffer(height * width * 4, T { 1 });
 
-    // viz.setCameraPosition({ 0, -800, -800 });
+    viz.setCameraPosition({ 1, -100, 0 });
     viz.suggestFOV();
     viz.generate(world, buffer, width, height);
 
@@ -178,23 +178,31 @@ T testDoseScoring()
     }
     world.build();
 
-    dxmc::PencilBeam<T> beam({ 0, -100, 0 }, { 0, 1, 0});
-    beam.setNumberOfParticlesPerExposure(1E6);
-    beam.setNumberOfExposures(24);
+    dxmc::PencilBeam<T> beam({ .1, -100, 0 }, { 0, 1, 0 });
+    beam.setNumberOfParticlesPerExposure(1E3);
+    beam.setNumberOfExposures(8);
 
     dxmc::Transport transport;
     transport.setNumberOfThreads(1);
     transport(world, beam);
-    auto items = world.getItemPointers();
-    auto dose = items[0]->dose();
-    return dose.energyImparted();
+    if constexpr (BOX) {
+        auto& boxes = world.getItems<Box>();
+        return boxes[0].dose(0).energyImparted();
+    } else {
+        auto& meshes = world.getItems<Mesh>();
+        auto& mesh = meshes[0];
+        T dose = 0;
+        for (std::size_t i = 0; i < mesh.numberOfCollections(); ++i)
+            dose += mesh.dose(i).energyImparted();
+        return dose;
+    }
 }
 
 int main()
 {
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
-    // testMeshCubeVisualization<double>();
+    testMeshCubeVisualization<double>();
 
     bool success = true;
     std::cout << "Test tetrahedalmesh dose scoring\n";
