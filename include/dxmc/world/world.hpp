@@ -146,6 +146,24 @@ public:
         return vectormath::scale(T { 0.5 }, vectormath::add(l, r));
     }
 
+    void translate(const std::array<T, 3> dist)
+    {
+        auto iter = [&dist](auto& v) {
+            for (auto& item : v)
+                item.translate(dist);
+        };
+
+        std::apply([&iter](auto&... vec) {
+            (iter(vec), ...);
+        },
+            m_items);
+
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] += dist[i];
+            m_aabb[i + 3] += dist[i];
+        }
+    }
+
     inline auto intersect(const Particle<T>& p)
     {
         return m_kdtree.intersect(p, m_aabb);
