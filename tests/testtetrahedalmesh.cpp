@@ -50,35 +50,32 @@ template <typename T>
 std::vector<dxmc::Tetrahedron<T>> tetCube()
 {
     std::vector<std::array<T, 3>> v(8);
-    v[0] = { -1, -1, -1 };
-    v[1] = { 1, -1, -1 };
-    v[2] = { 1, 1, -1 };
-    v[3] = { -1, 1, -1 };
-    v[4] = { -1, -1, 1 };
-    v[5] = { 1, -1, 1 };
-    v[6] = { 1, 1, 1 };
-    v[7] = { -1, 1, 1 };
+    v[0] = { -1, 1, 1 };
+    v[1] = { 1, -1, 1 };
+    v[2] = { 1, 1, 1 };
+    v[3] = { -1, -1, -1 };
+    v[4] = { 1, -1, -1 };
+    v[5] = { -1, -1, 1 };
+    v[6] = { -1, 1, -1 };
+    v[7] = { 1, 1, -1 };
 
-    // 0137 0147 1237 1267 1457 1567
-    //    4      7
-    //     _______
-    //   5/|_____/| 6
-    //    ||     ||
-    //    ||0____|| 3
-    //    |/_____|/
-    //    1      2
-    //
+    for (auto& i : v)
+        for (auto& n : i)
+            n *= 10;
 
-    /*
-    std::vector<dxmc::Tetrahedron<T>> t(5);
-    t[0] = { v[1], v[2], v[3], v[4], 0, 0 };
-    t[1] = { v[2], v[3], v[1], v[6], 1, 0 }; **
-    t[2] = { v[1], v[3], v[4], v[6], 2, 0 };
-    t[3] = { v[1], v[4], v[5], v[6], 3, 0 }; **
-    t[4] = { v[3], v[4], v[6], v[7], 4, 0 }; **
-    */
-    std::vector<dxmc::Tetrahedron<T>> t(1);
-    t[0] = { v[1], v[2], v[3], v[4], 0, 0 };
+    std::vector<dxmc::Tetrahedron<T>> t(6);
+    t[0] = { v[1], v[7], v[0], v[2], 0, 0 }; //*
+    t[1] = { v[7], v[3], v[0], v[6], 0, 0 }; //*
+    t[2] = { v[1], v[3], v[0], v[4], 0, 0 }; //*
+    t[3] = { v[1], v[7], v[4], v[0], 0, 0 }; //*
+    t[4] = { v[7], v[3], v[4], v[0], 0, 0 }; //*
+    t[5] = { v[1], v[3], v[5], v[0], 0, 0 }; //*
+
+    for (auto& tet : t)
+        tet.validVerticeOrientation();
+
+    // std::vector<dxmc::Tetrahedron<T>> t(1);
+    // t[0] = { v[2], v[6], v[3], v[0], 0, 0 };
 
     return t;
 }
@@ -88,13 +85,11 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 {
     auto tets = tetCube<T>();
 
-    bool valid = true;
-    for (const auto& t : tets)
-        valid = valid && t.validVerticeOrientation();
+   
 
     std::vector<dxmc::Material2<T, N>> mats;
     mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
-    std::vector<T> dens(5, 1);
+    std::vector<T> dens(tets.size(), 1);
 
     std::vector<std::string> names(1);
     dxmc::TetrahedalMesh<T, N, L> mesh(std::move(tets), dens, mats, names);
@@ -149,18 +144,21 @@ void testMeshCubeVisualization()
     world.build(T { 0 });
 
     dxmc::VisualizeWorld<T> viz(world);
-    viz.setDistance(500);
-    viz.setPolarAngle(std::numbers::pi_v<T> / 3);
-    viz.setAzimuthalAngle(std::numbers::pi_v<T> / 3);
+
     int height = 512;
     int width = 512;
     std::vector<T> buffer(height * width * 4, T { 1 });
 
-    viz.setCameraPosition({ 1, -100, 0 });
-    viz.suggestFOV();
-    viz.generate(world, buffer, width, height);
-
-    writeImage(buffer, "color.bin");
+    for (std::size_t i = 0; i < 12; ++i) {
+        viz.setDistance(500);
+        viz.setPolarAngle(std::numbers::pi_v<T> / 3.0);
+        viz.setAzimuthalAngle(std::numbers::pi_v<T> * i / 6.0);
+        // viz.setCameraPosition({ -60, -30, -10 });
+        viz.suggestFOV();
+        viz.generate(world, buffer, width, height);
+        std::string name = "color_" + std::to_string(i) + ".bin";
+        writeImage(buffer, name);
+    }
 }
 
 template <dxmc::Floating T, std::size_t N = 5, int L = 2, bool BOX = false>
@@ -173,7 +171,7 @@ T testDoseScoring(std::array<T, 3> pos = { 0, -100, 0 }, std::array<T, 3> dir = 
     World world;
 
     if constexpr (BOX) {
-        auto& box = world.template addItem<Box>({});
+        auto& box = world.template addItem<Box>({ 10 });
         auto water = Material::byNistName("Water, Liquid").value();
         const T density = 1;
         box.setMaterial(water, density);
@@ -195,10 +193,10 @@ T testDoseScoring(std::array<T, 3> pos = { 0, -100, 0 }, std::array<T, 3> dir = 
     // transport.setNumberOfThreads(1);
     transport(world, beam);
     if constexpr (BOX) {
-        auto& boxes = world.getItems<Box>();
+        auto& boxes = world.template getItems<Box>();
         return boxes[0].dose(0).energyImparted();
     } else {
-        auto& meshes = world.getItems<Mesh>();
+        auto& meshes = world.template getItems<Mesh>();
         auto& mesh = meshes[0];
         T dose = 0;
         for (std::size_t i = 0; i < mesh.numberOfCollections(); ++i)
@@ -212,47 +210,28 @@ int main()
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
     testMeshCubeVisualization<double>();
-
+  
     bool success = true;
     std::cout << "Test tetrahedalmesh dose scoring\n";
 
-    double td;
-    td = testDoseScoring<double, 5, 1, false>({ -100, 0, 0 }, { 1, 0, 0 });
-    std::cout << "Dose to mesh cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, false>({ 0, -100, 0 }, { 0, 1, 0 });
-    std::cout << "Dose to mesh cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, false>({ 0, 0, -100 }, { 0, 0, 1 });
-    std::cout << "Dose to mesh cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, false>({ 100, 0, 0 }, { -1, 0, 0 });
-    std::cout << "Dose to mesh cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, false>({ 0, 100, 0 }, { 0, -1, 0 });
-    std::cout << "Dose to mesh cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, false>({ 0, 0, 100 }, { 0, 0, -1 });
-    std::cout << "Dose to mesh cube: " << td << "\n";
+    std::vector<std::pair<std::array<double, 3>, std::array<double, 3>>> bp;
+    bp.push_back(std::make_pair(std::array<double, 3> { -100, 0, 0 }, std::array<double, 3> { 1, 0, 0 }));
+    bp.push_back(std::make_pair(std::array<double, 3> { 0, -100, 0 }, std::array<double, 3> { 0, 1, 0 }));
+    bp.push_back(std::make_pair(std::array<double, 3> { 0, 0, -100 }, std::array<double, 3> { 0, 0, 1 }));
+    bp.push_back(std::make_pair(std::array<double, 3> { 100, 0, 0 }, std::array<double, 3> { -1, 0, 0 }));
+    bp.push_back(std::make_pair(std::array<double, 3> { 0, 100, 0 }, std::array<double, 3> { 0, -1, 0 }));
+    bp.push_back(std::make_pair(std::array<double, 3> { 0, 0, 100 }, std::array<double, 3> { 0, 0, -1 }));
 
-    td = testDoseScoring<double, 5, 1, true>({ -100, 0, 0 }, { 1, 0, 0 });
-    std::cout << "Dose to std cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, true>({ 0, -100, 0 }, { 0, 1, 0 });
-    std::cout << "Dose to std cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, true>({ 0, 0, -100 }, { 0, 0, 1 });
-    std::cout << "Dose to std cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, true>({ 100, 0, 0 }, { -1, 0, 0 });
-    std::cout << "Dose to std cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, true>({ 0, 100, 0 }, { 0, -1, 0 });
-    std::cout << "Dose to std cube: " << td << "\n";
-    td = testDoseScoring<double, 5, 1, true>({ 0, 0, 100 }, { 0, 0, -1 });
-    std::cout << "Dose to std cube: " << td << "\n";
+    for (const auto& [pos, dir] : bp) {
+        const auto tm = testDoseScoring<double, 5, 1, false>({ -100, 0, 0 }, { 1, 0, 0 });
+        const auto tc = testDoseScoring<double, 5, 1, true>({ -100, 0, 0 }, { 1, 0, 0 });
+        std::cout << "Dose to mesh: " << tm << ", dose cube: " << tc << ", difference: " << (tm / tc - 1) * 100 << "\n";
+    }
 
-    auto bd = testDoseScoring<double, 5, 1, true>();
-    // std::cout << "Dose to mesh cube: " << td << "\n";
-    // std::cout << "Dose to stdw cube: " << bd << "\n";
-    //(success = success && (1 - td / bd) < 0.01;
     if (success)
         std::cout << "SUCCESS ";
     else
         std::cout << "FAILURE ";
-    // std::cout << "difference: " << bd - td << " [" << 100 - 100 * td / bd << "]%\n";
-    // success = success && std::abs((1 - td / bd)) < 0.01;
 
     // success = success && testReader<double>();
     // success = success && testReader<float>();

@@ -168,26 +168,33 @@ protected:
     {
         if (!m_left) { // this is a leaf
             // intersect tetrahedrons between tbox and return;
-            TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res;
-            res.intersection = std::numeric_limits<T>::max();
+            TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res { .item = nullptr, .t_enter = std::numeric_limits<T>::max(), .t_exit = std::numeric_limits<T>::max() };
             for (const auto& tet : m_tets) {
                 if constexpr (COLLECTION == 65535) {
                     auto t_cand = tet.intersect(particle);
                     if (t_cand.valid()) {
-                        if (t_cand.intersection < res.intersection) {
-                            if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                        if (t_cand.t_enter > T { 0 }) {
+                            if (t_cand.t_enter < res.t_enter && tbox[0] <= t_cand.t_enter && t_cand.t_enter <= tbox[1]) {
+                                // we select the closest infront intersection, must be inside tbox
                                 std::swap(res, t_cand);
                             }
+                        } else if (t_cand.t_enter < T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
+                            // we are inside a thetrahedron and t_exit is inside tbox, no better candidate
+                            return t_cand;
                         }
                     }
                 } else {
                     if (tet.collection() == COLLECTION) {
                         auto t_cand = tet.intersect(particle);
                         if (t_cand.valid()) {
-                            if (t_cand.intersection < res.intersection) {
-                                if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                            if (t_cand.t_enter > T { 0 }) {
+                                if (t_cand.t_enter < res.t_enter && tbox[0] <= t_cand.t_enter && t_cand.t_enter <= tbox[1]) {
+                                    // we select the closest infront intersection, must be inside tbox
                                     std::swap(res, t_cand);
                                 }
+                            } else if (t_cand.t_enter < T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
+                                // we are inside a thetrahedron and t_exit is inside tbox, no better candidate
+                                return t_cand;
                             }
                         }
                     }
@@ -201,7 +208,7 @@ protected:
             auto hit_left = m_left->template intersect<COLLECTION>(particle, tbox);
             auto hit_right = m_right->template intersect<COLLECTION>(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
-                return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
+                return hit_left.intersection() > hit_right.intersection() ? hit_right : hit_left;
             if (hit_right.valid())
                 return hit_right;
             return hit_left;
@@ -224,7 +231,7 @@ protected:
         const std::array<T, 2> t_front { tbox[0], t };
         auto hit = front->intersect<COLLECTION>(particle, t_front);
         if (hit.valid()) {
-            if (hit.intersection <= t) {
+            if (hit.intersection() <= t) {
                 return hit;
             }
         }
