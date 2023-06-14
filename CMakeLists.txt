@@ -102,6 +102,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/ctdiphantom.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/depthdose.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worlditembase.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/fluencescore.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/aavoxelgrid.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldbox.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/worldboxgrid.hpp"
