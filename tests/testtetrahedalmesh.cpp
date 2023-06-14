@@ -85,8 +85,6 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 {
     auto tets = tetCube<T>();
 
-   
-
     std::vector<dxmc::Material2<T, N>> mats;
     mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
     std::vector<T> dens(tets.size(), 1);
@@ -187,7 +185,7 @@ T testDoseScoring(std::array<T, 3> pos = { 0, -100, 0 }, std::array<T, 3> dir = 
 
     dxmc::PencilBeam<T> beam(pos, dir);
     beam.setNumberOfParticlesPerExposure(1E6);
-    beam.setNumberOfExposures(8);
+    beam.setNumberOfExposures(4);
 
     dxmc::Transport transport;
     // transport.setNumberOfThreads(1);
@@ -210,7 +208,7 @@ int main()
     std::cout << "Testing ray intersection on tetrahedal mesh\n";
 
     testMeshCubeVisualization<double>();
-  
+
     bool success = true;
     std::cout << "Test tetrahedalmesh dose scoring\n";
 
@@ -225,7 +223,7 @@ int main()
     for (const auto& [pos, dir] : bp) {
         const auto tm = testDoseScoring<double, 5, 1, false>({ -100, 0, 0 }, { 1, 0, 0 });
         const auto tc = testDoseScoring<double, 5, 1, true>({ -100, 0, 0 }, { 1, 0, 0 });
-        std::cout << "Dose to mesh: " << tm << ", dose cube: " << tc << ", difference: " << (tm / tc - 1) * 100 << "\n";
+        std::cout << "Dose to mesh: " << tm << ", dose cube: " << tc << ", difference[%]: " << (tm / tc - 1) * 100 << "\n";
     }
 
     if (success)

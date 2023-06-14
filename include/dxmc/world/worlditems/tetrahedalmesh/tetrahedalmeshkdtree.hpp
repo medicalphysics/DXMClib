@@ -178,7 +178,7 @@ protected:
                                 // we select the closest infront intersection, must be inside tbox
                                 std::swap(res, t_cand);
                             }
-                        } else if (t_cand.t_enter < T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
+                        } else if (t_cand.t_enter <= T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
                             // we are inside a thetrahedron and t_exit is inside tbox, no better candidate
                             return t_cand;
                         }
@@ -189,10 +189,10 @@ protected:
                         if (t_cand.valid()) {
                             if (t_cand.t_enter > T { 0 }) {
                                 if (t_cand.t_enter < res.t_enter && tbox[0] <= t_cand.t_enter && t_cand.t_enter <= tbox[1]) {
-                                    // we select the closest infront intersection, must be inside tbox
+                                    // we select the closest infront intersection, must be inside tbox                                    
                                     std::swap(res, t_cand);
                                 }
-                            } else if (t_cand.t_enter < T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
+                            } else if (t_cand.t_enter <= T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
                                 // we are inside a thetrahedron and t_exit is inside tbox, no better candidate
                                 return t_cand;
                             }
