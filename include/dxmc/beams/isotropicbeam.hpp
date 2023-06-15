@@ -30,7 +30,7 @@ namespace dxmc {
 template <Floating T>
 class IsotropicBeamExposure {
 public:
-    IsotropicBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N)
+    IsotropicBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N = 1E6)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
