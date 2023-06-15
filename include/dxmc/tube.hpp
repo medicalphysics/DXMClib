@@ -227,7 +227,7 @@ protected:
             auto co = interpolate(atom.coherent, energies);
             std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), in.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
             std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), co.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
-            std::for_each(std::execution::par_unseq, p.begin(), p.end(), [&](auto& el) { el *= (atom.standardDensity * mm); });
+            std::for_each(std::execution::par_unseq, p.begin(), p.end(), [&](auto& el) { el *= (atom.standardDensity * cm); });
 
             std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), p.cbegin(), specter.begin(),
                 [&](const auto n, const auto el) -> T {
