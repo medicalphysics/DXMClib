@@ -210,7 +210,7 @@ public:
 
             if (intersection.valid()) { // Do we intersect anything?
                 if (intersection.intersection < stepLenght) {
-                    // We object is closer than free path.
+                    // Object is closer than free path.
                     if (!intersection.rayOriginIsInsideItem) { // if we are not already inside the object (we seldom are)
                         p.border_translate(intersection.intersection);
                     }
