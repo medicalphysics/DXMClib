@@ -21,10 +21,12 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <algorithm>
 #include <array>
+#include <atomic>
 #include <limits>
 #include <optional>
 #include <utility>
@@ -39,9 +41,8 @@ public:
         : WorldItemBase<T>()
         , m_radius(radius)
         , m_center(center)
-        , m_normal(normal)
     {
-        vectormath::normalize(m_normal);
+        setPlaneNormal(normal);
         setEnergyStep(1);
     }
 
@@ -50,22 +51,99 @@ public:
         m_energy_step = std::max(step, T { 0.1 });
         const auto N = static_cast<std::uint64_t>(MAX_ENERGY<T>() / m_energy_step) + 1;
         m_intensity.resize(N);
-        std::fill(m_intensity.begin(), m_intensity.end(), T { 0 });
+        std::fill(m_intensity.begin(), m_intensity.end(), 0);
     }
 
-    void translate(const std::array<T, 3>& dist)
+    void translate(const std::array<T, 3>& dist) override
     {
-        m_center = vectormath::add(m_center, dist);
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_center[i] += dist[i];
+            m_aabb[i] += dist[i];
+            m_aabb[i + 3] += dist[i];
+        }
     }
-    std::array<T, 3> center() const { return m_center; }
+
+    std::array<T, 3> center() const override
+    {
+        return m_center;
+    }
     std::array<T, 6> AABB() const
+    {
+        return m_aabb;
+    }
+
+    void setPlaneNormal(const std::array<T, 3>& normal)
+    {
+        m_normal = normal;
+        vectormath::normalize(m_normal);
+        calculateAABB();
+    }
+
+    std::vector<std::pair<T, std::uint64_t>> getSpecter() const
+    {
+        std::vector<std::pair<T, std::uint64_t>> spec(m_intensity.size());
+        for (std::size_t i = 0; i < m_intensity.size(); ++i) {
+            spec[i] = std::make_pair(m_energy_step * i, m_intensity[i]);
+        }
+        return spec;
+    }
+
+    WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
+    {
+        const auto aabb_inter = basicshape::AABB::intersectForwardInterval(p, m_aabb);
+        return aabb_inter ? intersectDisc(p) : WorldIntersectionResult<T> {};
+    }
+
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
+    {
+        const auto res = intersect(p);
+        VisualizationIntersectionResult<T, WorldItemBase<T>> w;
+        if (res.valid()) {
+            w.rayOriginIsInsideItem = false;
+            w.intersection = res.intersection;
+            w.intersectionValid = true;
+            w.item = this;
+            w.normal = vectormath::dot(p.dir, m_normal) <= T { 0 } ? m_normal : vectormath::scale(m_normal, T { -1 });
+        }
+        return w;
+    }
+
+    const DoseScore<T>& dose(std::size_t index = 0) const override
+    {
+        return m_dummyDose;
+    }
+
+    void clearDose() override
+    {
+        m_dummyDose.clear();
+        std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
+    }
+
+    void transport(Particle<T>& particle, RandomState& state) override
+    {
+        // Assuming particle is on the disc
+        const auto eIdx = static_cast<std::size_t>(particle.energy / m_energy_step);
+        auto counter = std::atomic_ref(m_intensity[eIdx]);
+        counter++;
+        m_dummyDose.scoreEnergy(particle.energy);
+        particle.border_translate(T { 0 });
+    }
+
+protected:
+    static inline std::pair<T, T> minmax(T v1, T v2)
+    {
+        // use own minmax instead of std::minamx due to bug or weird feature of MSVC compiler with /O2
+        return v1 <= v2 ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
+    }
+
+    void calculateAABB()
     {
         const std::array<std::array<T, 3>, 3> span = {
             vectormath::scale(vectormath::cross(m_normal, { 1, 0, 0 }), m_radius),
             vectormath::scale(vectormath::cross(m_normal, { 0, 1, 0 }), m_radius),
             vectormath::scale(vectormath::cross(m_normal, { 0, 0, 1 }), m_radius)
         };
-        std::array<T, 6> aabb = {
+        m_aabb = {
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::max(),
             std::numeric_limits<T>::max(),
@@ -76,24 +154,50 @@ public:
 
         for (const auto& s : span)
             for (std::size_t i = 0; i < 3; ++i) {
-                const auto [mi, ma] = std::minmax(m_center[i] - p[i], m_center[i] + p[i]);
-                aabb[i] = std::min(aabb[i], mi);
-                aabb[i + 3] = std::max(aabb[i + 3], ma);
+                const auto [mi, ma] = minmax(m_center[i] - s[i], m_center[i] + s[i]);
+                m_aabb[i] = std::min(m_aabb[i], mi);
+                m_aabb[i + 3] = std::max(m_aabb[i + 3], ma);
             }
-        return aabb;
+        // ensure a min size;
+        constexpr T minSize = 1E-6;
+        for (std::size_t i = 0; i < 3; ++i) {
+            if (m_aabb[i + 3] - m_aabb[i] < minSize) {
+                m_aabb[i] -= minSize;
+                m_aabb[i + 3] += minSize;
+            }
+        }
     }
-    virtual WorldIntersectionResult<T> intersect(const Particle<T>& p) const = 0;
-    virtual VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const = 0;
-    virtual const DoseScore<T>& dose(std::size_t index = 0) const = 0;
-    virtual void clearDose() = 0;
-    virtual void transport(Particle<T>& p, RandomState& state) = 0;
+
+    WorldIntersectionResult<T> intersectDisc(const Particle<T>& p) const
+    {
+        WorldIntersectionResult<T> res;
+        const auto D = vectormath::dot(p.dir, m_normal);
+        constexpr T minOrt = 1E-6;
+        if (D < minOrt && D > -minOrt)
+            return res; // dir and normal is orthogonal, we exits
+        res.intersection = vectormath::dot(vectormath::subtract(m_center, p.pos), m_normal) / D;
+        if (res.intersection <= T { 0 })
+            return res;
+
+        // intersection point
+        const auto p_int = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
+
+        // distance from center
+        const auto c_dist = vectormath::subtract(m_center, p_int);
+        // check if distance from center is less than radius
+        if (vectormath::dot(c_dist, c_dist) <= m_radius * m_radius) {
+            res.intersectionValid = true;
+        }
+        return res;
+    }
 
 private:
     std::array<T, 3> m_center = { 0, 0, 0 };
     std::array<T, 3> m_normal = { 0, 0, 1 };
     T m_radius = 16;
     T m_energy_step = 1;
+    std::array<T, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
     DoseScore<T> m_dummyDose;
-}
+};
 }

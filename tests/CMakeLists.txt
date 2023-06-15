@@ -14,6 +14,7 @@ set(TEST_SOURCES
     "testmassenergytransfer.cpp"
     "testtube.cpp"
     "testvisualization.cpp"
+    "testfluencescore.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
     "testmaterial.cpp"
