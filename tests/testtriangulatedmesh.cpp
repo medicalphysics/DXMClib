@@ -1,6 +1,6 @@
 
 
-#include "dxmc/world/triangulatedmesh/triangulatedmesh.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh.hpp"
 
 #include <chrono>
 #include <fstream>

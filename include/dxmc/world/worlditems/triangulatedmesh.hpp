@@ -24,8 +24,8 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/material/nistmaterials.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditems/triangulatedmesh/meshkdtree.hpp"
-#include "dxmc/world/worlditems/triangulatedmesh/stlreader.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtree.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshstlreader.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
