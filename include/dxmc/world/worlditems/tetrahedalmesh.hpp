@@ -63,8 +63,19 @@ public:
             return;
         m_materials = materials;
         m_collections.reserve(collectionDensities.size());
-        for (auto d : collectionDensities)
-            m_collections.emplace_back(d);
+
+        std::vector<std::atomic<T>> volumes(maxCollectionIdx + 1);
+        std::for_each(std::execution::par_unseq, volumes.begin(), volumes.end(), [](auto& v) { v.store(T { 0 }); });
+        std::for_each(std::execution::par_unseq, tets.cbegin(), tets.cend(), [&volumes](const auto& tet) {
+            const auto idx = tet.collection();
+            volumes[idx].fetch_add(tet.volume());
+        });
+
+        for (std::size_t i = 0; i <= maxCollectionIdx; ++i) {
+            const auto d = collectionDensities[i];
+            const auto v = volumes[i].load();
+            m_collections.emplace_back(d, v);
+        }
 
         if (collectionNames.size() == m_collections.size())
             m_collectionNames = collectionNames;
@@ -205,8 +216,10 @@ private:
     struct Collection {
         DoseScore<T> dose;
         const T density = 0;
-        Collection(T dens)
+        const T volume = 0;
+        Collection(T dens, T volume)
             : density(dens)
+            , volume(volume)
         {
         }
     };
