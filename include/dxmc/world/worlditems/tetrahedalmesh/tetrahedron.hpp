@@ -115,6 +115,15 @@ public:
         return cent;
     }
 
+    T volume() const
+    {
+        const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
+        const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
+        const auto c = vectormath::subtract(m_vertices[3], m_vertices[0]);
+        static constexpr T scale = 1 / T { 6 };
+        return scale * std::abs(vectormath::tripleProduct(a, b, c));
+    }
+
     std::array<T, 6> AABB() const
     {
         std::array<T, 6> aabb {
@@ -147,16 +156,6 @@ public:
     inline TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle) const
     {
         return forwardIntersect<false>(particle);
-        /* const auto res = forwardIntersect<false>(particle);
-        TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> w;
-        if (res.valid && res.t_exit > 0) {
-            w.rayOriginIsInsideItem = res.t_enter < T { 0 };
-            w.intersection = w.rayOriginIsInsideItem ? res.t_exit : res.t_enter;
-            w.normal = w.rayOriginIsInsideItem ? res.normal_exit : res.normal_enter;
-            w.item = this;
-        }
-        return w;
-        */
     }
 
     bool validVerticeOrientation() const
@@ -216,28 +215,6 @@ protected:
             vectormath::normalize(normal);
         return normal;
     }
-
-    /* static T planeIntersect(const Particle<T>& p, const std::array<T, 3>& point, const std::array<T, 3>& normal)
-    {
-        // we assume ray start is in origo
-        // point is point on plane
-
-        // if not ray in origo
-        // return vectormath::dot(vectormath::subtract(point, p.pos), normal) / vectormath::dot(p.dir, normal);
-        return vectormath::dot(point, normal) / vectormath::dot(p.dir, normal);
-    }
-
-    static T planeIntersect(const Particle<T>& p, const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2)
-    {
-        // we assume ray start is in origo
-        // v0 v1 v2 are point on plane
-        const auto normal = normalVector(v0, v1, v2);
-        // if not ray in origo
-        // const auto t = vectormath::dot(vectormath::subtract(v0, p.pos), normal) / vectormath::dot(p.dir, normal);
-        const auto t = vectormath::dot(v0, normal) / vectormath::dot(p.dir, normal);
-        return t;
-    }
-    */
 
     template <bool PROPERNORMAL = true>
     TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> forwardIntersect(const Particle<T>& p) const
