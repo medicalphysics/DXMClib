@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -110,12 +111,12 @@ public:
 
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
-        return m_dummyDose;
+        return m_dose;
     }
 
     void clearDose() override
     {
-        m_dummyDose.clear();
+        m_dose.clear();
         std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
     }
 
@@ -125,7 +126,7 @@ public:
         const auto eIdx = static_cast<std::size_t>(particle.energy / m_energy_step);
         auto counter = std::atomic_ref(m_intensity[eIdx]);
         counter++;
-        m_dummyDose.scoreEnergy(particle.energy);
+        m_dose.scoreEnergy(particle.energy);
         particle.border_translate(T { 0 });
     }
 
@@ -159,11 +160,10 @@ protected:
                 m_aabb[i + 3] = std::max(m_aabb[i + 3], ma);
             }
         // ensure a min size;
-        constexpr T minSize = 1E-6;
         for (std::size_t i = 0; i < 3; ++i) {
             if (m_aabb[i + 3] - m_aabb[i] < minSize) {
-                m_aabb[i] -= minSize;
-                m_aabb[i + 3] += minSize;
+                m_aabb[i] -= GEOMETRIC_ERROR<T>();
+                m_aabb[i + 3] += GEOMETRIC_ERROR<T>();
             }
         }
     }
@@ -198,6 +198,6 @@ private:
     T m_energy_step = 1;
     std::array<T, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
-    DoseScore<T> m_dummyDose;
+    DoseScore<T> m_dose;
 };
 }
