@@ -143,7 +143,7 @@ target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")
 target_include_directories(libdxmc PRIVATE ${XRAYLIB_INCLUDES})
 
 target_include_directories(libdxmc PRIVATE "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty/Eigen/include")
-target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
+#target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/thirdparty")
 
 target_include_directories(
     libdxmc
@@ -158,6 +158,12 @@ target_link_libraries(libdxmc PRIVATE
     Threads::Threads
     ${XRAYLIB}
     )
+
+# Including lodePNGwrapper for dxmc
+add_subdirectory(thirdparty/lodepng)
+target_link_libraries(libdxmc PUBLIC lodepngwrapper)
+
+
 
 ## Install
 install(TARGETS libdxmc 
