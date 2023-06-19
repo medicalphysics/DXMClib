@@ -59,7 +59,7 @@ public:
     MeshKDTree(MeshKDTree<T, U>& other) = delete;
     MeshKDTree(const MeshKDTree<T, U>& other) = delete;
 
-    MeshKDTree(MeshKDTree<T, U>&& other)
+    MeshKDTree(MeshKDTree<T, U>&& other) noexcept
     {
         m_D = other.m_D;
         m_plane = other.m_plane;
