@@ -154,7 +154,7 @@ public:
             }
         };
 
-        int nThreads = std::thread::hardware_concurrency();
+        const auto nThreads = std::max(static_cast<std::uint32_t>(std::thread::hardware_concurrency()), std::uint32_t { 1 });
         const auto jobsize = static_cast<std::size_t>(width * height / nThreads);
         std::vector<std::jthread> threads;
         threads.reserve(nThreads - 1);
