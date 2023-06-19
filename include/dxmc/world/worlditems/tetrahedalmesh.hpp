@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interactions.hpp"
@@ -71,7 +72,7 @@ public:
             m_collectionNames.resize(m_collections.size());
         m_kdtree.setData(std::move(tets));
         m_aabb = m_kdtree.AABB();
-        expandAABB();
+        m_aabb = expandAABB(m_aabb);
     }
 
     void translate(const std::array<T, 3>& dist) override
@@ -191,12 +192,13 @@ public:
     }
 
 protected:
-    void expandAABB(T extra = 0.0001f)
+    [[nodiscard]] static std::array<T, 6> expandAABB(std::array<T, 6> aabb)
     {
         for (std::size_t i = 0; i < 3; ++i) {
-            m_aabb[i] -= extra;
-            m_aabb[i + 3] += extra;
+            aabb[i] -= GEOMETRIC_ERROR<T>();
+            aabb[i + 3] += GEOMETRIC_ERROR<T>();
         }
+        return aabb;
     }
 
 private:
