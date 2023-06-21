@@ -159,12 +159,6 @@ target_link_libraries(libdxmc PRIVATE
     ${XRAYLIB}
     )
 
-# Including lodePNGwrapper for dxmc
-add_subdirectory(thirdparty/lodepng)
-target_link_libraries(libdxmc PUBLIC lodepngwrapper)
-
-
-
 ## Install
 install(TARGETS libdxmc 
     EXPORT libdxmc
@@ -184,6 +178,13 @@ install(FILES ${HEADER_LIST} DESTINATION include)
 
 # EPICS data parser
 add_subdirectory(data)
+
+
+# Thirdparty libraries
+# Including lodePNGwrapper for dxmc
+option(DXMCLIB_USE_LOADPNG "Use thirdparty loadpng library for writing png files" ON)
+add_subdirectory(thirdparty)
+
 
 # Testing
 OPTION(BUILD_TESTING "Build tests" ON)

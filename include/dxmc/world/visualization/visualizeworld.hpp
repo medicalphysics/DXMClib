@@ -31,6 +31,10 @@ Copyright 2023 Erlend Andersen
 #include <thread>
 #include <vector>
 
+#ifdef DXMCLIB_USE_LOADPNG
+#include "lodepng/dxmclodepngwrapper.hpp"
+#endif
+
 namespace dxmc {
 template <typename U, typename T>
 concept WorldType = requires(U world, Particle<T> p, KDTreeIntersectionResult<T, WorldItemBase<T>> res) {
