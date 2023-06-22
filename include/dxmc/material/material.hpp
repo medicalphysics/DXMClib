@@ -131,7 +131,7 @@ public:
         T avg_fluro_energy = 0;
         for (std::uint_fast8_t i = 0; i < m_numberOfShells; ++i) {
             if (m_shells[i].bindingEnergy > MIN_ENERGY<T>())
-                avg_fluro_energy += m_shells[i].energyOfPhotonsPerInitVacancy() * attenuationPhotoelectricShell(i, energy);
+                avg_fluro_energy += m_shells[i].energyOfPhotonsPerInitVacancy * attenuationPhotoelectricShell(i, energy);
         }
         avg_fluro_energy /= att.photoelectric;
 
@@ -574,7 +574,7 @@ protected:
             auto begin = inter.getDataTable().begin();
             auto end = inter.getDataTable().end();
             auto table_beg = material.m_attenuationTable.insert(material.m_attenuationTable.end(), begin, end);
-            offset[i + 5] = std::distance(material.m_attenuationTable.begin(), table_beg);
+            offset[i + 6] = std::distance(material.m_attenuationTable.begin(), table_beg);
 
             auto& materialshell = material.m_shells[i];
 
@@ -611,7 +611,7 @@ protected:
 private:
     T m_effectiveZ = 0;
     std::vector<std::array<T, 3>> m_attenuationTable;
-    std::array<std::uint_fast32_t, 5 + N + 1> m_attenuationTableOffset;
+    std::array<std::uint_fast32_t, 6 + N + 1> m_attenuationTableOffset;
     CPDFSampling<T, 20> m_formFactorInvSamp;
     std::array<Material2Shell<T>, N + 1> m_shells;
     std::uint8_t m_numberOfShells = 0;

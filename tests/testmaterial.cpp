@@ -345,10 +345,62 @@ bool testAttenuationTG195Breast()
     return false;
 }
 
+template <typename T>
+bool testmassAbsCoeff()
+{
+
+    struct data_t {
+        std::string name;
+        T energy = 0;
+        T nist = 0;
+    };
+
+    std::vector<data_t> data;
+    data.push_back({ .name = "Air, Dry (near sea level)", .energy = 10, .nist = 4.742 });
+    data.push_back({ .name = "Air, Dry (near sea level)", .energy = 60, .nist = 3.041E-02 });
+    data.push_back({ .name = "Air, Dry (near sea level)", .energy = 150, .nist = 2.496E-02 });
+
+    data.push_back({ .name = "Water, Liquid", .energy = 10, .nist = 4.944E+00 });
+    data.push_back({ .name = "Water, Liquid", .energy = 60, .nist = 3.190E-02 });
+    data.push_back({ .name = "Water, Liquid", .energy = 150, .nist = 2.764E-02 });
+
+    data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 10, .nist = 3.026E+00 });
+    data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 60, .nist = 2.530E-02 });
+    data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 150, .nist = 2.657E-02 });
+
+    data.push_back({ .name = "Glass, Lead", .energy = 10, .nist = 9.821E+01 });
+    data.push_back({ .name = "Glass, Lead", .energy = 60, .nist = 3.152E+00 });
+    // data.push_back({ .name = "Glass, Lead", .energy = 150, .nist = 8.042E-01 });
+
+    bool success = true;
+
+    for (const auto& d : data) {
+        auto m_cand = dxmc::Material2<T, 5>::byNistName(d.name);
+        const auto m = m_cand.value();
+
+        const auto att = m.attenuationValues(d.energy);
+        const auto lib = m.massEnergyTransferAttenuation(att, d.energy);
+
+        const auto diff = (lib / d.nist - 1) * 100;
+        if (std::abs(diff) < 1)
+            std::cout << "SUCCESS ";
+        else
+            std::cout << "FAILURE ";
+
+        std::cout << "Mass energy attenuation: " << d.name << " dxmc: " << lib;
+        std::cout << " NIST: " << d.nist << " Difference [%]: " << diff << std::endl;
+        success = success && std::abs(diff) < 1;
+    }
+    return success;
+}
+
 int main(int argc, char* argv[])
 {
 
     auto success = true;
+
+    success = success && testmassAbsCoeff<double>();
+    success = success && testmassAbsCoeff<float>();
 
     success = success && testAttenuationTG195Breast<double>();
 
