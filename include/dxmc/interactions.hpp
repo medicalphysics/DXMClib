@@ -252,8 +252,7 @@ namespace interactions {
             const auto& s = material.shell(shell);
             if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {
                 particle.energy = s.energyOfPhotonsPerInitVacancy;
-                E -= particle.energy * particle.weight;
-                particle.weight *= s.numberOfPhotonsPerInitVacancy;
+                E -= particle.energy * particle.weight;                
                 const auto theta = state.randomUniform(PI_VAL<T>());
                 const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
                 particle.dir = vectormath::peturb(particle.dir, theta, phi);
