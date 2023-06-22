@@ -53,6 +53,16 @@ public:
         m_world_aabb = world.AABB();
     }
 
+#ifdef DXMCLIB_USE_LOADPNG
+    template <typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    static bool savePNG(const std::string& filename, const std::vector<U>& buffer, std::size_t width, std::size_t height)
+    {
+        auto test = dxmclodepng::savePNG(filename, buffer, width, height);
+        return true;
+    }
+#endif
+
     void setDistance(T dist)
     {
         m_camera_pos[0] = std::abs(dist);

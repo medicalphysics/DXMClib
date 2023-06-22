@@ -18,9 +18,8 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
-
 #include <algorithm>
+#include <string>
 #include <vector>
 
 namespace dxmc {
@@ -28,12 +27,24 @@ namespace dxmclodepng {
 
     std::vector<std::uint8_t> encodePNG(const std::vector<std::uint8_t>& image, std::size_t width, size_t height);
 
-    template <Floating T>
+    template <typename T>
+        requires std::is_same_v<T, float> || std::is_same_v<T, double>
     std::vector<std::uint8_t> encodePNG(const std::vector<T>& image, std::size_t width, size_t height)
     {
         std::vector<std::uint8_t> bytes(image.size());
-        std::transform(bytes.begin(), bytes.end(), image.cbegin(), [](const T& v) { return static_cast<std::uint8_t>(std::abs(v) * 255); });
-        return encodePNG(bytes, width, heigh);
+        std::transform(image.cbegin(), image.cend(), bytes.begin(), [](const T& v) {
+            return static_cast<std::uint8_t>(std::clamp(v, T { 0 }, T { 1 }) * 255);
+        });
+        return encodePNG(bytes, width, height);
+    }
+
+    bool savePNG(const std::string& filename, const std::vector<std::uint8_t>& encodedImage);
+
+    template <typename T>
+        requires std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::uint8_t> bool
+    savePNG(const std::string& filename, const std::vector<T>& image, std::size_t width, size_t height)
+    {
+        return savePNG(filename, encodePNG(image, width, height));
     }
 
 };

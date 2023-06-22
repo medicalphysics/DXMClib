@@ -19,17 +19,38 @@ Copyright 2023 Erlend Andersen
 #include "lodepng/dxmclodepngwrapper.hpp"
 #include "lodepng.h"
 
+#include <fstream>
+
 namespace dxmc {
 namespace dxmclodepng {
+
     std::vector<std::uint8_t> encodePNG(const std::vector<std::uint8_t>& image, std::size_t width, size_t height)
     {
-
         std::vector<unsigned char> png;
-
         if (image.size() == width * height * 4) {
             auto error = lodepng::encode(png, image, width, height);
         }
         return png;
     }
+
+    bool writeImage(const std::string& filename, const std::vector<std::uint8_t>& buffer)
+    {
+        std::ofstream file(filename, std::ios::out | std::ios::binary);
+        if (file.is_open()) {
+            file.write((char*)buffer.data(), buffer.size() * sizeof(std::uint8_t));
+            file.close();
+        } else {
+            return false;
+        }
+        return true;
+    }
+
+    bool savePNG(const std::string& filename, const std::vector<std::uint8_t>& encodedImage)
+    {
+        if (encodedImage.size() == 0)
+            return false;
+        return writeImage(filename, encodedImage);
+    }
+
 };
 }

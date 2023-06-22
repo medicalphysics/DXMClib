@@ -8,7 +8,6 @@ if(DXMCLIB_USE_LOADPNG)
         "${dxmclib_SOURCE_DIR}/thirdparty/src/lodepng/dxmclodepngwrapper.cpp"
         "${dxmclib_SOURCE_DIR}/thirdparty/src/lodepng/lodepng.cpp"
         "${dxmclib_SOURCE_DIR}/thirdparty/src/lodepng/lodepng.h"
-        "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     )
 
     add_library(lodepngwrapper STATIC ${LODEPNG_FILES})
