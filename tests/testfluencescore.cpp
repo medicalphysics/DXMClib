@@ -29,14 +29,6 @@ Copyright 2022 Erlend Andersen
 #include <string>
 #include <vector>
 
-template <typename T>
-void writeImage(const std::vector<T>& buffer, const std::string& name)
-{
-    std::ofstream file;
-    file.open(name, std::ios::out | std::ios::binary);
-    file.write((char*)buffer.data(), buffer.size() * sizeof(T));
-    file.close();
-}
 
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
@@ -89,8 +81,8 @@ void testfluencescore()
         // viz.setCameraPosition({ -60, -30, -10 });
         viz.suggestFOV();
         viz.generate(world, buffer, width, height);
-        std::string name = "color_" + std::to_string(i) + ".bin";
-        writeImage(buffer, name);
+        std::string name = "fluence_score" + std::to_string(i) + ".png";
+        viz.savePNG(name, buffer, width, height);
     }
 
     dxmc::Tube<T> tube;

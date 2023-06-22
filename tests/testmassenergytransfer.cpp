@@ -40,6 +40,10 @@ bool testCompoundNIST()
     data.push_back({ .name = "Air, Dry (near sea level)", .energy = 60, .nist = 3.041E-02 });
     data.push_back({ .name = "Air, Dry (near sea level)", .energy = 150, .nist = 2.496E-02 });
 
+    data.push_back({ .name = "Water, Liquid", .energy = 10, .nist = 4.944E+00 });
+    data.push_back({ .name = "Water, Liquid", .energy = 60, .nist = 3.190E-02 });
+    data.push_back({ .name = "Water, Liquid", .energy = 150, .nist = 2.764E-02 });
+
     data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 10, .nist = 3.026E+00 });
     data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 60, .nist = 2.530E-02 });
     data.push_back({ .name = "Polymethyl Methacralate (Lucite, Perspex)", .energy = 150, .nist = 2.755E-02 });
@@ -80,9 +84,9 @@ bool testZNIST()
 
     std::vector<zdata_t<T>> data;
 
-    data.push_back({ .Z = 82, .energy = 150, .nist = 1.056E+00 });
     data.push_back({ .Z = 82, .energy = 10, .nist = 1.247E+02 });
     data.push_back({ .Z = 82, .energy = 60, .nist = 4.149 });
+    data.push_back({ .Z = 82, .energy = 150, .nist = 1.056E+00 });
 
     data.push_back({ .Z = 6, .energy = 10, .nist = 2.078 });
     data.push_back({ .Z = 6, .energy = 60, .nist = 2.098E-2 });
@@ -144,7 +148,7 @@ bool testInterpolation()
             bool valid = diffp < 2 || diffa < 1;
 
             if (!valid) {
-                std::cout << Z << ": Energy: " << e << " Diff abs: " << diffa << " Diff per: " << diffp << std::endl;
+                std::cout << Z << ": Energy: " << e << " Diff abs: " << diffa << " Diff[%]: " << diffp << std::endl;
                 int test = 0;
                 N++;
             }
@@ -164,7 +168,8 @@ int main(int argc, char* argv[])
     std::cout << "Mass energy transfer tests\n";
     auto success = true;
 
-    // success = success && testInterpolation<float>();
+    success = success && testInterpolation<float>();
+    success = success && testInterpolation<double>();
 
     success = success && testZNIST<double>();
     success = success && testZNIST<float>();
