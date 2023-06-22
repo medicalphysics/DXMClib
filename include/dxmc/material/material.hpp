@@ -119,6 +119,29 @@ public:
         return m_formFactorInvSamp(qsquared_max, state);
     }
 
+    inline T meanIncoherentScatterEnergy(T energy) const
+    {
+        const auto begin = m_attenuationTable.cbegin() + m_attenuationTableOffset[5];
+        const auto end = m_attenuationTable.cbegin() + m_attenuationTableOffset[6];
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(std::log(energy), begin, end));
+    }
+
+    inline T massEnergyTransferAttenuation(const AttenuationValues<T>& att, T energy) const
+    {
+        T avg_fluro_energy = 0;
+        for (std::uint_fast8_t i = 0; i < m_numberOfShells; ++i) {
+            if (m_shells[i].bindingEnergy > MIN_ENERGY<T>())
+                avg_fluro_energy += m_shells[i].energyOfPhotonsPerInitVacancy() * attenuationPhotoelectricShell(i, energy);
+        }
+        avg_fluro_energy /= att.photoelectric;
+
+        const auto avg_fluro_frac = avg_fluro_energy / energy;
+        const auto incoherent_scatter_energy = meanIncoherentScatterEnergy(energy);
+        const auto f_pe = T { 1 } - avg_fluro_frac;
+        const auto f_inc = T { 1 } - (incoherent_scatter_energy + avg_fluro_energy) / energy;
+        return att.photoelectric * f_pe + att.incoherent * f_inc;
+    }
+
     // photo, coherent, incoherent
     inline AttenuationValues<T> attenuationValues(const T energy) const
     {
@@ -174,8 +197,8 @@ public:
     {
         const std::uint8_t n_photo_shells = std::min(numberOfShells(), static_cast<std::uint8_t>(N));
 
-        const auto start = shell < n_photo_shells ? m_attenuationTableOffset[5 + shell] : m_attenuationTableOffset[0];
-        const auto stop = shell < n_photo_shells ? m_attenuationTableOffset[5 + shell + 1] : m_attenuationTableOffset[1];
+        const auto start = shell < n_photo_shells ? m_attenuationTableOffset[6 + shell] : m_attenuationTableOffset[0];
+        const auto stop = shell < n_photo_shells ? m_attenuationTableOffset[6 + shell + 1] : m_attenuationTableOffset[1];
 
         const auto begin = m_attenuationTable.cbegin() + start;
         const auto end = m_attenuationTable.cbegin() + stop;
@@ -311,6 +334,7 @@ protected:
         incoherent,
         formfactor,
         scatterfactor,
+        incoherentenergy
     };
 
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false, std::size_t nknots = 15)
@@ -407,7 +431,8 @@ protected:
                 return atom.formFactor;
             else if (type == LUTType::scatterfactor)
                 return atom.incoherentSF;
-
+            else if (type == LUTType::incoherentenergy)
+                return atom.incoherentMeanScatterEnergy;
             return atom.photoel;
         };
 
@@ -467,12 +492,13 @@ protected:
         const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
         std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
 
-        std::array<CubicLSInterpolator<T>, 5> attenuation = {
+        std::array<CubicLSInterpolator<T>, 6> attenuation = {
             constructSplineInterpolator(weight, LUTType::photoelectric),
             constructSplineInterpolator(weight, LUTType::incoherent),
             constructSplineInterpolator(weight, LUTType::coherent),
             constructSplineInterpolator(weight, LUTType::formfactor),
             constructSplineInterpolator(weight, LUTType::scatterfactor),
+            constructSplineInterpolator(weight, LUTType::incoherentenergy),
         };
         Material2<T, N> m;
         m.m_effectiveZ = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto z, const auto& pair) { return z + pair.first * pair.second; });
@@ -512,7 +538,7 @@ protected:
         material.m_formFactorInvSamp = CPDFSampling<T, 20>(qmin * qmin, qmax * qmax, func);
     }
 
-    static void createMaterialAtomicShells(Material2<T, N>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 5 + N>& offset)
+    static void createMaterialAtomicShells(Material2<T, N>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 6 + N>& offset)
     {
         struct Shell {
             std::uint64_t Z = 0;
