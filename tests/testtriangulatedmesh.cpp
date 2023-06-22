@@ -117,10 +117,10 @@ void testMeshVisualization()
     int option;
     option = 0; // Box
     option = 1; // Triangle
-    /* option = 2; // Bunny
+    option = 2; // Bunny
     option = 3; // bunny_low
-    option = 4; // duck
-    */
+    //option = 4; // duck
+    
 
     if (option == 0) {
         const auto triangles = getBox<T>();
@@ -150,8 +150,8 @@ void testMeshVisualization()
 
     dxmc::VisualizeWorld<T> viz(world);
 
-    int height = 512;
-    int width = 512;
+    int height = 1024;
+    int width = 1024;
     std::vector<T> buffer(height * width * 4, T { 1 });
 
     for (std::size_t i = 0; i < 12; ++i) {
@@ -161,8 +161,9 @@ void testMeshVisualization()
         // viz.setCameraPosition({ -60, -30, -10 });
         viz.suggestFOV();
         viz.generate(world, buffer, width, height);
-        std::string name = "color_" + std::to_string(i) + ".bin";
-        writeImage(buffer, name);
+        std::string name = "color_" + std::to_string(i) + ".png";
+        viz.savePNG(name, buffer, width, height);
+        //writeImage(buffer, name);
     }
 }
 
