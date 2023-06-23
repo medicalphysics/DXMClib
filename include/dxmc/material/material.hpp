@@ -128,10 +128,11 @@ public:
 
     inline T massEnergyTransferAttenuation(const AttenuationValues<T>& att, T energy) const
     {
+        const auto logEnergy = std::log(energy);
         T avg_fluro_energy = 0;
         for (std::uint_fast8_t i = 0; i < m_numberOfShells; ++i) {
             if (m_shells[i].bindingEnergy > MIN_ENERGY<T>())
-                avg_fluro_energy += m_shells[i].energyOfPhotonsPerInitVacancy * attenuationPhotoelectricShell(i, energy);
+                avg_fluro_energy += m_shells[i].energyOfPhotonsPerInitVacancy * attenuationPhotoelectricShell_logEnergy(i, logEnergy);
         }
         avg_fluro_energy /= att.photoelectric;
 
@@ -180,7 +181,7 @@ public:
     }
     inline std::vector<AttenuationValues<T>> totalAttenuationValue(const std::vector<T>& energy) const
     {
-        auto att = attenuationValues(energy);
+        const auto att = attenuationValues(energy);
         std::vector<T> sum(att.size());
         std::transform(std::execution::par_unseq, att.cbegin(), att.cend(), sum.begin(), [](const auto& a) { return a.sum(); });
         return sum;
@@ -193,22 +194,12 @@ public:
         const auto end = m_attenuationTable.cbegin() + m_attenuationTableOffset[1];
         return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
     }
+
     inline T attenuationPhotoelectricShell(std::uint8_t shell, const T energy) const
     {
-        const std::uint8_t n_photo_shells = std::min(numberOfShells(), static_cast<std::uint8_t>(N));
-
-        const auto start = shell < n_photo_shells ? m_attenuationTableOffset[6 + shell] : m_attenuationTableOffset[0];
-        const auto stop = shell < n_photo_shells ? m_attenuationTableOffset[6 + shell + 1] : m_attenuationTableOffset[1];
-
-        const auto begin = m_attenuationTable.cbegin() + start;
-        const auto end = m_attenuationTable.cbegin() + stop;
-
         const auto logEnergy = std::log(energy);
-        // prevents extrapolation to lower energies
-        return logEnergy < (*begin)[0] ? T { 0 } : std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
+        return attenuationPhotoelectricShell_logEnergy(shell, logEnergy);
     }
-
-    static constexpr int numberOfShellsAvailable() { return N; }
 
     inline std::uint8_t numberOfShells() const
     {
@@ -219,6 +210,7 @@ public:
     {
         return m_shells[shell];
     }
+
     inline const auto& shells() const { return m_shells; }
 
     static T momentumTransfer(T energy, T angle)
@@ -233,17 +225,31 @@ public:
 
     static constexpr T momentumTransferMax(T energy)
     {
-        constexpr T hc_si = 1.239841193E-6; // ev*m
-        constexpr T m2A = 1E10; // meters to Ångstrøm
-        constexpr T eV2keV = 1E-3; // eV to keV
-        constexpr T hc = hc_si * m2A * eV2keV; // kev*Å
-        constexpr T hc_inv = T { 1 } / hc;
+        static constexpr T hc_si = 1.239841193E-6; // ev*m
+        static constexpr T m2A = 1E10; // meters to Ångstrøm
+        static constexpr T eV2keV = 1E-3; // eV to keV
+        static constexpr T hc = hc_si * m2A * eV2keV; // kev*Å
+        static constexpr T hc_inv = T { 1 } / hc;
         return energy * hc_inv; // per Å
     }
 
 protected:
     Material2()
     {
+    }
+
+    inline T attenuationPhotoelectricShell_logEnergy(std::uint8_t shell, const T logEnergy) const
+    {
+        if (shell < m_numberOfShells) {
+            const auto start = m_attenuationTableOffset[6 + shell];
+            const auto stop = m_attenuationTableOffset[6 + shell + 1];
+            const auto begin = m_attenuationTable.cbegin() + start;
+            const auto end = m_attenuationTable.cbegin() + stop;
+            if (logEnergy >= (*begin)[0]) {
+                return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
+            }
+        }
+        return T { 0 };
     }
 
     /**
@@ -253,7 +259,7 @@ protected:
      */
     static std::map<std::uint64_t, T> parseCompoundStr(const std::string& str)
     {
-        const std::array<std::string, 100> S { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm" };
+        static constexpr std::array<std::string, 100> S { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm" };
 
         std::map<std::uint64_t, T> parsed;
 

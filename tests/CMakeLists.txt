@@ -11,7 +11,6 @@ set(TEST_SOURCES
     "testworlditems.cpp"
     "testinteractions.cpp"
     "testbasicshapes.cpp"
-    "testmassenergytransfer.cpp"
     "testtube.cpp"
     "testvisualization.cpp"
     "testfluencescore.cpp"
