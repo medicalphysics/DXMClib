@@ -22,6 +22,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
+#include "dxmc/world/visualization/vizualizationprops.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
@@ -103,6 +104,11 @@ public:
         m_fov = std::atan(T { 0.5 } * plen / clen) * 2 / zoom;
     }
 
+    void addLineProp(const std::array<T, 3>& start, const std::array<T, 3>& dir, T lenght = -1, T radii = 1)
+    {
+        m_lines.push_back({ start, dir, lenght, radii });
+    }
+
     template <WorldType<T> W, typename U>
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512) const
@@ -119,6 +125,10 @@ public:
                 colors.emplace_back(std::make_pair(items[i], HSVtoRGB(c, T { 1 }, T { 0.85 })));
             }
         }
+
+        std::array<U, 3> propcolor = { 0, 1, 0 };
+        if constexpr (std::same_as<U, std::uint8_t>)
+            propcolor[0] = 255;
 
         const auto step = std::max(m_fov / width, m_fov / height);
         const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
@@ -141,27 +151,64 @@ public:
                 const auto yang = -step * height * T { 0.5 } + y * step;
                 const auto xang = -step * width * T { 0.5 } + x * step;
                 p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
+
+                T line_intersection = std::numeric_limits<T>::max();
+                std::array<T, 3> line_normal = { 0, 0, 0 };
+                for (const auto& line : m_lines) {
+                    const auto opt = line.intersect(p);
+                    if (opt) {
+                        const auto& [l_cand, l_normal] = opt.value();
+                        if (l_cand < line_intersection) {
+                            line_intersection = l_cand;
+                            line_normal = l_normal;
+                        }
+                    }
+                }
+
                 const auto res = world.intersectVisualization(p);
+
                 if (res.valid()) {
-                    const auto scaling = std::abs(vectormath::dot(p.dir, res.normal));
-                    for (const auto& cmap : colors) {
-                        if (cmap.first == res.item) {
-                            for (int i = 0; i < 3; ++i) {
-                                if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                    buffer[ind + i] = static_cast<U>(cmap.second[i] * scaling);
-                                } else {
-                                    buffer[ind + i] = cmap.second[i] * scaling;
+                    if (res.intersection < line_intersection) {
+                        const auto scaling = std::abs(vectormath::dot(p.dir, res.normal));
+                        for (const auto& cmap : colors) {
+                            if (cmap.first == res.item) {
+                                for (int i = 0; i < 3; ++i) {
+                                    if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                        buffer[ind + i] = static_cast<U>(cmap.second[i] * scaling);
+                                    } else {
+                                        buffer[ind + i] = cmap.second[i] * scaling;
+                                    }
                                 }
                             }
                         }
+                    } else {
+                        const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                        for (int i = 0; i < 3; ++i) {
+                            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                buffer[ind + i] = static_cast<U>(propcolor[i] * scaling);
+                            } else {
+                                buffer[ind + i] = propcolor[i] * scaling;
+                            }
+                        }
                     }
-
                 } else {
-                    for (int i = 0; i < 3; ++i) {
-                        if constexpr (std::is_same<U, std::uint8_t>::value) {
-                            buffer[ind + i] = 255;
-                        } else {
-                            buffer[ind + i] = T { 1 };
+                    if (line_intersection < std::numeric_limits<T>::max()) {
+                        const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                        for (int i = 0; i < 3; ++i) {
+                            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                buffer[ind + i] = static_cast<U>(propcolor[i] * scaling);
+                            } else {
+                                buffer[ind + i] = propcolor[i] * scaling;
+                            }
+                        }
+                    } else {
+
+                        for (int i = 0; i < 3; ++i) {
+                            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                buffer[ind + i] = 255;
+                            } else {
+                                buffer[ind + i] = T { 1 };
+                            }
                         }
                     }
                 }
@@ -361,6 +408,7 @@ private:
     std::array<T, 3> m_center = { 0, 0, 0 };
     std::array<T, 3> m_camera_pos = { 100, 1.4, 1 };
     T m_fov = -1;
+    std::vector<visualizationprops::Line<T>> m_lines;
 };
 
 }

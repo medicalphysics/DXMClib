@@ -29,7 +29,6 @@ Copyright 2022 Erlend Andersen
 #include <string>
 #include <vector>
 
-
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
 {
@@ -71,8 +70,9 @@ void testfluencescore()
     world.build();
 
     dxmc::VisualizeWorld<T> viz(world);
-    int height = 512;
-    int width = 512;
+    viz.addLineProp({ -1000, 0, 0 }, { 1, 0, 0 }, 1000, 0.1);
+    int height = 528;
+    int width = 528;
     std::vector<T> buffer(height * width * 4, T { 1 });
     for (std::size_t i = 0; i < 12; ++i) {
         viz.setDistance(500);

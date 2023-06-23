@@ -98,6 +98,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtreeintersectionresult.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/visualization/visualizeworld.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/visualization/vizualizationprops.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worldintersectionresult.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/ctdiphantom.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/depthdose.hpp"
