@@ -161,7 +161,7 @@ protected:
             }
         // ensure a min size;
         for (std::size_t i = 0; i < 3; ++i) {
-            if (m_aabb[i + 3] - m_aabb[i] < minSize) {
+            if (m_aabb[i + 3] - m_aabb[i] < 2 * GEOMETRIC_ERROR<T>()) {
                 m_aabb[i] -= GEOMETRIC_ERROR<T>();
                 m_aabb[i + 3] += GEOMETRIC_ERROR<T>();
             }
