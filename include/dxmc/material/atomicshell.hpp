@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include <concepts>
 #include <utility>
 #include <vector>
+#include <cstdint>
 
 namespace dxmc {
 template <std::floating_point T>

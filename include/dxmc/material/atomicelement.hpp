@@ -23,6 +23,7 @@ Copyright 2022 Erlend Andersen
 #include <concepts>
 #include <map>
 #include <vector>
+#include <cstdint>
 
 namespace dxmc {
 

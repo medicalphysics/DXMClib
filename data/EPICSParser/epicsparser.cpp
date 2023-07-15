@@ -190,7 +190,7 @@ void EPICSparser::read(const std::string& path)
         while (std::getline(stream, line)) {
             if (headerline == 0) {
                 if (line.size() >= endIdx()) {
-                    if (line.back() == '1') { // end of segment
+                    if (line.back() == '1' || line.ends_with("1\r")) { // end of segment
                         segments.push_back(segment);
                         segment.clear();
                         headerline = 1;

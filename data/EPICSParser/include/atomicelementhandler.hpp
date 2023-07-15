@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include <map>
 #include <utility>
 #include <vector>
+#include <cstdint>
 
 class AtomicElementHandler {
 public:
