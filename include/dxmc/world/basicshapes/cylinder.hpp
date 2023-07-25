@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -32,261 +33,189 @@ namespace basicshape {
     namespace cylinder {
 
         template <Floating T>
-        bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii, const T half_height)
+        struct Cylinder {
+            T radius;
+            T half_height;
+            std::array<T, 3> center;
+            std::array<T, 3> direction;
+
+            Cylinder(std::array<T, 3> center_arr, std::array<T, 3> direction_arr, T radii, T half_height_wall)
+                : radius(radii)
+                , half_height(half_height_wall)
+                , center(center_arr)
+                , direction(direction_arr)
+            {
+            }
+        };
+
+        template <Floating T>
+        constexpr inline bool isOverPlane(const std::array<T, 3>& planepoint, const std::array<T, 3>& planenormal, const std::array<T, 3>& point) noexcept
         {
-            const std::array<T, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
-            return center[0] - radii <= pos[0] && pos[0] <= center[0] + radii && center[1] - radii <= pos[1] && pos[1] <= center[1] + radii
-                && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
+            return vectormath::dot(vectormath::subtract(point, planepoint), planenormal) >= 0;
         }
 
         template <Floating T>
-        std::optional<T> intersectCylinderWall(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        bool pointInside(const std::array<T, 3>& pos, const Cylinder<T>& cylinder)
         {
-            // nummeric stable ray sphere intersection in 2D
-            const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
-            if (a < std::numeric_limits<T>::epsilon())
-                return std::nullopt;
+            // test if point inside infinite cylinder
 
-            const auto r2 = radii * radii;
-            const std::array f = { p.pos[0] - center[0], p.pos[1] - center[1] };
+            const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
+            if (vectormath::lenght_sqr(d) <= cylinder.radius * cylinder.radius) {
+                // test for side of two end planes
+                const auto e = vectormath::scale(cylinder.direction, cylinder.half_height);
+                const auto p0 = vectormath::subtract(cylinder.center, e);
 
-            // positive b mean center of sphere is in front of ray
-            const auto b = -f[0] * p.dir[0] - f[1] * p.dir[1];
-
-            // positive c means ray starts outside of sphere
-            const auto c = f[0] * f[0] + f[1] * f[1] - r2;
-
-            if ((c > 0) && (b < 0)) {
-                // if ray starts outside sphere and center is begind ray
-                // we exit early
-                return std::nullopt;
+                if (vectormath::dot(vectormath::subtract(pos, p0), cylinder.direction) >= 0) {
+                    // (pos - p)*normal >= 0
+                    const auto p1 = vectormath::add(cylinder.center, e);
+                    if (vectormath::dot(vectormath::subtract(pos, p1), cylinder.direction) <= 0) {
+                        return true;
+                    }
+                }
             }
-
-            const std::array delta1 = { f[0] + b * p.dir[0] / a, f[1] + b * p.dir[1] / a };
-
-            const auto delta = r2 - (delta1[0] * delta1[0] + delta1[1] * delta1[1]);
-
-            if (delta < 0) {
-                // no solution to the quadratic equation (we miss)
-                return std::nullopt;
-            }
-
-            const int sign = b > 0 ? 1 : -1;
-            const auto q = b + sign * std::sqrt(a * delta);
-
-            if (c < 0 && b > 0) {
-                // inside sphere
-                return std::make_optional(q / a);
-            } else {
-                return std::make_optional(c / q);
-            }
+            return false;
         }
 
         template <Floating T>
-        std::optional<std::array<T, 2>> intersectCylinderWallInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<std::array<T, 2>> intersectInterval(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
-            // nummeric stable ray sphere intersection in 2D
-            const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
-            if (a < std::numeric_limits<T>::epsilon())
-                return std::nullopt;
+            // return line segment cylinder wall intersection
+            // intersection may be behind line start
+            const auto e = vectormath::scale(cylinder.direction, cylinder.half_height);
+            const auto p0 = vectormath::subtract(cylinder.center, e);
+            const auto p1 = vectormath::add(cylinder.center, e);
 
-            const auto r2 = radii * radii;
-            const std::array f = { p.pos[0] - center[0], p.pos[1] - center[1] };
+            std::optional<T> tplane0;
+            { // testing cylindar planes
+                std::optional<T> tplane1;
+                const auto planar = vectormath::dot(cylinder.direction, p.dir);
+                if (std::abs(planar) > GEOMETRIC_ERROR<T>()) {
+                    const auto den_inv = T { 1 } / planar;
+                    const auto t0 = vectormath::dot(vectormath::subtract(p0, p.pos), cylinder.direction) * den_inv;
+                    const auto tp0 = vectormath::add(p.pos, vectormath::scale(p.dir, t0));
 
-            // positive b mean center of sphere is in front of ray
-            const auto b = -f[0] * p.dir[0] - f[1] * p.dir[1];
-
-            // positive c means ray starts outside of sphere
-            const auto c = f[0] * f[0] + f[1] * f[1] - r2;
-
-            if ((c > 0) && (b < 0)) {
-                // if ray starts outside sphere and center is begind ray
-                // we exit early
-                return std::nullopt;
+                    const auto r2 = cylinder.radius * cylinder.radius;
+                    if (vectormath::lenght_sqr(vectormath::subtract(tp0, p0)) <= r2)
+                        tplane0 = t0;
+                    const auto t1 = vectormath::dot(vectormath::subtract(p1, p.pos), cylinder.direction) * den_inv;
+                    const auto tp1 = vectormath::add(p.pos, vectormath::scale(p.dir, t1));
+                    if (vectormath::lenght_sqr(vectormath::subtract(tp1, p1)) <= r2)
+                        tplane1 = t1;
+                    // sorting hits
+                    if (tplane0 && tplane1) {
+                        // we hit both planes and early exits
+                        if (tplane0 > tplane1) {
+                            tplane0.swap(tplane1);
+                        }
+                        std::array<T, 2> t_planes = { tplane0.value(), tplane1.value() };
+                        return std::make_optional(t_planes);
+                    } else if (tplane1) {
+                        // if not exit and one intersection, intersection is on tplane 0
+                        tplane0.swap(tplane1);
+                    }
+                }
             }
 
-            const std::array delta1 = { f[0] + b * p.dir[0] / a, f[1] + b * p.dir[1] / a };
+            { // testing cylinder wall
+                const auto v0 = vectormath::cross(vectormath::subtract(p.pos, cylinder.center), cylinder.direction);
+                const auto v1 = vectormath::cross(p.dir, cylinder.direction);
 
-            const auto delta = r2 - (delta1[0] * delta1[0] + delta1[1] * delta1[1]);
-
-            if (delta < 0) {
-                // no solution to the quadratic equation (we miss)
-                return std::nullopt;
+                const auto a = vectormath::dot(v1, v1);
+                if (a > GEOMETRIC_ERROR<T>()) {
+                    const auto b = 2 * vectormath::dot(v0, v1);
+                    const auto c = vectormath::dot(v0, v0) - cylinder.radius * cylinder.radius;
+                    const auto den = b * b - 4 * a * c;
+                    if (den > 0) {
+                        const auto den_s = std::sqrt(den);
+                        const auto a2inv = 1 / (2 * a);
+                        std::array t_wall = { (-b - den_s) * a2inv, (-b + den_s) * a2inv };
+                        // we have intersections on infinite cylinder wall, testing intersection points inside cylinder
+                        // intersection points
+                        const auto pt0 = vectormath::add(p.pos, vectormath::scale(p.dir, t_wall[0]));
+                        const auto pt1 = vectormath::add(p.pos, vectormath::scale(p.dir, t_wall[1]));
+                        if (!isOverPlane(p0, cylinder.direction, pt0) || isOverPlane(p1, cylinder.direction, pt0)) {
+                            // we miss valid cylinder wall
+                            if (tplane0) {
+                                t_wall[0] = tplane0.value();
+                                tplane0.reset();
+                            } else { // no valid intersection
+                                return std::nullopt;
+                            }
+                        }
+                        if (!isOverPlane(p0, cylinder.direction, pt1) || isOverPlane(p1, cylinder.direction, pt1)) {
+                            // we miss valid cylinder wall
+                            if (tplane0) {
+                                t_wall[1] = tplane0.value();
+                            } else { // no valid intersection
+                                return std::nullopt;
+                            }
+                        }
+                        return std::make_optional(t_wall);
+                    }
+                }
             }
-
-            const int sign = b > 0 ? 1 : -1;
-            const auto q = b + sign * std::sqrt(a * delta);
-
-            if (c < 0 && b > 0) {
-                // inside sphere
-                std::array t { c / q, q / a };
-                return std::make_optional(t);
-            } else {
-                std::array t { c / q, q / a };
-                return std::make_optional(t);
-            }
-        }
-        template <Floating T>
-        std::optional<T> intersectCylinderDiscIntervalZ(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
-        {
-            if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
-                return std::nullopt;
-
-            const auto tz = (center[2] - p.pos[2]) / p.dir[2];
-            const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
-            const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
-            if (xz * xz + yz * yz <= radii * radii)
-                return std::make_optional(tz);
             return std::nullopt;
         }
 
         template <Floating T>
-        std::optional<T> intersectCylinderDiscZ(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
-            if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
-                return std::nullopt;
-
-            if (p.pos[2] > center[2] && p.dir[2] >= 0)
-                return std::nullopt;
-            if (p.pos[2] < center[2] && p.dir[2] <= 0)
-                return std::nullopt;
-
-            const auto tz = (center[2] - p.pos[2]) / p.dir[2];
-            const auto xz = p.pos[0] + p.dir[0] * tz - center[0];
-            const auto yz = p.pos[1] + p.dir[1] * tz - center[1];
-            if (xz * xz + yz * yz <= radii * radii)
-                return std::make_optional(tz);
-            return std::nullopt;
-        }
-
-        template <Floating T>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
-        {
-            auto t_cand = intersectCylinderWall(p, center, radii);
+            auto t_cand = intersectInterval(p, cylinder);
             if (t_cand) {
-                // we need to be conservative else we will miss intersections on plane cylinder intersection
-                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, T { 0 });
-                if (!(center[2] - half_height <= tz && tz <= center[2] + half_height))
-                    t_cand.reset();
+                auto& v = t_cand.value();
+                if (v[1] < T { 0 })
+                    return std::nullopt;
+                v[0] = std::max(v[0], T { 0 });
             }
+            return t_cand;
+        }
 
-            std::array centerDisc = { center[0], center[1], center[2] - half_height };
-            auto tdisc1_cand = intersectCylinderDiscZ(p, centerDisc, radii);
-
-            centerDisc[2] = center[2] + half_height;
-            auto tdisc2_cand = intersectCylinderDiscZ(p, centerDisc, radii);
-
-            const auto t_cand_min = std::min({ t_cand, tdisc1_cand, tdisc2_cand }, [](const auto& lh, const auto& rh) -> bool { return lh.value_or(std::numeric_limits<T>::max()) < rh.value_or(std::numeric_limits<T>::max()); });
+        template <Floating T>
+        WorldIntersectionResult<T> intersect(const Particle<T>& p, const Cylinder<T>& cylinder)
+        {
+            const auto t_cand = intersectInterval(p, cylinder);
             WorldIntersectionResult<T> res;
-            if (t_cand_min) {
-                res.intersection = *t_cand_min;
-                res.intersectionValid = true;
-                res.rayOriginIsInsideItem = pointInside(p.pos, center, radii, half_height);
+            if (t_cand) {
+                const auto& v = t_cand.value();
+                if (v[1] > T { 0 }) {
+                    res.rayOriginIsInsideItem = v[0] < T { 0 };
+                    res.intersection = res.rayOriginIsInsideItem ? v[1] : v[0];
+                    res.intersectionValid = true;
+                }
             }
-
             return res;
         }
 
-        template <Floating T>
-        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
-        {
-            auto t_cand = intersectCylinderWallInterval(p, center, radii);
-            if (!t_cand) {
-                if (std::abs(p.dir[2]) == 1) {
-                    const auto dx = p.pos[0] - center[0];
-                    const auto dy = p.pos[1] - center[1];
-                    if (dx * dx + dy * dy < radii * radii) {
-                        const auto t1 = std::max(center[2] + half_height - p.pos[2], T { 0 });
-                        const auto t2 = std::max(center[2] - half_height - p.pos[2], T { 0 });
-                        std::array<T, 2> tz;
-                        if (t1 < t2) {
-                            tz = { t1, t2 };
-                        } else {
-                            tz = { t2, t1 };
-                        }
-                        if (tz[0] < tz[1]) {
-                            return std::make_optional(tz);
-                        }
-                    }
-                }
-                return std::nullopt;
-            }
-
-            const auto tz1 = (center[2] + half_height - p.pos[2]) / p.dir[2];
-            const auto tz2 = (center[2] - half_height - p.pos[2]) / p.dir[2];
-
-            const auto tz_min = tz1 < tz2 ? tz1 : tz2;
-            const auto tz_max = tz1 < tz2 ? tz2 : tz1;
-            auto& t = t_cand.value();
-
-            t[0] = std::max(t[0], tz_min);
-            t[1] = std::min(t[1], tz_max);
-            if (t[0] < 0)
-                t[0] = 0;
-            if (t[0] < t[1])
-                return t_cand;
-            return std::nullopt;
-        }
-
         template <Floating T, typename U>
-        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
+        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
-            auto t_cand = intersectCylinderWall(p, center, radii);
-            if (t_cand) {
-                // we need to be conservative else we will miss intersections on plane cylinder intersection
-                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, T { 0 });
-                if (!(center[2] - half_height <= tz && tz <= center[2] + half_height))
-                    t_cand.reset();
-            }
 
-            std::array centerDisc = { center[0], center[1], center[2] - half_height };
-            auto tdisc1_cand = intersectCylinderDiscZ(p, centerDisc, radii);
-
-            centerDisc[2] = center[2] + half_height;
-            auto tdisc2_cand = intersectCylinderDiscZ(p, centerDisc, radii);
-
-            constexpr auto m = std::numeric_limits<T>::max();
-
+            const auto t_cand = intersectInterval(p, cylinder);
             VisualizationIntersectionResult<T, U> res;
+            if (t_cand) {
+                const auto& v = t_cand.value();
+                if (v[1] > T { 0 }) {
+                    res.rayOriginIsInsideItem = v[0] < T { 0 };
+                    res.intersection = res.rayOriginIsInsideItem ? v[1] : v[0];
+                    res.intersectionValid = true;
 
-            if (t_cand.value_or(m) < tdisc1_cand.value_or(m)) {
-                if (t_cand.value_or(m) < tdisc2_cand.value_or(m)) {
-                    if (t_cand) {
-                        res.intersection = *t_cand;
-                        res.intersectionValid = true;
-                        const auto x = center[0] - (p.pos[0] + res.intersection * p.dir[0]);
-                        const auto y = center[1] - (p.pos[1] + res.intersection * p.dir[1]);
-                        const auto ll = 1 / std::sqrt(x * x + y * y);
-                        res.normal[0] = x * ll;
-                        res.normal[1] = y * ll;
-                    }
-                } else {
-                    if (tdisc2_cand) {
-                        res.intersection = *tdisc2_cand;
-                        res.intersectionValid = true;
-                        res.normal[2] = -1;
-                    }
-                }
-            } else {
-                if (tdisc2_cand.value_or(m) < tdisc1_cand.value_or(m)) {
-                    if (tdisc2_cand) {
-                        res.intersection = *tdisc2_cand;
-                        res.intersectionValid = true;
-                        res.normal[2] = -1;
-                    }
-                } else {
-                    if (tdisc1_cand) {
-                        res.intersection = *tdisc1_cand;
-                        res.intersectionValid = true;
-                        res.normal[2] = 1;
+                    // finding normal
+                    const auto p0 = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
+                    const auto pa = vectormath::subtract(cylinder.center, p0);
+                    const auto d = vectormath::cross(pa, cylinder.direction);
+                    const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR<T>());
+                    if (vectormath::lenght_sqr(d) < r * r) {
+                        // we hit plane
+                        if (vectormath::dot(pa, cylinder.direction) < 0) {
+                            res.normal = vectormath::scale(cylinder.direction, T { -1 });
+                        } else {
+                            res.normal = cylinder.direction;
+                        }
+                    } else {
+                        res.normal = vectormath::scale(d, T { -1 });
                     }
                 }
             }
-
-            if (res.intersectionValid) {
-                res.rayOriginIsInsideItem = pointInside(p.pos, center, radii, half_height);
-            }
-
             return res;
         }
     }
