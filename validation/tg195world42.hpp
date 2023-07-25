@@ -21,7 +21,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interactions.hpp"
-#include "dxmc/material/massenergytransfer.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
@@ -37,17 +36,10 @@ namespace dxmc {
 template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class TG195World42 final : public WorldItemBase<T> {
 protected:
-    struct CylinderChild {
-        std::array<T, 3> center = { 0, 0, 0 };
-        T radii = 0;
-        T halfHeight = 0;
-        DoseScore<T> dose;
-        std::array<T, 6> aabb = { 0, 0, 0, 0, 0, 0 };
-    };
-    static bool insideChild(const Particle<T>& p, const CylinderChild& child)
+    static bool insideChild(const Particle<T>& p, const basicshape::cylinder::Cylinder<T>& child, const std::array<T, 6>& aabb)
     {
-        if (basicshape::AABB::pointInside(p.pos, child.aabb)) {
-            return basicshape::cylinder::pointInside(p.pos, child.center, child.radii, child.halfHeight);
+        if (basicshape::AABB::pointInside(p.pos, aabb)) {
+            return basicshape::cylinder::pointInside(p.pos, child);
         }
         return false;
     }
@@ -55,30 +47,34 @@ protected:
 public:
     TG195World42(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_radius(radius)
-        , m_halfHeight(height * T { 0.5 })
-        , m_center(pos)
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
 
     {
+        m_cylinder.center = pos;
+        m_cylinder.direction = { 0, 0, 1 };
+        m_cylinder.radius = radius;
+        m_cylinder.half_height = height / 2;
+
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
 
-        m_centerChild.center = m_center;
-        m_centerChild.radii = T { 0.5 };
-        m_centerChild.halfHeight = 5;
-        m_periferyChild.center = { m_center[0] - (m_radius - 1), m_center[1], m_center[2] };
-        m_periferyChild.radii = T { 0.5 };
-        m_periferyChild.halfHeight = 5;
+        m_centerChild.center = m_cylinder.center;
+        m_centerChild.direction = m_cylinder.direction;
+        m_centerChild.radius = T { 0.5 };
+        m_centerChild.half_height = 5;
+        m_periferyChild.center = { m_cylinder.center[0] - (m_cylinder.radius - 1), m_cylinder.center[1], m_cylinder.center[2] };
+        m_periferyChild.direction = m_cylinder.direction;
+        m_periferyChild.radius = T { 0.5 };
+        m_periferyChild.half_height = 5;
         for (std::size_t i = 0; i < 3; ++i) {
-            m_centerChild.aabb[i] = m_centerChild.center[i] - m_centerChild.radii;
-            m_centerChild.aabb[i + 3] = m_centerChild.center[i] + m_centerChild.radii;
-            m_periferyChild.aabb[i] = m_periferyChild.center[i] - m_periferyChild.radii;
-            m_periferyChild.aabb[i + 3] = m_periferyChild.center[i] + m_periferyChild.radii;
+            m_centerChild_aabb[i] = m_centerChild.center[i] - m_centerChild.radius;
+            m_centerChild_aabb[i + 3] = m_centerChild.center[i] + m_centerChild.radius;
+            m_periferyChild_aabb[i] = m_periferyChild.center[i] - m_periferyChild.radius;
+            m_periferyChild_aabb[i + 3] = m_periferyChild.center[i] + m_periferyChild.radius;
             if (i == 2) {
-                m_centerChild.aabb[i] = m_centerChild.center[i] - m_centerChild.halfHeight;
-                m_centerChild.aabb[i + 3] = m_centerChild.center[i] + m_centerChild.halfHeight;
-                m_periferyChild.aabb[i] = m_periferyChild.center[i] - m_periferyChild.halfHeight;
-                m_periferyChild.aabb[i + 3] = m_periferyChild.center[i] + m_periferyChild.halfHeight;
+                m_centerChild_aabb[i] = m_centerChild.center[i] - m_centerChild.half_height;
+                m_centerChild_aabb[i + 3] = m_centerChild.center[i] + m_centerChild.half_height;
+                m_periferyChild_aabb[i] = m_periferyChild.center[i] - m_periferyChild.half_height;
+                m_periferyChild_aabb[i + 3] = m_periferyChild.center[i] + m_periferyChild.half_height;
             }
         }
     }
@@ -92,31 +88,31 @@ public:
 
     void translate(const std::array<T, 3>& dist) override
     {
-        m_center = vectormath::add(m_center, dist);
+        m_cylinder.center = vectormath::add(m_cylinder.center, dist);
         m_centerChild.center = vectormath::add(m_centerChild.center, dist);
         m_periferyChild.center = vectormath::add(m_periferyChild.center, dist);
         for (std::size_t i = 0; i < 3; ++i) {
-            m_periferyChild.aabb[i] += dist[i];
-            m_periferyChild.aabb[i + 3] += dist[i];
-            m_centerChild.aabb[i] += dist[i];
-            m_centerChild.aabb[i + 3] += dist[i];
+            m_periferyChild_aabb[i] += dist[i];
+            m_periferyChild_aabb[i + 3] += dist[i];
+            m_centerChild_aabb[i] += dist[i];
+            m_centerChild_aabb[i + 3] += dist[i];
         }
     }
 
     std::array<T, 3> center() const override
     {
-        return m_center;
+        return m_cylinder.center;
     }
 
     std::array<T, 6> AABB() const override
     {
         std::array<T, 6> aabb {
-            m_center[0] - m_radius,
-            m_center[1] - m_radius,
-            m_center[2] - m_halfHeight,
-            m_center[0] + m_radius,
-            m_center[1] + m_radius,
-            m_center[2] + m_halfHeight
+            m_cylinder.center[0] - m_cylinder.radius,
+            m_cylinder.center[1] - m_cylinder.radius,
+            m_cylinder.center[2] - m_cylinder.radius,
+            m_cylinder.center[0] + m_cylinder.radius,
+            m_cylinder.center[1] + m_cylinder.radius,
+            m_cylinder.center[2] + m_cylinder.radius
         };
         return aabb;
     }
@@ -124,23 +120,23 @@ public:
     void clearDose() override
     {
         m_dose.clear();
-        m_centerChild.dose.clear();
-        m_periferyChild.dose.clear();
+        m_centerChild_dose.clear();
+        m_periferyChild_dose.clear();
     }
 
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersect(p, m_center, m_radius, m_halfHeight);
+        return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_halfHeight);
+        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight);
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;
         AttenuationValues<T> att;
         T attSumInv;
@@ -159,14 +155,14 @@ public:
             if (stepLen < intLen.intersection) {
                 // interaction happends
                 p.translate(stepLen);
-                if (insideChild(p, m_centerChild)) {
+                if (insideChild(p, m_centerChild, m_centerChild_aabb)) {
                     const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
-                    m_centerChild.dose.scoreEnergy(intRes.energyImparted);
+                    m_centerChild_dose.scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
-                } else if (insideChild(p, m_periferyChild)) {
+                } else if (insideChild(p, m_periferyChild, m_periferyChild_aabb)) {
                     const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
-                    m_periferyChild.dose.scoreEnergy(intRes.energyImparted);
+                    m_periferyChild_dose.scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
                 } else if (state.randomUniform<T>() < alpha) {
@@ -186,11 +182,11 @@ public:
     const DoseScore<T>&
     doseCenterCylinder() const
     {
-        return m_centerChild.dose;
+        return m_centerChild_dose;
     }
     const DoseScore<T>& dosePeriferyCylinder() const
     {
-        return m_periferyChild.dose;
+        return m_periferyChild_dose;
     }
     const DoseScore<T>& dose(std::size_t index = 0) const override
     {
@@ -198,13 +194,15 @@ public:
     }
 
 private:
-    T m_radius = 0;
-    T m_halfHeight = 0;
-    std::array<T, 3> m_center;
+    basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
     Material2<T, NMaterialShells> m_material;
     DoseScore<T> m_dose;
-    CylinderChild m_centerChild;
-    CylinderChild m_periferyChild;
+    DoseScore<T> m_periferyChild_dose;
+    DoseScore<T> m_centerChild_dose;
+    basicshape::cylinder::Cylinder<T> m_centerChild;
+    basicshape::cylinder::Cylinder<T> m_periferyChild;
+    std::array<T, 6> m_centerChild_aabb = { 0, 0, 0, 0, 0, 0 };
+    std::array<T, 6> m_periferyChild_aabb = { 0, 0, 0, 0, 0, 0 };
 };
 }

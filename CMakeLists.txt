@@ -119,6 +119,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"     
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/aabb.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/cylinder.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/cylinderz.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/sphere.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicelement.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/material/atomicshell.hpp"

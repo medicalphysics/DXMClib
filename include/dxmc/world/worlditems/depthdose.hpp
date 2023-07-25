@@ -38,11 +38,13 @@ class DepthDose final : public WorldItemBase<T> {
 public:
     DepthDose(T radius = T { 16 }, T height = T { 10 }, std::size_t resolution = 100, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_radius(radius)
-        , m_half_height(height * T { 0.5 })
-        , m_center(pos)
         , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
+        m_cylinder.center = pos;
+        m_cylinder.direction = { 0, 0, 1 };
+        m_cylinder.radius = radius;
+        m_cylinder.half_height = height / 2;
+
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
         m_dose.resize(resolution);
     }
@@ -72,7 +74,7 @@ public:
 
     void translate(const std::array<T, 3>& dist) override
     {
-        m_center = vectormath::add(m_center, dist);
+        m_cylinder.center = vectormath::add(m_cylinder.center, dist);
     }
 
     void clearDose() override
@@ -84,35 +86,35 @@ public:
 
     std::array<T, 3> center() const override
     {
-        return m_center;
+        return m_cylinder.center;
     }
 
     std::array<T, 6> AABB() const override
     {
         std::array<T, 6> aabb {
-            m_center[0] - m_radius,
-            m_center[1] - m_radius,
-            m_center[2] - m_half_height,
-            m_center[0] + m_radius,
-            m_center[1] + m_radius,
-            m_center[2] + m_half_height
+            m_cylinder.center[0] - m_cylinder.radius,
+            m_cylinder.center[1] - m_cylinder.radius,
+            m_cylinder.center[2] - m_cylinder.half_height,
+            m_cylinder.center[0] + m_cylinder.radius,
+            m_cylinder.center[1] + m_cylinder.radius,
+            m_cylinder.center[2] + m_cylinder.half_height
         };
         return aabb;
     }
 
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = false;
         auto att = m_material.attenuationValues(p.energy);
         auto attSumInv = 1 / (att.sum() * m_materialDensity);
@@ -132,7 +134,7 @@ public:
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
 
-                const auto dose_ind_f = (p.pos[2] - (m_center[2] - m_half_height)) * m_dose.size() / (m_half_height * 2);
+                const auto dose_ind_f = (p.pos[2] - (m_cylinder.center[2] - m_cylinder.half_height)) * m_dose.size() / (m_cylinder.half_height * 2);
                 const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_dose.size() - 1);
                 m_dose[ind].scoreEnergy(intRes.energyImparted);
             } else {
@@ -148,8 +150,8 @@ public:
         std::vector<std::pair<T, DoseScore<T>>> depth;
         depth.reserve(m_dose.size());
 
-        const auto step = (2 * m_half_height) / m_dose.size();
-        const auto start = m_center[2] - m_half_height + step / 2;
+        const auto step = (2 * m_cylinder.half_height) / m_dose.size();
+        const auto start = m_cylinder.center[2] - m_cylinder.half_height + step / 2;
         for (std::size_t i = 0; i < m_dose.size(); ++i) {
             depth.push_back(std::make_pair(start + step * i, m_dose[i]));
         }
@@ -163,9 +165,7 @@ public:
 
 protected:
 private:
-    T m_radius = 0;
-    T m_half_height = 0;
-    std::array<T, 3> m_center;
+    dxmc::basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
     Material2<T, NMaterialShells> m_material;
     std::vector<DoseScore<T>> m_dose;

@@ -184,6 +184,29 @@ bool testCylindarIntersection()
     t = dxmc::basicshape::cylinder::intersect(p, cylinder);
     success = success && !t.valid();
 
+    dxmc::RandomState state;
+    for (std::size_t i = 0; i < 1E6; ++i) {
+        std::array<T, 3> pos_init = {
+            state.randomUniform<T>(-cylinder.radius, cylinder.radius),
+            state.randomUniform<T>(-cylinder.radius, cylinder.radius),
+            state.randomUniform<T>(-cylinder.half_height - 1, cylinder.half_height + 1),
+        };
+
+        pos_init = { -0.216281652,
+            1.74022770,
+            -1.04047060 };
+
+        const auto pos = dxmc::vectormath::add(pos_init, cylinder.center);
+        const bool inside = dxmc::basicshape::cylinder::pointInside(pos, cylinder);
+
+        bool inside_t = pos_init[0] * pos_init[0] + pos_init[1] * pos_init[1] <= cylinder.radius * cylinder.radius;
+        inside_t = inside_t && -cylinder.half_height <= pos_init[2] && pos_init[2] <= cylinder.half_height;
+
+        success = success && inside == inside_t;
+        if (!success)
+            auto test = false;
+    }
+
     if (success)
         std::cout << "SUCCESS";
     else

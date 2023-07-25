@@ -21,12 +21,11 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interactions.hpp"
-#include "dxmc/material/massenergytransfer.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/basicshapes/cylinder.hpp"
+#include "dxmc/world/basicshapes/cylinderz.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
@@ -109,7 +108,7 @@ public:
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
         const auto aabb = AABB();
-        auto cyl = basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_halfHeight);
+        auto cyl = basicshape::cylinderZ::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_halfHeight);
         const auto box = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, aabb);
         if (cyl.valid() && box.valid()) {
             if (basicshape::AABB::pointInside(p.pos, aabb)) {
@@ -131,7 +130,7 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
+        bool cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
         while (cont) {
             const auto intBreast = intersectHalfCylindar(p, m_center, m_radius, m_halfHeight);
             if (intBreast.valid()) {
@@ -149,7 +148,7 @@ public:
                             scoreDose(p, intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
-                            cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
+                            cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
                         }
                     } else {
                         // starts in skin and goes to tissue
@@ -163,7 +162,7 @@ public:
                             m_skin_dose.scoreEnergy(intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
-                            cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
+                            cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
                         }
                     }
                 } else {
@@ -233,7 +232,7 @@ protected:
         };
         auto box = basicshape::AABB::template intersect(p, aabb);
         if (box.valid()) {
-            const auto cyl = basicshape::cylinder::template intersect(p, center, radius, halfHeight);
+            const auto cyl = basicshape::cylinderZ::template intersect(p, center, radius, halfHeight);
             if (cyl.valid()) {
                 box.rayOriginIsInsideItem = box.rayOriginIsInsideItem && cyl.rayOriginIsInsideItem;
                 if (box.rayOriginIsInsideItem) {
