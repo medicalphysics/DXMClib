@@ -34,11 +34,11 @@ namespace basicshape {
 
         template <Floating T>
         struct Cylinder {
-            T radius;
-            T half_height;
-            std::array<T, 3> center;
-            std::array<T, 3> direction;
-
+            std::array<T, 3> center = { 0, 0, 0 };
+            std::array<T, 3> direction = { 0, 0, 1 };
+            T radius = 1;
+            T half_height = 1;
+            Cylinder() = default;
             Cylinder(std::array<T, 3> center_arr, std::array<T, 3> direction_arr, T radii, T half_height_wall)
                 : radius(radii)
                 , half_height(half_height_wall)
