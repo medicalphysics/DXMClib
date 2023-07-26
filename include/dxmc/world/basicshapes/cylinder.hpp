@@ -49,6 +49,29 @@ namespace basicshape {
         };
 
         template <Floating T>
+        constexpr inline std::array<T, 6> cylinderAABB(const Cylinder<T>& cyl)
+        {
+            // calculating disc extents
+            const std::array<T, 3> e = {
+                cyl.radius * std::sqrt(1 - cyl.direction[0] * cyl.direction[0]),
+                cyl.radius * std::sqrt(1 - cyl.direction[1] * cyl.direction[1]),
+                cyl.radius * std::sqrt(1 - cyl.direction[2] * cyl.direction[2])
+            };
+            const auto l = vectormath::scale(cyl.direction, cyl.half_height);
+            const auto p0 = vectormath::subtract(cyl.center, l);
+            const auto p1 = vectormath::add(cyl.center, l);
+            std::array<T, 6> aabb = {
+                std::min(p0[0], p1[0]) - e[0],
+                std::min(p0[1], p1[1]) - e[1],
+                std::min(p0[2], p1[2]) - e[2],
+                std::max(p0[0], p1[0]) + e[0],
+                std::max(p0[1], p1[1]) + e[1],
+                std::max(p0[2], p1[2]) + e[2]
+            };
+            return aabb;
+        }
+
+        template <Floating T>
         constexpr inline bool isOverPlane(const std::array<T, 3>& planepoint, const std::array<T, 3>& planenormal, const std::array<T, 3>& point) noexcept
         {
             return vectormath::dot(vectormath::subtract(point, planepoint), planenormal) >= 0;

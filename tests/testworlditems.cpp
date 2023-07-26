@@ -17,6 +17,7 @@ Copyright 2023 Erlend Andersen
 */
 
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
+#include "dxmc/world/worlditems/ctdiphantom.hpp"
 
 #include <chrono>
 #include <fstream>
@@ -66,6 +67,12 @@ bool testAAVoxelGrid()
     }
 
     return success;
+}
+
+template <dxmc::Floating T>
+bool testCTDIPhantom() {
+    dxmc::CTDIPhantom<T, 5, 2> phantom;
+
 }
 
 int main(int argc, char* argv[])

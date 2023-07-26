@@ -39,18 +39,22 @@ namespace dxmc {
 template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class CTDIPhantom final : public WorldItemBase<T> {
 public:
-    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, T holeHeight = T { 10 })
+    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& direction = { 0, 0, 1 }, T holeHeight = T { 10 })
         : WorldItemBase<T>()
-        , m_radius(radius)
-        , m_half_height(height * T { 0.5 })
-        , m_center(pos)
         , m_pmma(Material2<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
         , m_air(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
+        radius = std::abs(radius);
+        height = std::abs(height);
+        m_cylinder.center = pos;
+        m_cylinder.direction = direction;
+        m_cylinder.radius = radius;
+        m_cylinder.half_height = height / 2;
+
         m_pmma_density = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
         m_air_density = NISTMaterials<T>::density("Air, Dry (near sea level)");
 
-        holeHeight = std::min(height, holeHeight);
+        holeHeight = std::min(height, std::abs(holeHeight));
 
         std::vector<CTDIAirHole> holes;
         holes.reserve(5);
@@ -59,9 +63,14 @@ public:
         for (std::size_t i = 0; i < 10; i = i + 2) {
             const auto x = positions[i];
             const auto y = positions[i + 1];
-            CTDIAirHole hole { .pos = m_center, .radii = holeRadii(), .half_height = holeHeight / 2, .index = ++index };
-            hole.pos[0] += x * (m_radius - holeEdgeDistance());
-            hole.pos[1] += y * (m_radius - holeEdgeDistance());
+            CTDIAirHole hole;
+            hole.cylinder.center = m_cylinder.center;
+            hole.cylinder.half_height = holeHeight / 2;
+            hole.cylinder.direction = m_cylinder.direction;
+            hole.cylinder.radius = holeRadii();
+            hole.index = ++index;
+            hole.cylinder.center[0] += x * (radius - holeEdgeDistance());
+            hole.cylinder.center[1] += y * (radius - holeEdgeDistance());
             holes.push_back(hole);
         }
         m_kdtree = StaticKDTree<3, T, CTDIAirHole>(holes);
@@ -69,12 +78,12 @@ public:
 
     void translate(const std::array<T, 3>& dist) noexcept override
     {
-        m_center = vectormath::add(m_center, dist);
+        m_cylinder.center = vectormath::add(m_cylinder.center, dist);
         m_kdtree.translate(dist);
     }
     std::array<T, 3> center() const noexcept override
     {
-        return m_center;
+        return m_cylinder.center;
     }
     void clearDose() override
     {
@@ -99,25 +108,17 @@ public:
 
     std::array<T, 6> AABB() const noexcept override
     {
-        std::array aabb {
-            m_center[0] - m_radius,
-            m_center[1] - m_radius,
-            m_center[2] - m_half_height,
-            m_center[0] + m_radius,
-            m_center[1] + m_radius,
-            m_center[2] + m_half_height
-        };
-        return aabb;
+        return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
 
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersect(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_half_height);
+        return basicshape::cylinder::intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
@@ -126,7 +127,7 @@ public:
         AttenuationValues<T> att;
         T attSumInv;
 
-        bool cont = basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         while (cont) {
             if (updateAtt) {
                 att = m_pmma.attenuationValues(p.energy);
@@ -148,7 +149,7 @@ public:
                     updateAtt = intRes.particleEnergyChanged;
                     // transport particle across hole (particle is most likely alive)
                     p.border_translate(intHoles.intersection);
-                    cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
+                    cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
                 } else {
                     if (stepLen < intHoles.intersection) {
                         // interaction happends
@@ -158,7 +159,6 @@ public:
                         updateAtt = intRes.particleEnergyChanged;
                         cont = intRes.particleAlive;
                     } else {
-
                         // transport particle to hole
                         p.border_translate(intHoles.intersection);
                         // find distance of hole crossing
@@ -170,7 +170,7 @@ public:
                         updateAtt = intRes.particleEnergyChanged;
                         // transport particle across hole (particle is most likely alive)
                         p.border_translate(dist);
-                        cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_center, m_radius, m_half_height);
+                        cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
                     }
                 }
             } else {
@@ -192,44 +192,22 @@ public:
 
 protected:
     struct CTDIAirHole {
-        std::array<T, 3> pos;
-        T radii;
-        T half_height;
-        std::uint8_t index;
+        basicshape::cylinder::Cylinder<T> cylinder;
+        std::uint8_t index = 0;
 
         void translate(const std::array<T, 3>& d) noexcept
         {
             for (std::size_t i = 0; i < 3; ++i)
-                pos[i] += d[i];
+                cylinder.center[i] += d[i];
         }
-        const std::array<T, 3>& center() const noexcept { return pos; }
+        const std::array<T, 3>& center() const noexcept { return cylinder.center; }
         std::array<T, 6> AABB() const noexcept
         {
-            std::array<T, 6> aabb {
-                pos[0] - radii,
-                pos[1] - radii,
-                pos[2] - half_height,
-                pos[0] + radii,
-                pos[1] + radii,
-                pos[2] + half_height,
-            };
-            return aabb;
+            return basicshape::cylinder::cylinderAABB(cylinder);
         }
         auto intersect(const Particle<T>& p) const noexcept
         {
-            const std::array<T, 6> aabb {
-                pos[0] - radii,
-                pos[1] - radii,
-                pos[2] - half_height,
-                pos[0] + radii,
-                pos[1] + radii,
-                pos[2] + half_height,
-            };
-            const auto aabbintersection = basicshape::AABB::intersect(p, aabb);
-            if (aabbintersection.valid())
-                return basicshape::cylinder::intersect(p, pos, radii, half_height);
-            else
-                return aabbintersection;
+            return basicshape::cylinder::intersect(p, cylinder);
         }
     };
 
@@ -243,9 +221,7 @@ protected:
     }
 
 private:
-    std::array<T, 3> m_center;
-    T m_radius = 0;
-    T m_half_height = 0;
+    basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_pmma_density = 0;
     T m_air_density = 0;
     std::array<DoseScore<T>, 6> m_dose;
