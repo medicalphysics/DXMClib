@@ -80,9 +80,8 @@ namespace basicshape {
         template <Floating T>
         bool pointInside(const std::array<T, 3>& pos, const Cylinder<T>& cylinder)
         {
-            // test if point inside infinite cylinder
-
             const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
+            // test if point inside infinite cylinder
             if (vectormath::lenght_sqr(d) <= cylinder.radius * cylinder.radius) {
                 // test for side of two end planes
                 const auto e = vectormath::scale(cylinder.direction, cylinder.half_height);
