@@ -123,8 +123,8 @@ if __name__=='__main__':
         os.mkdir("plots")
     except Exception as e:
         print(e)
-   # plotCase2(dt)
-   # plotCase3(dt)
-    #plotCase41(dt)
+    plotCase2(dt)
+    plotCase3(dt)
+    plotCase41(dt)
     plotCase42(dt)
-  #  plotCase5(dt)
+    plotCase5(dt)
