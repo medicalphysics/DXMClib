@@ -223,8 +223,9 @@ namespace basicshape {
 
                     // finding normal
                     const auto p0 = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
-                    const auto pa = vectormath::subtract(cylinder.center, p0);
-                    const auto d = vectormath::cross(pa, cylinder.direction);
+                    const auto pa = vectormath::subtract(p0, cylinder.center);
+                    const auto ns = vectormath::dot(pa, cylinder.direction);
+                    const auto d = vectormath::subtract(pa, vectormath::scale(cylinder.direction, ns));
                     const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR<T>());
                     if (vectormath::lenght_sqr(d) < r * r) {
                         // we hit plane
@@ -234,7 +235,8 @@ namespace basicshape {
                             res.normal = cylinder.direction;
                         }
                     } else {
-                        res.normal = vectormath::scale(d, T { -1 });
+                        res.normal = d;
+                        vectormath::normalize(res.normal);
                     }
                 }
             }
