@@ -28,11 +28,11 @@ bool testAAVoxelGrid()
 {
     dxmc::AAVoxelGrid<T, 5, 2> item;
 
-    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
-    auto lead = dxmc::Material2<T, 5>::byZ(82).value();
+    auto lead = dxmc::Material<T, 5>::byZ(82).value();
     const auto lead_dens = dxmc::AtomHandler<T>::Atom(82).standardDensity;
 
     const std::array<std::size_t, 3> dim = { 13, 13, 13 };
@@ -42,7 +42,7 @@ bool testAAVoxelGrid()
     // material arrays
     std::vector<T> dens(size, air_dens);
     std::vector<std::uint8_t> materialIdx(size, 0);
-    std::vector<dxmc::Material2<T, 5>> materials;
+    std::vector<dxmc::Material<T, 5>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
     materials.push_back(lead);

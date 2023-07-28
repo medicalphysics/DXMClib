@@ -49,9 +49,9 @@ struct AttenuationValues {
     T sum() const noexcept { return photoelectric + incoherent + coherent; }
 };
 template <Floating T, std::size_t N = 5>
-class Material2 {
+class Material {
 public:
-    static std::optional<Material2<T, N>> byZ(std::size_t Z)
+    static std::optional<Material<T, N>> byZ(std::size_t Z)
     {
         auto a = AtomHandler<T>::Atom(Z);
         if (a.Z == Z) {
@@ -61,13 +61,13 @@ public:
         }
         return std::nullopt;
     }
-    static std::optional<Material2<T, N>> byWeight(const std::map<std::size_t, T>& weights)
+    static std::optional<Material<T, N>> byWeight(const std::map<std::size_t, T>& weights)
     {
         auto m = constructMaterial(weights);
         return m;
     }
 
-    static std::optional<Material2<T, N>> byChemicalFormula(const std::string& str)
+    static std::optional<Material<T, N>> byChemicalFormula(const std::string& str)
     {
         auto numberDensCompound = parseCompoundStr(str);
         if (numberDensCompound.size() == 0)
@@ -79,14 +79,14 @@ public:
             const auto& atom = AtomHandler<T>::Atom(Z);
             weight[Z] = numDens * atom.atomicWeight;
         }
-        return Material2<T, N>::byWeight(weight);
+        return Material<T, N>::byWeight(weight);
     }
 
-    static std::optional<Material2<T, N>> byNistName(const std::string& name)
+    static std::optional<Material<T, N>> byNistName(const std::string& name)
     {
         const auto& w = NISTMaterials<T>::Composition(name);
         if (!w.empty())
-            return Material2<T, N>::byWeight(w);
+            return Material<T, N>::byWeight(w);
 
         return std::nullopt;
     }
@@ -234,7 +234,7 @@ public:
     }
 
 protected:
-    Material2()
+    Material()
     {
     }
 
@@ -284,7 +284,7 @@ protected:
                     const char l1 = *endP;
                     if (l1 == ')') {
                         std::string strP(startP, endP);
-                        auto parseP = Material2<T, N>::parseCompoundStr(strP);
+                        auto parseP = Material<T, N>::parseCompoundStr(strP);
                         auto endPdig = endP + 1;
                         T w = 1;
                         std::string str_w;
@@ -486,7 +486,7 @@ protected:
         return lut;
     }
 
-    static std::optional<Material2<T, N>> constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
+    static std::optional<Material<T, N>> constructMaterial(const std::map<std::size_t, T>& compositionByWeight)
     {
         for (const auto& [Z, w] : compositionByWeight) {
             const auto& a = AtomHandler<T>::Atom(Z);
@@ -506,7 +506,7 @@ protected:
             constructSplineInterpolator(weight, LUTType::scatterfactor),
             constructSplineInterpolator(weight, LUTType::incoherentenergy),
         };
-        Material2<T, N> m;
+        Material<T, N> m;
         m.m_effectiveZ = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto z, const auto& pair) { return z + pair.first * pair.second; });
 
         m.m_attenuationTable.clear();
@@ -531,9 +531,9 @@ protected:
 
         return m;
     }
-    static void generateFormFactorInverseSampling(Material2<T, N>& material)
+    static void generateFormFactorInverseSampling(Material<T, N>& material)
     {
-        const T qmax = Material2<T, N>::momentumTransferMax(MAX_ENERGY<T>());
+        const T qmax = Material<T, N>::momentumTransferMax(MAX_ENERGY<T>());
         constexpr T qmin = T { 0.001 };
         auto func = [&material](T qsquared) -> T {
             const auto q = std::sqrt(qsquared);
@@ -544,7 +544,7 @@ protected:
         material.m_formFactorInvSamp = CPDFSampling<T, 20>(qmin * qmin, qmax * qmax, func);
     }
 
-    static void createMaterialAtomicShells(Material2<T, N>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 6 + N>& offset)
+    static void createMaterialAtomicShells(Material<T, N>& material, const std::map<std::size_t, T>& normalizedWeight, std::array<std::size_t, 6 + N>& offset)
     {
         struct Shell {
             std::uint64_t Z = 0;

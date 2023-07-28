@@ -42,12 +42,12 @@ public:
         , m_radius(radius)
         , m_halfHeight(height * T { 0.5 })
         , m_center(pos)
-        , m_material(Material2<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
 
-    void setMaterial(const Material2<T, NMaterialShells>& material)
+    void setMaterial(const Material<T, NMaterialShells>& material)
     {
         m_material = material;
     }
@@ -56,7 +56,7 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
             m_materialDensity = NISTMaterials<T>::density(nist_name);
@@ -154,7 +154,7 @@ private:
     T m_halfHeight = 0;
     std::array<T, 3> m_center;
     T m_materialDensity = 1;
-    Material2<T, NMaterialShells> m_material;
+    Material<T, NMaterialShells> m_material;
     DoseScore<T> m_dose;
 };
 

@@ -107,7 +107,7 @@ void testMeshVisualization()
 
     using Mesh = dxmc::TriangulatedMesh<T, 5, 2>;
     using World = dxmc::World2<T, Mesh>;
-    using Material = dxmc::Material2<T, 5>;
+    using Material = dxmc::Material<T, 5>;
 
     World world;
 
@@ -173,7 +173,7 @@ T testScoring()
     using Mesh = dxmc::TriangulatedMesh<T, 5, 2>;
     using Box = dxmc::WorldBox<T, 5, 2>;
     using World = dxmc::World2<T, Mesh, Box>;
-    using Material = dxmc::Material2<T, 5>;
+    using Material = dxmc::Material<T, 5>;
 
     World world;
     const auto waterComp = dxmc::NISTMaterials<T>::Composition("Water, Liquid");

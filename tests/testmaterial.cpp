@@ -48,7 +48,7 @@ void writeAtomTestData(std::size_t Z)
         energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
     } while (energy.back() < dxmc::MAX_ENERGY<T>());
 
-    auto m = dxmc::Material2<T>::byZ(Z).value();
+    auto m = dxmc::Material<T>::byZ(Z).value();
     auto a = dxmc::AtomHandler<T>::Atom(Z);
 
     for (auto e : energy) {
@@ -120,7 +120,7 @@ void writeCompoundTestData(const std::string& name)
         energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
     } while (energy.back() < dxmc::MAX_ENERGY<T>());
 
-    const auto m = dxmc::Material2<T, N>::byNistName(name).value();
+    const auto m = dxmc::Material<T, N>::byNistName(name).value();
 
     const auto Z = name.c_str();
 
@@ -153,7 +153,7 @@ bool testAtomAttenuation()
     constexpr T lim = 2;
     for (std::size_t Z = 1; Z < 85; ++Z) {
         const auto atom = dxmc::AtomHandler<T>::Atom(Z);
-        const auto material = dxmc::Material2<T>::byZ(Z).value();
+        const auto material = dxmc::Material<T>::byZ(Z).value();
         for (const auto& e : earr) {
             auto att = material.attenuationValues(e);
             auto photo_val = dxmc::interpolate(atom.photoel, e);
@@ -200,11 +200,11 @@ bool testCompoundAttenuation()
     bool valid = true;
     constexpr T lim = 0.2;
 
-    const auto names = dxmc::Material2<T>::listNistCompoundNames();
+    const auto names = dxmc::Material<T>::listNistCompoundNames();
 
     for (const auto& name : names) {
 
-        const auto mat_opt = dxmc::Material2<T>::byNistName(name);
+        const auto mat_opt = dxmc::Material<T>::byNistName(name);
         const auto& comp = NISTMaterials<T>::Composition(name);
         const auto& material = mat_opt.value();
         const auto n_c = name.c_str();
@@ -235,8 +235,8 @@ bool testCompoundAttenuation()
 bool testTotalAttenuationWater()
 {
 
-    auto matF = dxmc::Material2<float>::byNistName("Water, Liquid").value();
-    auto matD = dxmc::Material2<double>::byNistName("Water, Liquid").value();
+    auto matF = dxmc::Material<float>::byNistName("Water, Liquid").value();
+    auto matD = dxmc::Material<double>::byNistName("Water, Liquid").value();
 
     float ef = 1.0f;
     double ed = 1.0;
@@ -313,7 +313,7 @@ bool testAttenuationTG195Breast()
         wsum += ww;
     }
 
-    auto mat = dxmc::Material2<T, 5>::byWeight(w).value();
+    auto mat = dxmc::Material<T, 5>::byWeight(w).value();
     std::cout << "E, Photo_dxmc, Comp_dxmc, Ray_dxmc, Photo_xlib, Comp_xlib, Ray_xlib\n";
     for (T e = dxmc::MIN_ENERGY<T>(); e < dxmc::MAX_ENERGY<T>(); e = e + T { 1 }) {
         auto att = mat.attenuationValues(e);
@@ -375,7 +375,7 @@ bool testmassAbsCoeff()
     bool success = true;
 
     for (const auto& d : data) {
-        auto m_cand = dxmc::Material2<T, 5>::byNistName(d.name);
+        auto m_cand = dxmc::Material<T, 5>::byNistName(d.name);
         const auto m = m_cand.value();
 
         const auto att = m.attenuationValues(d.energy);

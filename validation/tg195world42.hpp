@@ -47,7 +47,7 @@ protected:
 public:
     TG195World42(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
 
     {
         m_cylinder.center = pos;
@@ -79,7 +79,7 @@ public:
         }
     }
 
-    void setMaterial(const Material2<T, NMaterialShells>& material)
+    void setMaterial(const Material<T, NMaterialShells>& material)
     {
         m_material = material;
     }
@@ -196,7 +196,7 @@ public:
 private:
     basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
-    Material2<T, NMaterialShells> m_material;
+    Material<T, NMaterialShells> m_material;
     DoseScore<T> m_dose;
     DoseScore<T> m_periferyChild_dose;
     DoseScore<T> m_centerChild_dose;

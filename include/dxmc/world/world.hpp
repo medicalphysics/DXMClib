@@ -44,15 +44,15 @@ template <Floating T, WorldItemType<T>... Us>
 class World {
 public:
     World()
-        : m_fillMaterial(Material2<T>::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(Material<T>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
-    void setMaterial(const Material2<T>& mat)
+    void setMaterial(const Material<T>& mat)
     {
         m_fillMaterial = mat;
     }
-    void setMaterial(const Material2<T>& mat, T dens)
+    void setMaterial(const Material<T>& mat, T dens)
     {
         m_fillMaterial = mat;
         m_fillMaterialDensity = std::abs(dens);
@@ -231,7 +231,7 @@ private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_items;
     KDTree<T> m_kdtree;
-    Material2<T> m_fillMaterial;
+    Material<T> m_fillMaterial;
     T m_fillMaterialDensity = T { 0.001225 };
     DoseScore<T> m_dose;
 };

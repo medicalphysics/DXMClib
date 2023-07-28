@@ -41,8 +41,8 @@ class CTDIPhantom final : public WorldItemBase<T> {
 public:
     CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& direction = { 0, 0, 1 }, T holeHeight = T { 10 })
         : WorldItemBase<T>()
-        , m_pmma(Material2<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
-        , m_air(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_pmma(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_air(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         radius = std::abs(radius);
         height = std::abs(height);
@@ -94,7 +94,7 @@ public:
 
     void setHoleMaterial(const std::string& nistName, T density)
     {
-        auto m = Material2<T, NMaterialShells>::byNistName(nistName);
+        auto m = Material<T, NMaterialShells>::byNistName(nistName);
         if (m) {
             m_air = m.value();
             m_air_density = density;
@@ -226,8 +226,8 @@ private:
     T m_air_density = 0;
     std::array<DoseScore<T>, 6> m_dose;
     StaticKDTree<3, T, CTDIAirHole> m_kdtree;
-    Material2<T, NMaterialShells> m_pmma;
-    Material2<T, NMaterialShells> m_air;
+    Material<T, NMaterialShells> m_pmma;
+    Material<T, NMaterialShells> m_air;
 };
 
 }

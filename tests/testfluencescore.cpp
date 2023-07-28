@@ -57,7 +57,7 @@ void testfluencescore()
     using Box = dxmc::WorldBox<T, N, L>;
     using FluenceScore = dxmc::FluenceScore<T>;
     using World = dxmc::World2<T, Box, FluenceScore>;
-    using Material = dxmc::Material2<T, N>;
+    using Material = dxmc::Material<T, N>;
 
     World world;
     {

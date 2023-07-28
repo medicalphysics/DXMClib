@@ -81,7 +81,7 @@ public:
             densities[i] = mats[matIdx].density;
             organNames[i] = orgs[i].name;
         }
-        std::vector<Material2<T, Nshells>> materials;
+        std::vector<Material<T, Nshells>> materials;
         materials.reserve(mats.size());
         for (const auto& m : mats)
             materials.emplace_back(m.material);
@@ -139,11 +139,11 @@ protected:
 
     struct ICRP145Materials {
         std::uint16_t index = 0;
-        Material2<T, Nshells> material;
+        Material<T, Nshells> material;
         T density = 1;
         std::string name;
 
-        ICRP145Materials(Material2<T, Nshells>& mat)
+        ICRP145Materials(Material<T, Nshells>& mat)
             : material(mat)
         {
         }
@@ -233,7 +233,7 @@ protected:
                 organDensity = frac.at(0);
                 frac.erase(0);
             }
-            auto mat = Material2<T, Nshells>::byWeight(frac);
+            auto mat = Material<T, Nshells>::byWeight(frac);
             if (mat) {
                 ICRP145Materials organ(mat.value());
                 organ.density = organDensity;

@@ -47,7 +47,7 @@ public:
         m_collections.emplace_back(T { 0 });
     }
 
-    TetrahedalMesh(std::vector<Tetrahedron<T>>&& tets, const std::vector<T>& collectionDensities, const std::vector<Material2<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
+    TetrahedalMesh(std::vector<Tetrahedron<T>>&& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
         : WorldItemBase<T>()
     {
         // finding mac collectionIdx and Material index
@@ -196,7 +196,7 @@ public:
 
     std::size_t numberOfCollections() const { return m_collections.size(); }
     std::size_t numberOfMaterials() const { return m_materials.size(); }
-    void setMaterial(const Material2<T, NMaterialShells>& material, std::size_t index)
+    void setMaterial(const Material<T, NMaterialShells>& material, std::size_t index)
     {
         if (index < m_materials.size())
             m_materials[index] = material;
@@ -227,7 +227,7 @@ private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     TetrahedalMeshKDTree<T> m_kdtree;
     std::vector<Collection> m_collections;
-    std::vector<Material2<T, NMaterialShells>> m_materials;
+    std::vector<Material<T, NMaterialShells>> m_materials;
     std::vector<std::string> m_collectionNames;
 };
 }

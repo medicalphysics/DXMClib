@@ -85,8 +85,8 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 {
     auto tets = tetCube<T>();
 
-    std::vector<dxmc::Material2<T, N>> mats;
-    mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
+    std::vector<dxmc::Material<T, N>> mats;
+    mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
     std::vector<T> dens(tets.size(), 1);
 
     std::vector<std::string> names(1);
@@ -112,8 +112,8 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
     for (const auto& t : tets)
         valid = valid && t.validVerticeOrientation();
 
-    std::vector<dxmc::Material2<T, N>> mats;
-    mats.push_back(dxmc::Material2<T, N>::byNistName("Water, Liquid").value());
+    std::vector<dxmc::Material<T, N>> mats;
+    mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
     std::vector<T> dens(1, 1);
 
     std::vector<std::string> names(1);
@@ -165,7 +165,7 @@ T testDoseScoring(std::array<T, 3> pos = { 0, -100, 0 }, std::array<T, 3> dir = 
     using Mesh = dxmc::TetrahedalMesh<T, N, L>;
     using Box = dxmc::WorldBox<T, N, L>;
     using World = dxmc::World2<T, Mesh, Box>;
-    using Material = dxmc::Material2<T, N>;
+    using Material = dxmc::Material<T, N>;
     World world;
 
     if constexpr (BOX) {

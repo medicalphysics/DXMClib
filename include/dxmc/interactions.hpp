@@ -40,7 +40,7 @@ namespace interactions {
     }
 
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
-    void rayleightScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    void rayleightScatter(Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 0) {
             bool reject;
@@ -77,7 +77,7 @@ namespace interactions {
     }
 
     template <Floating T, std::size_t Nshells>
-    T comptonScatterIA(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    T comptonScatterIA(Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state) noexcept
     {
         // Penelope model for compton scattering. Note spelling error in manual for sampling of pz.
         // In addition we use hartree scatter factors instead of integrating all compton profiles when sampling cosTheta
@@ -182,7 +182,7 @@ namespace interactions {
     }
 
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
-    T comptonScatter(Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    T comptonScatter(Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -223,7 +223,7 @@ namespace interactions {
     }
 
     template <Floating T, std::size_t Nshells>
-    T photoelectricEffectIA(const T totalPhotoCrossSection, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    T photoelectricEffectIA(const T totalPhotoCrossSection, Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state) noexcept
     {
         // finding shell based on photoelectric cross section
         const std::uint_fast8_t max_shell = material.numberOfShells();
@@ -261,7 +261,7 @@ namespace interactions {
         return E;
     }
     template <Floating T, int Nshells, int Lowenergycorrection = 2>
-    T photoelectricEffect(const T totalPhotoCrossSection, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state) noexcept
+    T photoelectricEffect(const T totalPhotoCrossSection, Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 2) {
             return photoelectricEffectIA(totalPhotoCrossSection, particle, material, state);
@@ -280,7 +280,7 @@ namespace interactions {
     };
 
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
-    InteractionResult<T> interact(const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state)
+    InteractionResult<T> interact(const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state)
     {
         const auto r2 = state.randomUniform<T>(attenuation.sum());
         InteractionResult<T> res;
@@ -314,7 +314,7 @@ namespace interactions {
     }
 
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
-    InteractionResult<T> interactForced(const T interactionprobability, const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material2<T, Nshells>& material, RandomState& state)
+    InteractionResult<T> interactForced(const T interactionprobability, const AttenuationValues<T>& attenuation, Particle<T>& particle, const Material<T, Nshells>& material, RandomState& state)
     {
         const auto photoEventProbability = attenuation.photoelectric / attenuation.sum();
         const auto weightCorrection = interactionprobability * photoEventProbability;

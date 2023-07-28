@@ -316,11 +316,11 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
 
     constexpr int NShells = 5;
     using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
-    using Material = Material2<T, NShells>;
+    using Material = Material<T, NShells>;
 
     auto [mat_dens, mat_weights] = TG195_soft_tissue<T>();
 
-    auto mat = Material2<T, NShells>::byWeight(mat_weights).value();
+    auto mat = Material<T, NShells>::byWeight(mat_weights).value();
 
     World2<T, Box> world;
     {
@@ -509,7 +509,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     using Box = WorldBox<T, NShells, LOWENERGYCORRECTION>;
     using Breast = TG195World3Breast<T, NShells, LOWENERGYCORRECTION>;
     using World = World2<T, Box, Breast>;
-    using Material = Material2<T, NShells>;
+    using Material = Material<T, NShells>;
 
     auto [water_d, water_w] = TG195_water<T>();
     auto [pmma_d, pmma_w] = TG195_pmma<T>();
@@ -519,7 +519,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     auto water = Material::byWeight(water_w).value();
     auto pmma = Material::byWeight(pmma_w).value();
-    auto air = Material2<T, 5>::byWeight(air_w).value();
+    auto air = Material<T, 5>::byWeight(air_w).value();
     auto breasttissue = Material::byWeight(breast_w).value();
     auto skin = Material::byWeight(skin_w).value();
 
@@ -657,11 +657,11 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     constexpr int materialShells = 5;
     using Cylindar = DepthDose<T, materialShells, LOWENERGYCORRECTION>;
     using World = World2<T, Cylindar>;
-    using Material = Material2<T, materialShells>;
+    using Material = Material<T, materialShells>;
 
     auto [mat_dens, mat_weights] = TG195_pmma<T>();
 
-    auto mat = Material2<T, materialShells>::byWeight(mat_weights).value();
+    auto mat = Material<T, materialShells>::byWeight(mat_weights).value();
 
     World world;
     auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 300 }, 600 });
@@ -772,9 +772,9 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<T, materialShells, LOWENERGYCORRECTION>;
     using World = World2<T, Cylindar>;
-    using Material = Material2<T, materialShells>;
+    using Material = Material<T, materialShells>;
     auto [mat_dens, mat_weights] = TG195_pmma<T>();
-    auto mat = Material2<T, materialShells>::byWeight(mat_weights).value();
+    auto mat = Material<T, materialShells>::byWeight(mat_weights).value();
 
     World world;
     auto& cylinder = world.addItem<Cylindar>({ T { 16 }, T { 600 } });
@@ -948,10 +948,10 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
         "H39.229963C15.009010N3.487490O31.621690Na0.050590Mg0.095705P3.867606S0.108832Ca6.529115",
     };
 
-    std::vector<Material2<T, NMATSHELLS>> materials;
+    std::vector<Material<T, NMATSHELLS>> materials;
 
     std::transform(matFormula.cbegin(), matFormula.cend(), std::back_inserter(materials), [=](const auto& f) {
-        auto mat_cand = Material2<T, NMATSHELLS>::byChemicalFormula(f);
+        auto mat_cand = Material<T, NMATSHELLS>::byChemicalFormula(f);
         return mat_cand.value();
     });
 

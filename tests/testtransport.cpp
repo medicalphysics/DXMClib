@@ -264,7 +264,7 @@ bool testDepth(bool print = false)
 
     World world;
     auto& cylinder = world.addItem<Cylinder>({ T { 0.1 }, T { 20 }, 20 });
-    auto material = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)");
+    auto material = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)");
     if (material) {
         cylinder.setMaterial(material.value());
         cylinder.setMaterialDensity(T { 1.19 });
@@ -386,8 +386,8 @@ bool testAAVoxelGridTransport()
     auto& grid = world.addItem(AAVoxelGrid());
     auto& sphere = world.addItem(Sphere(3));
 
-    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
@@ -403,7 +403,7 @@ bool testAAVoxelGridTransport()
     // auto matInd = generateEdges<std::uint8_t>(dim, spacing);
     std::vector<T> dens(size, air_dens);
     std::transform(matInd.cbegin(), matInd.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
-    std::vector<dxmc::Material2<T, 5>> materials;
+    std::vector<dxmc::Material<T, 5>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
     grid.setData(dim, dens, matInd, materials);
@@ -432,8 +432,8 @@ bool testAAVoxelGrid()
 {
     dxmc::AAVoxelGrid<T, 5> item;
 
-    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
@@ -444,7 +444,7 @@ bool testAAVoxelGrid()
     // material arrays
     std::vector<T> dens(size, air_dens);
     std::vector<std::uint8_t> materialIdx(size, 0);
-    std::vector<dxmc::Material2<T, 5>> materials;
+    std::vector<dxmc::Material<T, 5>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
 

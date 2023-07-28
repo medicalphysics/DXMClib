@@ -40,7 +40,7 @@ public:
         : WorldItemBase<T>()
         , m_radius(std::abs(radius))
         , m_center(pos)
-        , m_material(Material2<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
@@ -52,7 +52,7 @@ public:
 
     T radius() const { return m_radius; }
 
-    void setMaterial(const Material2<T, NMaterialShells>& material)
+    void setMaterial(const Material<T, NMaterialShells>& material)
     {
         m_material = material;
     }
@@ -61,7 +61,7 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
             m_materialDensity = NISTMaterials<T>::density(nist_name);
@@ -147,7 +147,7 @@ protected:
 private:
     T m_radius = 0;
     std::array<T, 3> m_center;
-    Material2<T, NMaterialShells> m_material;
+    Material<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
     DoseScore<T> m_dose;
 };

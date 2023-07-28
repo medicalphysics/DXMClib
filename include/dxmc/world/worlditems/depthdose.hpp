@@ -38,7 +38,7 @@ class DepthDose final : public WorldItemBase<T> {
 public:
     DepthDose(T radius = T { 16 }, T height = T { 10 }, std::size_t resolution = 100, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_cylinder.center = pos;
         m_cylinder.direction = { 0, 0, 1 };
@@ -49,7 +49,7 @@ public:
         m_dose.resize(resolution);
     }
 
-    void setMaterial(const Material2<T, NMaterialShells>& material)
+    void setMaterial(const Material<T, NMaterialShells>& material)
     {
         m_material = material;
     }
@@ -58,7 +58,7 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
             m_materialDensity = NISTMaterials<T>::density(nist_name);
@@ -66,7 +66,7 @@ public:
         }
         return false;
     }
-    const Material2<T, NMaterialShells>& material() const
+    const Material<T, NMaterialShells>& material() const
     {
         return m_material;
     }
@@ -167,7 +167,7 @@ protected:
 private:
     dxmc::basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
-    Material2<T, NMaterialShells> m_material;
+    Material<T, NMaterialShells> m_material;
     std::vector<DoseScore<T>> m_dose;
 };
 

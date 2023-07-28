@@ -36,7 +36,7 @@ namespace dxmc {
 template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, std::uint_fast8_t TRANSPARENTVOXELS = 255>
 class AAVoxelGrid final : public WorldItemBase<T> {
 public:
-    bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material2<T, NMaterialShells>>& materials)
+    bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<T, NMaterialShells>>& materials)
     {
         const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
         if (density.size() != size || materialIdx.size() != size) {
@@ -505,6 +505,6 @@ private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::pair<T, T>> m_woodcockStepTableLin;
     std::vector<DataElement> m_data;
-    std::vector<Material2<T, NMaterialShells>> m_materials;
+    std::vector<Material<T, NMaterialShells>> m_materials;
 };
 }

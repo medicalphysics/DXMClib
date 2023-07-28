@@ -38,14 +38,14 @@ public:
     WorldBox(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase<T>()
         , m_aabb(aabb)
-        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
 
     WorldBox(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_material(Material2<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
@@ -54,11 +54,11 @@ public:
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
 
-    void setMaterial(const Material2<T, NMaterialShells>& material)
+    void setMaterial(const Material<T, NMaterialShells>& material)
     {
         m_material = material;
     }
-    void setMaterial(const Material2<T, NMaterialShells>& material, T density)
+    void setMaterial(const Material<T, NMaterialShells>& material, T density)
     {
         m_material = material;
         m_materialDensity = std::abs(density);
@@ -67,7 +67,7 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material2<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
             m_materialDensity = NISTMaterials<T>::density(nist_name);
@@ -153,7 +153,7 @@ public:
 protected:
 private:
     std::array<T, 6> m_aabb;
-    Material2<T, NMaterialShells> m_material;
+    Material<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
     DoseScore<T> m_dose;
 };

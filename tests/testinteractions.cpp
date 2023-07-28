@@ -83,7 +83,7 @@ bool testCoherent(std::size_t Z = 13, T energy = 5, bool print = false)
     constexpr std::size_t N = 1E6;
     Histogram hist(T { -1 }, T { 1 }, 90);
 
-    auto material_opt = dxmc::Material2<T>::byZ(Z);
+    auto material_opt = dxmc::Material<T>::byZ(Z);
     auto material = material_opt.value();
 
     constexpr std::array<T, 3> dir = { 0, 0, 1 };
@@ -166,7 +166,7 @@ bool testIncoherent(std::size_t Z = 13, T energy = 50, bool print = false)
 
     constexpr int Nshells = 12;
 
-    auto material_opt = dxmc::Material2<T, Nshells>::byZ(Z);
+    auto material_opt = dxmc::Material<T, Nshells>::byZ(Z);
     auto material = material_opt.value();
 
     auto atom = dxmc::AtomHandler<T>::Atom(Z);
@@ -296,7 +296,7 @@ bool testPhotoelectricEffectIA(const std::map<std::size_t, T>& massFractions, co
     bool success = true;
     constexpr std::size_t N = 1E6;
 
-    const auto material = dxmc::Material2<T, Nshells>::byWeight(massFractions).value();
+    const auto material = dxmc::Material<T, Nshells>::byWeight(massFractions).value();
 
     struct ShellStatistics {
         T prob = 0;

@@ -102,8 +102,8 @@ bool testGeometryColor()
     cylinder.setRadius(1);
     cylinder.setHeight(5);
 
-    auto air = dxmc::Material2<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material2<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
     const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
     const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
 
@@ -112,7 +112,7 @@ bool testGeometryColor()
     std::vector<T> dens(matIdx.size(), 0);
     std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
 
-    std::vector<dxmc::Material2<T>> materials;
+    std::vector<dxmc::Material<T>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
 
