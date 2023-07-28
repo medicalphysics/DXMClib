@@ -74,15 +74,8 @@ set(MATERIAL_HEADER_LIST
 add_library(material INTERFACE ${MATERIAL_HEADER_LIST})
 target_include_directories(material INTERFACE ${dxmclib_SOURCE_DIR}/include)
 
-set(HEADER_LIST 
-    "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationinterpolator.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationlut.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/beamfilters.hpp"
+set(HEADER_LIST         
     "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/exposure.hpp"    
-    "${dxmclib_SOURCE_DIR}/include/dxmc/progressbar.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/source.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/transport.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interactions.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/tube.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
@@ -128,8 +121,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/lowenergycorrectionmodel.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.hpp"    
     "${dxmclib_SOURCE_DIR}/include/dxmc/betheHeitlerCrossSection.hpp"  
     )
 
