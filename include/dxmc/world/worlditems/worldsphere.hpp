@@ -38,12 +38,19 @@ class WorldSphere final : public WorldItemBase<T> {
 public:
     WorldSphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
-        , m_radius(radius)
+        , m_radius(std::abs(radius))
         , m_center(pos)
         , m_material(Material2<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
+
+    void setRadius(T r)
+    {
+        m_radius = std::abs(r);
+    }
+
+    T radius() const { return m_radius; }
 
     void setMaterial(const Material2<T, NMaterialShells>& material)
     {
@@ -131,7 +138,8 @@ public:
         return m_dose;
     }
 
-    void clearDose() override {
+    void clearDose() override
+    {
         m_dose.clear();
     }
 
