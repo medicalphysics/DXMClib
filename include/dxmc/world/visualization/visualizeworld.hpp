@@ -76,6 +76,14 @@ public:
     {
         m_camera_pos[2] = azimuthal;
     }
+    void setPolarAngleDeg(T polar)
+    {
+        setPolarAngle(polar * DEG_TO_RAD<T>());
+    }
+    void setAzimuthalAngleDeg(T azimuthal)
+    {
+        setAzimuthalAngle(azimuthal * DEG_TO_RAD<T>());
+    }
 
     void setCameraPosition(const std::array<T, 3>& pos)
     {
@@ -118,7 +126,7 @@ public:
         colors.reserve(items.size());
         for (std::size_t i = 0; i < items.size(); ++i) {
             if constexpr (std::is_same<U, std::uint8_t>::value) {
-                const std::uint8_t c = static_cast<std::uint8_t>(i + 55);
+                const std::uint8_t c = static_cast<std::uint8_t>(i * 55);
                 colors.emplace_back(std::make_pair(items[i], HSVtoRGB(c, 255, 200)));
             } else {
                 const auto c = (i * 2 * std::numbers::pi_v<T>) / items.size();
