@@ -79,8 +79,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/attenuationlut.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beamfilters.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/exposure.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/material.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/exposure.hpp"    
     "${dxmclib_SOURCE_DIR}/include/dxmc/progressbar.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/source.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/transport.hpp"
@@ -91,7 +90,6 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/pencilbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicmonoenergybeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicbeam.hpp" 
-    "${dxmclib_SOURCE_DIR}/include/dxmc/world.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/world.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/dosescore.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/statickdtree.hpp"
@@ -132,12 +130,10 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/lowenergycorrectionmodel.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/betheHeitlerCrossSection.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc.hpp"    
+    "${dxmclib_SOURCE_DIR}/include/dxmc/betheHeitlerCrossSection.hpp"  
     )
 
-add_library(libdxmc 
-    src/material.cpp    
+add_library(libdxmc     
     ${HEADER_LIST}
 	)
 target_include_directories(libdxmc PUBLIC "${CMAKE_CURRENT_SOURCE_DIR}/include")

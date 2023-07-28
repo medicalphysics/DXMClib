@@ -33,7 +33,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 template <Floating T>
-struct Material2Shell {
+struct MaterialShell {
     T numberOfElectronsFraction = 0;
     T numberOfElectrons = 0;
     T bindingEnergy = 0;
@@ -206,7 +206,7 @@ public:
         return m_numberOfShells;
     }
 
-    inline const Material2Shell<T>& shell(std::size_t shell) const
+    inline const MaterialShell<T>& shell(std::size_t shell) const
     {
         return m_shells[shell];
     }
@@ -619,7 +619,7 @@ private:
     std::vector<std::array<T, 3>> m_attenuationTable;
     std::array<std::uint_fast32_t, 6 + N + 1> m_attenuationTableOffset;
     CPDFSampling<T, 20> m_formFactorInvSamp;
-    std::array<Material2Shell<T>, N + 1> m_shells;
+    std::array<MaterialShell<T>, N + 1> m_shells;
     std::uint8_t m_numberOfShells = 0;
 };
 }

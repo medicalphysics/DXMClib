@@ -29,7 +29,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <concepts>
-#include <tuple>
+#include <variant>
 #include <vector>
 
 namespace dxmc {
@@ -41,9 +41,9 @@ template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
 template <Floating T, WorldItemType<T>... Us>
-class World2 {
+class World {
 public:
-    World2()
+    World()
         : m_fillMaterial(Material2<T>::byNistName("Air, Dry (near sea level)").value())
     {
     }
@@ -62,62 +62,59 @@ public:
         m_fillMaterialDensity = std::abs(dens);
     }
 
+    void reserveNumberOfItems(std::size_t size)
+    {
+        m_items.reserve(size);
+    }
+
     template <AnyWorldItemType<Us...> U>
     auto& addItem(U& item)
     {
-        std::get<std::vector<U>>(m_items).push_back(item);
-        return std::get<std::vector<U>>(m_items).back();
+        m_items.push_back(item);
+        return std::get<U>(m_items.back());
     }
 
     template <AnyWorldItemType<Us...> U>
     auto& addItem(U&& item)
     {
-        std::get<std::vector<U>>(m_items).push_back(std::move(item));
-        return std::get<std::vector<U>>(m_items).back();
+        m_items.push_back(std::move(item));
+        return std::get<U>(m_items.back());
     }
 
     template <AnyWorldItemType<Us...> U>
     auto& addItem()
     {
         U item;
-        std::get<std::vector<U>>(m_items).push_back(std::move(item));
-        return std::get<std::vector<U>>(m_items).back();
+        m_items.push_back(std::move(item));
+        return std::get<U>(m_items.back());
     }
 
     template <AnyWorldItemType<Us...> U>
     const auto& getItems() const
     {
-        return std::get<std::vector<U>>(m_items);
+        return m_items;
     }
 
     template <AnyWorldItemType<Us...> U>
     auto& getItems()
     {
-        return std::get<std::vector<U>>(m_items);
+        return m_items;
     }
 
     std::vector<WorldItemBase<T>*> getItemPointers()
     {
-        std::vector<WorldItemBase<T>*> ptrs;
-
-        auto iter = [&ptrs](auto& v) {
-            for (auto& item : v)
-                ptrs.push_back(&item);
-        };
-
-        std::apply([&iter](auto&... vec) {
-            (iter(vec), ...);
-        },
-            m_items);
-
+        std::vector<WorldItemBase<T>*> ptrs(m_items.size());
+        std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
+            return std::visit([](auto&& arg) -> WorldItemBase<T>* { return &arg; }, v);
+        });
         return ptrs;
     }
 
     void clearDose()
     {
         m_dose.clear();
-        for (auto item : getItemPointers()) {
-            item->clearDose();
+        for (auto& v : m_items) {
+            std::visit([](auto&& arg) { arg.clearDose(); }, v);
         }
     }
 
@@ -148,15 +145,8 @@ public:
 
     void translate(const std::array<T, 3> dist)
     {
-        auto iter = [&dist](auto& v) {
-            for (auto& item : v)
-                item.translate(dist);
-        };
-
-        std::apply([&iter](auto&... vec) {
-            (iter(vec), ...);
-        },
-            m_items);
+        for (auto& v : m_items)
+            std::visit([&dist](auto&& arg) { arg.translate(dist); }, v);
 
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -174,7 +164,7 @@ public:
         return m_kdtree.intersectVisualization(p, m_aabb);
     }
 
-    inline bool transportParticleToWorld(Particle<T>& p)
+    inline bool transportParticleToWorld(Particle<T>& p) const
     {
         if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
             const auto t = basicshape::AABB::intersect(p, m_aabb);
@@ -239,7 +229,7 @@ public:
 
 private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    std::tuple<std::vector<Us>...> m_items;
+    std::vector<std::variant<Us...>> m_items;
     KDTree<T> m_kdtree;
     Material2<T> m_fillMaterial;
     T m_fillMaterialDensity = T { 0.001225 };
