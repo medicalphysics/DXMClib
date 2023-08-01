@@ -232,7 +232,10 @@ namespace BetheHeitlerCrossSection {
 
         const auto r1 = xf1 * q11 + xf2 * q21;
         const auto r2 = xf1 * q12 + xf2 * q22;
-        return ((y2 - y) / (y2 - y1)) * r1 + ((y - y1) / (y2 - y1)) * r2;
+
+        const auto invdiv = 1 / (y2 - y1);
+
+        return ((y2 - y) * invdiv) * r1 + ((y - y1) * invdiv) * r2;
     }
 
     template <Floating T>
@@ -341,10 +344,10 @@ namespace BetheHeitlerCrossSection {
     // BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSSECTION CALCULATION
 
     template <Floating T>
-    T tungstenFiltration(const T tungstenAtt, const T x, const T takeoffAngle)
+    T tungstenFiltration(const T tungstenAtt, const T x, const T sintakeoffAngle)
     {
         // filtrates a photon in the tungsten anode. hv :photon energy [keV], x depth in tungsten (density*distance) [mg/cm2], takeoffAngle: scatter angle in radians
-        return std::exp(-tungstenAtt * x * T { 0.001 } / std::sin(takeoffAngle)); // 0.001 is for mg/cm2 -> g/cm2
+        return std::exp(-tungstenAtt * x * T { 0.001 } / sintakeoffAngle); // 0.001 is for mg/cm2 -> g/cm2
     }
 
     template <Floating T>
@@ -367,7 +370,7 @@ namespace BetheHeitlerCrossSection {
     }
 
     template <Floating T>
-    T betheHeitlerSpectra(const T T0, const T hv, const T takeoffAngle)
+    T betheHeitlerSpectra(const T T0, const T hv, const T sinTakeoffAngle)
     {
 
         const auto& tungsten = AtomHandler<T>::Atom(TUNGSTEN_ATOMIC_NUMBER);
@@ -381,6 +384,8 @@ namespace BetheHeitlerCrossSection {
         constexpr auto xstep = T { 0.1 };
         constexpr auto ustep = T { 0.005 };
 
+        const auto sinTakeoffAngle = std::sin(takeoffAngle);
+
         T x = 0;
         T I_obs = 0;
         if (hv <= 0)
@@ -392,7 +397,7 @@ namespace BetheHeitlerCrossSection {
                 I_step = I_step + betheHeitlerCrossSection(hv, T0 * u) * electronDensity(u, x, T0) * ustep;
                 u = u + ustep;
             }
-            I_obs = I_obs + I_step * tungstenFiltration(tungstenTotAtt, x, takeoffAngle) * xstep;
+            I_obs = I_obs + I_step * tungstenFiltration(tungstenTotAtt, x, sinTakeoffAngle) * xstep;
             x = x + xstep;
         }
         return I_obs;

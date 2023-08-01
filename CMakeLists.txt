@@ -76,9 +76,10 @@ target_include_directories(material INTERFACE ${dxmclib_SOURCE_DIR}/include)
 
 set(HEADER_LIST         
     "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/interactions.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/tube.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/interactions.hpp"    
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beams/tube/tube.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beams/tube/betheHeitlerCrossSection.hpp"  
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/beamtype.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/pencilbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicmonoenergybeam.hpp" 
@@ -121,8 +122,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"
-    "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.hpp"    
-    "${dxmclib_SOURCE_DIR}/include/dxmc/betheHeitlerCrossSection.hpp"  
+    "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.hpp"        
     )
 
 add_library(libdxmc     

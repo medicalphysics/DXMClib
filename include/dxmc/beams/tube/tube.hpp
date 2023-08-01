@@ -43,21 +43,14 @@ public:
         setAnodeAngleDeg(anodeAngleDeg);
         m_hasCachedHVL = false;
     }
-    Tube(const Tube<T>& other)
-    {
-        m_anodeAngle = other.anodeAngle();
-        m_voltage = other.voltage();
-        m_energyResolution = other.energyResolution();
-        m_filtrationMaterials = other.filtrationMaterials();
-        m_hasCachedHVL = false;
-    }
+
     static constexpr T maxVoltage() { return T { 150 }; }
     static constexpr T minVoltage() { return T { 50 }; }
 
     T voltage() const { return m_voltage; }
     void setVoltage(T voltage)
     {
-        m_voltage = std::min(std::max(voltage, minVoltage()), maxVoltage());
+        m_voltage = std::clamp(voltage, minVoltage(), maxVoltage());
         m_hasCachedHVL = false;
     }
 
@@ -159,8 +152,7 @@ public:
         specter.resize(energies.size());
         const auto kVp = voltage();
         std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [kVp, anodeAngle](auto hv) -> T {
-            const auto bh_t = BetheHeitlerCrossSection::betheHeitlerSpectra(kVp, hv, anodeAngle);
-            return bh_t;
+            return BetheHeitlerCrossSection::betheHeitlerSpectra(kVp, hv, anodeAngle);
         });
 
         // adding characteristic radiation
@@ -218,14 +210,18 @@ protected:
     }
     void filterSpecter(const std::vector<T>& energies, std::vector<T>& specter) const
     {
+        std::vector<T> totAtt(energies.size(), T { 0 });
         for (auto const& [Z, mm] : m_filtrationMaterials) {
-            const T cm = mm * T { 0.1 }; // for mm -> cm
             const auto& atom = AtomHandler<T>::Atom(Z);
-
+            const T cm = mm * T { 0.1 }; // for mm -> cm
+            const auto dist = atom.standardDensity * cm;
             auto p = interpolate(atom.photoel, energies);
             auto in = interpolate(atom.incoherent, energies);
             auto co = interpolate(atom.coherent, energies);
-            std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), in.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
+            for (std::size_t i = 0; i < energies.size(); ++i) {
+                totAtt[i] += (p[i] + in[i] + co[i]) * dist;
+            }
+            /* std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), in.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
             std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), co.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
             std::for_each(std::execution::par_unseq, p.begin(), p.end(), [&](auto& el) { el *= (atom.standardDensity * cm); });
 
@@ -233,12 +229,16 @@ protected:
                 [&](const auto n, const auto el) -> T {
                     return n * std::exp(-el);
                 });
+                */
         }
+        std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), totAtt.cbegin(), specter.begin(),
+            [&](const auto s, const auto att) { return s * std::exp(-att); });
     }
+
     void normalizeSpecter(std::vector<T>& specter) const
     {
-        const auto sum = std::reduce(std::execution::par_unseq, specter.begin(), specter.end());
-        std::for_each(std::execution::par_unseq, specter.begin(), specter.end(), [=](auto& n) { n = n / sum; });
+        const auto sum = std::reduce(std::execution::par_unseq, specter.cbegin(), specter.cend());
+        std::for_each(std::execution::par_unseq, specter.begin(), specter.end(), [sum](auto& n) { n = n / sum; });
     }
 
     T calculatemmAlHalfValueLayer() const
@@ -251,6 +251,8 @@ protected:
         const auto photo = interpolate(Al.photoel, energy);
         const auto incoherent = interpolate(Al.incoherent, energy);
         const auto coherent = interpolate(Al.coherent, energy);
+        
+
         auto att = addVectors(photo, incoherent, coherent);
 
         const auto dens = Al.standardDensity;
