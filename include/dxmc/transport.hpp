@@ -115,14 +115,14 @@ public:
     void setNumberOfThreads(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
 
     template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    auto operator()(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
+    auto operator()(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
         return run(world, beam, progress);
     }
 
 protected:
     template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    static void runWorker(World2<T, Ws...>& world, const B& beam, RandomState& state, std::atomic<std::uint64_t>& exposureStart, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
+    static void runWorker(World<T, Ws...>& world, const B& beam, RandomState& state, std::atomic<std::uint64_t>& exposureStart, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
     {
         auto n = exposureStart.fetch_add(1);
         while (n < exposureEnd) {
@@ -140,7 +140,7 @@ protected:
     }
 
     template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    void run(World2<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
+    void run(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
     {
         const auto nExposures = beam.numberOfExposures();
         std::vector<std::jthread> threads;

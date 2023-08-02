@@ -89,13 +89,11 @@ public:
         return std::get<U>(m_items.back());
     }
 
-    template <AnyWorldItemType<Us...> U>
     const auto& getItems() const
     {
         return m_items;
     }
 
-    template <AnyWorldItemType<Us...> U>
     auto& getItems()
     {
         return m_items;
