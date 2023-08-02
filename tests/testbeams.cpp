@@ -17,6 +17,7 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/beams/beamtype.hpp"
+#include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
@@ -25,13 +26,22 @@ Copyright 2022 Erlend Andersen
 
 #include <iostream>
 
-template <dxmc::Floating T, dxmc::BeamType<T> B>
+template <typename T, dxmc::BeamType<T> B>
 bool initiateBeam(B beam)
 {
     auto e = beam.exposure(0);
     dxmc::RandomState state;
     auto p = e.sampleParticle(state);
     return true;
+}
+
+template <typename T>
+bool testDXBeam()
+{
+    dxmc::DXBeam<T> beam;
+
+    auto& tube = beam.tube();
+    return initiateBeam<T>(beam);
 }
 
 template <typename T>
@@ -99,7 +109,7 @@ bool testIsotropicMonoEnergyBeam()
         std::cout << std::endl;
     }
 
-    return false;
+    return true;
 }
 
 int main()
@@ -107,10 +117,13 @@ int main()
     std::cout << "Testing beams\n";
 
     bool success = true;
+    success = success && testDXBeam<float>();
+    success = success && testDXBeam<double>();
     success = success && testIsotropicMonoEnergyBeam<double>();
     success = success && testIsotropicMonoEnergyBeam<float>();
     success = success && testpencilbeam<float>();
     success = success && testpencilbeam<double>();
+    
 
     if (success)
         return EXIT_SUCCESS;

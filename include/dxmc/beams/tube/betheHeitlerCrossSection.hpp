@@ -370,7 +370,7 @@ namespace BetheHeitlerCrossSection {
     }
 
     template <Floating T>
-    T betheHeitlerSpectra(const T T0, const T hv, const T sinTakeoffAngle)
+    T betheHeitlerSpectra(const T T0, const T hv, const T takeoffAngle)
     {
 
         const auto& tungsten = AtomHandler<T>::Atom(TUNGSTEN_ATOMIC_NUMBER);

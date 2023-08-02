@@ -18,7 +18,7 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/betheHeitlerCrossSection.hpp"
+#include "dxmc/beams/tube/betheHeitlerCrossSection.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
@@ -110,11 +110,15 @@ public:
         return filtration(50);
     }
 
-    void clearFiltrationMaterials() { m_filtrationMaterials.clear(); }
+    void clearFiltrationMaterials()
+    {
+        m_filtrationMaterials.clear();
+        m_hasCachedHVL = false;
+    }
 
     void setEnergyResolution(T energyResolution)
     {
-        m_energyResolution = energyResolution;
+        m_energyResolution = std::clamp(energyResolution, T { 0.1 }, T { 10 });
         m_hasCachedHVL = false;
     }
 
@@ -148,8 +152,7 @@ public:
 
     std::vector<T> getSpecter(const std::vector<T>& energies, const T anodeAngle, bool normalize = true) const
     {
-        std::vector<T> specter;
-        specter.resize(energies.size());
+        std::vector<T> specter(energies.size());
         const auto kVp = voltage();
         std::transform(std::execution::par_unseq, energies.begin(), energies.end(), specter.begin(), [kVp, anodeAngle](auto hv) -> T {
             return BetheHeitlerCrossSection::betheHeitlerSpectra(kVp, hv, anodeAngle);
@@ -221,15 +224,6 @@ protected:
             for (std::size_t i = 0; i < energies.size(); ++i) {
                 totAtt[i] += (p[i] + in[i] + co[i]) * dist;
             }
-            /* std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), in.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
-            std::transform(std::execution::par_unseq, p.cbegin(), p.cend(), co.cbegin(), p.begin(), [](const auto lh, const auto rh) { return lh + rh; });
-            std::for_each(std::execution::par_unseq, p.begin(), p.end(), [&](auto& el) { el *= (atom.standardDensity * cm); });
-
-            std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), p.cbegin(), specter.begin(),
-                [&](const auto n, const auto el) -> T {
-                    return n * std::exp(-el);
-                });
-                */
         }
         std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), totAtt.cbegin(), specter.begin(),
             [&](const auto s, const auto att) { return s * std::exp(-att); });
@@ -251,7 +245,6 @@ protected:
         const auto photo = interpolate(Al.photoel, energy);
         const auto incoherent = interpolate(Al.incoherent, energy);
         const auto coherent = interpolate(Al.coherent, energy);
-        
 
         auto att = addVectors(photo, incoherent, coherent);
 
@@ -274,7 +267,9 @@ protected:
     }
 
 private:
-    T m_voltage, m_energyResolution, m_anodeAngle;
+    T m_voltage = 120;
+    T m_energyResolution = 1;
+    T m_anodeAngle = 0.21f; // about 12 degrees
     T m_cachedHVL = 0;
     bool m_hasCachedHVL = false;
     std::map<std::size_t, T> m_filtrationMaterials;

@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
@@ -30,22 +31,19 @@ namespace dxmc {
 template <Floating T>
 class DXBeamExposure {
 public:
-    DXBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N = 1E6)
+    DXBeamExposure(const Tube<T>& tube, const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N = 1E6)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
     {
+        auto specter = tube.getSpecter(false);
+        m_specterDist = SpecterDistribution<T>();
     }
 
     void setCollimationAngles(const std::array<T, 4>& angles)
     {
         for (std::size_t i = 0; i < angles.size(); ++i)
             m_collimationAngles[i] = angles[i];
-    }
-
-    void setSpecterDistribution(const SpecterDistribution<T>& s)
-    {
-        m_specterDist = s;
     }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
@@ -84,9 +82,9 @@ private:
 };
 
 template <Floating T>
-class IsotropicBeam {
+class DXBeam {
 public:
-    IsotropicBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
+    DXBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
@@ -120,10 +118,8 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    void setEnergySpecter(const std::vector<std::pair<T, T>>& specter)
-    {
-        m_specter = SpecterDistribution(specter);
-    }
+    Tube<T>& tube() { return m_tube; }
+    const Tube<T>& tube() const { return m_tube; }
 
     const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
 
@@ -136,12 +132,10 @@ public:
         m_collimationAngles[3] = maxY;
     }
 
-    IsotropicBeamExposure<T> exposure(std::size_t i) const noexcept
+    DXBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-
-        IsotropicBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure);
+        DXBeamExposure<T> exp(m_tube, m_pos, m_dirCosines, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
-        exp.setSpecterDistribution(m_specter);
         return exp;
     }
 
@@ -151,6 +145,7 @@ private:
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
+    Tube<T> m_tube;
     SpecterDistribution<T> m_specter;
 };
 
