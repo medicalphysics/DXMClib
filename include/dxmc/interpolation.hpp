@@ -19,10 +19,6 @@ Copyright 2019 Erlend Andersen
 #pragma once // include guard
 #include "dxmc/floating.hpp"
 
-#ifdef USE_EIGEN
-#include "Eigen/Dense"
-#endif // USE_EIGEN
-
 #include <algorithm>
 #include <array>
 #include <cmath>
@@ -712,11 +708,8 @@ protected:
                 G[i + 1] += 2 * y[j] * delta;
             }
         }
-#ifdef USE_EIGEN
-        using Matrix = Eigen::Matrix<T, Eigen::Dynamic, Eigen::Dynamic>;
-#else
+
         using Matrix = Matrix<T>;
-#endif // USE_EIGEN
 
         Matrix A, B, E, C, F, Z;
         A.setZero(N + 1, N + 1);
@@ -785,22 +778,15 @@ protected:
                 }
             }
         }
-#ifdef USE_EIGEN
-        Eigen::VectorX<T> bval(sol.rows());
-        bval.setZero();
-#else
+
         std::vector<T> bval(sol.rows(), T { 0 });
-#endif // USE_EIGEN
+
         std::copy(D.begin(), D.end(), bval.begin());
         std::copy(G.begin(), G.end(), bval.begin() + N + 1);
 
-#ifdef USE_EIGEN
-        Eigen::VectorX<T> res = sol.lu().solve(bval);
-#else
         auto res = sol.solve(bval);
         if (std::isnan(res.front()))
             return std::nullopt;
-#endif // USE_EIGEN
 
         std::vector<T> m_p(N + 1);
         std::vector<T> m_pz(N + 1);
