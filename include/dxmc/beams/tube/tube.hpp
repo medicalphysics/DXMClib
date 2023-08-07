@@ -271,7 +271,7 @@ private:
     T m_energyResolution = 1;
     T m_anodeAngle = 0.21f; // about 12 degrees
     T m_cachedHVL = 0;
-    bool m_hasCachedHVL = false;
     std::map<std::size_t, T> m_filtrationMaterials;
+    bool m_hasCachedHVL = false;
 };
 }

@@ -31,19 +31,15 @@ namespace dxmc {
 template <Floating T>
 class DXBeamExposure {
 public:
-    DXBeamExposure(const Tube<T>& tube, const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N = 1E6)
+    DXBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
+        const std::array<T, 4>& collimationAngles, const SpecterDistribution<T>& specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
+        , m_weight(weight)
+        , m_collimationAngles(collimationAngles)
+        , m_specter(specter)
     {
-        auto specter = tube.getSpecter(false);
-        m_specterDist = SpecterDistribution<T>();
-    }
-
-    void setCollimationAngles(const std::array<T, 4>& angles)
-    {
-        for (std::size_t i = 0; i < angles.size(); ++i)
-            m_collimationAngles[i] = angles[i];
     }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
@@ -64,12 +60,10 @@ public:
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
         };
 
-        // auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
-
         Particle<T> p = { .pos = m_pos,
             .dir = pdir,
-            .energy = m_specterDist.sampleValue(state),
-            .weight = T { 1 } };
+            .energy = m_specter.sampleValue(state),
+            .weight = m_weight };
         return p;
     }
 
@@ -78,7 +72,8 @@ private:
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_NParticles = 100;
-    SpecterDistribution<T> m_specterDist;
+    T m_weight = 1;
+    SpecterDistribution<T> m_specter;
 };
 
 template <Floating T>
@@ -88,6 +83,7 @@ public:
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
+        tubeChanged();
     }
 
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
@@ -96,6 +92,7 @@ public:
     std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
+    const std::array<T, 3>& position() const { return m_pos; }
     void setPosition(const std::array<T, 3>& pos) { m_pos = pos; }
 
     const std::array<std::array<T, 3>, 2>& directionCosines() const
@@ -118,11 +115,44 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    Tube<T>& tube() { return m_tube; }
     const Tube<T>& tube() const { return m_tube; }
+    void setTube(const Tube<T>&& tube)
+    {
+        m_tube = tube;
+        tubeChanged();
+    }
+    void setTubeVoltage(T voltage)
+    {
+        m_tube.setVoltage(voltage);
+        tubeChanged();
+    }
+    void setTubeAnodeAngle(T ang)
+    {
+        m_tube.setAnodeAngle(ang);
+        tubeChanged();
+    }
+    void setTubeAnodeAngleDeg(T ang)
+    {
+        m_tube.setAnodeAngleDeg(ang);
+        tubeChanged();
+    }
+    void addTubeFiltrationMaterial(std::size_t Z, T mm)
+    {
+        m_tube.addFiltrationMaterial(Z, mm);
+        tubeChanged();
+    }
+    void clearTubeFiltrationMaterial(std::size_t Z, T mm)
+    {
+        m_tube.clearFiltrationMaterials();
+        tubeChanged();
+    }
+    void setTubeEnergyResolution(T energyResolution)
+    {
+        m_tube.setEnergyResolution(energyResolution);
+        tubeChanged();
+    }
 
     const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
-
     void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
     void setCollimationAngles(T minX, T minY, T maxX, T maxY)
     {
@@ -134,9 +164,17 @@ public:
 
     DXBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-        DXBeamExposure<T> exp(m_tube, m_pos, m_dirCosines, m_particlesPerExposure);
-        exp.setCollimationAngles(m_collimationAngles);
+        DXBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure, m_collimationAngles, m_specter);
+
         return exp;
+    }
+
+protected:
+    void tubeChanged()
+    {
+        const auto energies = m_tube.getEnergy();
+        const auto weights = m_tube.getSpecter(energies, false);
+        m_specter = SpecterDistribution(energies, weights);
     }
 
 private:
@@ -145,6 +183,7 @@ private:
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
+    T m_weight = 1;
     Tube<T> m_tube;
     SpecterDistribution<T> m_specter;
 };

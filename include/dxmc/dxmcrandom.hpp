@@ -203,7 +203,7 @@ public:
     static std::vector<std::pair<T, std::uint64_t>> generateTable(const std::vector<T>& weights)
     {
         // Squaring the histogram method
-        auto m_size = weights.size();
+        const auto m_size = weights.size();
 
         std::vector<std::pair<T, std::uint64_t>> data(m_size);
 
@@ -263,6 +263,24 @@ public:
     SpecterDistribution()
     {
     }
+
+    /**
+     * @brief Initialize specter distribution
+     * @param energy A vector energy in keV for each bin. Must be monotonical increasing
+     * @param weighs A vector of weights for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity. Size of weights must be equal to size of energies.
+     */
+    SpecterDistribution(const std::vector<T>& energy, const std::vector<T>& weights)
+    {
+        if (energy.size() != weights.size() || energy.size() == 0)
+            return;
+        const auto table = RandomDistribution<T>::generateTable(weights);
+
+        m_data.resize(table.size());
+        std::transform(std::execution::par_unseq, table.cbegin(), table.cend(), energies.cbegin(), m_data.begin(), [](const auto& tab, const T energy) {
+            return DataElement { .alias = tab.second, .prob = tab.first, .energy = energy };
+        });
+    }
+
     /**
      * @brief Initialize specter distribution
      * @param weights A vector of pairs {energy, probability} for each bin. Weights should be at least of size two. The weights vector will be normalized such that sum of weights is unity.
