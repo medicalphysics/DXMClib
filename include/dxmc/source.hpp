@@ -971,14 +971,17 @@ protected:
         using holePosition = typename CTDIPhantom<T>::HolePosition;
         std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
+        const auto spacing = world.spacing();
+        const auto voxelVolume = (spacing[0] * spacing[1] * spacing[2]);
+
         std::array<T, 5> measureDose;
-        measureDose.fill(0.0);
+        measureDose.fill(T { 0 });
         for (std::size_t i = 0; i < 5; ++i) {
             const auto& holeIndices = world.holeIndices(position[i]);
             for (const auto& idx : holeIndices) {
                 measureDose[i] += result.dose[idx];
             }
-            measureDose[i] /= static_cast<T>(holeIndices.size());
+            measureDose[i] *= voxelVolume * world.airDensity() / (holeIndices.size() * 1000); // n_hist * keV/kg
         }
 
         const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4 };
