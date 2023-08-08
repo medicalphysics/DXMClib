@@ -929,7 +929,8 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
+        requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value
+    static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
     {
         T meanWeight = 0;
         for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
@@ -982,7 +983,8 @@ protected:
 
         const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4 };
         const T ctdiCent = measureDose[0];
-        const T ctdiw = (ctdiCent + 2 * ctdiPher) / T { 3 };
+        T ctdiw = (ctdiCent + 2 * ctdiPher) / 3;
+        ctdiw *= T { 100 } / sourceCopy.collimation();
         const T factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;
         return factor;
     }
