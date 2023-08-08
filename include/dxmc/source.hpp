@@ -972,7 +972,8 @@ protected:
         std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
         const auto spacing = world.spacing();
-        const auto voxelVolume = (spacing[0] * spacing[1] * spacing[2]);
+        const auto voxelVolume = (spacing[0] * spacing[1] * spacing[2]) / 1000; // cm3
+        const auto voxelMass = world.airDensity() * voxelVolume / 1000; // kg
 
         std::array<T, 5> measureDose;
         measureDose.fill(T { 0 });
@@ -981,7 +982,7 @@ protected:
             for (const auto& idx : holeIndices) {
                 measureDose[i] += result.dose[idx];
             }
-            measureDose[i] *= voxelVolume * world.airDensity() / (holeIndices.size() * 1000); // n_hist * keV/kg
+            measureDose[i] /= (voxelMass * holeIndices.size()); // n_hist * keV/kg
         }
 
         const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4 };
