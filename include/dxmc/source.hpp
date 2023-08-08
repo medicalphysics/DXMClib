@@ -982,7 +982,7 @@ protected:
             for (const auto& idx : holeIndices) {
                 measureDose[i] += result.dose[idx];
             }
-            measureDose[i] /= (voxelMass * holeIndices.size()); // n_hist * keV/kg
+            measureDose[i] /= holeIndices.size(); // n_hist * keV/kg
         }
 
         const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4 };
