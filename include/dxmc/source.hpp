@@ -929,7 +929,8 @@ public:
 
 protected:
     template <typename U>
-    requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
+        requires std::is_same<CTAxialSource<T>, U>::value || std::is_same<CTAxialDualSource<T>, U>::value
+    static T ctCalibration(U& sourceCopy, LOWENERGYCORRECTION model, ProgressBar<T>* progressBar = nullptr)
     {
         T meanWeight = 0;
         for (std::uint64_t i = 0; i < sourceCopy.totalExposures(); ++i) {
@@ -970,19 +971,24 @@ protected:
         using holePosition = typename CTDIPhantom<T>::HolePosition;
         std::array<holePosition, 5> position = { holePosition::Center, holePosition::West, holePosition::East, holePosition::South, holePosition::North };
 
+        const auto spacing = world.spacing();
+        const auto voxelVolume = (spacing[0] * spacing[1] * spacing[2]) / 1000; // cm3
+        const auto voxelMass = world.airDensity() * voxelVolume / 1000; // kg
+
         std::array<T, 5> measureDose;
-        measureDose.fill(0.0);
+        measureDose.fill(T { 0 });
         for (std::size_t i = 0; i < 5; ++i) {
             const auto& holeIndices = world.holeIndices(position[i]);
             for (const auto& idx : holeIndices) {
                 measureDose[i] += result.dose[idx];
             }
-            measureDose[i] /= static_cast<T>(holeIndices.size());
+            measureDose[i] /= holeIndices.size(); // n_hist * keV/kg
         }
 
         const T ctdiPher = (measureDose[1] + measureDose[2] + measureDose[3] + measureDose[4]) / T { 4 };
         const T ctdiCent = measureDose[0];
-        const T ctdiw = (ctdiCent + 2 * ctdiPher) / T { 3 };
+        T ctdiw = (ctdiCent + 2 * ctdiPher) / 3;
+        ctdiw *= T { 100 } / sourceCopy.collimation();
         const T factor = sourceCopy.ctdiVol() / ctdiw / meanWeight;
         return factor;
     }
