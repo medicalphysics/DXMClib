@@ -183,8 +183,7 @@ public:
                 return result;
             }
         }
-
-        normalizeScoring(result);
+        
         if (m_outputmode == OUTPUTMODE::DOSE) {
             if (useSourceDoseCalibration) {
                 const T calibrationValue = source->getCalibrationValue(m_lowenergyCorrection, progressbar);
@@ -193,9 +192,10 @@ public:
                 result.dose_units = "mGy";
             } else {
                 energyImpartedToDose(world, result);
-                result.dose_units = "eV/kg/history";
+                result.dose_units = "keV/kg";
             }
         } else {
+            normalizeScoring(result);
             result.dose_units = "eV/history";
         }
         return result;
