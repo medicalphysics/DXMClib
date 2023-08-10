@@ -562,14 +562,9 @@ public:
             calcOutput += keV * weight * massAbsorb[i];
         }
 
-        constexpr T kgTOg_inv = 1000;
-        constexpr T kevTOev = 1000;
-        constexpr T mmsqTOcmsq { 0.01 };
-        constexpr T GyTOmGY = 1000;
-
-        calcOutput *= kevTOev * kgTOg_inv; // ev/kg
-
-        const T output = (m_dap * GyTOmGY);
+        calcOutput *= this->totalExposures() * this->historiesPerExposure();
+        constexpr T Gy2mGy = 1000;
+        const T output = (m_dap * Gy2mGy);
         const T factor = output / calcOutput;
         return factor;
     }
