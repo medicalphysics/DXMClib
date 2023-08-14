@@ -559,13 +559,12 @@ public:
         T calcOutput = 0.0;
         for (std::size_t i = 0; i < specter.size(); ++i) {
             const auto& [keV, weight] = specter[i];
-            calcOutput += keV * weight * massAbsorb[i];
+            calcOutput += keV * weight * massAbsorb[i]; // kev/g
         }
 
         calcOutput *= this->totalExposures() * this->historiesPerExposure();
-        constexpr T Gy2mGy = 1000;
-        const T output = (m_dap * Gy2mGy);
-        const T factor = output / calcOutput;
+
+        const T factor = m_dap / calcOutput;
         return factor;
     }
 
