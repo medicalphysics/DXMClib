@@ -23,6 +23,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/beams/ctspiralbeam.hpp"
 
 #include <iostream>
 
@@ -112,6 +113,18 @@ bool testIsotropicMonoEnergyBeam()
     return true;
 }
 
+template <typename T>
+bool testCTSpiralSource()
+{
+
+    using Beam = dxmc::CTSpiralBeam<T>;
+    Beam beam;
+    beam.setStartStop({ 0, 0, 0 }, { 0, 0, 1 });
+    auto e = beam.exposure(0);
+
+    return true;
+}
+
 int main()
 {
     std::cout << "Testing beams\n";
@@ -123,7 +136,8 @@ int main()
     success = success && testIsotropicMonoEnergyBeam<float>();
     success = success && testpencilbeam<float>();
     success = success && testpencilbeam<double>();
-    
+    success = success && testCTSpiralSource<float>();
+    success = success && testCTSpiralSource<double>();
 
     if (success)
         return EXIT_SUCCESS;

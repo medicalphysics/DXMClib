@@ -61,17 +61,6 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline void normalize(std::array<T, 3>& vec) noexcept
-    {
-        const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
-        constexpr T one { 1 };
-        const T norm = one / std::sqrt(lsqr);
-        vec[0] *= norm;
-        vec[1] *= norm;
-        vec[2] *= norm;
-    }
-
-    template <Floating T>
     [[nodiscard]] inline constexpr std::array<T, 3> add(const std::array<T, 3>& v1, const std::array<T, 3>& v2)
     {
         return std::array<T, 3> { v1[0] + v2[0], v1[1] + v2[1], v1[2] + v2[2] };
@@ -107,6 +96,25 @@ namespace vectormath {
     [[nodiscard]] inline constexpr std::array<T, 3> scale(T s, const std::array<T, 3>& v)
     {
         return std::array { v[0] * s, v[1] * s, v[2] * s };
+    }
+
+    template <Floating T>
+    inline void normalize(std::array<T, 3>& vec) noexcept
+    {
+        const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
+        constexpr T one { 1 };
+        const T norm = one / std::sqrt(lsqr);
+        vec[0] *= norm;
+        vec[1] *= norm;
+        vec[2] *= norm;
+    }
+
+    template <Floating T>
+    inline constexpr std::array<T, 3> normalized(const std::array<T, 3>& vec) noexcept
+    {
+        const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
+        const T norm = T { 1 } / std::sqrt(lsqr);
+        return scale(vec, norm);
     }
 
     template <Floating T>

@@ -26,13 +26,14 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 
 #include <array>
+#include <cmath>
 
 namespace dxmc {
 
 template <Floating T>
-class DXBeamExposure {
+class CTSpiralBeamExposure {
 public:
-    DXBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
+    CTSpiralBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
         const std::array<T, 4>& collimationAngles, const SpecterDistribution<T> specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
@@ -80,43 +81,72 @@ private:
 };
 
 template <Floating T>
-class DXBeam {
+class CTSpiralBeam {
 public:
-    DXBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
-        : m_pos(pos)
+    CTSpiralBeam(const std::array<T, 3>& start_pos = { 0, 0, 0 }, const std::array<T, 3>& stop_pos = { 0, 0, 0 })
+        : m_start(start_pos)
+        , m_stop(stop_pos)
     {
-        setDirectionCosines(dircosines);
         tubeChanged();
     }
 
-    std::uint64_t numberOfExposures() const { return m_Nexposures; }
-    void setNumberOfExposures(std::uint64_t n) { m_Nexposures = std::max(n, std::uint64_t { 1 }); }
+    std::uint64_t numberOfExposures() const
+    {
+        const auto direction = vectormath::subtract(m_stop, m_start);
+        const auto dz = m_pitch * m_collimation;
+        const auto total_rot_angle = vectormath::lenght(direction) * (PI_VAL<T>() * 2) / dz;
+        auto N_angles = static_cast<std::uint64_t>(std::ceil(total_rot_angle / m_stepAngle));
+        return N_angles;
+    }
 
-    std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
+    std::uint64_t numberOfParticles() const { return numberOfExposures() * m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    const std::array<T, 3>& position() const { return m_pos; }
-    void setPosition(const std::array<T, 3>& pos) { m_pos = pos; }
-
-    const std::array<std::array<T, 3>, 2>& directionCosines() const
+    const std::array<T, 3>& start() const { return m_start; }
+    const std::array<T, 3>& stop() const { return m_stop; }
+    void setStartStop(const std::array<T, 3>& start, const std::array<T, 3>& stop)
     {
-        return m_dirCosines;
+        m_start = start;
+        m_stop = stop;
     }
 
-    void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
+    T collimation() const { return m_collimation; }
+    void setCollimation(T coll_cm)
     {
-        m_dirCosines = dir;
-        vectormath::normalize(m_dirCosines[0]);
-        vectormath::normalize(m_dirCosines[1]);
+        // collimation must be larger than 1 mm (0.1 cm)
+        m_collimation = std::max(std::abs(coll_cm), T { 0.1 });
     }
 
-    void setDirectionCosines(const std::array<T, 3>& xdir, const std::array<T, 3>& ydir)
+    T sourceDetectorDistance() const { return m_SDD; }
+    T setSourceDetectorDistance(T SDD_cm)
     {
-        m_dirCosines[0] = xdir;
-        m_dirCosines[1] = ydir;
-        vectormath::normalize(m_dirCosines[0]);
-        vectormath::normalize(m_dirCosines[1]);
+        m_SDD = std::max(std::abs(SDD_cm), T { 1 });
     }
+
+    T scanFieldOfView() const { return m_FOV; }
+    void setScanFieldOfView(T fov_cm)
+    {
+        m_FOV = std::max(std::abs(fov_cm), T { 1 });
+    }
+
+    T pitch() const { return m_pitch; }
+    void setPitch(T p)
+    {
+        m_pitch = std::max(std::abs(p), T { 0.1 });
+    }
+
+    T startAngle() const { return m_startAngle; }
+    void setStartAngle(T angle) { m_startAngle = angle; }
+    T startAngleDeg() const { return m_startAngle * RAD_TO_DEG<T>(); }
+    void setStartAngleDeg(T angle) { m_startAngle = angle * DEG_TO_RAD<T>(); }
+
+    T stepAngle() const { return m_stepAngle; }
+    void setStepAngle(T angle)
+    {
+        m_stepAngle = std::max(std::abs(angle), DEG_TO_RAD<T>() / 10;)
+    }
+    T stepAngleDeg() const { return m_stepAngle * RAD_TO_DEG<T>(); }
+    void setStepAngleDeg(T angle) { setStepAngle(angle * DEG_TO_RAD<T>()); }
 
     const Tube<T>& tube() const { return m_tube; }
     void setTube(const Tube<T>&& tube)
@@ -155,38 +185,39 @@ public:
         tubeChanged();
     }
 
-    const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
-    void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
-    void setCollimationAngles(T minX, T minY, T maxX, T maxY)
+    CTSpiralBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-        m_collimationAngles[0] = minX;
-        m_collimationAngles[1] = minY;
-        m_collimationAngles[2] = maxX;
-        m_collimationAngles[3] = maxY;
-    }
+        constexpr auto pi2 = PI_VAL<T>() * 2;
+        const T angle = i * m_stepAngle;
+        const auto dz = m_pitch * m_collimation * angle / pi2;
+        const auto directionZ = vectormath::subtract(m_stop, m_start);
+        const auto direction = vectormath::normalized(directionZ);
 
-    DXBeamExposure<T> exposure(std::size_t i) const noexcept
-    {
-        DXBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
+        // finding normal vector to direction
+        const auto normal_ind = vectormath::argmin3(direction);
+        std::array<T, 3> normal = { 0, 0, 0 };
+        normal[normal_ind] = 1;
+        normal = vectormath::normalized(vectormath::cross(normal, direction));
+        normal = vectormath::rotate(normal, direction, m_startAngle + angle);
+
+        const auto beamdir = vectormath::cross(normal, direction);
+
+        const std::array<std::array<T, 3>, 2> cosines = { normal, direction };
+
+        auto pos = vectormath::add(vectormath::add(m_start, vectormath::scale(direction, dz)), vectormath::scale(beamdir, -m_SDD / 2));
+
+        // position along cylinder axis
+        const auto angx = std::atan(m_FOV / m_SDD);
+        const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
+
+        std::array<T, 4> angles = { -angx, -angy, angx, angy };
+
+        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, m_weight, angles, m_specter);
         return exp;
     }
 
-    T calibrationFactor(T measured_DAP) const
+    T calibrationFactor() const
     {
-        const auto energies = m_tube.getEnergy();
-        const auto weights = m_tube.getSpecter(energies, true);
-        auto air_cand = Material<T, 5, 0>::byNistName("Air, Dry (near sea level)");
-        if (!air_cand)
-            return 0;
-        const auto& air = air_cand.value();
-
-        const auto kerma_per_history = std::transform_reduce(std::execution::par_unseq, energies.cbegin(), energies.cend(), weights.cbegin(), T { 0 }, std::plus<>, [&air](const auto e, const auto w) {
-            const auto uen = air.massEnergyTransferAttenuation(e);
-            return w * e * uen;
-        });
-
-        const auto kerma_total = kerma_per_history * numberOfParticles();
-        return measured_DAP / kerma_total;
     }
 
 protected:
@@ -198,12 +229,16 @@ protected:
     }
 
 private:
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
-    std::uint64_t m_Nexposures = 100;
-    std::uint64_t m_particlesPerExposure = 100;
+    std::array<T, 3> m_start = { 0, 0, 0 };
+    std::array<T, 3> m_stop = { 0, 0, 0 };
+    T m_FOV = 50;
+    T m_SDD = 100;
+    T m_collimation = 1; // cm
+    T m_pitch = 1;
+    T m_startAngle = 0;
+    T m_stepAngle = T { 0.018 }; // about a degree;
     T m_weight = 1;
+    std::uint64_t m_particlesPerExposure = 100;
     Tube<T> m_tube;
     SpecterDistribution<T> m_specter;
 };
