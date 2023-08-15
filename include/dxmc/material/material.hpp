@@ -126,6 +126,12 @@ public:
         return std::exp(CubicLSInterpolator<T>::evaluateSpline(std::log(energy), begin, end));
     }
 
+    inline T massEnergyTransferAttenuation(T energy) const
+    {
+        auto att = attenuationValues(energy);
+        return massEnergyTransferAttenuation(att, energy);
+    }
+
     inline T massEnergyTransferAttenuation(const AttenuationValues<T>& att, T energy) const
     {
         const auto logEnergy = std::log(energy);
