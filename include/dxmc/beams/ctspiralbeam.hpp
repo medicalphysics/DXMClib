@@ -34,32 +34,34 @@ template <Floating T>
 class CTSpiralBeamExposure {
 public:
     CTSpiralBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 4>& collimationAngles, const SpecterDistribution<T> specter)
+        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T> specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
         , m_weight(weight)
         , m_collimationAngles(collimationAngles)
-        , m_specter(specter)
-    {
-    }
+        , m_specter(specter) {
+            m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1])
+        }
 
-    std::uint64_t numberOfParticles() const { return m_NParticles; }
+        std::uint64_t numberOfParticles() const
+    {
+        return m_NParticles;
+    }
 
     Particle<T> sampleParticle(RandomState& state) const noexcept
     {
-        auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
 
-        const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
-        const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
+        const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
+        const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
         const auto sinx = std::sin(angx);
         const auto siny = std::sin(angy);
         const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
         std::array pdir = {
-            m_dirCosines[0][0] * sinx + m_dirCosines[1][0] * siny + dir[0] * sinz,
-            m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + dir[1] * sinz,
-            m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
+            m_dirCosines[0][0] * sinx + m_dirCosines[1][0] * siny + m_dir[0] * sinz,
+            m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + m_dir[1] * sinz,
+            m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + m_dir[2] * sinz
         };
 
         Particle<T> p = {
@@ -73,6 +75,7 @@ public:
 
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
+    std::array<T, 3> m_dir = { 0, 0, 1 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_NParticles = 100;
@@ -210,7 +213,7 @@ public:
         const auto angx = std::atan(m_FOV / m_SDD);
         const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
 
-        std::array<T, 4> angles = { -angx, -angy, angx, angy };
+        std::array<T, 2> angles = { angx, angy };
 
         CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, m_weight, angles, m_specter);
         return exp;
