@@ -4,7 +4,7 @@
 #include <iostream>
 #include <numeric>
 
-#include "dxmc/tube.hpp"
+#include "dxmc/beams/tube/tube.hpp"
 
 using namespace dxmc;
 

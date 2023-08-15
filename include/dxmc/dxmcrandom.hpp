@@ -276,7 +276,7 @@ public:
         const auto table = RandomDistribution<T>::generateTable(weights);
 
         m_data.resize(table.size());
-        std::transform(std::execution::par_unseq, table.cbegin(), table.cend(), energies.cbegin(), m_data.begin(), [](const auto& tab, const T energy) {
+        std::transform(std::execution::par_unseq, table.cbegin(), table.cend(), energy.cbegin(), m_data.begin(), [](const auto& tab, const T energy) {
             return DataElement { .alias = tab.second, .prob = tab.first, .energy = energy };
         });
     }
