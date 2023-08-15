@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
+#include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 
@@ -165,8 +166,25 @@ public:
     DXBeamExposure<T> exposure(std::size_t i) const noexcept
     {
         DXBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure, m_collimationAngles, m_specter);
-
         return exp;
+    }
+
+    T calibrationFactor(T measured_DAP) const
+    {
+        const auto energies = m_tube.getEnergy();
+        const auto weights = m_tube.getSpecter(energies, true);
+        auto air_cand = Material<T, 5, 0>::byNistName("Air, Dry (near sea level)");
+        if (!air_cand)
+            return 0;
+        const auto& air = air_cand.value();
+
+        const auto kerma_per_history = std::transform_reduce(std::execution::par_unseq, energies.cbegin(), energies.cend(), weights.cbegin(), T { 0 }, std::plus<>, [&air](const auto e, const auto w) {
+            const auto uen = air.massEnergyTransferAttenuation(e);
+            return w * e * uen;
+        });
+
+        const auto kerma_total = kerma_per_history * numberOfParticles();
+        return measured_DAP / kerma_total;
     }
 
 protected:
