@@ -49,7 +49,7 @@ public:
         }
         m_dim = dim;
         m_data.resize(size);
-        DoseScore<T> dummy_dose;
+        EnergyScore<T> dummy_dose;
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
             return { .dose = dummy_dose, .density = d, .materialIndex = mIdx };
         });
@@ -181,15 +181,15 @@ public:
         return i;
     }
 
-    std::vector<DoseScore<T>> getDoseScore() const
+    std::vector<EnergyScore<T>> getEnergyScores() const
     {
         const auto size = m_dim[0] * m_dim[1] * m_dim[2];
-        std::vector<DoseScore<T>> i(size);
+        std::vector<EnergyScore<T>> i(size);
         std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.dose; });
         return i;
     }
 
-    const DoseScore<T>& dose(std::size_t flatIndex = 0) const final
+    const EnergyScore<T>& energyScored(std::size_t flatIndex = 0) const final
     {
         return m_data.at(flatIndex).dose;
     }
@@ -493,7 +493,7 @@ protected:
     }
 
     struct DataElement {
-        DoseScore<T> dose;
+        EnergyScore<T> dose;
         T density = 0;
         std::uint8_t materialIndex = 0;
     };

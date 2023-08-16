@@ -171,7 +171,7 @@ public:
         }
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose.at(index);
     }
@@ -180,7 +180,7 @@ protected:
 private:
     std::array<T, 6> m_aabb;
     Material<T, NMaterialShells> m_material;
-    std::vector<DoseScore<T>> m_dose;
+    std::vector<EnergyScore<T>> m_dose;
     T m_materialDensity = 1;
     std::array<T, 3> m_voxelSize = { 1, 1, 1 };
     std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };

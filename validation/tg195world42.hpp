@@ -179,16 +179,16 @@ public:
         }
     }
 
-    const DoseScore<T>&
+    const EnergyScore<T>&
     doseCenterCylinder() const
     {
         return m_centerChild_dose;
     }
-    const DoseScore<T>& dosePeriferyCylinder() const
+    const EnergyScore<T>& dosePeriferyCylinder() const
     {
         return m_periferyChild_dose;
     }
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
     }
@@ -197,9 +197,9 @@ private:
     basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
     Material<T, NMaterialShells> m_material;
-    DoseScore<T> m_dose;
-    DoseScore<T> m_periferyChild_dose;
-    DoseScore<T> m_centerChild_dose;
+    EnergyScore<T> m_dose;
+    EnergyScore<T> m_periferyChild_dose;
+    EnergyScore<T> m_centerChild_dose;
     basicshape::cylinder::Cylinder<T> m_centerChild;
     basicshape::cylinder::Cylinder<T> m_periferyChild;
     std::array<T, 6> m_centerChild_aabb = { 0, 0, 0, 0, 0, 0 };

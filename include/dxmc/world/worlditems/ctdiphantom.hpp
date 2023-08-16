@@ -101,7 +101,7 @@ public:
         }
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose[index];
     }
@@ -224,7 +224,7 @@ private:
     basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_pmma_density = 0;
     T m_air_density = 0;
-    std::array<DoseScore<T>, 6> m_dose;
+    std::array<EnergyScore<T>, 6> m_dose;
     StaticKDTree<3, T, CTDIAirHole> m_kdtree;
     Material<T, NMaterialShells> m_pmma;
     Material<T, NMaterialShells> m_air;

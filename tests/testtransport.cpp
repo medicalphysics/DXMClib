@@ -165,7 +165,7 @@ bool testCylinder()
 
     std::cout << "Angle, EnergyImparted, nEvents, StdDev*2" << std::endl;
 
-    std::vector<dxmc::DoseScore<T>> res(8 * 3);
+    std::vector<dxmc::EnergyScore<T>> res(8 * 3);
     const T angStep = 360 / res.size();
     for (int ang = 0; ang < res.size(); ++ang) {
         const auto a = dxmc::DEG_TO_RAD<T>() * ang * angStep;

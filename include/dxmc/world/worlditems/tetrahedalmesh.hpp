@@ -136,7 +136,7 @@ public:
         return w;
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         if (index < m_collections.size())
             return m_collections[index].dose;
@@ -214,7 +214,7 @@ protected:
 
 private:
     struct Collection {
-        DoseScore<T> dose;
+        EnergyScore<T> dose;
         const T density = 0;
         const T volume = 0;
         Collection(T dens, T volume)

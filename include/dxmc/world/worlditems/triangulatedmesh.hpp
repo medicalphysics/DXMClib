@@ -192,7 +192,7 @@ public:
         }
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
     }
@@ -221,7 +221,7 @@ protected:
 private:
     T m_materialDensity = 1;
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    DoseScore<T> m_dose;
+    EnergyScore<T> m_dose;
     MeshKDTree<T, Triangle<T>> m_kdtree;
     Material<T, NMaterialShells> m_material;
 };

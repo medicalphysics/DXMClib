@@ -231,6 +231,6 @@ private:
     KDTree<T> m_kdtree;
     Material<T> m_fillMaterial;
     T m_fillMaterialDensity = T { 0.001225 };
-    DoseScore<T> m_dose;
+    EnergyScore<T> m_dose;
 };
 }

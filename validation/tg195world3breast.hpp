@@ -186,7 +186,7 @@ public:
         }
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         if (index < m_dose_boxes.size())
             return m_dose_boxes[index].dose;
@@ -198,7 +198,7 @@ public:
 protected:
     struct DoseBoxChild {
         std::array<T, 6> aabb = { -1, -1, -.5f, 1, 1, .5f };
-        DoseScore<T> dose;
+        EnergyScore<T> dose;
     };
     static void translateBox(DoseBoxChild& box, const std::array<T, 3>& vec)
     {
@@ -258,8 +258,8 @@ private:
     T m_tissue_density = 1;
     Material<T, NMaterialShells> m_skin_material;
     Material<T, NMaterialShells> m_tissue_material;
-    DoseScore<T> m_dose;
-    DoseScore<T> m_skin_dose;
+    EnergyScore<T> m_dose;
+    EnergyScore<T> m_skin_dose;
     std::array<DoseBoxChild, 7> m_dose_boxes;
 };
 }

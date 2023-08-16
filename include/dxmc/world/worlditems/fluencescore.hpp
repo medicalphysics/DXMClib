@@ -109,7 +109,7 @@ public:
         return w;
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
     }
@@ -198,6 +198,6 @@ private:
     T m_energy_step = 1;
     std::array<T, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
-    DoseScore<T> m_dose;
+    EnergyScore<T> m_dose;
 };
 }

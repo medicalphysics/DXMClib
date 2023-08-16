@@ -138,7 +138,7 @@ public:
         }
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose;
     }
@@ -155,7 +155,7 @@ private:
     std::array<T, 3> m_center;
     T m_materialDensity = 1;
     Material<T, NMaterialShells> m_material;
-    DoseScore<T> m_dose;
+    EnergyScore<T> m_dose;
 };
 
 }

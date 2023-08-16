@@ -145,9 +145,9 @@ public:
         }
     }
 
-    const std::vector<std::pair<T, DoseScore<T>>> depthDose() const
+    const std::vector<std::pair<T, EnergyScore<T>>> depthDose() const
     {
-        std::vector<std::pair<T, DoseScore<T>>> depth;
+        std::vector<std::pair<T, EnergyScore<T>>> depth;
         depth.reserve(m_dose.size());
 
         const auto step = (2 * m_cylinder.half_height) / m_dose.size();
@@ -158,7 +158,7 @@ public:
         return depth;
     }
 
-    const DoseScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& dose(std::size_t index = 0) const override
     {
         return m_dose[index];
     }
@@ -168,7 +168,7 @@ private:
     dxmc::basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
     Material<T, NMaterialShells> m_material;
-    std::vector<DoseScore<T>> m_dose;
+    std::vector<EnergyScore<T>> m_dose;
 };
 
 }

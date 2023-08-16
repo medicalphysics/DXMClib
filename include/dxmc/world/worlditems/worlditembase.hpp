@@ -21,7 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
-#include "dxmc/world/dosescore.hpp"
+#include "dxmc/world/energyscore.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
 #include "dxmc/world/visualizationintersectionresult.hpp"
 
@@ -38,7 +38,7 @@ public:
     virtual std::array<T, 6> AABB() const = 0;
     virtual WorldIntersectionResult<T> intersect(const Particle<T>& p) const = 0;
     virtual VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const = 0;
-    virtual const DoseScore<T>& dose(std::size_t index = 0) const = 0;
+    virtual const EnergyScore<T>& energyScored(std::size_t index = 0) const = 0;
     virtual void clearDose() = 0;
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
 };

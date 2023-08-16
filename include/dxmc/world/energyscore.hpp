@@ -23,9 +23,9 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T>
-class DoseScore {
+class EnergyScore {
 public:
-    DoseScore() { }
+    EnergyScore() { }
     void scoreEnergy(T energy)
     {
         if (energy <= T { 0 })
@@ -111,9 +111,9 @@ private:
 };
 
 template <>
-class DoseScore<double> {
+class EnergyScore<double> {
 public:
-    DoseScore() { }
+    EnergyScore() { }
     void scoreEnergy(double energy)
     {
         if (energy <= 0.0)

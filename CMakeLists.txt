@@ -69,7 +69,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctspiralbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/world.hpp" 
-    "${dxmclib_SOURCE_DIR}/include/dxmc/world/dosescore.hpp" 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/energyscore.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/statickdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtreeintersectionresult.hpp"
