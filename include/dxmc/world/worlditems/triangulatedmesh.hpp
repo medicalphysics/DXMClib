@@ -226,7 +226,7 @@ protected:
 
     static T calculateVolume(const std::vector<Triangle<T>>& triangles, const std::array<T, 6>& aabb)
     {
-        // using singned volume of a thetrahedron
+        // using signed volume of a thetrahedron by a point and the three vertices (Gauss theorem of divergence)
         // sign_vol = v1 * (v2 x v3) / 6 for three vectors defining a triangle, i.e triple product
         // volume is then the sum of signed volumes over all triangles
 
