@@ -85,9 +85,9 @@ public:
     {
         return m_cylinder.center;
     }
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        for (auto& d : m_dose) {
+        for (auto& d : m_energyScore) {
             d.clear();
         }
     }
@@ -101,9 +101,9 @@ public:
         }
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose[index];
+        return m_energyScore[index];
     }
 
     std::array<T, 6> AABB() const noexcept override
@@ -145,7 +145,7 @@ public:
                     const auto holeAtt = m_air.attenuationValues(p.energy);
                     const auto interactionProb = 1 - std::exp(-intHoles.intersection * holeAtt.sum() * m_air_density);
                     const auto intRes = interactions::interactForced(interactionProb, att, p, m_air, state);
-                    m_dose[intHoles.item->index].scoreEnergy(intRes.energyImparted);
+                    m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     // transport particle across hole (particle is most likely alive)
                     p.border_translate(intHoles.intersection);
@@ -155,7 +155,7 @@ public:
                         // interaction happends
                         p.translate(stepLen);
                         const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_pmma, state);
-                        m_dose[0].scoreEnergy(intRes.energyImparted);
+                        m_energyScore[0].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         cont = intRes.particleAlive;
                     } else {
@@ -166,7 +166,7 @@ public:
                         const auto holeAtt = m_air.attenuationValues(p.energy);
                         const auto interactionProb = 1 - std::exp(-dist * holeAtt.sum() * m_air_density);
                         const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_air, state);
-                        m_dose[intHoles.item->index].scoreEnergy(intRes.energyImparted);
+                        m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         // transport particle across hole (particle is most likely alive)
                         p.border_translate(dist);
@@ -178,7 +178,7 @@ public:
                     // interaction happends
                     p.translate(stepLen);
                     const auto intRes = interactions::interact(att, p, m_pmma, state);
-                    m_dose[0].scoreEnergy(intRes.energyImparted);
+                    m_energyScore[0].scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
                 } else {
@@ -224,7 +224,7 @@ private:
     basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_pmma_density = 0;
     T m_air_density = 0;
-    std::array<EnergyScore<T>, 6> m_dose;
+    std::array<EnergyScore<T>, 6> m_energyScore;
     StaticKDTree<3, T, CTDIAirHole> m_kdtree;
     Material<T, NMaterialShells> m_pmma;
     Material<T, NMaterialShells> m_air;

@@ -51,7 +51,7 @@ public:
         m_data.resize(size);
         EnergyScore<T> dummy_dose;
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
-            return { .dose = dummy_dose, .density = d, .materialIndex = mIdx };
+            return { .energyScored = dummy_dose, .density = d, .materialIndex = mIdx };
         });
 
         m_materials = materials;
@@ -185,18 +185,18 @@ public:
     {
         const auto size = m_dim[0] * m_dim[1] * m_dim[2];
         std::vector<EnergyScore<T>> i(size);
-        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.dose; });
+        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.energyScored; });
         return i;
     }
 
     const EnergyScore<T>& energyScored(std::size_t flatIndex = 0) const final
     {
-        return m_data.at(flatIndex).dose;
+        return m_data.at(flatIndex).energyScored;
     }
 
-    void clearDose() final
+    void clearEnergyScored() final
     {
-        std::for_each(std::execution::par_unseq, m_data.begin(), m_data.end(), [](auto& d) { d.dose.clear(); });
+        std::for_each(std::execution::par_unseq, m_data.begin(), m_data.end(), [](auto& d) { d.energyScored.clear(); });
     }
 
     void transport(Particle<T>& p, RandomState& state) final
@@ -356,7 +356,7 @@ protected:
                 // current material
                 const auto matInd = m_data[index_flat].materialIndex;
                 const auto density = m_data[index_flat].density;
-                auto& dose = m_data[index_flat].dose;
+                auto& energyScored = m_data[index_flat].energyScored;
 
                 // updating stepping
                 dIdx = argmin3(tMax);
@@ -381,7 +381,7 @@ protected:
                         p.translate(tMax[dIdx]);
 
                         const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
-                        dose.scoreEnergy(intRes.energyImparted);
+                        energyScored.scoreEnergy(intRes.energyImparted);
                         still_inside = intRes.particleAlive;
                         // particle energy or direction has changed, we restart stepping
                         cont = false;
@@ -481,7 +481,7 @@ protected:
                 // check if real or virtual interaction
                 if (state.randomUniform<T>() < attTot * attMaxInv) {
                     const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matIdx], state);
-                    m_data[flat_index].dose.scoreEnergy(intRes.energyImparted);
+                    m_data[flat_index].energyScored.scoreEnergy(intRes.energyImparted);
                     valid = intRes.particleAlive;
                     updateAtt = intRes.particleEnergyChanged;
                 }
@@ -493,7 +493,7 @@ protected:
     }
 
     struct DataElement {
-        EnergyScore<T> dose;
+        EnergyScore<T> energyScored;
         T density = 0;
         std::uint8_t materialIndex = 0;
     };

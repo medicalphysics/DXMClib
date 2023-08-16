@@ -122,7 +122,7 @@ public:
                 // interaction happends
                 p.translate(stepLen);
                 const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                m_dose.scoreEnergy(intRes.energyImparted);
+                m_energyScored.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
             } else {
@@ -133,14 +133,14 @@ public:
         }
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose;
+        return m_energyScored;
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        m_dose.clear();
+        m_energyScored.clear();
     }
 
 protected:
@@ -149,7 +149,7 @@ private:
     std::array<T, 3> m_center;
     Material<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
-    EnergyScore<T> m_dose;
+    EnergyScore<T> m_energyScored;
 };
 
 }

@@ -136,17 +136,17 @@ public:
         return w;
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
         if (index < m_collections.size())
-            return m_collections[index].dose;
-        return m_collections[0].dose;
+            return m_collections[index].energyScored;
+        return m_collections[0].energyScored;
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
         for (auto& c : m_collections)
-            c.dose.clear();
+            c.energyScored.clear();
     }
 
     void transport(Particle<T>& p, RandomState& state) override
@@ -175,8 +175,8 @@ public:
                 p.translate(stepLen);
                 const auto& material = m_materials[currentMaterialIdx];
                 const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, material, state);
-                auto& dose = m_collections[currentCollection].dose;
-                dose.scoreEnergy(intRes.energyImparted);
+                auto& energyScored = m_collections[currentCollection].energyScored;
+                energyScored.scoreEnergy(intRes.energyImparted);
                 updateAtt = true;
                 if (intRes.particleAlive) {
                     inter = m_kdtree.intersect(p, m_aabb);
@@ -214,7 +214,7 @@ protected:
 
 private:
     struct Collection {
-        EnergyScore<T> dose;
+        EnergyScore<T> energyScored;
         const T density = 0;
         const T volume = 0;
         Collection(T dens, T volume)

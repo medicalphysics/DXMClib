@@ -110,7 +110,7 @@ public:
 
     void clearDose()
     {
-        m_dose.clear();
+        m_energyScored.clear();
         for (auto& v : m_items) {
             std::visit([](auto&& arg) { arg.clearDose(); }, v);
         }
@@ -209,7 +209,7 @@ public:
                     const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
-                    m_dose.scoreEnergy(interactionResult.energyImparted);
+                    m_energyScored.scoreEnergy(interactionResult.energyImparted);
                 }
             } else { // We do not intersect any object
                 p.translate(stepLenght);
@@ -217,7 +217,7 @@ public:
                     const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
-                    m_dose.scoreEnergy(interactionResult.energyImparted);
+                    m_energyScored.scoreEnergy(interactionResult.energyImparted);
                 } else {
                     continueSampling = false;
                 }
@@ -231,6 +231,6 @@ private:
     KDTree<T> m_kdtree;
     Material<T> m_fillMaterial;
     T m_fillMaterialDensity = T { 0.001225 };
-    EnergyScore<T> m_dose;
+    EnergyScore<T> m_energyScored;
 };
 }

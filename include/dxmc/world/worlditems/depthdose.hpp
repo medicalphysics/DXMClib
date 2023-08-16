@@ -46,7 +46,7 @@ public:
         m_cylinder.half_height = height / 2;
 
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
-        m_dose.resize(resolution);
+        m_energyScored.resize(resolution);
     }
 
     void setMaterial(const Material<T, NMaterialShells>& material)
@@ -77,9 +77,9 @@ public:
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        for (auto& d : m_dose) {
+        for (auto& d : m_energyScored) {
             d.clear();
         }
     }
@@ -134,9 +134,9 @@ public:
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
 
-                const auto dose_ind_f = (p.pos[2] - (m_cylinder.center[2] - m_cylinder.half_height)) * m_dose.size() / (m_cylinder.half_height * 2);
-                const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_dose.size() - 1);
-                m_dose[ind].scoreEnergy(intRes.energyImparted);
+                const auto dose_ind_f = (p.pos[2] - (m_cylinder.center[2] - m_cylinder.half_height)) * m_energyScored.size() / (m_cylinder.half_height * 2);
+                const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_energyScored.size() - 1);
+                m_energyScored[ind].scoreEnergy(intRes.energyImparted);
             } else {
                 // transport to border
                 p.border_translate(intLen);
@@ -145,22 +145,22 @@ public:
         }
     }
 
-    const std::vector<std::pair<T, EnergyScore<T>>> depthDose() const
+    const std::vector<std::pair<T, EnergyScore<T>>> depthEnergyScored() const
     {
         std::vector<std::pair<T, EnergyScore<T>>> depth;
-        depth.reserve(m_dose.size());
+        depth.reserve(m_energyScored.size());
 
-        const auto step = (2 * m_cylinder.half_height) / m_dose.size();
+        const auto step = (2 * m_cylinder.half_height) / m_energyScored.size();
         const auto start = m_cylinder.center[2] - m_cylinder.half_height + step / 2;
-        for (std::size_t i = 0; i < m_dose.size(); ++i) {
-            depth.push_back(std::make_pair(start + step * i, m_dose[i]));
+        for (std::size_t i = 0; i < m_energyScored.size(); ++i) {
+            depth.push_back(std::make_pair(start + step * i, m_energyScored[i]));
         }
         return depth;
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose[index];
+        return m_energyScored[index];
     }
 
 protected:
@@ -168,7 +168,7 @@ private:
     dxmc::basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
     Material<T, NMaterialShells> m_material;
-    std::vector<EnergyScore<T>> m_dose;
+    std::vector<EnergyScore<T>> m_energyScored;
 };
 
 }

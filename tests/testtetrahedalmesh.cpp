@@ -192,14 +192,14 @@ T testDoseScoring(std::array<T, 3> pos = { 0, -100, 0 }, std::array<T, 3> dir = 
     transport(world, beam);
     if constexpr (BOX) {
         auto& boxes = world.template getItems<Box>();
-        return boxes[0].dose(0).energyImparted();
+        return boxes[0].energyScored(0).energyImparted();
     } else {
         auto& meshes = world.template getItems<Mesh>();
         auto& mesh = meshes[0];
-        T dose = 0;
+        T energyScored = 0;
         for (std::size_t i = 0; i < mesh.numberOfCollections(); ++i)
-            dose += mesh.dose(i).energyImparted();
-        return dose;
+            energyScored += mesh.energyScored(i).energyImparted();
+        return energyScored;
     }
 }
 

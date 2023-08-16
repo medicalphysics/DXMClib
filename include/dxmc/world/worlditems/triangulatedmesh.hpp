@@ -186,20 +186,20 @@ public:
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
                 if (intRes.particleEnergyChanged) {
-                    m_dose.scoreEnergy(intRes.energyImparted);
+                    m_energyScored.scoreEnergy(intRes.energyImparted);
                 }
             }
         }
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose;
+        return m_energyScored;
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        m_dose.clear();
+        m_energyScored.clear();
     }
 
     std::array<T, 6> AABB() const override
@@ -221,7 +221,7 @@ protected:
 private:
     T m_materialDensity = 1;
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    EnergyScore<T> m_dose;
+    EnergyScore<T> m_energyScored;
     MeshKDTree<T, Triangle<T>> m_kdtree;
     Material<T, NMaterialShells> m_material;
 };

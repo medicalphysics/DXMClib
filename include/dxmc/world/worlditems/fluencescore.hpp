@@ -109,14 +109,14 @@ public:
         return w;
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose;
+        return m_energyScored;
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        m_dose.clear();
+        m_energyScored.clear();
         std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
     }
 
@@ -126,7 +126,7 @@ public:
         const auto eIdx = static_cast<std::size_t>(particle.energy / m_energy_step);
         auto counter = std::atomic_ref(m_intensity[eIdx]);
         counter++;
-        m_dose.scoreEnergy(particle.energy);
+        m_energyScored.scoreEnergy(particle.energy);
         particle.border_translate(T { 0 });
     }
 
@@ -198,6 +198,6 @@ private:
     T m_energy_step = 1;
     std::array<T, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
-    EnergyScore<T> m_dose;
+    EnergyScore<T> m_energyScored;
 };
 }

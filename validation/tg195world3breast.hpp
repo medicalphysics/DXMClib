@@ -92,11 +92,11 @@ public:
         return aabb;
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        m_dose.clear();
+        m_energyScored.clear();
         for (auto& b : m_dose_boxes) {
-            b.dose.clear();
+            b.energyScored.clear();
         }
     }
 
@@ -145,7 +145,7 @@ public:
                             p.translate(stepLen);
                             const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_tissue_material, state);
                             cont = intRes.particleAlive;
-                            scoreDose(p, intRes.energyImparted);
+                            scoreEnergyImparted(p, intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
                             cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
@@ -186,21 +186,21 @@ public:
         }
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
         if (index < m_dose_boxes.size())
-            return m_dose_boxes[index].dose;
+            return m_dose_boxes[index].energyScored;
         else if (index == m_dose_boxes.size())
             return m_skin_dose;
-        return m_dose;
+        return m_energyScored;
     }
 
 protected:
-    struct DoseBoxChild {
+    struct ScoreBoxChild {
         std::array<T, 6> aabb = { -1, -1, -.5f, 1, 1, .5f };
-        EnergyScore<T> dose;
+        EnergyScore<T> energyScored;
     };
-    static void translateBox(DoseBoxChild& box, const std::array<T, 3>& vec)
+    static void translateBox(ScoreBoxChild& box, const std::array<T, 3>& vec)
     {
         for (std::size_t i = 0; i < 3; ++i) {
             box.aabb[i] += vec[i];
@@ -208,16 +208,16 @@ protected:
         }
     }
 
-    void scoreDose(const Particle<T>& p, T energy)
+    void scoreEnergyImparted(const Particle<T>& p, T energy)
     {
         bool hit = false;
         for (auto& b : m_dose_boxes) {
             if (!hit && basicshape::AABB::pointInside(p.pos, b.aabb)) {
-                b.dose.scoreEnergy(energy);
+                b.energyScored.scoreEnergy(energy);
                 hit = true;
             }
         }
-        m_dose.scoreEnergy(energy);
+        m_energyScored.scoreEnergy(energy);
     }
 
     static WorldIntersectionResult<T> intersectHalfCylindar(const Particle<T>& p, const std::array<T, 3>& center, const T radius, const T halfHeight)
@@ -258,8 +258,8 @@ private:
     T m_tissue_density = 1;
     Material<T, NMaterialShells> m_skin_material;
     Material<T, NMaterialShells> m_tissue_material;
-    EnergyScore<T> m_dose;
+    EnergyScore<T> m_energyScored;
     EnergyScore<T> m_skin_dose;
-    std::array<DoseBoxChild, 7> m_dose_boxes;
+    std::array<ScoreBoxChild, 7> m_dose_boxes;
 };
 }

@@ -67,7 +67,7 @@ public:
             m_voxelSize[i] = (m_aabb[i + 3] - m_aabb[i]) / m_voxelDim[i];
         }
         const auto ndim = m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
-        m_dose.resize(ndim);
+        m_energyScored.resize(ndim);
     }
     std::size_t totalNumberOfVoxels() const { return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2]; }
 
@@ -107,9 +107,9 @@ public:
         }
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        for (auto& d : m_dose) {
+        for (auto& d : m_energyScored) {
             d.clear();
         }
     }
@@ -158,8 +158,8 @@ public:
                 // interaction happends
                 p.translate(stepLen);
                 const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
-                const auto doseIdx = gridIndex(p.pos);
-                m_dose[doseIdx].scoreEnergy(intRes.energyImparted);
+                const auto scoreIdx = gridIndex(p.pos);
+                m_energyScored[scoreIdx].scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
 
@@ -171,19 +171,18 @@ public:
         }
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose.at(index);
+        return m_energyScored.at(index);
     }
 
 protected:
 private:
     std::array<T, 6> m_aabb;
     Material<T, NMaterialShells> m_material;
-    std::vector<EnergyScore<T>> m_dose;
+    std::vector<EnergyScore<T>> m_energyScored;
     T m_materialDensity = 1;
     std::array<T, 3> m_voxelSize = { 1, 1, 1 };
     std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };
 };
-
 }

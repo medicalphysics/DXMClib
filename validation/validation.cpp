@@ -405,12 +405,12 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
     std::vector<std::uint64_t> ev_events_vector(box.totalNumberOfVoxels());
     std::uint64_t total_number_events = 0;
     for (std::size_t i = 0; i < box.totalNumberOfVoxels(); ++i) {
-        total_ev += box.dose(i).energyImparted();
-        ev_vector[i] = box.dose(i).energyImparted();
-        ev_var_vector[i] = box.dose(i).varianceEnergyImparted();
-        total_ev_var += box.dose(i).varianceEnergyImparted();
-        total_number_events += box.dose(i).numberOfEvents();
-        ev_events_vector[i] = box.dose(i).numberOfEvents();
+        total_ev += box.energyScored(i).energyImparted();
+        ev_vector[i] = box.energyScored(i).energyImparted();
+        ev_var_vector[i] = box.energyScored(i).varianceEnergyImparted();
+        total_ev_var += box.energyScored(i).varianceEnergyImparted();
+        total_number_events += box.energyScored(i).numberOfEvents();
+        ev_events_vector[i] = box.energyScored(i).numberOfEvents();
     }
 
     res.volume = "Total body";
@@ -616,16 +616,16 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     constexpr T evNormal = T { 1000 } / (N_HISTORIES * N_EXPOSURES);
 
     res.volume = "Total body";
-    res.result = breast.dose(8).energyImparted() * evNormal;
-    res.result_std = breast.dose(8).stdEnergyImparted() * evNormal;
-    res.nEvents = breast.dose(8).numberOfEvents();
+    res.result = breast.energyScored(8).energyImparted() * evNormal;
+    res.result_std = breast.energyScored(8).stdEnergyImparted() * evNormal;
+    res.nEvents = breast.energyScored(8).numberOfEvents();
     print(res, false);
     std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_ev << ", difference: [" << (res.result / sim_ev - 1) * 100 << "%]\n";
     for (int i = 0; i < 7; ++i) {
         res.volume = "VOI " + std::to_string(i + 1);
-        res.result = breast.dose(i).energyImparted() * evNormal;
-        res.result_std = breast.dose(i).stdEnergyImparted() * evNormal;
-        res.nEvents = breast.dose(i).numberOfEvents();
+        res.result = breast.energyScored(i).energyImparted() * evNormal;
+        res.result_std = breast.energyScored(i).stdEnergyImparted() * evNormal;
+        res.nEvents = breast.energyScored(i).numberOfEvents();
         print(res, false);
         std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_subvol[i] << ", difference: [" << (res.result / sim_subvol[i] - 1) * 100 << "%]\n";
     }
@@ -693,14 +693,14 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     ev_history_var.fill(0);
     std::array<std::uint64_t, 4> ev_events = { 0, 0, 0, 0 };
 
-    for (const auto& [z, dose] : cylinder.depthDose()) {
+    for (const auto& [z, energyScored] : cylinder.depthDose()) {
         for (std::size_t i = 0; i < voi_locations.size(); ++i) {
             const T zmin = voi_locations[i] - T { 0.5 };
             const T zmax = voi_locations[i] + T { 0.5 };
             if (zmin < z && z < zmax) {
-                ev_history[i] += dose.energyImparted();
-                ev_history_var[i] += dose.varianceEnergyImparted();
-                ev_events[i] += dose.numberOfEvents();
+                ev_history[i] += energyScored.energyImparted();
+                ev_history_var[i] += energyScored.varianceEnergyImparted();
+                ev_events[i] += energyScored.numberOfEvents();
             }
         }
     }
@@ -819,8 +819,8 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
         T uncert = 1;
         do {
             auto time_elapsed = runDispatcher(transport, world, beam);
-            const T d1 = cylinder.dosePeriferyCylinder().relativeUncertainty();
-            const T d2 = cylinder.doseCenterCylinder().relativeUncertainty();
+            const T d1 = cylinder.energyScoredPeriferyCylinder().relativeUncertainty();
+            const T d2 = cylinder.energyScoredCenterCylinder().relativeUncertainty();
             uncert = std::max(d1, d2);
             teller++;
         } while (uncert > T { 0.01 } && !SAMPLE_RUN);
@@ -828,16 +828,16 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
         std::cout << "Angle " << angInt;
         res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
         res.volume = std::to_string(angInt);
-        res.result = cylinder.dosePeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.result_std = cylinder.dosePeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.nEvents = cylinder.dosePeriferyCylinder().numberOfEvents();
+        res.result = cylinder.energyScoredPeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result_std = cylinder.energyScoredPeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.nEvents = cylinder.energyScoredPeriferyCylinder().numberOfEvents();
         std::cout << " Pherifery: " << res.result;
         print(res, false);
         res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
         res.volume = std::to_string(angInt);
-        res.result = cylinder.doseCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.result_std = cylinder.doseCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.nEvents = cylinder.doseCenterCylinder().numberOfEvents();
+        res.result = cylinder.energyScoredCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result_std = cylinder.energyScoredCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.nEvents = cylinder.energyScoredCenterCylinder().numberOfEvents();
         std::cout << " Center: " << res.result << std::endl;
         print(res, false);
 
@@ -1057,24 +1057,24 @@ TG195Case5AbsorbedEnergy()
             if (matIdx > 2) {
                 res.volume = material_name;
 
-                const auto ei_tot = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& dose, auto ind) -> T {
+                const auto ei_tot = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& energyScored, auto ind) -> T {
                     if (ind == matIdx)
-                        return dose.energyImparted();
+                        return energyScored.energyImparted();
                     else
                         return T { 0 };
                 });
                 res.result = ei_tot / ((N_HISTORIES * N_EXPOSURES) / 1000);
 
-                const auto ei_var = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& dose, auto ind) -> T {
+                const auto ei_var = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& energyScored, auto ind) -> T {
                     if (ind == matIdx)
-                        return dose.varianceEnergyImparted();
+                        return energyScored.varianceEnergyImparted();
                     else
                         return T { 0 };
                 });
                 res.result_std = std::sqrt(ei_var) / ((N_HISTORIES * N_EXPOSURES) / 1000);
-                const auto events = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& dose, auto ind) -> T {
+                const auto events = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& energyScored, auto ind) -> T {
                     if (ind == matIdx)
-                        return dose.numberOfEvents();
+                        return energyScored.numberOfEvents();
                     else
                         return T { 0 };
                 });

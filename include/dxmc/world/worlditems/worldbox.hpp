@@ -84,9 +84,9 @@ public:
         }
     }
 
-    void clearDose() override
+    void clearEnergyScored() override
     {
-        m_dose.clear();
+        m_energyScored.clear();
     }
 
     std::array<T, 3> center() const noexcept override
@@ -133,7 +133,7 @@ public:
                 // interaction happends
                 p.translate(stepLen);
                 const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
-                m_dose.scoreEnergy(intRes.energyImparted);
+                m_energyScored.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
 
@@ -145,9 +145,9 @@ public:
         }
     }
 
-    const EnergyScore<T>& dose(std::size_t index = 0) const override
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        return m_dose;
+        return m_energyScored;
     }
 
 protected:
@@ -155,7 +155,7 @@ private:
     std::array<T, 6> m_aabb;
     Material<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
-    EnergyScore<T> m_dose;
+    EnergyScore<T> m_energyScored;
 };
 
 }
