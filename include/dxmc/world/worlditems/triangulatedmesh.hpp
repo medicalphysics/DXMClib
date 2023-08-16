@@ -30,6 +30,8 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
+#include <execution>
+#include <numeric>
 #include <vector>
 
 namespace dxmc {
@@ -115,13 +117,17 @@ public:
     void translate(const std::array<T, 3>& dist) override
     {
         m_kdtree.translate(dist);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] += dist[i];
+            m_aabb[i + 3] += dist[i];
+        }
     }
 
-    void setData(std::vector<Triangle<T>> triangles, const std::size_t max_tree_dept)
+    void setData(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept)
     {
         m_kdtree.setData(triangles, max_tree_dept);
         m_aabb = expandAABB(m_kdtree.AABB());
+        m_volume = calculateVolume(triangles, m_aabb);
     }
 
     std::array<T, 3> center() const override
@@ -218,8 +224,32 @@ protected:
         return aabb;
     }
 
+    static T calculateVolume(const std::vector<Triangle<T>>& triangles, const std::array<T, 6>& aabb)
+    {
+        // using singned volume of a thetrahedron
+        // sign_vol = v1 * (v2 x v3) / 6 for three vectors defining a triangle, i.e triple product
+        // volume is then the sum of signed volumes over all triangles
+
+        // finding a neat reference point instead of {0,0,0}
+        const std::array centre = {
+            (aabb[0] + aabb[3]) / 2,
+            (aabb[1] + aabb[4]) / 2,
+            (aabb[2] + aabb[5]) / 2
+        };
+
+        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, std::plus<>, [&center](const auto& tri) {
+            const auto& v = tri.vertices();
+            const auto v1 = vectormath::subtract(v[0], center);
+            const auto v2 = vectormath::subtract(v[1], center);
+            const auto v3 = vectormath::subtract(v[2], center);
+            return vectormath::tripleProduct(v1, v2, v3);
+        });
+        return std::abs(volume) / 6;
+    }
+
 private:
     T m_materialDensity = 1;
+    T m_volume = 0; // cm3
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     EnergyScore<T> m_energyScored;
     MeshKDTree<T, Triangle<T>> m_kdtree;
