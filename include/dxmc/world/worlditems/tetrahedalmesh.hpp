@@ -43,14 +43,12 @@ public:
     TetrahedalMesh()
         : WorldItemBase<T>()
     {
-        m_collections.reserve(1);
-        m_collections.push_back({ T { 0 }, T { 1 } });
     }
 
     TetrahedalMesh(std::vector<Tetrahedron<T>>&& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
         : WorldItemBase<T>()
     {
-        // finding mac collectionIdx and Material index
+        // finding max collectionIdx and Material index
         const auto maxCollectionIdx = std::transform_reduce(
             std::execution::par_unseq, tets.cbegin(), tets.cend(), std::uint16_t { 0 },
             [](const auto lh, const auto rh) { return std::max(lh, rh); },

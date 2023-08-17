@@ -70,9 +70,17 @@ if(DXMCLIB_BUILD_EPICS_DATA_PARSER)
     target_compile_definitions(libdxmc INTERFACE DXMCLIB_MAXENERGY=${DXMCLIB_MAX_ENERGY_KEV})
     target_compile_definitions(libdxmc INTERFACE DXMCLIB_MINENERGY=${DXMCLIB_MIN_ENERGY_KEV})
 
-    add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
-        COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
-        DEPENDS EPICSparser)
+    if(WIN32)
+        message(STATUS "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser.exe")
+        add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
+            COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser.exe" 
+            DEPENDS EPICSparser)
+    else()
+        add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
+            COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
+            DEPENDS EPICSparser)
+    endif()
+
 
     add_custom_target(libdxmc_physics ALL
         DEPENDS "${DXMCLIB_EPICS_PHYSICSLISTS}")

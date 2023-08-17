@@ -36,6 +36,26 @@ namespace dxmc {
 template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, std::uint_fast8_t TRANSPARENTVOXELS = 255>
 class AAVoxelGrid final : public WorldItemBase<T> {
 public:
+    AAVoxelGrid()
+    {
+        // setting default constructor up with dummy data
+        std::array<std::size_t, 3> dim = { 1, 1, 1 };
+        std::vector<T> densities(1, 1);
+        std::vector<std::uint8_t> mIdx(1, 0);
+        std::vector<Material<T, NMaterialShells>> materials;
+
+        auto air_cand = Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)");
+        materials.push_back(air_cand.value());
+        setData(dim, densities, mIdx, materials);
+        setSpacing({ 1, 1, 1 });
+    }
+
+    AAVoxelGrid(const std::array<std::size_t, 3>& dim, const std::array<T, 3>& spacing, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<T, NMaterialShells>>& materials)
+    {
+        setData(dim, density, materialIdx, materials);
+        setSpacing(spacing);
+    }
+
     bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<T, NMaterialShells>>& materials)
     {
         const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
@@ -49,7 +69,7 @@ public:
         }
         m_dim = dim;
         m_data.resize(size);
-        m_dose.reserve(size);
+        m_dose.resize(size);
         EnergyScore<T> dummy_dose;
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
             return { .energyScored = dummy_dose, .density = d, .materialIndex = mIdx };
