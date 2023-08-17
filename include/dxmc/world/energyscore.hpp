@@ -69,7 +69,7 @@ public:
         return m_energyImpartedSquared + m_energyImpartedSquared_rest;
     }
 
-    T varianceEnergyImparted() const
+    T variance() const
     {
         if (numberOfEvents() > 0) {
             const auto e_exp = energyImparted() / numberOfEvents();
@@ -79,20 +79,21 @@ public:
         return 0;
     }
 
-    T stdEnergyImparted() const
+    T standardDeviation() const
     {
-        return std::sqrt(varianceEnergyImparted());
+        return std::sqrt(variance());
     }
 
     T relativeUncertainty() const
     {
-        return T { 1.96 } * stdEnergyImparted() / energyImparted();
+        return T { 1.96 } * standardDeviation() / energyImparted();
     }
 
     std::uint64_t numberOfEvents() const
     {
         return m_nEvents;
     }
+
     void clear()
     {
         m_nEvents = 0;
@@ -142,7 +143,7 @@ public:
         return m_energyImpartedSquared;
     }
 
-    double varianceEnergyImparted() const
+    double variance() const
     {
         if (numberOfEvents() > 0) {
             const auto e_exp = energyImparted() / numberOfEvents();
@@ -153,20 +154,21 @@ public:
         return 0;
     }
 
-    double stdEnergyImparted() const
+    double standardDeviation() const
     {
-        return std::sqrt(varianceEnergyImparted());
+        return std::sqrt(variance());
     }
 
     double relativeUncertainty() const
     {
-        return 1.96 * stdEnergyImparted() / energyImparted();
+        return 1.96 * standardDeviation() / energyImparted();
     }
 
     std::uint64_t numberOfEvents() const
     {
         return m_nEvents;
     }
+
     void clear()
     {
         m_nEvents = 0;

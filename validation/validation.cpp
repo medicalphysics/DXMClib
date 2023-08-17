@@ -407,8 +407,8 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
     for (std::size_t i = 0; i < box.totalNumberOfVoxels(); ++i) {
         total_ev += box.energyScored(i).energyImparted();
         ev_vector[i] = box.energyScored(i).energyImparted();
-        ev_var_vector[i] = box.energyScored(i).varianceEnergyImparted();
-        total_ev_var += box.energyScored(i).varianceEnergyImparted();
+        ev_var_vector[i] = box.energyScored(i).variance();
+        total_ev_var += box.energyScored(i).variance();
         total_number_events += box.energyScored(i).numberOfEvents();
         ev_events_vector[i] = box.energyScored(i).numberOfEvents();
     }
@@ -617,14 +617,14 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
 
     res.volume = "Total body";
     res.result = breast.energyScored(8).energyImparted() * evNormal;
-    res.result_std = breast.energyScored(8).stdEnergyImparted() * evNormal;
+    res.result_std = breast.energyScored(8).standardDeviation() * evNormal;
     res.nEvents = breast.energyScored(8).numberOfEvents();
     print(res, false);
     std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_ev << ", difference: [" << (res.result / sim_ev - 1) * 100 << "%]\n";
     for (int i = 0; i < 7; ++i) {
         res.volume = "VOI " + std::to_string(i + 1);
         res.result = breast.energyScored(i).energyImparted() * evNormal;
-        res.result_std = breast.energyScored(i).stdEnergyImparted() * evNormal;
+        res.result_std = breast.energyScored(i).standardDeviation() * evNormal;
         res.nEvents = breast.energyScored(i).numberOfEvents();
         print(res, false);
         std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_subvol[i] << ", difference: [" << (res.result / sim_subvol[i] - 1) * 100 << "%]\n";
@@ -699,7 +699,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             const T zmax = voi_locations[i] + T { 0.5 };
             if (zmin < z && z < zmax) {
                 ev_history[i] += energyScored.energyImparted();
-                ev_history_var[i] += energyScored.varianceEnergyImparted();
+                ev_history_var[i] += energyScored.variance();
                 ev_events[i] += energyScored.numberOfEvents();
             }
         }
@@ -829,14 +829,14 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
         res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
         res.volume = std::to_string(angInt);
         res.result = cylinder.energyScoredPeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.result_std = cylinder.energyScoredPeriferyCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result_std = cylinder.energyScoredPeriferyCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
         res.nEvents = cylinder.energyScoredPeriferyCylinder().numberOfEvents();
         std::cout << " Pherifery: " << res.result;
         print(res, false);
         res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
         res.volume = std::to_string(angInt);
         res.result = cylinder.energyScoredCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.result_std = cylinder.energyScoredCenterCylinder().stdEnergyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result_std = cylinder.energyScoredCenterCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
         res.nEvents = cylinder.energyScoredCenterCylinder().numberOfEvents();
         std::cout << " Center: " << res.result << std::endl;
         print(res, false);
@@ -1067,7 +1067,7 @@ TG195Case5AbsorbedEnergy()
 
                 const auto ei_var = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& energyScored, auto ind) -> T {
                     if (ind == matIdx)
-                        return energyScored.varianceEnergyImparted();
+                        return energyScored.variance();
                     else
                         return T { 0 };
                 });

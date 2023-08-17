@@ -117,9 +117,9 @@ bool testTriangularMesh()
     const auto& dose = mesh.dose();
     const auto& doseBox = box.dose();
 
-    std::cout << "Mesh: " << dose.energyImparted() << ", [" << dose.stdEnergyImparted() << "]\n";
-    std::cout << "Box: " << doseBox.energyImparted() << ", [" << doseBox.stdEnergyImparted() << "]\n";
-    auto test = (dose.energyImparted() - doseBox.energyImparted()) / std::sqrt((dose.varianceEnergyImparted() + doseBox.varianceEnergyImparted()) / 2);
+    std::cout << "Mesh: " << dose.energyImparted() << ", [" << dose.standardDeviation() << "]\n";
+    std::cout << "Box: " << doseBox.energyImparted() << ", [" << doseBox.standardDeviation() << "]\n";
+    auto test = (dose.energyImparted() - doseBox.energyImparted()) / std::sqrt((dose.variance() + doseBox.variance()) / 2);
     std::cout << "t-test: " << test << "\n";
 
     dxmc::VisualizeWorld<T> viz(world);
@@ -185,7 +185,7 @@ bool testCylinder()
         cylinder.clearDose();
 
         std::cout << ang * angStep << ", " << res[ang].energyImparted() << ", " << res[ang].numberOfEvents();
-        std::cout << ", " << res[ang].stdEnergyImparted() << std::endl;
+        std::cout << ", " << res[ang].standardDeviation() << std::endl;
     }
 
     return true;
@@ -303,7 +303,7 @@ bool testDepth(bool print = false)
         if (print) {
             std::cout << pos << ", ";
             std::cout << d.energyImparted() << ", ";
-            std::cout << d.stdEnergyImparted() << ", ";
+            std::cout << d.standardDeviation() << ", ";
             std::cout << d.numberOfEvents() << "\n";
         }
         success = success && d.energyImparted() / dose0 - std::exp(-(pos - pos0) * att) < 0.01;
