@@ -135,6 +135,11 @@ public:
         return exp;
     }
 
+    T calibrationFactor() const noexcept
+    {
+        return 1;
+    }
+
 private:
     T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };

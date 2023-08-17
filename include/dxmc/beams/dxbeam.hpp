@@ -118,6 +118,9 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
+    T DAPvalue() const { return m_measuredDAP; }
+    void setDAPvalue(T dap) { m_measuredDAP = std::abs(dap); }
+
     const Tube<T>& tube() const { return m_tube; }
     void setTube(const Tube<T>&& tube)
     {
@@ -171,7 +174,7 @@ public:
         return exp;
     }
 
-    T calibrationFactor(T measured_DAP) const
+    T calibrationFactor() const
     {
         const auto energies = m_tube.getEnergy();
         const auto weights = m_tube.getSpecter(energies, true);
@@ -186,7 +189,7 @@ public:
         });
 
         const auto kerma_total = kerma_per_history * numberOfParticles();
-        return measured_DAP / kerma_total;
+        return m_measuredDAP / kerma_total;
     }
 
 protected:
@@ -204,6 +207,7 @@ private:
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
     T m_weight = 1;
+    T m_measuredDAP = 1;
     Tube<T> m_tube;
     SpecterDistribution<T> m_specter;
 };

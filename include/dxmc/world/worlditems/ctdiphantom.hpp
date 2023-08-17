@@ -39,13 +39,13 @@ namespace dxmc {
 template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class CTDIPhantom final : public WorldItemBase<T> {
 public:
-    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& direction = { 0, 0, 1 }, T holeHeight = T { 10 })
+    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& direction = { 0, 0, 1 })
         : WorldItemBase<T>()
         , m_pmma(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
         , m_air(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         radius = std::abs(radius);
-        height = std::abs(height);
+        height = std::max(std::abs(height), holeHeight());
         m_cylinder.center = pos;
         m_cylinder.direction = direction;
         m_cylinder.radius = radius;
@@ -53,8 +53,6 @@ public:
 
         m_pmma_density = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
         m_air_density = NISTMaterials<T>::density("Air, Dry (near sea level)");
-
-        holeHeight = std::min(height, std::abs(holeHeight));
 
         std::vector<CTDIAirHole> holes;
         holes.reserve(5);
@@ -65,7 +63,7 @@ public:
             const auto y = positions[i + 1];
             CTDIAirHole hole;
             hole.cylinder.center = m_cylinder.center;
-            hole.cylinder.half_height = holeHeight / 2;
+            hole.cylinder.half_height = holeHeight() / 2;
             hole.cylinder.direction = m_cylinder.direction;
             hole.cylinder.radius = holeRadii();
             hole.index = ++index;
@@ -85,12 +83,6 @@ public:
     {
         return m_cylinder.center;
     }
-    void clearEnergyScored() override
-    {
-        for (auto& d : m_energyScore) {
-            d.clear();
-        }
-    }
 
     void setHoleMaterial(const std::string& nistName, T density)
     {
@@ -104,6 +96,38 @@ public:
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
         return m_energyScore[index];
+    }
+
+    void clearEnergyScored() override
+    {
+        for (auto& d : m_energyScore) {
+            d.clear();
+        }
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        const T holeVolume = holeHeight() * std::numbers::pi_v<T> * holeRadii() * holeRadii();
+
+        for (std::size_t i = 1; i < m_energyScore.size(); ++i) {
+            m_dose[i].addScoredEnergy(m_energyScore[i], holeVolume, m_air_density, calibration_factor);
+        }
+
+        const T totalVolume = m_cylinder.radius * m_cylinder.radius * 2 * m_cylinder.half_height * std::numbers::pi_v<T>;
+        const T pmmaVolume = totalVolume - 5 * holeVolume;
+        m_dose[0].addScoredEnergy(m_energyScore[0], pmmaVolume, m_pmma_density, calibration_factor);
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose[index];
+    }
+
+    void clearDoseScored() override
+    {
+        for (auto& d : m_dose) {
+            d.clear();
+        }
     }
 
     std::array<T, 6> AABB() const noexcept override
@@ -190,6 +214,15 @@ public:
         }
     }
 
+    static constexpr T holeRadii() noexcept
+    {
+        return T { 0.5 };
+    }
+    static constexpr T holeHeight() noexcept
+    {
+        return T { 10 };
+    }
+
 protected:
     struct CTDIAirHole {
         basicshape::cylinder::Cylinder<T> cylinder;
@@ -215,16 +248,13 @@ protected:
     {
         return T { 1 };
     }
-    static constexpr T holeRadii() noexcept
-    {
-        return T { 0.5 };
-    }
 
 private:
     basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_pmma_density = 0;
     T m_air_density = 0;
     std::array<EnergyScore<T>, 6> m_energyScore;
+    std::array<DoseScore<T>, 6> m_dose;
     StaticKDTree<3, T, CTDIAirHole> m_kdtree;
     Material<T, NMaterialShells> m_pmma;
     Material<T, NMaterialShells> m_air;

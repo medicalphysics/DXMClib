@@ -47,6 +47,7 @@ public:
 
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
         m_energyScored.resize(resolution);
+        m_dose.resize(resolution);
     }
 
     void setMaterial(const Material<T, NMaterialShells>& material)
@@ -70,18 +71,12 @@ public:
     {
         return m_material;
     }
+
     T density() const { return m_materialDensity; }
 
     void translate(const std::array<T, 3>& dist) override
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
-    }
-
-    void clearEnergyScored() override
-    {
-        for (auto& d : m_energyScored) {
-            d.clear();
-        }
     }
 
     std::array<T, 3> center() const override
@@ -163,12 +158,41 @@ public:
         return m_energyScored[index];
     }
 
+    void clearEnergyScored() override
+    {
+        for (auto& d : m_energyScored) {
+            d.clear();
+        }
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        const auto totalVolume = m_cylinder.volume();
+        const auto partVolume = totalVolume / m_dose.size();
+        for (std::size_t i = 0; i < m_dose.size(); ++i) {
+            m_dose[i].addScoredEnergy(m_energyScored[i], partVolume, m_materialDensity, calibration_factor);
+        }
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose[index];
+    }
+
+    void clearDoseScored() override
+    {
+        for (auto& d : m_dose) {
+            d.clear();
+        }
+    }
+
 protected:
 private:
     dxmc::basicshape::cylinder::Cylinder<T> m_cylinder;
     T m_materialDensity = 1;
     Material<T, NMaterialShells> m_material;
     std::vector<EnergyScore<T>> m_energyScored;
+    std::vector<DoseScore<T>> m_dose;
 };
 
 }

@@ -68,7 +68,7 @@ public:
     {
         return m_center;
     }
-    std::array<T, 6> AABB() const
+    std::array<T, 6> AABB() const override
     {
         return m_aabb;
     }
@@ -118,6 +118,22 @@ public:
     {
         m_energyScored.clear();
         std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        // not defined for fleunce counter
+        return;
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dummyDose;
+    }
+
+    void clearDoseScored() override
+    {
+        return;
     }
 
     void transport(Particle<T>& particle, RandomState& state) override
@@ -199,5 +215,6 @@ private:
     std::array<T, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
     EnergyScore<T> m_energyScored;
+    DoseScore<T> m_dummyDose;
 };
 }

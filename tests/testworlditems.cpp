@@ -16,71 +16,65 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2023 Erlend Andersen
 */
 
+#include "dxmc/beams/pencilbeam.hpp"
+#include "dxmc/transport.hpp"
+#include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
+#include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/fluencescore.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh.hpp"
+#include "dxmc/world/worlditems/worldbox.hpp"
+#include "dxmc/world/worlditems/worldboxgrid.hpp"
+#include "dxmc/world/worlditems/worldcylinder.hpp"
+#include "dxmc/world/worlditems/worldsphere.hpp"
 
-#include <chrono>
-#include <fstream>
-#include <iostream>
-
-template <typename T>
-bool testAAVoxelGrid()
+template <dxmc::Floating T, typename U>
+    requires std::is_base_of<dxmc::WorldItemBase<T>, U>::value
+bool testItem()
 {
-    dxmc::AAVoxelGrid<T, 5, 2> item;
+    dxmc::World<T, U> world;
+    world.reserveNumberOfItems(1);
+    auto& item = world.template addItem<U>({});
+    world.build();
 
-    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
-    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
-    auto lead = dxmc::Material<T, 5>::byZ(82).value();
-    const auto lead_dens = dxmc::AtomHandler<T>::Atom(82).standardDensity;
+    dxmc::PencilBeam<T> beam;
+    beam.setNumberOfExposures(1);
+    beam.setNumberOfParticlesPerExposure(8);
 
-    const std::array<std::size_t, 3> dim = { 13, 13, 13 };
-    const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { 2.0f, 2.0f, 2.0f };
+    dxmc::Transport transport;
+    transport.setNumberOfThreads(1);
 
-    // material arrays
-    std::vector<T> dens(size, air_dens);
-    std::vector<std::uint8_t> materialIdx(size, 0);
-    std::vector<dxmc::Material<T, 5>> materials;
-    materials.push_back(air);
-    materials.push_back(pmma);
-    materials.push_back(lead);
+    transport(world, beam);
 
-    materialIdx[1] = 1;
-    dens[1] = pmma_dens;
-    materialIdx[2] = 2;
-    dens[2] = lead_dens;
-
-    item.setData(dim, dens, materialIdx, materials);
-    item.setSpacing(spacing);
-
-    bool success = true;
-
-    T energy = dxmc::MIN_ENERGY<T>() * 2;
-    while (energy < dxmc::MAX_ENERGY<T>()) {
-        const auto att = lead.attenuationValues(energy).sum() * lead_dens;
-        const auto attmax = item.maxAttenuationValue(energy);
-        success = success && attmax >= att;
-        // std::cout << energy << ", " << att << ", " << attmax << std::endl;
-        energy += T { 2 };
-    }
-
-    return success;
+    return true;
 }
 
 template <dxmc::Floating T>
-bool testCTDIPhantom() {
-    dxmc::CTDIPhantom<T, 5, 2> phantom;
+bool basicTestAllItems()
+{
+    auto success = true;
+    success = success && testItem<T, dxmc::AAVoxelGrid<T>>();
+    success = success && testItem<T, dxmc::CTDIPhantom<T>>();
+    success = success && testItem<T, dxmc::DepthDose<T>>();
+    success = success && testItem<T, dxmc::FluenceScore<T>>();
+    success = success && testItem<T, dxmc::TetrahedalMesh<T>>();
+    success = success && testItem<T, dxmc::TriangulatedMesh<T>>();
+    success = success && testItem<T, dxmc::WorldBox<T>>();
+    success = success && testItem<T, dxmc::WorldBoxGrid<T>>();
+    success = success && testItem<T, dxmc::WorldCylinder<T>>();
+    success = success && testItem<T, dxmc::WorldSphere<T>>();
 
+    return success;
 }
 
 int main(int argc, char* argv[])
 {
     auto success = true;
 
-    success = success && testAAVoxelGrid<float>();
-    success = success && testAAVoxelGrid<double>();
+    success = success && basicTestAllItems<float>();
+    success = success && basicTestAllItems<double>();
 
     if (success)
         return EXIT_SUCCESS;

@@ -84,11 +84,6 @@ public:
         }
     }
 
-    void clearEnergyScored() override
-    {
-        m_energyScored.clear();
-    }
-
     std::array<T, 3> center() const noexcept override
     {
         std::array<T, 3> c {
@@ -150,12 +145,37 @@ public:
         return m_energyScored;
     }
 
+    void clearEnergyScored() override
+    {
+        m_energyScored.clear();
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        const auto [l, h] = vectormath::splice(m_aabb);
+        const auto sides = vectormath::subtract(h, l);
+        const auto volume = std::reduce(sides.cbegin(), sides.cend(), T { 1 }, std::multiplies<>());
+
+        m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose;
+    }
+
+    void clearDoseScored() override
+    {
+        m_dose.clear();
+    }
+
 protected:
 private:
     std::array<T, 6> m_aabb;
     Material<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
     EnergyScore<T> m_energyScored;
+    DoseScore<T> m_dose;
 };
 
 }

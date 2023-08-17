@@ -27,28 +27,31 @@ namespace dxmc {
 
 template <typename B, typename T>
 concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomState state, std::uint64_t index) {
-                       Floating<T>;
+    Floating<T>;
 
-                       {
-                           beam.exposure(index).sampleParticle(state)
-                           } -> std::same_as<Particle<T>>;
+    {
+        beam.exposure(index).sampleParticle(state)
+    } -> std::same_as<Particle<T>>;
 
-                       {
-                           beam.exposure(index).numberOfParticles()
-                           } -> std::same_as<std::uint64_t>;
+    {
+        beam.exposure(index).numberOfParticles()
+    } -> std::same_as<std::uint64_t>;
 
-                       {
-                           beam.numberOfExposures()
-                           } -> std::same_as<std::uint64_t>;
+    {
+        beam.numberOfExposures()
+    } -> std::same_as<std::uint64_t>;
 
-                       {
-                           beam.numberOfParticles()
-                           } -> std::same_as<std::uint64_t>;
-                       {
-                           beam.collimationAngles()
-                           } -> std::convertible_to<std::array<T, 4>>;
-                       {
-                           beam.directionCosines()
-                           } -> std::convertible_to<std::array<std::array<T, 3>, 2>>;
-                   };
+    {
+        beam.numberOfParticles()
+    } -> std::same_as<std::uint64_t>;
+    {
+        beam.collimationAngles()
+    } -> std::convertible_to<std::array<T, 4>>;
+    {
+        beam.directionCosines()
+    } -> std::convertible_to<std::array<std::array<T, 3>, 2>>;
+    {
+        beam.calibrationFactor()
+    } -> std::convertible_to<T>;
+};
 }

@@ -143,6 +143,22 @@ public:
         m_energyScored.clear();
     }
 
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        const auto volume = (4 * std::numbers::pi_v<T> * m_radius * m_radius * m_radius) / 3;
+        m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose;
+    }
+
+    void clearDoseScored() override
+    {
+        m_dose.clear();
+    }
+
 protected:
 private:
     T m_radius = 0;
@@ -150,6 +166,7 @@ private:
     Material<T, NMaterialShells> m_material;
     T m_materialDensity = 1;
     EnergyScore<T> m_energyScored;
+    DoseScore<T> m_dose;
 };
 
 }

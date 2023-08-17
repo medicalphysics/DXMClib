@@ -145,6 +145,11 @@ public:
         return exp;
     }
 
+    T calibrationFactor() const noexcept
+    {
+        return 1;
+    }
+
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };

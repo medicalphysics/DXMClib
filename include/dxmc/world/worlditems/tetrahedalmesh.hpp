@@ -44,7 +44,7 @@ public:
         : WorldItemBase<T>()
     {
         m_collections.reserve(1);
-        m_collections.emplace_back(T { 0 });
+        m_collections.push_back({ T { 0 }, T { 1 } });
     }
 
     TetrahedalMesh(std::vector<Tetrahedron<T>>&& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
@@ -81,6 +81,7 @@ public:
             m_collectionNames = collectionNames;
         else
             m_collectionNames.resize(m_collections.size());
+        m_dose.resize(m_collections.size());
         m_kdtree.setData(std::move(tets));
         m_aabb = m_kdtree.AABB();
         m_aabb = expandAABB(m_aabb);
@@ -138,15 +139,32 @@ public:
 
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
-        if (index < m_collections.size())
-            return m_collections[index].energyScored;
-        return m_collections[0].energyScored;
+        return m_collections.at(index).energyScored;
     }
 
     void clearEnergyScored() override
     {
         for (auto& c : m_collections)
             c.energyScored.clear();
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        for (std::size_t i = 0; i < m_collections.size(); ++i) {
+            const auto& c = m_collections[i];
+            m_dose[i].addScoredEnergy(c.energyScored, c.volume, c.density, calibration_factor);
+        }
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose.at(index);
+    }
+
+    void clearDoseScored() override
+    {
+        for (auto& d : m_dose)
+            d.clear();
     }
 
     void transport(Particle<T>& p, RandomState& state) override
@@ -227,6 +245,7 @@ private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     TetrahedalMeshKDTree<T> m_kdtree;
     std::vector<Collection> m_collections;
+    std::vector<DoseScore<T>> m_dose;
     std::vector<Material<T, NMaterialShells>> m_materials;
     std::vector<std::string> m_collectionNames;
 };

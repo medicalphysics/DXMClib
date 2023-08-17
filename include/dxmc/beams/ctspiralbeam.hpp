@@ -39,12 +39,13 @@ public:
         , m_dirCosines(dircosines)
         , m_NParticles(N)
         , m_weight(weight)
+        , m_specter(specter)
         , m_collimationAngles(collimationAngles)
-        , m_specter(specter) {
-            m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1])
-        }
+    {
+        m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
+    }
 
-        std::uint64_t numberOfParticles() const
+    std::uint64_t numberOfParticles() const
     {
         return m_NParticles;
     }
@@ -77,7 +78,7 @@ private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 0, 1 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
+    std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
     T m_weight = 1;
     SpecterDistribution<T> m_specter;
@@ -221,6 +222,8 @@ public:
 
     T calibrationFactor() const
     {
+        // todo
+        return 1;
     }
 
 protected:

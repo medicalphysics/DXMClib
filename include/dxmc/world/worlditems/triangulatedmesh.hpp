@@ -208,6 +208,22 @@ public:
         m_energyScored.clear();
     }
 
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        // not defined for fleunce counter
+        m_dose.addScoredEnergy(m_energyScored, m_volume, m_materialDensity, calibration_factor);
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose;
+    }
+
+    void clearDoseScored() override
+    {
+        m_dose.clear();
+    }
+
     std::array<T, 6> AABB() const override
     {
         return m_aabb;
@@ -252,6 +268,7 @@ private:
     T m_volume = 0; // cm3
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     EnergyScore<T> m_energyScored;
+    DoseScore<T> m_dose;
     MeshKDTree<T, Triangle<T>> m_kdtree;
     Material<T, NMaterialShells> m_material;
 };

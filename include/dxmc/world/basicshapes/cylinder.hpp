@@ -39,12 +39,16 @@ namespace basicshape {
             T radius = 1;
             T half_height = 1;
             Cylinder() = default;
-            Cylinder(std::array<T, 3> center_arr, std::array<T, 3> direction_arr, T radii, T half_height_wall)
+            Cylinder(const std::array<T, 3>& center_arr, const std::array<T, 3>& direction_arr, T radii, T half_height_wall)
                 : radius(radii)
                 , half_height(half_height_wall)
                 , center(center_arr)
-                , direction(direction_arr)
             {
+                direction = vectormath::normalized(direction_arr);
+            }
+            T volume() const
+            {
+                return std::numbers::pi_v<T> * radius * radius * half_height * 2;
             }
         };
 

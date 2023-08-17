@@ -49,6 +49,7 @@ public:
         }
         m_dim = dim;
         m_data.resize(size);
+        m_dose.reserve(size);
         EnergyScore<T> dummy_dose;
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
             return { .energyScored = dummy_dose, .density = d, .materialIndex = mIdx };
@@ -60,6 +61,12 @@ public:
         updateAABB();
         return true;
     }
+
+    std::size_t size() const
+    {
+        return m_dim[0] * m_dim[1] * m_dim[2];
+    }
+
     void setSpacing(const std::array<T, 3>& spacing)
     {
         for (std::size_t i = 0; i < 3; ++i) {
@@ -194,9 +201,31 @@ public:
         return m_data.at(flatIndex).energyScored;
     }
 
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) final
+    {
+        const auto size = m_dim[0] * m_dim[1] * m_dim[2];
+
+        const auto voxel_volume = m_spacing[0] * m_spacing[1] * m_spacing[2];
+
+        for (std::size_t i = 0; i < size; ++i) {
+            const auto& ei = m_data[i].energyScored;
+            m_dose[i].addScoredEnergy(ei, voxel_volume, m_data[i].density, calibration_factor);
+        }
+    }
+
+    const DoseScore<T>& doseScored(std::size_t flatIndex = 0) const final
+    {
+        return m_dose.at(flatIndex);
+    }
+
     void clearEnergyScored() final
     {
         std::for_each(std::execution::par_unseq, m_data.begin(), m_data.end(), [](auto& d) { d.energyScored.clear(); });
+    }
+
+    void clearDoseScored() final
+    {
+        std::for_each(std::execution::par_unseq, m_dose.begin(), m_dose.end(), [](auto& d) { d.clear(); });
     }
 
     void transport(Particle<T>& p, RandomState& state) final
@@ -505,6 +534,7 @@ private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::pair<T, T>> m_woodcockStepTableLin;
     std::vector<DataElement> m_data;
+    std::vector<DoseScore<T>> m_dose;
     std::vector<Material<T, NMaterialShells>> m_materials;
 };
 }

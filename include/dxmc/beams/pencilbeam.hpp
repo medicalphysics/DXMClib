@@ -133,6 +133,11 @@ public:
         return exp;
     }
 
+    T calibrationFactor() const noexcept
+    {
+        return 1;
+    }
+
 private:
     T m_energy = 60;
     T m_weight = 1;

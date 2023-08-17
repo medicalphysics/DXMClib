@@ -68,6 +68,7 @@ public:
         }
         const auto ndim = m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
         m_energyScored.resize(ndim);
+        m_dose.resize(ndim);
     }
     std::size_t totalNumberOfVoxels() const { return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2]; }
 
@@ -104,13 +105,6 @@ public:
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
             m_aabb[i + 3] += dist[i];
-        }
-    }
-
-    void clearEnergyScored() override
-    {
-        for (auto& d : m_energyScored) {
-            d.clear();
         }
     }
 
@@ -176,13 +170,41 @@ public:
         return m_energyScored.at(index);
     }
 
+    void clearEnergyScored() override
+    {
+        for (auto& d : m_energyScored) {
+            d.clear();
+        }
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    {
+        const auto volume = m_voxelSize[0] * m_voxelSize[1] * m_voxelSize[2];
+        for (std::size_t i = 0; i < m_energyScored.size(); ++i) {
+            m_dose[i].addScoredEnergy(m_energyScored[i], volume, m_materialDensity, calibration_factor);
+        }
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    {
+        return m_dose.at(index);
+    }
+
+    void clearDoseScored() override
+    {
+        for (auto& d : m_dose) {
+            d.clear();
+        }
+    }
+
 protected:
 private:
     std::array<T, 6> m_aabb;
-    Material<T, NMaterialShells> m_material;
-    std::vector<EnergyScore<T>> m_energyScored;
     T m_materialDensity = 1;
     std::array<T, 3> m_voxelSize = { 1, 1, 1 };
     std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };
+    Material<T, NMaterialShells> m_material;
+    std::vector<EnergyScore<T>> m_energyScored;
+    std::vector<DoseScore<T>> m_dose;
 };
 }

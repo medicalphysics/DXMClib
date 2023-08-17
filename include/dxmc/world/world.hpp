@@ -108,11 +108,26 @@ public:
         return ptrs;
     }
 
-    void clearDose()
+    void clearEnergyScored()
     {
         m_energyScored.clear();
         for (auto& v : m_items) {
-            std::visit([](auto&& arg) { arg.clearDose(); }, v);
+            std::visit([](auto&& arg) { arg.clearEnergyScored(); }, v);
+        }
+    }
+
+    void clearDoseScored()
+    {
+        for (auto& v : m_items) {
+            std::visit([](auto&& arg) { arg.clearDoseScored(); }, v);
+        }
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1)
+    {
+
+        for (auto& v : m_items) {
+            std::visit([calibration_factor](auto&& arg) { arg.addEnergyScoredToDoseScore(calibration_factor); }, v);
         }
     }
 

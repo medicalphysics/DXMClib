@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/world/dosescore.hpp"
 #include "dxmc/world/energyscore.hpp"
 #include "dxmc/world/visualizationintersectionresult.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
@@ -40,6 +41,9 @@ public:
     virtual VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const = 0;
     virtual const EnergyScore<T>& energyScored(std::size_t index = 0) const = 0;
     virtual void clearEnergyScored() = 0;
+    virtual void addEnergyScoredToDoseScore(T calibration_factor = 1) = 0;
+    virtual const DoseScore<T>& doseScored(std::size_t index = 0) const = 0;
+    virtual void clearDoseScored() = 0;
     virtual void transport(Particle<T>& p, RandomState& state) = 0;
 };
 }

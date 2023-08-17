@@ -115,9 +115,9 @@ public:
     void setNumberOfThreads(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
 
     template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    auto operator()(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
+    auto operator()(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
     {
-        return run(world, beam, progress);
+        return run(world, beam, progress, useBeamCalibration);
     }
 
 protected:
@@ -140,8 +140,11 @@ protected:
     }
 
     template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    void run(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr) const
+    void run(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
     {
+        // clearing scored energy before run
+        world.clearEnergyScored();
+
         const auto nExposures = beam.numberOfExposures();
         std::vector<std::jthread> threads;
         threads.reserve(m_nThreads - 1);
@@ -159,6 +162,12 @@ protected:
 
         for (auto& thread : threads) {
             thread.join();
+        }
+        if (useBeamCalibration) {
+            const auto beamCalibrationFactor = beam.calibrationFactor();
+            world.addEnergyScoredToDoseScore(beamCalibrationFactor);
+        } else {
+            world.addEnergyScoredToDoseScore();
         }
     }
 

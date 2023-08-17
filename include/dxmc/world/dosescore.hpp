@@ -27,13 +27,7 @@ class DoseScore {
 public:
     DoseScore() { }
 
-    void addScoredEnergy(const EnergyScored<T>& energy, T volume, T density, T calibrationfactor = 1)
-    {
-        const auto mass = volume * density; // grams
-        addScoredEnergy(energy, mass, calibrationfactor);
-    }
-
-    void addScoredEnergy(const EnergyScored<T>& energy, T mass, T calibrationfactor = 1)
+    void addScoredEnergy(const EnergyScore<T>& energy, T volume, T density, T calibrationfactor = 1)
     {
         const auto mass = volume * density; // grams
         const auto factor = calibrationfactor / mass;
@@ -71,7 +65,7 @@ public:
     {
         m_nEvents = 0;
         m_dose = 0;
-        m_doseSquared = 0;
+        m_doseVariance = 0;
     }
 
 private:
