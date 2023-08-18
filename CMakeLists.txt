@@ -68,6 +68,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicmonoenergybeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctspiralbeam.hpp" 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctdibeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/world.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/dosescore.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/energyscore.hpp" 

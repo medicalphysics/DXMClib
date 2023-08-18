@@ -123,6 +123,16 @@ public:
         return m_dose[index];
     }
 
+    const T centerDoseScored() const
+    {
+        return m_dose[1].dose();
+    }
+
+    const T pheriferyDoseScored() const
+    {
+        return (m_dose[2].dose() + m_dose[3].dose() + m_dose[4].dose() + m_dose[5].dose()) / 4;
+    }
+
     void clearDoseScored() override
     {
         for (auto& d : m_dose) {

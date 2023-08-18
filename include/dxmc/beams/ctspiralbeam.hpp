@@ -18,12 +18,15 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/beams/cdtibeam.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/transport.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/worlditems/ctdiphantom.hpp"
 
 #include <array>
 #include <cmath>
@@ -34,7 +37,7 @@ template <Floating T>
 class CTSpiralBeamExposure {
 public:
     CTSpiralBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T> specter)
+        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>& specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
@@ -52,7 +55,6 @@ public:
 
     Particle<T> sampleParticle(RandomState& state) const noexcept
     {
-
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
@@ -139,6 +141,11 @@ public:
         m_pitch = std::max(std::abs(p), T { 0.1 });
     }
 
+    void setCTDIvol(T ctdi) { m_CTDIvol = ctdi; }
+    T CTDIvol() const { return m_CTDIvol; }
+    void setCTDIdiameter(T d) { m_CTDIdiameter = d; }
+    T CTDIdiameter() const { return m_CTDIdiameter; }
+
     T startAngle() const { return m_startAngle; }
     void setStartAngle(T angle) { m_startAngle = angle; }
     T startAngleDeg() const { return m_startAngle * RAD_TO_DEG<T>(); }
@@ -191,6 +198,7 @@ public:
 
     CTSpiralBeamExposure<T> exposure(std::size_t i) const noexcept
     {
+
         constexpr auto pi2 = PI_VAL<T>() * 2;
         const T angle = i * m_stepAngle;
         const auto dz = m_pitch * m_collimation * angle / pi2;
@@ -222,6 +230,20 @@ public:
 
     T calibrationFactor() const
     {
+        // generating scoring world
+        World<T, CTDIPhantom<T>> world;
+        auto& ctdi = world.addItem<CTDIPhantom<T>>({ m_CTDIdiameter });
+        world.build();
+
+        // generating CTDIbeam
+        const auto angx = std::atan(m_FOV / m_SDD);
+        const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
+        const std::array<T, 2> collimationAngles = { angx, angy };
+        CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter);
+
+        Transport transport;
+        transport(world, beam);
+
         // todo
         return 1;
     }
@@ -244,6 +266,8 @@ private:
     T m_startAngle = 0;
     T m_stepAngle = T { 0.018 }; // about a degree;
     T m_weight = 1;
+    T m_CTDIvol = 1;
+    T m_CTDIdiameter = 32;
     std::uint64_t m_particlesPerExposure = 100;
     Tube<T> m_tube;
     SpecterDistribution<T> m_specter;
