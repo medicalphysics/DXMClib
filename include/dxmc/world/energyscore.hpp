@@ -59,6 +59,7 @@ public:
             ++aref;
         }
     }
+
     T energyImparted() const
     {
         return m_energyImparted + m_energyImparted_rest;
