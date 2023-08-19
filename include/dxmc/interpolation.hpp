@@ -250,7 +250,7 @@ std::vector<T> trapz(const std::vector<T>& f, const std::vector<T>& x)
 }
 
 template <Floating T>
-constexpr T gaussIntegration(const T start, const T stop, std::array<T, 20> gaussPoints)
+constexpr T gaussIntegration(const T start, const T stop, std::array<T, 20>& gaussPoints)
 {
     constexpr std::array<T, 20> weights = {
         1.5275338713072585E-01,
