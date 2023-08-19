@@ -20,6 +20,7 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <array>
 
@@ -94,7 +95,8 @@ public:
 
     std::uint64_t numberOfExposures() const
     {
-        return static_cast<std::uint64_t>(std::ceil(PI_VAL<T>() * 2 / m_angleStep));
+        constexpr auto pi2 = PI_VAL<T>() * 2;
+        return static_cast<std::uint64_t>(pi2 / m_angleStep);
     }
 
     std::uint64_t numberOfParticles() const { return numberOfExposures() * m_particlesPerExposure; }

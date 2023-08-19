@@ -103,7 +103,7 @@ public:
         const auto direction = vectormath::subtract(m_stop, m_start);
         const auto dz = m_pitch * m_collimation;
         const auto total_rot_angle = vectormath::lenght(direction) * (PI_VAL<T>() * 2) / dz;
-        auto N_angles = static_cast<std::uint64_t>(std::ceil(total_rot_angle / m_stepAngle));
+        auto N_angles = static_cast<std::uint64_t>(total_rot_angle / m_stepAngle);
         return N_angles;
     }
 
@@ -127,7 +127,7 @@ public:
     }
 
     T sourceDetectorDistance() const { return m_SDD; }
-    T setSourceDetectorDistance(T SDD_cm)
+    void setSourceDetectorDistance(T SDD_cm)
     {
         m_SDD = std::max(std::abs(SDD_cm), T { 1 });
     }
@@ -157,7 +157,7 @@ public:
     T stepAngle() const { return m_stepAngle; }
     void setStepAngle(T angle)
     {
-        m_stepAngle = std::max(std::abs(angle), DEG_TO_RAD<T>() / 10;)
+        m_stepAngle = std::max(std::abs(angle), DEG_TO_RAD<T>() / 10);
     }
     T stepAngleDeg() const { return m_stepAngle * RAD_TO_DEG<T>(); }
     void setStepAngleDeg(T angle) { setStepAngle(angle * DEG_TO_RAD<T>()); }
@@ -185,10 +185,11 @@ public:
     }
     void addTubeFiltrationMaterial(std::size_t Z, T mm)
     {
-        m_tube.addFiltrationMaterial(Z, mm);
-        tubeChanged();
+        auto success = m_tube.addFiltrationMaterial(Z, mm);
+        if (success)
+            tubeChanged();
     }
-    void clearTubeFiltrationMaterials(std::size_t Z, T mm)
+    void clearTubeFiltrationMaterials()
     {
         m_tube.clearFiltrationMaterials();
         tubeChanged();
@@ -201,7 +202,6 @@ public:
 
     CTSpiralBeamExposure<T> exposure(std::size_t i) const noexcept
     {
-
         constexpr auto pi2 = PI_VAL<T>() * 2;
         const T angle = i * m_stepAngle;
         const auto dz = m_pitch * m_collimation * angle / pi2;
@@ -235,7 +235,8 @@ public:
     {
         // generating scoring world
         World<T, CTDIPhantom<T>> world;
-        auto& ctdi = world.template addItem<CTDIPhantom<T>>({ m_CTDIdiameter });
+        world.reserveNumberOfItems(1);
+        const auto& ctdi = world.template addItem<CTDIPhantom<T>>({ m_CTDIdiameter });
         world.build();
 
         // generating CTDIbeam
@@ -245,12 +246,16 @@ public:
         CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter);
 
         Transport transport;
-        transport(world, beam);
+        T uncert = 1;
+        do {
+            transport(world, beam);
+            uncert = ctdi.doseScored(1).relativeUncertainty();
+        } while (uncert > T { 0.1 });
 
         const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
 
         const T ctdiw_beam = m_CTDIvol * m_pitch;
-
+        auto test = ctdi.doseScored(1).relativeUncertainty();
         return ctdiw_beam / ctdiw_calc;
     }
 

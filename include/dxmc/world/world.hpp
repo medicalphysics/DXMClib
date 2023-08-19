@@ -125,7 +125,6 @@ public:
 
     void addEnergyScoredToDoseScore(T calibration_factor = 1)
     {
-
         for (auto& v : m_items) {
             std::visit([calibration_factor](auto&& arg) { arg.addEnergyScoredToDoseScore(calibration_factor); }, v);
         }
