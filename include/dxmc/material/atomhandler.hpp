@@ -44,6 +44,12 @@ public:
         return instance.m_dummyElement;
     }
 
+    static bool atomExists(std::uint64_t Z)
+    {
+        auto& instance = Instance();
+        return instance.m_elements.contains(Z);
+    }
+
     static const std::map<std::uint64_t, AtomicElement<T>>& allAtoms()
     {
         const auto& instance = Instance();

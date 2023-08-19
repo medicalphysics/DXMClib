@@ -69,10 +69,14 @@ public:
         setAnodeAngle(angle * DEG_TO_RAD<T>());
     }
 
-    void addFiltrationMaterial(const std::size_t Z, const T mm)
+    bool addFiltrationMaterial(const std::size_t Z, const T mm)
     {
-        m_filtrationMaterials[Z] = std::abs(mm);
-        m_hasCachedHVL = false;
+        if (AtomHandler<T>::atomExists(Z)) {
+            m_filtrationMaterials[Z] = std::abs(mm);
+            m_hasCachedHVL = false;
+            return true;
+        }
+        return false;
     }
 
     const std::map<std::size_t, T>& filtrationMaterials() const { return m_filtrationMaterials; }
