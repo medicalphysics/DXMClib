@@ -93,6 +93,7 @@ public:
     void setNumberOfExposures(std::uint64_t n) { m_Nexposures = std::max(n, std::uint64_t { 1 }); }
 
     std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
+    std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
     const std::array<T, 3>& position() const { return m_pos; }
@@ -178,7 +179,7 @@ public:
     {
         const auto energies = m_tube.getEnergy();
         const auto weights = m_tube.getSpecter(energies, true);
-        auto air_cand = Material<T, 5, 0>::byNistName("Air, Dry (near sea level)");
+        auto air_cand = Material<T, 5>::byNistName("Air, Dry (near sea level)");
         if (!air_cand)
             return 0;
         const auto& air = air_cand.value();

@@ -18,7 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/beams/cdtibeam.hpp"
+#include "dxmc/beams/ctdibeam.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
@@ -37,7 +37,7 @@ template <Floating T>
 class CTSpiralBeamExposure {
 public:
     CTSpiralBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>& specter)
+        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
@@ -47,6 +47,8 @@ public:
     {
         m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
     }
+
+    CTSpiralBeamExposure() = delete;
 
     std::uint64_t numberOfParticles() const
     {
@@ -70,7 +72,7 @@ public:
         Particle<T> p = {
             .pos = m_pos,
             .dir = pdir,
-            .energy = m_specter.sampleValue(state),
+            .energy = m_specter->sampleValue(state),
             .weight = m_weight
         };
         return p;
@@ -83,7 +85,7 @@ private:
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
     T m_weight = 1;
-    SpecterDistribution<T> m_specter;
+    const SpecterDistribution<T>* m_specter = nullptr;
 };
 
 template <Floating T>
@@ -106,6 +108,7 @@ public:
     }
 
     std::uint64_t numberOfParticles() const { return numberOfExposures() * m_particlesPerExposure; }
+    std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
     const std::array<T, 3>& start() const { return m_start; }
@@ -224,7 +227,7 @@ public:
 
         std::array<T, 2> angles = { angx, angy };
 
-        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, m_weight, angles, m_specter);
+        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, m_weight, angles, &m_specter);
         return exp;
     }
 
@@ -232,7 +235,7 @@ public:
     {
         // generating scoring world
         World<T, CTDIPhantom<T>> world;
-        auto& ctdi = world.addItem<CTDIPhantom<T>>({ m_CTDIdiameter });
+        auto& ctdi = world.template addItem<CTDIPhantom<T>>({ m_CTDIdiameter });
         world.build();
 
         // generating CTDIbeam
@@ -244,8 +247,11 @@ public:
         Transport transport;
         transport(world, beam);
 
-        // todo
-        return 1;
+        const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
+
+        const T ctdiw_beam = m_CTDIvol * m_pitch;
+
+        return ctdiw_beam / ctdiw_calc;
     }
 
 protected:

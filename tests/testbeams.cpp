@@ -121,7 +121,7 @@ bool testCTSpiralSource()
     Beam beam;
     beam.setStartStop({ 0, 0, 0 }, { 0, 0, 1 });
     auto e = beam.exposure(0);
-
+    auto f = beam.calibrationFactor();
     return true;
 }
 

@@ -37,6 +37,7 @@ public:
         m_dirCosineX = vectormath::rotate(m_dirCosineX, m_dirCosineY, angle);
         const auto beamdir = vectormath::cross(m_dirCosineX, m_dirCosineY);
         m_pos = vectormath::scale(beamdir, -SDD / 2);
+        m_dir = vectormath::cross(m_dirCosineX, m_dirCosineY);
     }
 
     CTDIBeamExposure() = delete;
@@ -55,9 +56,9 @@ public:
         const auto siny = std::sin(angy);
         const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
         std::array pdir = {
-            m_dirCosines[0][0] * sinx + m_dirCosines[1][0] * siny + m_dir[0] * sinz,
-            m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + m_dir[1] * sinz,
-            m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + m_dir[2] * sinz
+            m_dirCosineX[0] * sinx + m_dirCosineY[0] * siny + m_dir[0] * sinz,
+            m_dirCosineX[1] * sinx + m_dirCosineY[1] * siny + m_dir[1] * sinz,
+            m_dirCosineX[2] * sinx + m_dirCosineY[2] * siny + m_dir[2] * sinz
         };
 
         Particle<T> p = {
@@ -72,6 +73,7 @@ public:
 private:
     std::uint64_t m_Nparticles = 1;
     std::array<T, 3> m_pos = { 0, 0, 0 };
+    std::array<T, 3> m_dir = { 0, 1, 0 };
     std::array<T, 3> m_dirCosineX = { 1, 0, 0 };
     std::array<T, 3> m_dirCosineY = { 0, 0, 1 };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
@@ -100,7 +102,7 @@ public:
     CTDIBeamExposure<T> exposure(std::size_t i) const noexcept
     {
         const auto angle = i * m_angleStep;
-        return CTDIBeamExposure<T>(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, m_specter)
+        return CTDIBeamExposure(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter);
     }
 
     T calibrationFactor() const
@@ -112,7 +114,7 @@ private:
     T m_angleStep = 0;
     T m_sdd = 1;
     std::array<T, 2> m_collimationAngles = { 0, 0 };
-    std::uint64_t particlesPerExposure = 1;
+    std::uint64_t m_particlesPerExposure = 1;
     SpecterDistribution<T> m_specter;
 };
 
