@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"

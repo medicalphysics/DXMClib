@@ -184,7 +184,7 @@ public:
             return 0;
         const auto& air = air_cand.value();
 
-        const auto kerma_per_history = std::transform_reduce(std::execution::par_unseq, energies.cbegin(), energies.cend(), weights.cbegin(), T { 0 }, std::plus<>, [&air](const auto e, const auto w) {
+        const auto kerma_per_history = std::transform_reduce(std::execution::par_unseq, energies.cbegin(), energies.cend(), weights.cbegin(), T { 0 }, std::plus<>(), [&](const auto e, const auto w) -> T {
             const auto uen = air.massEnergyTransferAttenuation(e);
             return w * e * uen;
         });

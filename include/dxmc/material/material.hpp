@@ -221,22 +221,22 @@ public:
 
     static T momentumTransfer(T energy, T angle)
     {
-        return momentumTransferMax(energy) * std::sin(angle * T { 0.5 }); // per Å
+        return momentumTransferMax(energy) * std::sin(angle * T { 0.5 }); // per ï¿½
     }
 
     static T momentumTransferCosAngle(T energy, T cosAngle)
     {
-        return momentumTransferMax(energy) * std::sqrt((1 - cosAngle) * T { 0.5 }); // per Å
+        return momentumTransferMax(energy) * std::sqrt((1 - cosAngle) * T { 0.5 }); // per ï¿½
     }
 
     static constexpr T momentumTransferMax(T energy)
     {
         static constexpr T hc_si = 1.239841193E-6; // ev*m
-        static constexpr T m2A = 1E10; // meters to Ångstrøm
+        static constexpr T m2A = 1E10; // meters to ï¿½ngstrï¿½m
         static constexpr T eV2keV = 1E-3; // eV to keV
-        static constexpr T hc = hc_si * m2A * eV2keV; // kev*Å
+        static constexpr T hc = hc_si * m2A * eV2keV; // kev*ï¿½
         static constexpr T hc_inv = T { 1 } / hc;
-        return energy * hc_inv; // per Å
+        return energy * hc_inv; // per ï¿½
     }
 
 protected:
@@ -351,7 +351,7 @@ protected:
 
     static CubicLSInterpolator<T> constructSplineInterpolator(const std::vector<std::vector<std::pair<T, T>>>& data, const std::vector<T>& weights, bool loglog = false, std::size_t nknots = 15)
     {
-        const auto Nvec = std::reduce(data.cbegin(), data.cend(), std::size_t { 0 }, [](const auto lh, const auto& rh) -> std::size_t { return rh.size() + lh; });
+        const auto Nvec = std::transform_reduce(data.cbegin(), data.cend(), std::size_t { 0 }, std::plus<>(), [](const auto& rh) -> std::size_t { return rh.size(); });
 
         std::vector<T> w(data.size());
         for (std::size_t i = 0; i < data.size(); ++i) {
@@ -501,7 +501,7 @@ protected:
         }
 
         auto weight = compositionByWeight;
-        const auto totalWeight = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto& acc, const auto& right) -> T { return acc + right.second; });
+        const auto totalWeight = std::transform_reduce(weight.cbegin(), weight.cend(), T { 0 }, std::plus<>(), [](const auto& right) -> T { return right.second; });
         std::for_each(weight.begin(), weight.end(), [=](auto& w) { w.second /= totalWeight; });
 
         std::array<CubicLSInterpolator<T>, 6> attenuation = {
@@ -513,7 +513,7 @@ protected:
             constructSplineInterpolator(weight, LUTType::incoherentenergy),
         };
         Material<T, N> m;
-        m.m_effectiveZ = std::reduce(weight.cbegin(), weight.cend(), T { 0 }, [](const auto z, const auto& pair) { return z + pair.first * pair.second; });
+        m.m_effectiveZ = std::transform_reduce(weight.cbegin(), weight.cend(), T { 0 }, std::plus<>(), [](const auto& pair) -> T { return pair.first * pair.second; });
 
         m.m_attenuationTable.clear();
         std::array<std::size_t, attenuation.size() + N> offset;
@@ -570,7 +570,7 @@ protected:
             return lh.bindingEnergy > rh.bindingEnergy;
         });
 
-        const auto sum_weight = std::reduce(shells.cbegin(), shells.cend(), T { 0 }, [](T r, const auto& s) { return s.weight + r; });
+        const auto sum_weight = std::transform_reduce(shells.cbegin(), shells.cend(), T { 0 }, std::plus<>(), [](const auto& s) { return s.weight; });
 
         const auto Nshells = std::min(shells.size(), N);
         material.m_numberOfShells = static_cast<std::uint8_t>(Nshells);
@@ -616,7 +616,7 @@ protected:
         }
 
         // normalize number og electrons fraction
-        const auto sumElFraction = std::reduce(material.m_shells.cbegin(), material.m_shells.cend(), T { 0 }, [](T r, const auto& s) { return r + s.numberOfElectronsFraction; });
+        const auto sumElFraction = std::transform_reduce(material.m_shells.cbegin(), material.m_shells.cend(), T { 0 }, std::plus<>(), [](const auto& s) { return s.numberOfElectronsFraction; });
         std::for_each(material.m_shells.begin(), material.m_shells.end(), [sumElFraction](auto& s) { s.numberOfElectronsFraction /= sumElFraction; });
     }
 

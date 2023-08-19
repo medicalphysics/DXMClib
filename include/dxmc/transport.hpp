@@ -26,7 +26,6 @@ Copyright 2023 Erlend Andersen
 #include <algorithm>
 #include <atomic>
 #include <chrono>
-#include <format>
 #include <functional>
 #include <string>
 #include <thread>
@@ -76,23 +75,27 @@ public:
     {
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_start);
 
-        const auto p = (m_nParticleCount * 100) / m_nParticles;
+        const auto p = std::to_string((m_nParticleCount * 100) / m_nParticles);
+
+        std::string message = "Time elapsed: " + human_time(elapsed) + "Estimated remaining time: ";
+
         if (m_nParticleCount > 0) {
             const auto remaining = (m_elapsed * (m_nParticles - m_nParticleCount)) / m_nParticleCount;
-            return std::format("Time elapsed: {0} Estimated remaining time: {1} [{2}%]", human_time(elapsed), human_time(remaining), p);
+            message += human_time(remaining) + " [" + p + "%]";
         } else {
-            return std::format("Time elapsed: {0} Estimated remaining time: NA [{1}%]", human_time(elapsed), p);
+            message += "NA [" + p + "%]";
         }
+        return message;
     }
 
     static std::string human_time(const std::chrono::milliseconds& time)
     {
         if (time > std::chrono::hours(3))
-            return std::format("{}", std::chrono::duration_cast<std::chrono::hours>(time));
+            return std::to_string(std::chrono::duration_cast<std::chrono::hours>(time).count());
         else if (time > std::chrono::minutes(3))
-            return std::format("{}", std::chrono::duration_cast<std::chrono::minutes>(time));
+            return std::to_string(std::chrono::duration_cast<std::chrono::minutes>(time).count());
         else
-            return std::format("{}", std::chrono::duration_cast<std::chrono::seconds>(time));
+            return std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time).count());
     }
 
 private:

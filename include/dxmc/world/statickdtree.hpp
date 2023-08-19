@@ -35,8 +35,6 @@ namespace dxmc {
 
 template <typename U, typename T>
 concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
-                               Floating<T>;
-
                                u.translate(vec);
                                {
                                    u.intersect(p)

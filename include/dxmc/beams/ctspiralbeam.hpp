@@ -255,7 +255,6 @@ public:
         const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
 
         const T ctdiw_beam = m_CTDIvol * m_pitch;
-        auto test = ctdi.doseScored(1).relativeUncertainty();
         return ctdiw_beam / ctdiw_calc;
     }
 

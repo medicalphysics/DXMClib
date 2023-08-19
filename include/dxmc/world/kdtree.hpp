@@ -41,7 +41,6 @@ namespace dxmc {
 
 template <Floating T>
 class KDTree {
-    friend class KDTree<T>;
 
 public:
     KDTree() {};
