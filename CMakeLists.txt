@@ -60,6 +60,8 @@ target_include_directories(material INTERFACE ${dxmclib_SOURCE_DIR}/include)
 set(HEADER_LIST         
     "${dxmclib_SOURCE_DIR}/include/dxmc/dxmcrandom.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interactions.hpp"    
+    "${dxmclib_SOURCE_DIR}/include/dxmc/transport.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/transportprogress.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/tube/tube.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/tube/betheHeitlerCrossSection.hpp"  

@@ -23,6 +23,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/transportprogress.hpp"
 #include "dxmc/vectormath.hpp"
 
 #include <array>
@@ -175,7 +176,7 @@ public:
         return exp;
     }
 
-    T calibrationFactor() const
+    T calibrationFactor(TransportProgress* progress=nullptr) const
     {
         const auto energies = m_tube.getEnergy();
         const auto weights = m_tube.getSpecter(energies, true);

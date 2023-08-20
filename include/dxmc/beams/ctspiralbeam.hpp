@@ -231,7 +231,7 @@ public:
         return exp;
     }
 
-    T calibrationFactor() const
+    T calibrationFactor(TransportProgress* progress = nullptr) const
     {
         // generating scoring world
         using Phantom = CTDIPhantom<T, 5, 1>;
@@ -247,7 +247,8 @@ public:
         CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter);
 
         Transport transport;
-        transport(world, beam);
+
+        transport(world, beam, progress);
 
         const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
 

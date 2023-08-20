@@ -73,7 +73,8 @@ bool testCTSpiralBeam()
     beam.setNumberOfParticlesPerExposure(1E6);
     beam.setStepAngleDeg(5);
     beam.setSourceDetectorDistance(115);
-    auto f = beam.calibrationFactor();
+    dxmc::TransportProgress progress;
+    auto f = beam.calibrationFactor(&progress);
 
     return true;
 }

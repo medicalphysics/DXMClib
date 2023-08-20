@@ -21,6 +21,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/transportprogress.hpp"
 #include "dxmc/vectormath.hpp"
 
 #include <array>
@@ -135,7 +136,7 @@ public:
         return exp;
     }
 
-    T calibrationFactor() const noexcept
+    T calibrationFactor(TransportProgress* progress = nullptr) const noexcept
     {
         return 1;
     }

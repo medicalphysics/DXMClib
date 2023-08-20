@@ -20,13 +20,14 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/transportprogress.hpp"
 
 #include <array>
 
 namespace dxmc {
 
 template <typename B, typename T>
-concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomState state, std::uint64_t index) {
+concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomState state, std::uint64_t index, TransportProgress* progress) {
                        {
                            beam.exposure(index).sampleParticle(state)
                            } -> std::same_as<Particle<T>>;
@@ -44,7 +45,7 @@ concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomS
                            } -> std::same_as<std::uint64_t>;
 
                        {
-                           beam.calibrationFactor()
+                           beam.calibrationFactor(progress)
                            } -> std::convertible_to<T>;
                    };
 }

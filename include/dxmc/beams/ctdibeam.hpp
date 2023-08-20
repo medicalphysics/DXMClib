@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/transportprogress.hpp"
 #include "dxmc/vectormath.hpp"
 
 #include <array>
@@ -108,7 +109,7 @@ public:
         return CTDIBeamExposure(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter);
     }
 
-    T calibrationFactor() const
+    T calibrationFactor(TransportProgress* progress=nullptr) const
     {
         return 1;
     }
