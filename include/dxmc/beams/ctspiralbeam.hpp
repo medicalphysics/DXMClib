@@ -234,9 +234,10 @@ public:
     T calibrationFactor() const
     {
         // generating scoring world
-        World<T, CTDIPhantom<T>> world;
+        using Phantom = CTDIPhantom<T, 5, 1>;
+        World<T, Phantom> world;
         world.reserveNumberOfItems(1);
-        const auto& ctdi = world.template addItem<CTDIPhantom<T>>({ m_CTDIdiameter });
+        const auto& ctdi = world.template addItem<Phantom>({ m_CTDIdiameter });
         world.build();
 
         // generating CTDIbeam
@@ -246,11 +247,7 @@ public:
         CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter);
 
         Transport transport;
-        T uncert = 1;
-        do {
-            transport(world, beam);
-            uncert = ctdi.doseScored(1).relativeUncertainty();
-        } while (uncert > T { 0.1 });
+        transport(world, beam);
 
         const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
 

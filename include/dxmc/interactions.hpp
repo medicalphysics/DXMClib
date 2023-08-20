@@ -103,7 +103,6 @@ namespace interactions {
         }
         const auto kc = k * e;
         const auto qc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosTheta);
-        const auto alpha = qc / k + (kc * kc - kc * k * cosTheta) / (k * qc * qc);
         // sample shell and pz
         const auto nia = [](const T pz, const T J0) -> T {
             constexpr auto d1 = T { 1 } / std::numbers::sqrt2_v<T>;
@@ -172,13 +171,18 @@ namespace interactions {
         const auto eb1 = 1 - t * e * e;
         const auto eb2 = 1 - t * e * cosTheta;
         const auto sign = pz > 0 ? 1 : -1;
-        const auto eb = e / eb1 * (eb2 + sign * std::sqrt(eb2 * eb2 - eb1 * (1 - t)));
+
+        const auto sqrt_factor = std::max(eb2 * eb2 - eb1 * (1 - t), T { 0 }); // may have small negative facors, fix
+
+        const auto eb = e / eb1 * (eb2 + sign * std::sqrt(sqrt_factor));
+
         const auto E = particle.energy;
         particle.energy *= eb;
         const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
         const auto theta = std::acos(cosTheta);
         particle.dir = vectormath::peturb(particle.dir, theta, phi);
-        return (E - particle.energy) * particle.weight;
+        auto Ei = (E - particle.energy) * particle.weight;
+        return Ei;
     }
 
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
@@ -252,7 +256,7 @@ namespace interactions {
             const auto& s = material.shell(shell);
             if (s.energyOfPhotonsPerInitVacancy > MIN_ENERGY<T>()) {
                 particle.energy = s.energyOfPhotonsPerInitVacancy;
-                E -= particle.energy * particle.weight;                
+                E -= particle.energy * particle.weight;
                 const auto theta = state.randomUniform(PI_VAL<T>());
                 const auto phi = state.randomUniform(PI_VAL<T>() + PI_VAL<T>());
                 particle.dir = vectormath::peturb(particle.dir, theta, phi);
@@ -310,6 +314,7 @@ namespace interactions {
                 }
             }
         }
+
         return res;
     }
 
