@@ -216,6 +216,11 @@ public:
         return i;
     }
 
+    std::vector<DoseScore<T>>& getDoseScores() const
+    {
+        return m_dose;
+    }
+
     const EnergyScore<T>& energyScored(std::size_t flatIndex = 0) const final
     {
         return m_data.at(flatIndex).energyScored;

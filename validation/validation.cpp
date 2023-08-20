@@ -307,12 +307,12 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case2AbsorbedEnergy(bool tomo = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case2AbsorbedEnergy(bool tomo = false)
 {
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
+    constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
+    constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr std::size_t NShells = 5;
     using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
@@ -328,8 +328,8 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
     const T box_height = 20;
     const T box_zbegin = 155;
     const std::array<T, 6> box_aabb = { -box_halfside, -box_halfside, box_zbegin, box_halfside, box_halfside, box_zbegin + box_height };
-    // Box box(box_aabb);
-    auto& box = world.template addItem<Box>();
+    world.reserveNumberOfItems(1);
+    auto& box = world.template addItem<Box>({ box_aabb });
     box.setVoxelDimensions({ 78, 78, 40 });
     box.setMaterial(mat);
     box.setMaterialDensity(mat_dens);
@@ -488,8 +488,8 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case3AbsorbedEnergy(bool tomo = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case3AbsorbedEnergy(bool tomo = false)
 {
     ResultKeys<T> res;
     res.rCase = "Case 3";
@@ -693,7 +693,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     ev_history_var.fill(0);
     std::array<std::uint64_t, 4> ev_events = { 0, 0, 0, 0 };
 
-    for (const auto& [z, energyScored] : cylinder.depthDose()) {
+    for (const auto& [z, energyScored] : cylinder.depthEnergyScored()) {
         for (std::size_t i = 0; i < voi_locations.size(); ++i) {
             const T zmin = voi_locations[i] - T { 0.5 };
             const T zmax = voi_locations[i] + T { 0.5 };
@@ -759,8 +759,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case42AbsorbedEnergy(bool large_collimation = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
@@ -815,33 +815,23 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
         beam.setPosition(p_ang);
         beam.setDirectionCosines(x, co_y);
 
-        std::uint64_t teller = 0;
-        T uncert = 1;
-        do {
-            auto time_elapsed = runDispatcher(transport, world, beam);
-            const T d1 = cylinder.energyScoredPeriferyCylinder().relativeUncertainty();
-            const T d2 = cylinder.energyScoredCenterCylinder().relativeUncertainty();
-            uncert = std::max(d1, d2);
-            teller++;
-        } while (uncert > T { 0.01 } && !SAMPLE_RUN);
+        runDispatcher(transport, world, beam);
 
         std::cout << "Angle " << angInt;
         res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
         res.volume = std::to_string(angInt);
-        res.result = cylinder.energyScoredPeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.result_std = cylinder.energyScoredPeriferyCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result = cylinder.energyScoredPeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES) / 1000);
+        res.result_std = cylinder.energyScoredPeriferyCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES) / 1000);
         res.nEvents = cylinder.energyScoredPeriferyCylinder().numberOfEvents();
         std::cout << " Pherifery: " << res.result;
         print(res, false);
         res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
         res.volume = std::to_string(angInt);
-        res.result = cylinder.energyScoredCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
-        res.result_std = cylinder.energyScoredCenterCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES * teller) / 1000);
+        res.result = cylinder.energyScoredCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES) / 1000);
+        res.result_std = cylinder.energyScoredCenterCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES) / 1000);
         res.nEvents = cylinder.energyScoredCenterCylinder().numberOfEvents();
         std::cout << " Center: " << res.result << std::endl;
         print(res, false);
-
-        world.clearDose();
     }
 
     if (LOWENERGYCORRECTION == 0) {
@@ -994,8 +984,8 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
 }
 
 template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case5AbsorbedEnergy()
+    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
@@ -1049,7 +1039,7 @@ TG195Case5AbsorbedEnergy()
 
         res.modus = std::to_string(angInt);
 
-        const auto doseScore = grid.getDoseScore();
+        const auto doseScore = grid.getEnergyScores();
         const auto materialIndex = grid.getMaterialIndex();
 
         std::uint8_t matIdx = 0;
@@ -1083,7 +1073,8 @@ TG195Case5AbsorbedEnergy()
             }
             matIdx++;
         }
-        world.clearDose();
+        world.clearEnergyScored();
+        world.clearDoseScored();
     }
 
     if constexpr (LOWENERGYCORRECTION == 0) {

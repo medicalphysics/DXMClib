@@ -95,8 +95,63 @@ public:
     void clearEnergyScored() override
     {
         m_energyScored.clear();
+        m_skin_energy.clear();
         for (auto& b : m_dose_boxes) {
             b.energyScored.clear();
+        }
+    }
+    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    {
+        if (index < m_dose_boxes.size())
+            return m_dose_boxes[index].energyScored;
+        else if (index == m_dose_boxes.size())
+            return m_skin_energy;
+        return m_energyScored;
+    }
+
+    void addEnergyScoredToDoseScore(T calibration_factor = 1)
+    {
+        T skin_volume = std::numbers::pi_v<T> * (m_halfHeight - m_skin_thick) * 2 * (m_radius * m_radius - (m_radius - m_skin_thick) * (m_radius - m_skin_thick));
+        skin_volume += std::numbers::pi_v<T> * 2 * m_skin_thick * m_radius * m_radius;
+        // only half cylinder
+        skin_volume /= 2;
+
+        std::vector<T> box_volumes(m_dose_boxes.size());
+        std::transform(m_dose_boxes.cbegin(), m_dose_boxes.cend(), box_volumes.begin(), [](const auto& box) {
+            T vol = 1;
+            for (std::size_t i = 0; i < 3; ++i) {
+                vol *= box.aabb[i + 3] - box.aabb[i];
+            }
+            return vol;
+        });
+
+        const T box_volume_total = std::reduce(box_volumes.cbegin(), box_volumes.cend());
+        const T total_volume = std::numbers::pi_v<T> * 2 * m_halfHeight * m_radius * m_radius / 2 - skin_volume - box_volume_total;
+
+        m_doseScored.addScoredEnergy(m_energyScored, total_volume, m_tissue_density, calibration_factor);
+        m_skin_dose.addScoredEnergy(m_skin_energy, skin_volume, m_skin_density, calibration_factor);
+        for (std::size_t i = 0; i < m_dose_boxes.size(); ++i) {
+            auto& bd = m_dose_boxes[i].doseScored;
+            auto& be = m_dose_boxes[i].energyScored;
+            bd.addScoredEnergy(be, box_volumes[i], m_tissue_density, calibration_factor);
+        }
+    }
+
+    const DoseScore<T>& doseScored(std::size_t index = 0) const
+    {
+        if (index < m_dose_boxes.size())
+            return m_dose_boxes[index].doseScored;
+        else if (index == m_dose_boxes.size())
+            return m_skin_dose;
+        return m_doseScored;
+    }
+
+    void clearDoseScored()
+    {
+        m_doseScored.clear();
+        m_skin_dose.clear();
+        for (auto& b : m_dose_boxes) {
+            b.doseScored.clear();
         }
     }
 
@@ -159,7 +214,7 @@ public:
                             p.translate(stepLen);
                             const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                             cont = intRes.particleAlive;
-                            m_skin_dose.scoreEnergy(intRes.energyImparted);
+                            m_skin_energy.scoreEnergy(intRes.energyImparted);
                         } else {
                             p.border_translate(intTissue.intersection);
                             cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
@@ -174,7 +229,7 @@ public:
                         p.translate(stepLen);
                         const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                         cont = intRes.particleAlive;
-                        m_skin_dose.scoreEnergy(intRes.energyImparted);
+                        m_skin_energy.scoreEnergy(intRes.energyImparted);
                     } else {
                         p.border_translate(intBreast.intersection);
                         cont = false;
@@ -186,19 +241,11 @@ public:
         }
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
-    {
-        if (index < m_dose_boxes.size())
-            return m_dose_boxes[index].energyScored;
-        else if (index == m_dose_boxes.size())
-            return m_skin_dose;
-        return m_energyScored;
-    }
-
 protected:
     struct ScoreBoxChild {
         std::array<T, 6> aabb = { -1, -1, -.5f, 1, 1, .5f };
         EnergyScore<T> energyScored;
+        DoseScore<T> doseScored;
     };
     static void translateBox(ScoreBoxChild& box, const std::array<T, 3>& vec)
     {
@@ -259,7 +306,9 @@ private:
     Material<T, NMaterialShells> m_skin_material;
     Material<T, NMaterialShells> m_tissue_material;
     EnergyScore<T> m_energyScored;
-    EnergyScore<T> m_skin_dose;
+    DoseScore<T> m_doseScored;
+    EnergyScore<T> m_skin_energy;
+    DoseScore<T> m_skin_dose;
     std::array<ScoreBoxChild, 7> m_dose_boxes;
 };
 }

@@ -69,7 +69,7 @@ public:
 
         const auto p = std::to_string((m_nParticleCount * 100) / m_nParticles);
 
-        std::string message = "Time elapsed: " + human_time(elapsed) + "Estimated remaining time: ";
+        std::string message = "Time elapsed: " + human_time(elapsed) + " Estimated remaining time: ";
 
         if (m_nParticleCount > 0) {
             const auto remaining = (m_elapsed * (m_nParticles - m_nParticleCount)) / m_nParticleCount;
@@ -83,11 +83,11 @@ public:
     static std::string human_time(const std::chrono::milliseconds& time)
     {
         if (time > std::chrono::hours(3))
-            return std::to_string(std::chrono::duration_cast<std::chrono::hours>(time).count());
+            return std::to_string(std::chrono::duration_cast<std::chrono::hours>(time).count()) + " hrs";
         else if (time > std::chrono::minutes(3))
-            return std::to_string(std::chrono::duration_cast<std::chrono::minutes>(time).count());
+            return std::to_string(std::chrono::duration_cast<std::chrono::minutes>(time).count()) + " min";
         else
-            return std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time).count());
+            return std::to_string(std::chrono::duration_cast<std::chrono::seconds>(time).count()) + " sec";
     }
 
 private:

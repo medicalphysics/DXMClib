@@ -117,13 +117,6 @@ public:
         return aabb;
     }
 
-    void clearEnergyScored() override
-    {
-        m_energyScored.clear();
-        m_centerChild_score.clear();
-        m_periferyChild_score.clear();
-    }
-
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
@@ -157,12 +150,12 @@ public:
                 p.translate(stepLen);
                 if (insideChild(p, m_centerChild, m_centerChild_aabb)) {
                     const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
-                    m_centerChild_score.scoreEnergy(intRes.energyImparted);
+                    m_centerChild_energyScored.scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
                 } else if (insideChild(p, m_periferyChild, m_periferyChild_aabb)) {
                     const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
-                    m_periferyChild_score.scoreEnergy(intRes.energyImparted);
+                    m_periferyChild_energyScored.scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
                 } else if (state.randomUniform<T>() < alpha) {
@@ -179,17 +172,50 @@ public:
         }
     }
 
+    void clearEnergyScored() override
+    {
+        m_energyScored.clear();
+        m_centerChild_energyScored.clear();
+        m_periferyChild_energyScored.clear();
+    }
     const EnergyScore<T>& energyScoredCenterCylinder() const
     {
-        return m_centerChild_score;
+        return m_centerChild_energyScored;
     }
     const EnergyScore<T>& energyScoredPeriferyCylinder() const
     {
-        return m_periferyChild_score;
+        return m_periferyChild_energyScored;
     }
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
+        if (index == 0)
+            return m_centerChild_energyScored;
+        else if (index == 1)
+            return m_periferyChild_energyScored;
         return m_energyScored;
+    }
+    void addEnergyScoredToDoseScore(T calibration_factor = 1)
+    {
+        const T c_vol = m_centerChild.volume();
+        const T p_vol = m_periferyChild.volume();
+        const T vol = m_cylinder.volume() - c_vol - p_vol;
+        m_doseScored.addScoredEnergy(m_energyScored, vol, m_materialDensity, calibration_factor);
+        m_centerChild_doseScored.addScoredEnergy(m_centerChild_energyScored, c_vol, m_materialDensity, calibration_factor);
+        m_periferyChild_doseScored.addScoredEnergy(m_periferyChild_energyScored, p_vol, m_materialDensity, calibration_factor);
+    };
+    const DoseScore<T>& doseScored(std::size_t index = 0) const
+    {
+        if (index == 0)
+            return m_centerChild_doseScored;
+        else if (index == 1)
+            return m_periferyChild_doseScored;
+        return m_doseScored;
+    }
+    void clearDoseScored()
+    {
+        m_doseScored.clear();
+        m_centerChild_doseScored.clear();
+        m_periferyChild_doseScored.clear();
     }
 
 private:
@@ -197,8 +223,11 @@ private:
     T m_materialDensity = 1;
     Material<T, NMaterialShells> m_material;
     EnergyScore<T> m_energyScored;
-    EnergyScore<T> m_periferyChild_score;
-    EnergyScore<T> m_centerChild_score;
+    EnergyScore<T> m_periferyChild_energyScored;
+    EnergyScore<T> m_centerChild_energyScored;
+    DoseScore<T> m_doseScored;
+    DoseScore<T> m_periferyChild_doseScored;
+    DoseScore<T> m_centerChild_doseScored;
     basicshape::cylinder::Cylinder<T> m_centerChild;
     basicshape::cylinder::Cylinder<T> m_periferyChild;
     std::array<T, 6> m_centerChild_aabb = { 0, 0, 0, 0, 0, 0 };
