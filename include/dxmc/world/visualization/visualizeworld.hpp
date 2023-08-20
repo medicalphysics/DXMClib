@@ -39,7 +39,6 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 template <typename U, typename T>
 concept WorldType = requires(U world, Particle<T> p, KDTreeIntersectionResult<T, WorldItemBase<T>> res) {
-                        Floating<T>;
                         {
                             world.intersect(p)
                             } -> std::same_as<KDTreeIntersectionResult<T, WorldItemBase<T>>>;
