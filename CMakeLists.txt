@@ -63,6 +63,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/transport.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/transportprogress.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/vectormath.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beams/filters/bowtiefilter.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/tube/tube.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/tube/betheHeitlerCrossSection.hpp"  
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/beamtype.hpp" 

@@ -144,47 +144,11 @@ std::vector<T> addVectors(const std::vector<T>& f, const std::vector<T>& l, args
 }
 
 template <Floating T, int N = 30>
-class CubicSplineInterpolator {
-private:
-    std::array<T, (N - 1) * 4> m_coefficients;
-    std::array<T, N> m_x;
-    T m_step = 0;
-    T m_start = 0;
-    T m_stop = 0;
-
-protected:
-    static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
-    {
-        // Thomas algorithm for gaussian elimination for a trigonal system of equations
-        /*
-        |b0 c0  0 0  ..  | x0 |   |d0|
-        |a1 b1 c1 0  ... | x1 | = |d1|
-        |0  a2 b2 c2  ...| x2 |   |d2|
-        |0  0  a3 b3 c3  | .. |   |..|
-
-        */
-        std::vector<T> h = h_p;
-        std::vector<T> H = H_p;
-        std::vector<T> d = d_p;
-
-        std::vector<T> b(d.size(), T { 2 });
-        for (std::size_t i = 1; i < d.size(); ++i) {
-            const T w = h[i - 1] / H[i - 1];
-            H[i] -= w * h[i - 1];
-            d[i] -= w * d[i - 1];
-        }
-        std::vector<T> x(d.size());
-        x[d.size() - 1] = d[d.size() - 1] / H[d.size() - 1];
-        for (int i = d.size() - 2; i >= 0; --i) {
-            x[i] = (d[i] - h[i] * x[i + 1]) / H[i];
-        }
-        return x;
-    }
-
+class CubicSplineInterpolatorStatic {
 public:
     template <std::regular_invocable<T> F>
         requires std::is_same<std::invoke_result_t<F, T>, T>::value
-    CubicSplineInterpolator(const T start, const T stop, F function)
+    CubicSplineInterpolatorStatic(const T start, const T stop, F function)
     {
         std::vector<T> y(N);
         m_start = start;
@@ -236,15 +200,70 @@ public:
         const std::size_t offset = index < N - 1 ? index * 4 : (N - 2) * 4;
         return m_coefficients[offset] + m_coefficients[offset + 1] * x + m_coefficients[offset + 2] * x * x + m_coefficients[offset + 3] * x * x * x;
     }
+
+protected:
+    static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
+    {
+        // Thomas algorithm for gaussian elimination for a trigonal system of equations
+        /*
+        |b0 c0  0 0  ..  | x0 |   |d0|
+        |a1 b1 c1 0  ... | x1 | = |d1|
+        |0  a2 b2 c2  ...| x2 |   |d2|
+        |0  0  a3 b3 c3  | .. |   |..|
+
+        */
+        std::vector<T> h = h_p;
+        std::vector<T> H = H_p;
+        std::vector<T> d = d_p;
+
+        std::vector<T> b(d.size(), T { 2 });
+        for (std::size_t i = 1; i < d.size(); ++i) {
+            const T w = h[i - 1] / H[i - 1];
+            H[i] -= w * h[i - 1];
+            d[i] -= w * d[i - 1];
+        }
+        std::vector<T> x(d.size());
+        x[d.size() - 1] = d[d.size() - 1] / H[d.size() - 1];
+        for (int i = d.size() - 2; i >= 0; --i) {
+            x[i] = (d[i] - h[i] * x[i + 1]) / H[i];
+        }
+        return x;
+    }
+
+private:
+    std::array<T, (N - 1) * 4> m_coefficients;
+    std::array<T, N> m_x;
+    T m_step = 0;
+    T m_start = 0;
+    T m_stop = 0;
 };
 
 template <Floating T>
-std::vector<T> trapz(const std::vector<T>& f, const std::vector<T>& x)
+std::vector<T> trapz_cum(const std::vector<T>& x, const std::vector<T>& f)
 {
     std::vector<T> integ(f.size());
     integ[0] = T { 0.0 };
     for (std::size_t i = 1; i < f.size(); ++i) {
         integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
+    }
+    return integ;
+}
+template <Floating T>
+std::vector<T> trapz(const std::vector<T>& x, const std::vector<T>& f)
+{
+    T integ = 0;
+    for (std::size_t i = 1; i < f.size(); ++i) {
+        integ += (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
+    }
+    return integ;
+}
+
+template <Floating T>
+std::vector<T> trapz(const std::vector<std::pair<T, T>>& f)
+{
+    T integ = 0;
+    for (std::size_t i = 1; i < f.size(); ++i) {
+        integ += (f[i - 1].second + f[i].second) * T { 0.5 } * (f[i].first - f[i - 1].first);
     }
     return integ;
 }
@@ -320,6 +339,20 @@ constexpr T gaussIntegration(const T start, const T stop, const F function)
     std::transform(std::execution::unseq, function_points.cbegin(), function_points.cend(), function_values.begin(), [&](const auto x) { return function(x); });
     return gaussIntegration(start, stop, function_values);
 }
+
+template <Floating T>
+class CubicSplineInterpolator {
+    // TODO
+public:
+    CubicSplineInterpolator(const std::vector<T>& x, const std::vector<T>& y)
+    {
+    }
+    CubicSplineInterpolator(const std::vector<std::pair<T, T>>& d)
+    {
+    }
+
+private:
+};
 
 template <Floating T>
 class Matrix {
@@ -621,7 +654,7 @@ protected:
 
     std::optional<Spline> calculateLSSplinePart(const std::vector<T>& x, const std::vector<T>& y, std::size_t N = 0) const
     {
-        const auto Nlim = (x.size() - 3) / 3;
+        const auto Nlim = (x.size() - 1) / 3;
         if (N <= 1)
             N = Nlim;
 

@@ -14,6 +14,7 @@ set(TEST_SOURCES
     "testtube.cpp"
     "testvisualization.cpp"
     "testfluencescore.cpp"
+    "testbowtiefilter.cpp"
 #    "testsource.cpp"
 #    "testbeamfilters.cpp"
     "testmaterial.cpp"
