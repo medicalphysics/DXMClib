@@ -143,6 +143,217 @@ std::vector<T> addVectors(const std::vector<T>& f, const std::vector<T>& l, args
     return addVectors(res, other...);
 }
 
+template <Floating T>
+std::vector<T> trapz_cum(const std::vector<T>& x, const std::vector<T>& f)
+{
+    std::vector<T> integ(f.size());
+    integ[0] = T { 0.0 };
+    for (std::size_t i = 1; i < f.size(); ++i) {
+        integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
+    }
+    return integ;
+}
+template <Floating T>
+T trapz(const std::vector<T>& x, const std::vector<T>& f)
+{
+    T integ = 0;
+    for (std::size_t i = 1; i < f.size(); ++i) {
+        integ += (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
+    }
+    return integ;
+}
+
+template <Floating T>
+T trapz(const std::vector<std::pair<T, T>>& f)
+{
+    T integ = 0;
+    for (std::size_t i = 1; i < f.size(); ++i) {
+        integ += (f[i - 1].second + f[i].second) * T { 0.5 } * (f[i].first - f[i - 1].first);
+    }
+    return integ;
+}
+
+template <Floating T>
+constexpr T gaussIntegration(const T start, const T stop, std::array<T, 20>& gaussPoints)
+{
+    constexpr std::array<T, 20> weights = {
+        1.5275338713072585E-01,
+        1.4917298647260375E-01,
+        1.4209610931838205E-01,
+        1.3168863844917663E-01,
+        1.1819453196151842E-01,
+        1.0193011981724044E-01,
+        8.3276741576704749E-02,
+        6.2672048334109064E-02,
+        4.0601429800386941E-02,
+        1.7614007139152118E-02,
+        1.5275338713072585E-01,
+        1.4917298647260375E-01,
+        1.4209610931838205E-01,
+        1.3168863844917663E-01,
+        1.1819453196151842E-01,
+        1.0193011981724044E-01,
+        8.3276741576704749E-02,
+        6.2672048334109064E-02,
+        4.0601429800386941E-02,
+        1.7614007139152118E-02
+    };
+    const T interval_half = (stop - start) * T { 0.5 };
+    const T value = std::transform_reduce(std::execution::unseq, weights.cbegin(), weights.cend(), gaussPoints.cbegin(), T { 0 }, std::plus<>(), std::multiplies<>());
+    return value * interval_half;
+}
+template <Floating T>
+constexpr std::array<T, 20> gaussIntegrationPoints(const T start, const T stop)
+{
+    constexpr std::array<T, 20> x_val = {
+        7.6526521133497334E-02,
+        2.2778585114164508E-01,
+        3.7370608871541956E-01,
+        5.1086700195082710E-01,
+        6.3605368072651503E-01,
+        7.4633190646015079E-01,
+        8.3911697182221882E-01,
+        9.1223442825132591E-01,
+        9.6397192727791379E-01,
+        9.9312859918509492E-01,
+        -7.6526521133497334E-02,
+        -2.2778585114164508E-01,
+        -3.7370608871541956E-01,
+        -5.1086700195082710E-01,
+        -6.3605368072651503E-01,
+        -7.4633190646015079E-01,
+        -8.3911697182221882E-01,
+        -9.1223442825132591E-01,
+        -9.6397192727791379E-01,
+        -9.9312859918509492E-01
+    };
+    std::array<T, 20> function_points;
+    const T xi = (stop - start) * T { 0.5 };
+    const T xii = (stop + start) * T { 0.5 };
+    std::transform(std::execution::unseq, x_val.cbegin(), x_val.cend(), function_points.begin(), [=](const auto x) { return x * xi + xii; });
+    return function_points;
+}
+
+template <Floating T, std::regular_invocable<T> F>
+    requires std::is_same<std::invoke_result_t<F, T>, T>::value
+constexpr T gaussIntegration(const T start, const T stop, const F function)
+{
+    // F is a class or function that can be called with a Floating type argument and will return a Floating type value
+    auto function_points = gaussIntegrationPoints(start, stop);
+    std::array<T, 20> function_values;
+    std::transform(std::execution::unseq, function_points.cbegin(), function_points.cend(), function_values.begin(), [&](const auto x) { return function(x); });
+    return gaussIntegration(start, stop, function_values);
+}
+
+template <Floating T>
+class CubicSplineInterpolator {
+public:
+    CubicSplineInterpolator() = default;
+    CubicSplineInterpolator(std::vector<std::pair<T, T>> data)
+    {
+        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lf.first < rh.first; });
+        setup(data);
+    }
+    void setup(const std::vector<std::pair<T, T>>& data)
+    {
+
+        std::vector<T> y(data.size());
+        m_x.resize(data.size());
+
+        for (std::size_t i = 0; i < m_x.size(); ++i) {
+            m_x[i] = data[i].first;
+            y[i] = data[i].second;
+        }
+
+        std::vector<T> h(m_x.size());
+        for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
+            h[i] = m_x[i + 1] - m_x[i];
+        }
+
+        std::vector<T> delta(m_x.size(), T { 1 });
+        for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
+            delta[i] = (y[i + 1] - y[i]) / h[i];
+        }
+        std::vector<T> H(m_x.size());
+        for (std::size_t i = 1; i < m_x.size(); ++i) {
+            H[i] = 2 * (h[i - 1] + h[i]);
+        }
+        H[0] = H[1];
+
+        std::vector<T> d(m_x.size());
+        for (std::size_t i = 1; i < m_x.size(); ++i) {
+            d[i] = 6 * (delta[i] - delta[i - 1]);
+        }
+        d[m_x.size() - 1] = 0;
+        d[0] = 0;
+        auto s = thomasPenSplineElimination(h, H, d);
+
+        m_coefficients.resize(m_x.size() + 1);
+        m_coefficients[0] = { y[0], 0, 0, 0 };
+        m_coefficients[m_x.size()] = { y[m_x.size() - 1], 0, 0, 0 };
+        for (std::size_t i = 0; i < m_x.size() - 1; ++i) {
+            m_coefficients[i + 1][0] = (s[i] * m_x[i + 1] * m_x[i + 1] * m_x[i + 1] - s[i + 1] * m_x[i] * m_x[i] * m_x[i] + 6 * (y[i] * m_x[i + 1] - y[i + 1] * m_x[i])) / (6 * h[i]);
+            m_coefficients[i + 1][0] += h[i] * (s[i + 1] * m_x[i] - s[i] * m_x[i + 1]) / 6;
+            m_coefficients[i + 1][1] = (s[i + 1] * m_x[i] * m_x[i] - s[i] * m_x[i + 1] * m_x[i + 1] + 2 * (y[i + 1] - y[i])) / (2 * h[i]) + h[i] * (s[i] - s[i + 1]) / 6;
+            m_coefficients[i + 1][2] = (s[i] * m_x[i + 1] - s[i + 1] * m_x[i]) / (2 * h[i]);
+            m_coefficients[i + 1][3] = (s[i + 1] - s[i]) / (6 * h[i]);
+        }
+    }
+
+    T operator()(const T x_val) const
+    {
+        const T x = std::clamp(x_val, m_x[0], m_x.back());
+        auto it = std::upper_bound(m_x.cbegin(), m_x.cend(), x);
+        const auto i = std::distance(m_x.cbegin(), it);
+
+        return m_coefficients[i][0] + m_coefficients[i][1] * x + m_coefficients[i][2] * x * x + m_coefficients[i][3] * x * x * x;
+    }
+
+    T expectationValue() const {
+        TODO
+    }
+
+    T scale(T value)
+    {
+        for (auto& el : m_coefficients)
+            for (auto& c : el)
+                c *= value;
+    }
+
+protected:
+    static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
+    {
+        // Thomas algorithm for gaussian elimination for a trigonal system of equations
+        /*
+        |b0 c0  0 0  ..  | x0 |   |d0|
+        |a1 b1 c1 0  ... | x1 | = |d1|
+        |0  a2 b2 c2  ...| x2 |   |d2|
+        |0  0  a3 b3 c3  | .. |   |..|
+
+        */
+        std::vector<T> h = h_p;
+        std::vector<T> H = H_p;
+        std::vector<T> d = d_p;
+
+        std::vector<T> b(d.size(), T { 2 });
+        for (std::size_t i = 1; i < d.size(); ++i) {
+            const T w = h[i - 1] / H[i - 1];
+            H[i] -= w * h[i - 1];
+            d[i] -= w * d[i - 1];
+        }
+        std::vector<T> x(d.size());
+        x[d.size() - 1] = d[d.size() - 1] / H[d.size() - 1];
+        for (int i = d.size() - 2; i >= 0; --i) {
+            x[i] = (d[i] - h[i] * x[i + 1]) / H[i];
+        }
+        return x;
+    }
+
+private:
+    std::vector<std::array<T, 4>> m_coefficients;
+    std::vector<T> m_x;
+};
+
 template <Floating T, int N = 30>
 class CubicSplineInterpolatorStatic {
 public:
@@ -236,122 +447,6 @@ private:
     T m_step = 0;
     T m_start = 0;
     T m_stop = 0;
-};
-
-template <Floating T>
-std::vector<T> trapz_cum(const std::vector<T>& x, const std::vector<T>& f)
-{
-    std::vector<T> integ(f.size());
-    integ[0] = T { 0.0 };
-    for (std::size_t i = 1; i < f.size(); ++i) {
-        integ[i] = integ[i - 1] + (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
-    }
-    return integ;
-}
-template <Floating T>
-std::vector<T> trapz(const std::vector<T>& x, const std::vector<T>& f)
-{
-    T integ = 0;
-    for (std::size_t i = 1; i < f.size(); ++i) {
-        integ += (f[i - 1] + f[i]) * T { 0.5 } * (x[i] - x[i - 1]);
-    }
-    return integ;
-}
-
-template <Floating T>
-std::vector<T> trapz(const std::vector<std::pair<T, T>>& f)
-{
-    T integ = 0;
-    for (std::size_t i = 1; i < f.size(); ++i) {
-        integ += (f[i - 1].second + f[i].second) * T { 0.5 } * (f[i].first - f[i - 1].first);
-    }
-    return integ;
-}
-
-template <Floating T>
-constexpr T gaussIntegration(const T start, const T stop, std::array<T, 20>& gaussPoints)
-{
-    constexpr std::array<T, 20> weights = {
-        1.5275338713072585E-01,
-        1.4917298647260375E-01,
-        1.4209610931838205E-01,
-        1.3168863844917663E-01,
-        1.1819453196151842E-01,
-        1.0193011981724044E-01,
-        8.3276741576704749E-02,
-        6.2672048334109064E-02,
-        4.0601429800386941E-02,
-        1.7614007139152118E-02,
-        1.5275338713072585E-01,
-        1.4917298647260375E-01,
-        1.4209610931838205E-01,
-        1.3168863844917663E-01,
-        1.1819453196151842E-01,
-        1.0193011981724044E-01,
-        8.3276741576704749E-02,
-        6.2672048334109064E-02,
-        4.0601429800386941E-02,
-        1.7614007139152118E-02
-    };
-    const T interval_half = (stop - start) * T { 0.5 };
-    const T value = std::transform_reduce(std::execution::unseq, weights.cbegin(), weights.cend(), gaussPoints.cbegin(), T { 0 }, std::plus<>(), std::multiplies<>());
-    return value * interval_half;
-}
-template <Floating T>
-constexpr std::array<T, 20> gaussIntegrationPoints(const T start, const T stop)
-{
-    constexpr std::array<T, 20> x_val = {
-        7.6526521133497334E-02,
-        2.2778585114164508E-01,
-        3.7370608871541956E-01,
-        5.1086700195082710E-01,
-        6.3605368072651503E-01,
-        7.4633190646015079E-01,
-        8.3911697182221882E-01,
-        9.1223442825132591E-01,
-        9.6397192727791379E-01,
-        9.9312859918509492E-01,
-        -7.6526521133497334E-02,
-        -2.2778585114164508E-01,
-        -3.7370608871541956E-01,
-        -5.1086700195082710E-01,
-        -6.3605368072651503E-01,
-        -7.4633190646015079E-01,
-        -8.3911697182221882E-01,
-        -9.1223442825132591E-01,
-        -9.6397192727791379E-01,
-        -9.9312859918509492E-01
-    };
-    std::array<T, 20> function_points;
-    const T xi = (stop - start) * T { 0.5 };
-    const T xii = (stop + start) * T { 0.5 };
-    std::transform(std::execution::unseq, x_val.cbegin(), x_val.cend(), function_points.begin(), [=](const auto x) { return x * xi + xii; });
-    return function_points;
-}
-
-template <Floating T, std::regular_invocable<T> F>
-    requires std::is_same<std::invoke_result_t<F, T>, T>::value
-constexpr T gaussIntegration(const T start, const T stop, const F function)
-{
-    // F is a class or function that can be called with a Floating type argument and will return a Floating type value
-    auto function_points = gaussIntegrationPoints(start, stop);
-    std::array<T, 20> function_values;
-    std::transform(std::execution::unseq, function_points.cbegin(), function_points.cend(), function_values.begin(), [&](const auto x) { return function(x); });
-    return gaussIntegration(start, stop, function_values);
-}
-
-template <Floating T>
-class CubicSplineInterpolator {
-    // TODO
-public:
-    CubicSplineInterpolator(const std::vector<T>& x, const std::vector<T>& y)
-    {
-    }
-    CubicSplineInterpolator(const std::vector<std::pair<T, T>>& d)
-    {
-    }
-
-private:
 };
 
 template <Floating T>

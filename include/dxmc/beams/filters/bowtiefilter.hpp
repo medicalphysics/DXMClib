@@ -35,7 +35,7 @@ public:
         std::vector<std::pair<T, T>> data(N);
 
         for (std::size_t i = 0; i < N; ++i) {
-            data[i].first = std::abs(angles_r[i]);
+            data[i].first = angles_r[i];
             data[i].second = std::abs(intensity_r[i]);
         }
 
@@ -45,29 +45,15 @@ public:
         for (auto& p : data) {
             p.second /= mean_intensity;
         }
-
-        const auto& lastData = data.back();
-        m_maxAngle = lastData.first;
-        m_maxValue = lastData.second;
-
-        std::size_t knots = N / 3;
-        // TODO implement ordinary spline interpolation
-        CubicLSInterpolator<T> inter(data, knots, false);
-        m_data = inter.getDataTable();
+        m_inter.setup(data);
     }
 
     T operator()(T angle) const
     {
-        const auto absAngle = std::abs(angle);
-        return absAngle > m_maxAngle ? m_maxValue : CubicLSInterpolator<T>::template evaluateSpline(absAngle, m_data.cbegin(), m_data.cend());
+        return m_inter(angle);
     }
 
-    static constexpr T minAngle() { return 0; }
-    T maxAngle() { return m_maxAngle; }
-
 private:
-    T m_maxAngle = 0;
-    T m_maxValue = 0;
-    std::vector<std::array<T, 3>> m_data;
+    CubicSplineInterpolator<T> m_inter;
 };
 }

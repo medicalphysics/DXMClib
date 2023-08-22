@@ -41,7 +41,7 @@ bool testBowtie()
 
     dxmc::BowtieFilter<T> filter(angle, weight);
 
-    const auto maxAngle = filter.maxAngle();
+    const auto maxAngle = angle.back();
     for (std::size_t i = 0; i < 50; ++i) {
         if (i < angle.size()) {
             std::cout << angle[i] << ", " << weight[i] << ", ";
