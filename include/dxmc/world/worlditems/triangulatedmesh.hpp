@@ -247,13 +247,13 @@ protected:
         // volume is then the sum of signed volumes over all triangles
 
         // finding a neat reference point instead of {0,0,0}
-        const std::array centre = {
+        const std::array center = {
             (aabb[0] + aabb[3]) / 2,
             (aabb[1] + aabb[4]) / 2,
             (aabb[2] + aabb[5]) / 2
         };
 
-        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, std::plus<>, [&center](const auto& tri) {
+        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, std::plus<>(), [&center](const auto& tri) {
             const auto& v = tri.vertices();
             const auto v1 = vectormath::subtract(v[0], center);
             const auto v2 = vectormath::subtract(v[1], center);
