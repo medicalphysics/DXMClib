@@ -26,7 +26,7 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T, bool ONESIDED = false>
 class BowtieFilter {
 public:
     BowtieFilter(const std::vector<T>& angles_r, const std::vector<T>& intensity_r)
@@ -35,22 +35,28 @@ public:
         std::vector<std::pair<T, T>> data(N);
 
         for (std::size_t i = 0; i < N; ++i) {
-            data[i].first = angles_r[i];
+            if constexpr (ONESIDED)
+                data[i].first = std::abs(angles_r[i]);
+            else
+                data[i].first = angles_r[i];
             data[i].second = std::abs(intensity_r[i]);
         }
 
         std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
 
-        const auto mean_intensity = trapz(data);
-        for (auto& p : data) {
-            p.second /= mean_intensity;
-        }
         m_inter.setup(data);
+
+        // normalize to expected value of 1;
+        const auto meanValue = m_inter.meanValue();
+        m_inter.scale(1 / meanValue);
     }
 
     T operator()(T angle) const
     {
-        return m_inter(angle);
+        if constexpr (ONESIDED)
+            return m_inter(std::abs(angle));
+        else
+            return m_inter(angle);
     }
 
 private:

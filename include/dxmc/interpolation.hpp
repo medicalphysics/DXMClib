@@ -248,7 +248,17 @@ constexpr T gaussIntegration(const T start, const T stop, const F function)
 template <Floating T>
 class CubicSplineInterpolator {
 public:
-    CubicSplineInterpolator() = default;
+    CubicSplineInterpolator()
+    {
+        m_x.resize(1);
+        m_x[0] = 0;
+        m_coefficients.resize(3);
+        for (auto& c : m_coefficients) {
+            c[0] = 1;
+            for (std::size_t i = 1; i < 4; ++i)
+                c[i] = 0;
+        }
+    };
     CubicSplineInterpolator(std::vector<std::pair<T, T>> data)
     {
         std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lf.first < rh.first; });
@@ -300,20 +310,30 @@ public:
         }
     }
 
-    T operator()(const T x_val) const
+    T operator()(const T x) const
     {
-        const T x = std::clamp(x_val, m_x[0], m_x.back());
         auto it = std::upper_bound(m_x.cbegin(), m_x.cend(), x);
         const auto i = std::distance(m_x.cbegin(), it);
-
         return m_coefficients[i][0] + m_coefficients[i][1] * x + m_coefficients[i][2] * x * x + m_coefficients[i][3] * x * x * x;
     }
 
-    T expectationValue() const {
-        TODO
+    T meanValue() const
+    {
+        T integrand = 0;
+        // integrate part
+        for (std::size_t i = 1; i < m_x.size(); ++i) {
+            const auto x0 = m_x[i - 1];
+            const auto x1 = m_x[i];
+
+            integrand += m_coefficients[i][0] * (x1 - x0);
+            integrand += m_coefficients[i][1] * (x1 * x1 - x0 * x0) / 2;
+            integrand += m_coefficients[i][2] * (x1 * x1 * x1 - x0 * x0 * x0) / 3;
+            integrand += m_coefficients[i][3] * (x1 * x1 * x1 * x1 - x0 * x0 * x0 * x0) / 4;
+        }
+        return integrand / (m_x.back() - m_x.front());
     }
 
-    T scale(T value)
+    void scale(T value)
     {
         for (auto& el : m_coefficients)
             for (auto& c : el)

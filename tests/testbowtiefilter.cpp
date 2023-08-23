@@ -17,6 +17,7 @@ Copyright 2023 Erlend Andersen
 */
 
 #include "dxmc/beams/filters/bowtiefilter.hpp"
+#include "dxmc/dxmcrandom.hpp"
 
 #include <iostream>
 
@@ -41,18 +42,19 @@ bool testBowtie()
 
     dxmc::BowtieFilter<T> filter(angle, weight);
 
-    const auto maxAngle = angle.back();
-    for (std::size_t i = 0; i < 50; ++i) {
-        if (i < angle.size()) {
-            std::cout << angle[i] << ", " << weight[i] << ", ";
-        } else {
-            std::cout << ", , ";
-        }
-        const auto aa = (maxAngle * i) / 50;
-        std::cout << aa << ", " << filter(aa) << std::endl;
+    // test sampling
+    T w = 0;
+    constexpr std::size_t N = 1E6;
+    dxmc::RandomState state;
+    for (std::size_t i = 0; i < N; ++i) {
+        const T ang = state.randomUniform(T { 0.390607044 });
+        w += filter(ang);
     }
+    w /= N;
 
-    return true;
+    auto success = std::abs(w - 1) < T { 0.01 };
+
+    return success;
 }
 
 int main()
