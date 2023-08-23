@@ -39,10 +39,10 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 template <typename U, typename T>
 concept WorldType = requires(U world, Particle<T> p, KDTreeIntersectionResult<T, WorldItemBase<T>> res) {
-                        {
-                            world.intersect(p)
-                            } -> std::same_as<KDTreeIntersectionResult<T, WorldItemBase<T>>>;
-                    };
+    {
+        world.intersect(p)
+    } -> std::same_as<KDTreeIntersectionResult<T, WorldItemBase<T>>>;
+};
 template <Floating T>
 class VisualizeWorld {
 public:
@@ -51,6 +51,7 @@ public:
     {
         m_center = world.center();
         m_world_aabb = world.AABB();
+        suggestFOV();
     }
 
 #ifdef DXMCLIB_USE_LOADPNG
@@ -120,6 +121,11 @@ public:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512) const
     {
+        if constexpr (std::is_same<U, std::uint8_t>::value)
+            std::fill(buffer.begin(), buffer.end(), 255);
+        else
+            std::fill(buffer.begin(), buffer.end(), U { 1 });
+
         std::vector<std::pair<WorldItemBase<T>*, std::array<U, 3>>> colors;
         auto items = world.getItemPointers();
         colors.reserve(items.size());
@@ -206,15 +212,6 @@ public:
                                 buffer[ind + i] = static_cast<U>(propcolor[i] * scaling);
                             } else {
                                 buffer[ind + i] = propcolor[i] * scaling;
-                            }
-                        }
-                    } else {
-
-                        for (int i = 0; i < 3; ++i) {
-                            if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                buffer[ind + i] = 255;
-                            } else {
-                                buffer[ind + i] = T { 1 };
                             }
                         }
                     }
