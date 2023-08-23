@@ -22,48 +22,49 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
+#include "dxmc/world/worlditems/worldsphere.hpp"
 
 #include <vector>
 
 int main()
 {
-    using CTDIPhantom = dxmc::CTDIPhantom<double>;
-    using Mesh = dxmc::TriangulatedMesh<double>;
-    using World = dxmc::World<double, CTDIPhantom, Mesh>;
+    using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
+    using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
+    using Sphere = dxmc::WorldSphere<double, 5, 1>;
+    using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere>;
     using Viz = dxmc::VisualizeWorld<double>;
 
     World world;
-    world.reserveNumberOfItems(3);
+    world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
     auto& ctdi = world.addItem<CTDIPhantom>({});
+    ctdi.translate({ 16, 0, 9 });
 
-   // carm.scale(100);
+    const std::array<double, 3> source_pos = { 16, 0, -70 };
+    auto& sphere = world.addItem<Sphere>({ 5, source_pos });
 
     world.build();
 
-    std::size_t N = 512;
-    double d = 501;
+    std::size_t N = 1024;
+
     std::vector<std::uint8_t> image_buffer(N * N * 4, 0);
     Viz viz(world);
-    viz.suggestFOV();
-    viz.setCameraPosition({ d, 0, 0 });
-    viz.generate(world, image_buffer, N, N);
-    viz.savePNG("testx.png", image_buffer, N, N);
+    viz.addLineProp(source_pos, { 0, 0, 1 }, 50);
 
-    viz.setCameraPosition({ 0, d, 0 });
-    viz.suggestFOV();
-    viz.generate(world, image_buffer, N, N);
-    viz.savePNG("testy.png", image_buffer, N, N);
+    viz.setDistance(500);
+    viz.setAzimuthalAngleDeg(-45);
+    std::vector<double> angles;
+    for (std::size_t i = 0; i < 5; ++i)
+        angles.push_back(i * 30);
 
-    viz.setCameraPosition({ 0, 0, d });
-    viz.suggestFOV();
-    viz.generate(world, image_buffer, N, N);
-    viz.savePNG("testz.png", image_buffer, N, N);
+    for (auto a : angles) {
+        viz.setPolarAngleDeg(a);
+        viz.suggestFOV();
+        viz.generate(world, image_buffer, N, N);
+        std::string name = "test" + std::to_string(int(a)) + ".png";
+        viz.savePNG(name, image_buffer, N, N);
+    }
 
-    viz.setCameraPosition({ 0, d/2, d });
-    viz.suggestFOV();
-    viz.generate(world, image_buffer, N, N);
-    viz.savePNG("test.png", image_buffer, N, N);
     return 0;
 }
