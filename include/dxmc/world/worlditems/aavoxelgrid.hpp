@@ -82,6 +82,57 @@ public:
         return true;
     }
 
+    void flipAxis(std::size_t axis)
+    {
+        auto data = m_data;
+        auto dose = m_dose;
+        for (std::size_t z = 0; z < m_dim[2]; ++z) {
+            const auto zz = axis != 0 ? z : m_dim[2] - z - 1;
+            for (std::size_t y = 0; y < m_dim[1]; ++y) {
+                const auto yy = axis != 0 ? y : m_dim[1] - y - 1;
+                for (std::size_t x = 0; x < m_dim[0]; ++x) {
+                    const auto fIdx = x + m_dim[0] * (y + m_dim[1] * z);
+                    const auto xx = axis != 0 ? x : m_dim[0] - x - 1;
+                    const auto tIdx = xx + m_dim[0] * (yy + m_dim[1] * zz);
+                    data[tIdx] = m_data[fIdx];
+                    dose[tIdx] = m_dose[fIdx];
+                }
+            }
+        }
+    }
+
+    void rollAxis(std::size_t from, std::size_t to)
+    {
+        if (from > 2 || to > 2 || from == to)
+            return;
+
+        const auto fdim = m_dim;
+
+        std::swap(m_dim[from], m_dim[to]);
+        std::swap(m_invSpacing[from], m_invSpacing[to]);
+        std::swap(m_spacing[from], m_spacing[to]);
+        std::swap(m_aabb[from], m_aabb[to]);
+        std::swap(m_aabb[from + 3], m_aabb[to + 3]);
+
+        std::array<std::size_t 3> swapped { 0, 1, 2 };
+        std::swap(swapped[from], swapped[to]);
+
+        auto data = m_data; // making copy
+        auto dose = m_dose;
+        for (std::size_t z = 0; z < dim[2]; ++z)
+            for (std::size_t y = 0; y < dim[1]; ++y)
+                for (std::size_t x = 0; x < dim[0]; ++x) {
+                    const auto fIdx = x + dim[0] * (y + dim[1] * z);
+                    const std::array v = { x, y, z };
+                    const std::array w = { v[swapped[0]], v[swapped[1]], v[swapped[2]] };
+                    const auto tIdx = w[0] + m_dim[0] * (w[1] + m_dim[1] * w[2]);
+                    data[tIdx] = m_data[fIdx];
+                    dose[tIdx] = m_dose[fIdx];
+                }
+        m_data = data;
+        m_dose = dose;
+    }
+
     std::size_t size() const
     {
         return m_dim[0] * m_dim[1] * m_dim[2];
