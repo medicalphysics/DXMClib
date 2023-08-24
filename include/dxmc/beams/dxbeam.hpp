@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/beams/tube/tube.hpp"
+#include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
@@ -34,7 +35,7 @@ template <Floating T>
 class DXBeamExposure {
 public:
     DXBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 4>& collimationAngles, const SpecterDistribution<T> specter)
+        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T> specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
@@ -50,8 +51,8 @@ public:
     {
         auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
 
-        const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
-        const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
+        const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
+        const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
         const auto sinx = std::sin(angx);
         const auto siny = std::sin(angy);
@@ -74,7 +75,7 @@ public:
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
+    std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
     T m_weight = 1;
     SpecterDistribution<T> m_specter;
@@ -160,14 +161,20 @@ public:
         tubeChanged();
     }
 
-    const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
-    void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
-    void setCollimationAngles(T minX, T minY, T maxX, T maxY)
+    const std::array<T, 2>& collimationAngles() const { return m_collimationAngles; }
+    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(T X, T Y)
     {
-        m_collimationAngles[0] = minX;
-        m_collimationAngles[1] = minY;
-        m_collimationAngles[2] = maxX;
-        m_collimationAngles[3] = maxY;
+        m_collimationAngles[0] = X;
+        m_collimationAngles[1] = Y;
+    }
+
+    std::array<T, 2> collimationAnglesDeg() const { return vectormath::scale(m_collimationAngles, RAD_TO_DEG<T>()); }
+    void setCollimationAnglesDeg(const std::array<T, 2>& angles) { m_collimationAngles = vectormath::scale(angles, DEG_TO_RAD<T>()); }
+    void setCollimationAnglesDeg(T X, T Y)
+    {
+        m_collimationAngles[0] = DEG_TO_RAD<T>() * X;
+        m_collimationAngles[1] = DEG_TO_RAD<T>() * Y;
     }
 
     DXBeamExposure<T> exposure(std::size_t i) const noexcept
@@ -176,7 +183,7 @@ public:
         return exp;
     }
 
-    T calibrationFactor(TransportProgress* progress=nullptr) const
+    T calibrationFactor(TransportProgress* progress = nullptr) const
     {
         const auto energies = m_tube.getEnergy();
         const auto weights = m_tube.getSpecter(energies, true);
@@ -205,7 +212,7 @@ protected:
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
+    std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
     T m_weight = 1;
