@@ -123,6 +123,13 @@ public:
         }
     }
 
+    void scale(T s)
+    {
+        m_kdtree.scale(s);
+        for (auto& e : m_aabb)
+            e *= s;
+    }
+
     void setData(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept)
     {
         m_kdtree.setData(triangles, max_tree_dept);

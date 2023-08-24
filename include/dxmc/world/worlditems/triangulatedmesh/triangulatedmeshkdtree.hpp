@@ -34,23 +34,23 @@ namespace dxmc {
 
 template <typename U, typename T>
 concept MeshKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec, T scale) {
-                             Floating<T>;
-                             u <=> u;
-                             u.translate(vec);
-                             u.scale(scale);
-                             {
-                                 u.intersect(p)
-                                 } -> std::same_as<std::optional<T>>;
-                             {
-                                 u.center()
-                                 } -> std::same_as<std::array<T, 3>>;
-                             {
-                                 u.AABB()
-                                 } -> std::same_as<std::array<T, 6>>;
-                             {
-                                 u.planeVector()
-                                 } -> std::same_as<std::array<T, 3>>;
-                         };
+    Floating<T>;
+    u <=> u;
+    u.translate(vec);
+    u.scale(scale);
+    {
+        u.intersect(p)
+    } -> std::same_as<std::optional<T>>;
+    {
+        u.center()
+    } -> std::same_as<std::array<T, 3>>;
+    {
+        u.AABB()
+    } -> std::same_as<std::array<T, 6>>;
+    {
+        u.planeVector()
+    } -> std::same_as<std::array<T, 3>>;
+};
 
 template <Floating T, MeshKDTreeType<T> U>
 class MeshKDTree {
@@ -171,6 +171,19 @@ public:
         } else {
             std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
                 tri.translate(dist);
+            });
+        }
+    }
+
+    void scale(T s)
+    {
+        m_plane *= s;
+        if (m_left) {
+            m_left->scale(s);
+            m_right->scale(s);
+        } else {
+            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+                tri.scale(s);
             });
         }
     }
