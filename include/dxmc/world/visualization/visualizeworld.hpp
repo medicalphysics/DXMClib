@@ -37,12 +37,37 @@ Copyright 2023 Erlend Andersen
 #endif
 
 namespace dxmc {
+
+template <typename T>
+    requires(std::same_as<T, double> || std::same_as<T, float>, std::same_as<T, std::uint8_t>)
+struct VisualizationBuffer {
+    std::vector<T> buffer;
+    std::size_t width = 512;
+    std::size_t height = 512;
+
+    VisualizationBuffer(std::size_t size)
+    {
+        width = size;
+        height = size;
+        buffer.resize(width * height * 4);
+    }
+    VisualizationBuffer(std::size_t w, std::size_t h)
+    {
+        width = w;
+        height = h;
+        buffer.resize(width * height * 4);
+    }
+    auto begin() { return buffer.begin(); }
+    auto end() { return buffer.end(); }
+};
+
 template <typename U, typename T>
 concept WorldType = requires(U world, Particle<T> p, KDTreeIntersectionResult<T, WorldItemBase<T>> res) {
     {
         world.intersect(p)
     } -> std::same_as<KDTreeIntersectionResult<T, WorldItemBase<T>>>;
 };
+
 template <Floating T>
 class VisualizeWorld {
 public:
@@ -62,6 +87,14 @@ public:
         auto test = dxmclodepng::savePNG(filename, buffer, width, height);
         return true;
     }
+
+    template <typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    static bool savePNG(const std::string& filename, const VisualizationBuffer<U>& buffer)
+    {
+        auto test = dxmclodepng::savePNG(filename, buffer.buffer, buffer.width, buffer.height);
+        return true;
+    }
 #endif
 
     void setDistance(T dist)
@@ -74,7 +107,7 @@ public:
     }
     void setAzimuthalAngle(T azimuthal)
     {
-        m_camera_pos[2] = azimuthal;
+        m_camera_pos[2] = -azimuthal;
     }
     void setPolarAngleDeg(T polar)
     {
@@ -115,6 +148,59 @@ public:
     void addLineProp(const std::array<T, 3>& start, const std::array<T, 3>& dir, T lenght = -1, T radii = 1)
     {
         m_lines.push_back({ start, dir, lenght, radii });
+    }
+    void clearLineProps()
+    {
+        m_lines.clear();
+    }
+
+    template <typename B>
+        requires requires(B obj, std::array<T, 3> pos, std::array<std::array<T, 3>, 2> cos, std::array<T, 2> ang) {
+            {
+                obj.position()
+            } -> std::convertible_to<std::array<T, 3>>;
+            {
+                obj.directionCosines()
+            } -> std::convertible_to<std::array<std::array<T, 3>, 2>>;
+            {
+                obj.collimationAngles()
+            } -> std::convertible_to<std::array<T, 2>>;
+        }
+    void addLineProp(const B& obj, T lenght = -1, T radii = 1)
+    {
+        const auto start = obj.position();
+        const auto cos = obj.directionCosines();
+        const auto dir = vectormath::cross(cos[0], cos[1]);
+
+        auto f = [](const auto& cosines, const auto& dir, T angx, T angy) -> std::array<T, 3> {
+            const auto sinx = std::sin(angx);
+            const auto siny = std::sin(angy);
+            const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
+            std::array pdir = {
+                cosines[0][0] * sinx + cosines[1][0] * siny + dir[0] * sinz,
+                cosines[0][1] * sinx + cosines[1][1] * siny + dir[1] * sinz,
+                cosines[0][2] * sinx + cosines[1][2] * siny + dir[2] * sinz
+            };
+            return pdir;
+        };
+        const auto angs = obj.collimationAngles();
+        addLineProp(start, f(cos, dir, angs[0], angs[1]), lenght, radii);
+        addLineProp(start, f(cos, dir, -angs[0], angs[1]), lenght, radii);
+        addLineProp(start, f(cos, dir, angs[0], -angs[1]), lenght, radii);
+        addLineProp(start, f(cos, dir, -angs[0], -angs[1]), lenght, radii);
+    }
+
+    static auto generateBuffer(std::size_t width = 512, std::size_t height = 512)
+    {
+        VisualizationBuffer<std::uint8_t> buffer(width, height);
+        return buffer;
+    }
+
+    template <WorldType<T> W, typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    void generate(W& world, VisualizationBuffer<U>& buffer) const
+    {
+        generate(world, buffer.buffer, buffer.width, buffer.height);
     }
 
     template <WorldType<T> W, typename U>
@@ -236,100 +322,8 @@ public:
             t.join();
         }
     }
-    template <WorldType<T> W>
-    void generateDistance(W& world, std::vector<T>& buffer, int width = 512, int height = 512) const
-    {
-
-        const auto step = std::max(m_fov / width, m_fov / height);
-        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
-        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
-        const auto dir = vectormath::cross(ycos, xcos);
-        const std::array pos = {
-            m_camera_pos[0] * std::cos(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[0],
-            m_camera_pos[0] * std::sin(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[1],
-            m_camera_pos[0] * std::cos(m_camera_pos[2]) + m_center[2]
-        };
-
-        auto worker = [&](std::size_t start, std::size_t stop) {
-            Particle<T> p;
-            p.pos = pos;
-
-            for (std::size_t j = start; j < stop; ++j) {
-                const auto y = j / width;
-                const auto x = j - y * width;
-                const auto yang = -step * height * T { 0.5 } + y * step;
-                const auto xang = -step * width * T { 0.5 } + x * step;
-                p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
-                const auto res = world.intersectVisualization(p);
-                if (res.valid()) {
-                    buffer[j] = res.intersection;
-                } else {
-                    buffer[j] = 0;
-                }
-            }
-        };
-
-        int nThreads = std::thread::hardware_concurrency();
-        const auto jobsize = static_cast<std::size_t>(width * height / nThreads);
-        std::vector<std::jthread> threads;
-        threads.reserve(nThreads - 1);
-        std::size_t start = 0;
-        auto stop = jobsize;
-        for (auto i = nThreads - 1; i > 0; --i) {
-            threads.emplace_back(std::jthread(worker, start, stop));
-            start = stop;
-            stop += jobsize;
-        }
-
-        worker(start, static_cast<std::size_t>(height * width));
-        for (auto& t : threads) {
-            t.join();
-        }
-    }
 
 protected:
-    template <BeamType<T> B, typename U>
-        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
-    void drawBeam(const B& beam, std::vector<U>& buffer, int width = 512, int height = 512) const
-    {
-        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
-        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
-
-        const auto normal = vectormath::cross(xcos, ycos);
-
-        const auto& pstart3 = beam.position();
-        const auto len = std::max(vectormath::lenght(vectormath::subtract(m_center, pstart3)), T { 10 });
-        const auto& beam_angles = beam.collimationAngles();
-        std::array<std::pair<T, T>, 4> angs = {
-            std::make_pair(beam_angles[0], beam_angles[1]),
-            std::make_pair(beam_angles[0], beam_angles[3]),
-            std::make_pair(beam_angles[2], beam_angles[1]),
-            std::make_pair(beam_angles[2], beam_angles[3])
-        };
-
-        const auto dirCosines = beam.directionCosines();
-        const auto dir = vectormath::cross(dirCosines[0], dirCosines[1]);
-        for (const auto& p : angs) {
-            const auto angx = p.first;
-            const auto angy = p.second;
-            const auto sinx = std::sin(angx);
-            const auto siny = std::sin(angy);
-            const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
-            const std::array pdir = {
-                dirCosines[0][0] * sinx + dirCosines[1][0] * siny + dir[0] * sinz,
-                dirCosines[0][1] * sinx + dirCosines[1][1] * siny + dir[1] * sinz,
-                dirCosines[0][2] * sinx + dirCosines[1][2] * siny + dir[2] * sinz
-            };
-            const auto pend3 = vectormath::add(pstart3, vectormath::scale(pdir, len));
-            drawLine(pstart3, pend3, buffer, width, height);
-        }
-    }
-    template <typename U>
-        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
-    void drawLine(const std::array<T, 3> start, const std::array<T, 3> end, std::vector<U>& buffer, int width = 512, int height = 512) const
-    {
-    }
-
     static std::array<std::uint8_t, 3> HSVtoRGB(const std::uint8_t H, const std::uint8_t S, const std::uint8_t V = 255)
     {
         // H in [0, 255], S in [0, 255], V in [0, 255]
@@ -379,33 +373,6 @@ protected:
         }
         return rgb;
     }
-
-    /* static std::array<T, 3> HSVtoRGB(const T H, const T S = T { 1 }, const T V = .8)
-    {
-        // H in [0, 2pi], S in [0, 1], V in [0, 1]
-        const auto C = V * S;
-
-        constexpr auto sep = 3 / std::numbers::phi_v<T>;
-        const auto Hb = std::clamp(H, T { 0 }, 2 * std::numbers::phi_v<T>) * sep;
-        const auto r = std::fmod(Hb, T { 2 });
-        const auto X = C * (1 - std::abs(r - 1));
-
-        std::array<T, 3> rgb;
-        if (Hb < 1) {
-            rgb = { C, X, 0 };
-        } else if (Hb < 2) {
-            rgb = { X, C, 0 };
-        } else if (Hb < 3) {
-            rgb = { 0, C, X };
-        } else if (Hb < 4) {
-            rgb = { 0, X, C };
-        } else if (Hb < 5) {
-            rgb = { X, 0, C };
-        } else {
-            rgb = { C, 0, X };
-        }
-        return rgb;
-    }*/
 
 private:
     std::array<T, 6> m_world_aabb;

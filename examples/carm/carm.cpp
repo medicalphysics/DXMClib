@@ -20,6 +20,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/transport.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
@@ -31,10 +32,12 @@ int main()
     using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
     using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
     using Sphere = dxmc::WorldSphere<double, 5, 1>;
-    using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere>;
+    using VGrid = dxmc::AAVoxelGrid<double, 5, 1>;
+    using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere, VGrid>;
+
     using Viz = dxmc::VisualizeWorld<double>;
 
-    World world;
+    World world {};
     world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
@@ -42,18 +45,21 @@ int main()
     ctdi.translate({ 16, 0, 9 });
 
     const std::array<double, 3> source_pos = { 16, 0, -70 };
-    auto& sphere = world.addItem<Sphere>({ 5, source_pos });
+    // auto& sphere = world.addItem<Sphere>({ 5, source_pos });
 
     world.build();
 
-    std::size_t N = 1024;
+    // adding beam
+    using Beam = dxmc::DXBeam<double>;
+    Beam beam(source_pos);
+    beam.setCollimationAnglesDeg(7, 7);
 
-    std::vector<std::uint8_t> image_buffer(N * N * 4, 0);
     Viz viz(world);
-    viz.addLineProp(source_pos, { 0, 0, 1 }, 50);
+    auto buffer = viz.generateBuffer(1024, 1024);
+    viz.addLineProp(beam, 150, 0.1);
 
     viz.setDistance(500);
-    viz.setAzimuthalAngleDeg(-45);
+    viz.setAzimuthalAngleDeg(90);
     std::vector<double> angles;
     for (std::size_t i = 0; i < 5; ++i)
         angles.push_back(i * 30);
@@ -61,9 +67,9 @@ int main()
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
         viz.suggestFOV();
-        viz.generate(world, image_buffer, N, N);
+        viz.generate(world, buffer);
         std::string name = "test" + std::to_string(int(a)) + ".png";
-        viz.savePNG(name, image_buffer, N, N);
+        viz.savePNG(name, buffer);
     }
 
     return 0;
