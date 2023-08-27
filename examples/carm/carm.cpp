@@ -44,15 +44,18 @@ int main()
     auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
 
-    const std::array<double, 3> source_pos = { 16, 0, -70 };
-    // auto& sphere = world.addItem<Sphere>({ 5, source_pos });
+    table.translate({ 0, 0, -17 });
+    ctdi.translate({ 0, 0, -17 });
+    auto ctdi_aabb = ctdi.AABB();
 
     world.build();
 
     // adding beam
     using Beam = dxmc::DXBeam<double>;
+    const std::array<double, 3> source_pos = { 16, 0, -70 };
     Beam beam(source_pos);
-    beam.setCollimationAnglesDeg(7, 7);
+    // beam.setCollimationAnglesDeg(7, 7);
+    beam.setBeamSize(20, 20, 100);
 
     Viz viz(world);
     auto buffer = viz.generateBuffer(1024, 1024);

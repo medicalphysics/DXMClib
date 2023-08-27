@@ -177,6 +177,14 @@ public:
         m_collimationAngles[1] = DEG_TO_RAD<T>() * Y;
     }
 
+    void setBeamSize(T beamSizeX, T beamSizeY, T sourceDetectorDistance)
+    {
+        if (sourceDetectorDistance > 0) {
+            m_collimationAngles[0] = std::atan(std::abs(beamSizeX) / (2 * sourceDetectorDistance));
+            m_collimationAngles[0] = std::atan(std::abs(beamSizeY) / (2 * sourceDetectorDistance));
+        }
+    }
+
     DXBeamExposure<T> exposure(std::size_t i) const noexcept
     {
         DXBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
