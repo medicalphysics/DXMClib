@@ -106,7 +106,7 @@ public:
         if (from > 2 || to > 2 || from == to)
             return;
 
-        const auto fdim = m_dim;
+        const auto dim = m_dim;
 
         std::swap(m_dim[from], m_dim[to]);
         std::swap(m_invSpacing[from], m_invSpacing[to]);
@@ -114,11 +114,12 @@ public:
         std::swap(m_aabb[from], m_aabb[to]);
         std::swap(m_aabb[from + 3], m_aabb[to + 3]);
 
-        std::array<std::size_t 3> swapped { 0, 1, 2 };
+        std::array<std::size_t, 3> swapped { 0, 1, 2 };
         std::swap(swapped[from], swapped[to]);
 
         auto data = m_data; // making copy
         auto dose = m_dose;
+
         for (std::size_t z = 0; z < dim[2]; ++z)
             for (std::size_t y = 0; y < dim[1]; ++y)
                 for (std::size_t x = 0; x < dim[0]; ++x) {

@@ -23,6 +23,7 @@ Copyright 2023 Erlend Andersen
 
 #include <fstream>
 #include <string>
+#include <cstring>
 
 namespace dxmc {
 template <Floating T>
@@ -68,7 +69,7 @@ protected:
     static S readFromBytes(const std::uint8_t* bytes)
     {
         S value;
-        memcpy(&value, bytes, sizeof(S));
+        std::memcpy(&value, bytes, sizeof(S));
         return value;
     }
 
@@ -80,7 +81,7 @@ protected:
         std::size_t vec_pos = 0;
         for (std::size_t i = 0; i < n_elements; i++) {
             const auto b = &buffer[84 + 50 * i];
-            memcpy(&vec[vec_pos], b, sizeof(float) * 12);
+            std::memcpy(&vec[vec_pos], b, sizeof(float) * 12);
             vec_pos += 12;
         }
         return vec;
