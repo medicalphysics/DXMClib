@@ -261,7 +261,7 @@ public:
     };
     CubicSplineInterpolator(std::vector<std::pair<T, T>> data)
     {
-        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lf.first < rh.first; });
+        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
         setup(data);
     }
     void setup(const std::vector<std::pair<T, T>>& data)
