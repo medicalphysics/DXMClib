@@ -74,13 +74,14 @@ struct Organ {
 
 std::vector<Organ> readASCIIOrgans(const std::string& organ_path)
 {
+    std::vector<Organ> organs;
     std::ifstream t(organ_path);
     std::stringstream buffer;
     if (t.is_open()) {
         buffer << t.rdbuf();
         t.close();
     } else {
-        return;
+        return organs;
     }
 
     auto to_uchar = [](std::string_view s) -> std::optional<std::uint8_t> {
@@ -97,8 +98,6 @@ std::vector<Organ> readASCIIOrgans(const std::string& organ_path)
         else
             return std::nullopt;
     };
-
-    std::vector<Organ> organs;
 
     for (std::string line; std::getline(buffer, line);) {
         if (line.size() >= 67) {
@@ -135,4 +134,6 @@ ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& 
     data.m_spacing = { 1.775, 1.775, 4.84 };
     const auto size = std::reduce(data.m_dim.cbegin(), data.m_dim.cend(), 1, std::multiplies<>());
     data.m_organ_data = readASCIIData(phantom_path);
+
+    return data;
 }
