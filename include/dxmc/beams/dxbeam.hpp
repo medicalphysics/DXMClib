@@ -181,7 +181,7 @@ public:
     {
         if (sourceDetectorDistance > 0) {
             m_collimationAngles[0] = std::atan(std::abs(beamSizeX) / (2 * sourceDetectorDistance));
-            m_collimationAngles[0] = std::atan(std::abs(beamSizeY) / (2 * sourceDetectorDistance));
+            m_collimationAngles[1] = std::atan(std::abs(beamSizeY) / (2 * sourceDetectorDistance));
         }
     }
 
