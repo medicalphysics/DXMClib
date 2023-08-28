@@ -39,7 +39,7 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <typename T>
-    requires(std::same_as<T, double> || std::same_as<T, float>, std::same_as<T, std::uint8_t>)
+    requires(std::same_as<T, double> || std::same_as<T, float> || std::same_as<T, std::uint8_t>)
 struct VisualizationBuffer {
     std::vector<T> buffer;
     std::size_t width = 512;
@@ -56,6 +56,25 @@ struct VisualizationBuffer {
         width = w;
         height = h;
         buffer.resize(width * height * 4);
+    }
+    void resize(std::size_t size)
+    {
+        width = size;
+        height = size;
+        buffer.resize(width * height * 4);
+    }
+    void resize(std::size_t w, std::size_t h)
+    {
+        width = w;
+        height = h;
+        buffer.resize(width * height * 4);
+    }
+    void clear()
+    {
+        if constexpr (std::same_as<T, std::uint8_t>)
+            std::fill(begin(), end(), 255);
+        else
+            std::fill(begin(), end(), T { 1 });
     }
     auto begin() { return buffer.begin(); }
     auto end() { return buffer.end(); }
@@ -190,9 +209,11 @@ public:
         addLineProp(start, f(cos, dir, -angs[0], -angs[1]), lenght, radii);
     }
 
-    static auto generateBuffer(std::size_t width = 512, std::size_t height = 512)
+    template <typename U = std::uint8_t>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    static auto createBuffer(std::size_t width = 512, std::size_t height = 512)
     {
-        VisualizationBuffer<std::uint8_t> buffer(width, height);
+        VisualizationBuffer<U> buffer(width, height);
         return buffer;
     }
 

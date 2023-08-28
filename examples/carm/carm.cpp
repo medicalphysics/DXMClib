@@ -58,7 +58,7 @@ int main()
     beam.setBeamSize(20, 20, 100);
 
     Viz viz(world);
-    auto buffer = viz.generateBuffer(1024, 1024);
+    auto buffer = viz.createBuffer(1024, 1024);
     viz.addLineProp(beam, 150, 0.1);
 
     viz.setDistance(500);
