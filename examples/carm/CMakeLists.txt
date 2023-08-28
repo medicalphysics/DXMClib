@@ -13,7 +13,7 @@ IF( NOT TARGET libdxmc)
 ENDIF()
 
 
-add_executable(carm carm.cpp)
+add_executable(carm carm.cpp phantomreader.cpp phantomreader.hpp)
 target_link_libraries(carm PRIVATE libdxmc)
 
 set(CARM_ARM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCarm.stl")
