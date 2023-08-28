@@ -34,23 +34,22 @@ namespace dxmc {
 
 template <typename U, typename T>
 concept MeshKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec, T scale) {
-    Floating<T>;
-    u <=> u;
-    u.translate(vec);
-    u.scale(scale);
-    {
-        u.intersect(p)
-    } -> std::same_as<std::optional<T>>;
-    {
-        u.center()
-    } -> std::same_as<std::array<T, 3>>;
-    {
-        u.AABB()
-    } -> std::same_as<std::array<T, 6>>;
-    {
-        u.planeVector()
-    } -> std::same_as<std::array<T, 3>>;
-};
+                             u <=> u;
+                             u.translate(vec);
+                             u.scale(scale);
+                             {
+                                 u.intersect(p)
+                                 } -> std::same_as<std::optional<T>>;
+                             {
+                                 u.center()
+                                 } -> std::same_as<std::array<T, 3>>;
+                             {
+                                 u.AABB()
+                                 } -> std::same_as<std::array<T, 6>>;
+                             {
+                                 u.planeVector()
+                                 } -> std::same_as<std::array<T, 3>>;
+                         };
 
 template <Floating T, MeshKDTreeType<T> U>
 class MeshKDTree {
@@ -355,7 +354,6 @@ private:
     std::vector<U> m_triangles;
     std::unique_ptr<MeshKDTree<T, U>> m_left = nullptr;
     std::unique_ptr<MeshKDTree<T, U>> m_right = nullptr;
-    friend class MeshKDTree<T, U>;
 };
 
 }
