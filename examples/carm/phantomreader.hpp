@@ -32,15 +32,16 @@ public:
     std::array<double, 3> spacing() const { return m_spacing; }
     std::array<std::size_t, 3> dimensions() const { return m_dim; }
 
-protected:
     static ICRP110PhantomReader readFemalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path);
     static ICRP110PhantomReader readMalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path);
 
+protected:
 private:
     std::vector<std::uint8_t> m_organ_data;
+    std::vector<std::uint8_t> m_media_media;
     std::array<double, 3> m_spacing;
     std::array<std::size_t, 3> m_dim;
-    std::vector<std::uint8_t> m_organ_media;
+
     std::vector<std::string> m_organ_name;
     std::vector<double> m_organ_density;
     std::vector<std::map<std::size_t, double>> m_media_composition;

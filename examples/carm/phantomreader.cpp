@@ -19,7 +19,9 @@ Copyright 2023 Erlend Andersen
 #include "phantomreader.hpp"
 
 #include <algorithm>
+#include <array>
 #include <charconv>
+#include <execution>
 #include <fstream>
 #include <numeric>
 #include <optional>
@@ -49,6 +51,23 @@ inline void trim(std::string& s)
     ltrim(s);
 }
 
+auto to_uchar(std::string_view s) -> std::optional<std::uint8_t>
+{
+    std::uint8_t value {};
+    if (std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
+        return value;
+    else
+        return std::nullopt;
+};
+auto to_double(std::string_view s) -> std::optional<double>
+{
+    double value {};
+    if (std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
+        return value;
+    else
+        return std::nullopt;
+};
+
 std::vector<std::uint8_t> readASCIIData(const std::string& path)
 {
     std::ifstream t;
@@ -57,10 +76,24 @@ std::vector<std::uint8_t> readASCIIData(const std::string& path)
     if (t.is_open()) {
         t.seekg(0, std::ios::end); // go to the end
         auto length = t.tellg(); // report location (this is the length)
-        buffer.resize(length);
+
         t.seekg(0, std::ios::beg); // go back to the beginning
-        t.read(reinterpret_cast<char*>(&buffer[0]), length); // read the whole file into the buffer
+        std::string test(length, '0');
+        t.read(&test[0], length);
         t.close();
+
+        test.erase(std::remove_if(std::execution::par_unseq, test.begin(), test.end(), [](unsigned char x) { return x == '\t' || x == '\n'; }), test.end());
+
+        const auto buffer_size = test.size() / 4;
+
+        buffer.resize(buffer_size, 255);
+        for (std::size_t i = 0; i < buffer.size(); ++i) {
+            auto start = test.data() + 4 * i;
+            auto end = test.data() + 4 * (i + 1);
+            while (*start != ' ')
+                ++start;
+            std::from_chars(start, end, buffer[i]);
+        }
     }
     return buffer;
 }
@@ -84,38 +117,26 @@ std::vector<Organ> readASCIIOrgans(const std::string& organ_path)
         return organs;
     }
 
-    auto to_uchar = [](std::string_view s) -> std::optional<std::uint8_t> {
-        std::uint8_t value {};
-        if (std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
-            return value;
-        else
-            return std::nullopt;
-    };
-    auto to_double = [](std::string_view s) -> std::optional<double> {
-        double value {};
-        if (std::from_chars(s.data(), s.data() + s.size(), value).ec == std::errc {})
-            return value;
-        else
-            return std::nullopt;
-    };
+    std::size_t lineNr = 0;
 
     for (std::string line; std::getline(buffer, line);) {
-        if (line.size() >= 67) {
+        lineNr++;
+        if (line.size() >= 66 && lineNr > 4) {
             Organ organ;
             // ID
             auto IDs = line.substr(0, 6);
             auto ID = to_uchar(IDs);
             if (ID)
                 organ.ID = ID.value();
-            auto name = line.substr(6, 55);
+            auto name = line.substr(6, 49);
             trim(name);
             organ.name = name;
-            auto TNRs = line.substr(55, 58);
+            auto TNRs = line.substr(55, 3);
             ltrim(TNRs);
             auto TNR = to_uchar(TNRs);
             if (TNR)
                 organ.mediaID = TNR.value();
-            auto denss = line.substr(61, 66);
+            auto denss = line.substr(61, 5);
             auto dens = to_double(denss);
             if (dens)
                 organ.density = dens.value();
@@ -127,6 +148,71 @@ std::vector<Organ> readASCIIOrgans(const std::string& organ_path)
     return organs;
 }
 
+struct Media {
+    std::uint8_t ID = 0;
+    std::map<std::size_t, double> composition;
+    std::string name;
+};
+
+std::vector<Media> readASCIIMedia(const std::string& media_path)
+{
+    std::vector<Media> medias;
+    std::ifstream t(media_path);
+    std::stringstream buffer;
+    if (t.is_open()) {
+        buffer << t.rdbuf();
+        t.close();
+    } else {
+        return medias;
+    }
+
+    std::size_t lineNr = 0;
+
+    for (std::string line; std::getline(buffer, line);) {
+        lineNr++;
+        if (line.size() >= 154 && lineNr > 3) {
+            Media media;
+            // ID
+            auto IDs = line.substr(0, 6);
+            auto ID = to_uchar(IDs);
+            if (ID)
+                media.ID = ID.value();
+            auto name = line.substr(6, 72);
+            trim(name);
+            media.name = name;
+
+            // composition
+            const std::array Zs = { 1, 6, 7, 8, 11, 12, 15, 16, 17, 19, 20, 26, 53 };
+            for (std::size_t i = 0; i < Zs.size(); ++i) {
+                constexpr std::size_t offset = 76;
+                constexpr std::size_t step = 6;
+                auto s = line.substr(offset + step * i, step);
+                trim(s);
+                auto w = to_double(s);
+                if (w)
+                    if (w.value() > 0.0)
+                        media.composition[Zs[i]] = w.value();
+            }
+            medias.push_back(media);
+        }
+    }
+
+    medias.push_back({ .ID = 0, .composition = { { 7, 80.0 }, { 8, 20.0 } }, .name = "Air" });
+
+    return medias;
+}
+
+void sanitizeIDs(std::vector<std::uint8_t>& organ_data, std::vector<Organ>& organs, std::vector<Media>& media)
+{
+
+    // finding organ IDs in organ data;
+    auto organIDs = organ_data; // copy of vector
+    std::sort(std::execution::par_unseq, organIDs.begin(), organIDs.end());
+    organIDs.erase(std::unique(std::execution::par_unseq, organIDs.begin(), organIDs.end()), organIDs.end());
+
+    return;
+}
+
 ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path)
 {
     ICRP110PhantomReader data;
@@ -134,6 +220,11 @@ ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& 
     data.m_spacing = { 1.775, 1.775, 4.84 };
     const auto size = std::reduce(data.m_dim.cbegin(), data.m_dim.cend(), 1, std::multiplies<>());
     data.m_organ_data = readASCIIData(phantom_path);
+    // if (size != data.m_organ_data.size())
+    //     return data;
 
+    auto organs = readASCIIOrgans(organ_path);
+    auto media = readASCIIMedia(media_path);
+    sanitizeIDs(data.m_organ_data, organs, media);
     return data;
 }

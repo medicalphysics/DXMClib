@@ -24,11 +24,23 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
+#include "phantomreader.hpp"
 
 #include <vector>
 
+
+void testPhantom() {
+
+    auto data = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
+
+    auto d = data.dimensions();
+}
+
+
 int main()
 {
+    testPhantom();
+
     using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
     using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
     using Sphere = dxmc::WorldSphere<double, 5, 1>;
