@@ -88,9 +88,10 @@ std::vector<std::uint8_t> readASCIIData(const std::string& path)
 
         buffer.resize(buffer_size, 255);
         for (std::size_t i = 0; i < buffer.size(); ++i) {
-            auto start = test.data() + 4 * i;
-            auto end = test.data() + 4 * (i + 1);
-            while (*start != ' ')
+            char* start = test.data() + 4 * i;
+            char* end = test.data() + 4 * (i + 1);
+
+            while (std::isspace(*start))
                 ++start;
             std::from_chars(start, end, buffer[i]);
         }
@@ -204,11 +205,61 @@ std::vector<Media> readASCIIMedia(const std::string& media_path)
 
 void sanitizeIDs(std::vector<std::uint8_t>& organ_data, std::vector<Organ>& organs, std::vector<Media>& media)
 {
-
     // finding organ IDs in organ data;
     auto organIDs = organ_data; // copy of vector
     std::sort(std::execution::par_unseq, organIDs.begin(), organIDs.end());
     organIDs.erase(std::unique(std::execution::par_unseq, organIDs.begin(), organIDs.end()), organIDs.end());
+
+    // making organ IDs consecutive
+    const auto maxOrganId = std::max_element(organIDs.cbegin(), organIDs.cend());
+    std::vector<std::size_t> lin_map_organ(*maxOrganId + 1, 255);
+    for (std::size_t i = 0; i < organIDs.size(); ++i) {
+        lin_map_organ[organIDs[i]] = i;
+    }
+    for (auto& o : organs)
+        o.ID = lin_map_organ[o.ID];
+    std::transform(std::execution::par_unseq, organ_data.cbegin(), organ_data.cend(), organ_data.begin(), [lin_map_organ](const auto oIdx) {
+        return lin_map_organ[oIdx];
+    });
+    std::sort(organs.begin(), organs.end(), [](const auto& lh, const auto& rh) { return lh.ID < rh.ID; });
+    organs.erase(std::find_if(organs.cbegin(), organs.cend(), [](const auto& o) { return o.ID == 255; }), organs.end());
+
+    // making media IDs consecutive
+    std::vector<std::uint8_t> mediaIDs(media.size());
+    std::transform(media.cbegin(), media.cend(), mediaIDs.begin(), [](const auto& o) { return o.ID; });
+    // do we need all media?
+    for (std::size_t i = 0; i < mediaIDs.size(); ++i) {
+        bool found = false;
+        if (mediaIDs[i] == 0)
+            found = true;
+        else
+            for (const auto& o : organs)
+                found = found || o.mediaID == mediaIDs[i];
+        if (!found)
+            mediaIDs[i] = 255;
+    }
+    std::sort(mediaIDs.begin(), mediaIDs.end());
+    mediaIDs.erase(std::unique(mediaIDs.begin(), mediaIDs.end()), mediaIDs.end());
+    mediaIDs.erase(std::find(mediaIDs.begin(), mediaIDs.end(), 255), mediaIDs.end());
+    const auto maxMediaId = std::max_element(mediaIDs.cbegin(), mediaIDs.cend());
+    std::vector<std::size_t> lin_map_media(*maxMediaId + 1, 0);
+    for (std::size_t i = 0; i < mediaIDs.size(); ++i) {
+        lin_map_media[mediaIDs[i]] = i;
+    }
+
+    for (auto& m : media)
+        m.ID = lin_map_media[m.ID];
+    for (auto& o : organs)
+        o.mediaID = lin_map_media[o.mediaID];
+
+    std::vector<std::uint8_t> media_data(organ_data.size(), 0);
+    std::vector<std::uint8_t> organ_media_map(organs.size());
+    for (std::size_t i = 0; i < organs.size(); ++i) {
+        organ_media_map[i] = organs[i].mediaID;
+    }
+    std::transform(std::execution::par_unseq, organ_data.cbegin(), organ_data.cend(), media_data.begin(), [organ_media_map](const auto oIdx) {
+        return organ_media_map[oIdx];
+    });
 
     return;
 }
