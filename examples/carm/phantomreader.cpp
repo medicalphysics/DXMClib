@@ -145,7 +145,8 @@ std::vector<Organ> readASCIIOrgans(const std::string& organ_path)
             organs.push_back(organ);
         }
     }
-
+    organs.push_back({ .name = "Air", .density = 0.001, .ID = 0, .mediaID = 0 });
+    
     return organs;
 }
 
@@ -198,19 +199,63 @@ std::vector<Media> readASCIIMedia(const std::string& media_path)
         }
     }
 
-    medias.push_back({ .ID = 0, .composition = { { 7, 80.0 }, { 8, 20.0 } }, .name = "Air" });
-
+    medias.push_back({ .ID = 0, .composition = { { 7, 80.0 }, { 8, 20.0 } }, .name = "Air" });    
     return medias;
 }
 
-void sanitizeIDs(std::vector<std::uint8_t>& organ_data, std::vector<Organ>& organs, std::vector<Media>& media)
+bool sanitizeIDs(std::vector<std::uint8_t>& organ_data, std::vector<Organ>& organs, std::vector<Media>& media)
 {
     // finding organ IDs in organ data;
     auto organIDs = organ_data; // copy of vector
     std::sort(std::execution::par_unseq, organIDs.begin(), organIDs.end());
     organIDs.erase(std::unique(std::execution::par_unseq, organIDs.begin(), organIDs.end()), organIDs.end());
 
+    // do we have all organs, if not add air?
+    {
+        std::uint8_t teller = 0;
+        while (teller < organs.size())
+
+
+        bool missingOrgan = false;
+        for (auto& id : organIDs) {
+            auto pos = std::find_if(organs.cbegin(), organs.cend(), [id](const auto& o) { return o.ID == id; });
+            missingOrgan = missingOrgan || pos == organs.cend();
+            if (missingOrgan)
+                bool test = false;
+        }
+    }
+    if (missingOrgan)
+        return false;
+    //removing organs not in volume
+    for (std::size_t i = 0; i < organs.size();) {
+        const auto& o = organs[i];
+        auto pos = std::find(organIDs.cbegin(), organIDs.cend(), o.ID);
+        if (pos == organIDs.cend())
+            organs.erase(organs.cbegin() + i);
+        else
+            ++i;
+    }
+    std::sort(organs.begin(), organs.end(), [](const auto& lh, const auto& rh) { return lh.ID < rh.ID; });
+    for (std::uint8_t i = 0; i < organs.size(); ++i)
+    {
+
+    }
+
+
+    std::replace(organ_data.begin(), organ_data.end(), )
+
+
+
+
+    for (const auto oID : organIDs) {
+        auto pos = std::find_if(organs.begin(), organs.end(), [oID](const auto& o) { return o.ID == oID; });
+        if (pos != organs.cend())
+            organs.erase(pos);
+    }
+    return true;
     // making organ IDs consecutive
+
+    /*
     const auto maxOrganId = std::max_element(organIDs.cbegin(), organIDs.cend());
     std::vector<std::size_t> lin_map_organ(*maxOrganId + 1, 255);
     for (std::size_t i = 0; i < organIDs.size(); ++i) {
@@ -262,6 +307,7 @@ void sanitizeIDs(std::vector<std::uint8_t>& organ_data, std::vector<Organ>& orga
     });
 
     return;
+    */
 }
 
 ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path)
