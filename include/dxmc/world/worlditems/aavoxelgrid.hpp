@@ -87,9 +87,9 @@ public:
         auto data = m_data;
         auto dose = m_dose;
         for (std::size_t z = 0; z < m_dim[2]; ++z) {
-            const auto zz = axis != 0 ? z : m_dim[2] - z - 1;
+            const auto zz = axis != 2 ? z : m_dim[2] - z - 1;
             for (std::size_t y = 0; y < m_dim[1]; ++y) {
-                const auto yy = axis != 0 ? y : m_dim[1] - y - 1;
+                const auto yy = axis != 1 ? y : m_dim[1] - y - 1;
                 for (std::size_t x = 0; x < m_dim[0]; ++x) {
                     const auto fIdx = x + m_dim[0] * (y + m_dim[1] * z);
                     const auto xx = axis != 0 ? x : m_dim[0] - x - 1;
@@ -99,6 +99,8 @@ public:
                 }
             }
         }
+        m_data = data;
+        m_dose = dose;
     }
 
     void rollAxis(std::size_t from, std::size_t to)
