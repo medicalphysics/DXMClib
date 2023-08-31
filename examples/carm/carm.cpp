@@ -28,23 +28,33 @@ Copyright 2023 Erlend Andersen
 
 #include <vector>
 
+dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
+{
 
-void testPhantom() {
+    auto d = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
 
-    auto data = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
-
-    auto d = data.dimensions();
+    dxmc::AAVoxelGrid<double, 5, 1, 0> phantom;
+    using Material = dxmc::Material<double, 5>;
+    std::vector<Material> materials;
+    for (auto& w : d.mediaComposition()) {
+        auto mat_cand = Material::byWeight(w);
+        if (mat_cand)
+            materials.push_back(mat_cand.value());
+        else
+            throw std::runtime_error("error");
+    }
+    phantom.setData(d.dimensions(), d.densityData(), d.mediaData(), materials);
+    phantom.setSpacing(d.spacing());
+    return phantom;
 }
-
 
 int main()
 {
-    testPhantom();
 
     using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
     using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
     using Sphere = dxmc::WorldSphere<double, 5, 1>;
-    using VGrid = dxmc::AAVoxelGrid<double, 5, 1>;
+    using VGrid = dxmc::AAVoxelGrid<double, 5, 1, 0>;
     using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere, VGrid>;
 
     using Viz = dxmc::VisualizeWorld<double>;
@@ -53,13 +63,21 @@ int main()
     world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
+    /*
     auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
 
     table.translate({ 0, 0, -17 });
     ctdi.translate({ 0, 0, -17 });
     auto ctdi_aabb = ctdi.AABB();
-
+    */
+    auto& phantom = world.addItem(testPhantom());
+    phantom.rollAxis(2, 0);
+    phantom.rollAxis(2,1);
+    phantom.flipAxis(2);
+    auto table_aabb = table.AABB();
+    auto phantom_aabb = phantom.AABB();
+    phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] });
     world.build();
 
     // adding beam
