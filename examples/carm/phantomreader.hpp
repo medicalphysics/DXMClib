@@ -37,6 +37,8 @@ public:
     static ICRP110PhantomReader readMalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path);
 
 protected:
+    template <bool FEMALE = true>
+    static ICRP110PhantomReader readPhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path);
     ICRP110PhantomReader() = default;
 
 private:

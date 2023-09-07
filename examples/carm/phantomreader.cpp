@@ -295,11 +295,19 @@ void sanitizeIDs(std::vector<std::uint8_t>& organ_data, std::vector<Organ>& orga
     }
 }
 
-ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path)
+template <bool FEMALE>
+ICRP110PhantomReader ICRP110PhantomReader::readPhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path)
 {
+
     ICRP110PhantomReader data;
-    data.m_dim = { 299, 137, 348 };
-    data.m_spacing = { .1775, .1775, .484 };
+
+    if constexpr (FEMALE) {
+        data.m_dim = { 299, 137, 348 };
+        data.m_spacing = { .1775, .1775, .484 };
+    } else {
+        data.m_dim = { 254, 127, 222 };
+        data.m_spacing = { .2137, .2137, 0.8 };
+    }
     const auto size = std::reduce(data.m_dim.cbegin(), data.m_dim.cend(), std::size_t { 1 }, std::multiplies<>());
     data.m_organ_data = readASCIIData(phantom_path);
 
@@ -331,38 +339,12 @@ ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& 
     return data;
 }
 
+ICRP110PhantomReader ICRP110PhantomReader::readFemalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path)
+{
+    return readPhantom<true>(phantom_path, media_path, organ_path);
+}
+
 ICRP110PhantomReader ICRP110PhantomReader::readMalePhantom(const std::string& phantom_path, const std::string& media_path, const std::string& organ_path)
 {
-    ICRP110PhantomReader data;
-    data.m_dim = { 254, 127, 222 };
-    data.m_spacing = { .2137, .2137, 0.8 };
-    const auto size = std::reduce(data.m_dim.cbegin(), data.m_dim.cend(), std::size_t { 1 }, std::multiplies<>());
-    data.m_organ_data = readASCIIData(phantom_path);
-
-    if (size != data.m_organ_data.size())
-        return data;
-
-    auto organs = readASCIIOrgans(organ_path);
-    auto media = readASCIIMedia(media_path);
-    sanitizeIDs(data.m_organ_data, organs, media);
-
-    std::vector<std::uint8_t> organ_to_media_map;
-    for (const auto& o : organs)
-        organ_to_media_map.push_back(o.mediaID);
-    data.m_media_data.resize(data.m_organ_data.size());
-    std::transform(std::execution::par_unseq, data.m_organ_data.cbegin(), data.m_organ_data.cend(), data.m_media_data.begin(), [organ_to_media_map](const auto oID) { return organ_to_media_map[oID]; });
-
-    std::vector<double> organ_to_density_map;
-    for (const auto& o : organs)
-        organ_to_density_map.push_back(o.density);
-    data.m_density_data.resize(data.m_organ_data.size());
-    std::transform(std::execution::par_unseq, data.m_organ_data.cbegin(), data.m_organ_data.cend(), data.m_density_data.begin(), [organ_to_density_map](const auto oID) { return organ_to_density_map[oID]; });
-
-    for (const auto& o : organs)
-        data.m_organ_name.push_back(o.name);
-
-    for (const auto& m : media)
-        data.m_media_composition.push_back(m.composition);
-
-    return data;
+    return readPhantom<false>(phantom_path, media_path, organ_path);
 }
