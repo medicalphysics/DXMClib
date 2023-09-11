@@ -50,14 +50,14 @@ target_link_libraries(EPICSparser PRIVATE material )
 ## Copying Hartree-Fock profiles for pz=0 since this data is lacking from EPICS data
 add_custom_command(TARGET EPICSparser PRE_BUILD
     COMMENT "Copying hartreeFockProfiles_0.csv to ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.csv"
-    COMMAND ${CMAKE_COMMAND} -E copy
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/hartreeFockProfiles_0.csv
             ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.csv
 )
 ## Copying standard densities for all elements up to 92
 add_custom_command(TARGET EPICSparser PRE_BUILD
     COMMENT "Copying standarddensities.csv to ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv"
-    COMMAND ${CMAKE_COMMAND} -E copy
+    COMMAND ${CMAKE_COMMAND} -E copy_if_different
             ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/standarddensities.csv
             ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv
 )
@@ -88,16 +88,15 @@ add_dependencies(libdxmc libdxmc_physics)
 # Adding physics data to install folder
 install(FILES ${DXMCLIB_EPICS_PHYSICSLISTS} DESTINATION bin)
 
-
-
+# Function to copy generated physicslist binary fil to target binary directory
+# Dependency on physicslist.bin file is handlles by linking target to libdxmc
 function(dxmclib_add_physics_list func_target)
         add_custom_command(
             TARGET ${func_target} POST_BUILD
-            COMMAND ${CMAKE_COMMAND} -E copy
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${DXMCLIB_EPICS_PHYSICSLISTS}"
                 "$<TARGET_PROPERTY:${func_target},BINARY_DIR>/physicslist.bin"
-        )
-        message("Adding target to copy ${DXMCLIB_EPICS_PHYSICSLISTS} to target binary dir: $<TARGET_PROPERTY:${func_target},BINARY_DIR>}")
+        )        
 endfunction()
 
 
