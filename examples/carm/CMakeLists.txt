@@ -33,5 +33,7 @@ add_custom_command(TARGET carm POST_BUILD
 			)
 
 
+dxmclib_add_physics_list(carm)
+
 install(TARGETS carm
 	RUNTIME DESTINATION examples)
