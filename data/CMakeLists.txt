@@ -3,7 +3,6 @@
 # EPICS data parser
 SET(DXMCLIB_EPICS_PHYSICSLISTS "${CMAKE_CURRENT_BINARY_DIR}/physicslists.bin" CACHE INTERNAL "Path to EPICS physicslists")
 
-
 SET(DXMCLIB_EPICS_DATA_DIRPATH ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "Path to directory holding EPDL2017.ALL and EADL2017.ALL in ENDL format")
 if(DXMCLIB_EPICS_DATA_DIRPATH)
     SET(DXMCLIB_EPICS_DATA_EPDLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EPDL2017.ALL" CACHE FILEPATH "Path to EPDL2017.ALL" FORCE)
@@ -38,7 +37,8 @@ add_executable(EPICSparser
     EPICSParser/atomicelementhandler.cpp 
     EPICSParser/epicsparser.cpp 
     EPICSParser/main.cpp        
-)    
+)
+
 target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
 target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MINTABLEENERGY="${DXMCLIB_MIN_TABLE_ENERGY_KEV}")
 target_compile_definitions(EPICSparser PUBLIC DXMCLIB_EADLPATH="${DXMCLIB_EPICS_DATA_EADLPATH}")
@@ -54,6 +54,7 @@ add_custom_command(TARGET EPICSparser PRE_BUILD
             ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/hartreeFockProfiles_0.csv
             ${CMAKE_CURRENT_BINARY_DIR}/hartreeFockProfiles_0.csv
 )
+
 ## Copying standard densities for all elements up to 92
 add_custom_command(TARGET EPICSparser PRE_BUILD
     COMMENT "Copying standarddensities.csv to ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv"
@@ -61,7 +62,6 @@ add_custom_command(TARGET EPICSparser PRE_BUILD
             ${CMAKE_CURRENT_SOURCE_DIR}/EPICSParser/standarddensities.csv
             ${CMAKE_CURRENT_BINARY_DIR}/standarddensities.csv
 )
-
 
 ## make parsed EPICS data available to all binaries consuming dxmc on build machine
 target_compile_definitions(libdxmc INTERFACE DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB_EPICS_PHYSICSLISTS}")
@@ -71,7 +71,6 @@ target_compile_definitions(libdxmc INTERFACE DXMCLIB_MAXENERGY=${DXMCLIB_MAX_ENE
 target_compile_definitions(libdxmc INTERFACE DXMCLIB_MINENERGY=${DXMCLIB_MIN_ENERGY_KEV})
 
 if(WIN32)
-    message(STATUS "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser.exe")
     add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
         COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser.exe" 
         DEPENDS EPICSparser)
@@ -88,7 +87,7 @@ add_dependencies(libdxmc libdxmc_physics)
 # Adding physics data to install folder
 install(FILES ${DXMCLIB_EPICS_PHYSICSLISTS} DESTINATION bin)
 
-# Function to copy generated physicslist binary fil to target binary directory
+# Function to copy generated physicslist binary file to target binary directory
 # Dependency on physicslist.bin file is handlles by linking target to libdxmc
 function(dxmclib_add_physics_list func_target)
         add_custom_command(
