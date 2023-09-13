@@ -32,7 +32,7 @@ add_custom_command(TARGET carm POST_BUILD
 			WORKING_DIRECTORY ${CMAKE_CURRENT_BINARY_DIR}
 			)
 
-
+#Adding interaction binary data to example 
 dxmclib_add_physics_list(carm)
 
 install(TARGETS carm

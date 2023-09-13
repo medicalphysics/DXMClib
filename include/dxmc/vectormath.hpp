@@ -159,14 +159,6 @@ namespace vectormath {
     template <Floating T>
     [[nodiscard]] inline constexpr std::array<T, 3> rotate(const std::array<T, 3>& vec, const std::array<T, 3>& axis, const T sinAngle, const T cosAngle) noexcept
     {
-        /* const auto ax = cross(axis, vec);
-        const auto v1 = scale(dot(vec, axis), axis);
-        const auto v2 = scale(cosAngle, cross(ax, axis));
-        const auto v3 = scale(sinAngle, ax);
-        const auto res = add(v1, add(v2, v3));
-        return res;
-        */
-
         const auto ax = cross(axis, vec);
         const auto va = dot(vec, axis);
         const auto v2 = cross(ax, axis);
