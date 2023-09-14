@@ -495,8 +495,13 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     res.rCase = "Case 3";
     res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "30kVp" : "16.8keV";
     res.modus = tomo ? "tomosyntesis" : "radiography";
+    std::string model = "NoneLC";
+    if (LOWENERGYCORRECTION == 1)
+        model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        model = "IA";
 
-    std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons\n";
+    std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons with low en model: " << model << std::endl;
 
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
@@ -591,6 +596,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
             sim_subvol = { 17.692, 18.070, 17.865, 17.262, 17.768, 5.417, 56.017 };
         }
     }
+
     if constexpr (LOWENERGYCORRECTION == 0) {
         res.model = "TG195";
         res.result = sim_ev;
@@ -604,13 +610,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
             print(res, false);
         }
     }
-    std::string model;
-    if (LOWENERGYCORRECTION == 0)
-        model = "NoneLC";
-    if (LOWENERGYCORRECTION == 1)
-        model = "Livermore";
-    if (LOWENERGYCORRECTION == 2)
-        model = "IA";
+
     res.model = model;
 
     constexpr T evNormal = T { 1000 } / (N_HISTORIES * N_EXPOSURES);
