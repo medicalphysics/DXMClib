@@ -37,7 +37,7 @@ Copyright 2023 Erlend Andersen
 
 using namespace dxmc;
 
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 template <Floating T>
 struct ResultKeys {
@@ -299,7 +299,7 @@ auto runDispatcher(T& transport, W& world, const B& beam)
         std::this_thread::sleep_for(std::chrono::milliseconds(500));
         std::cout << std::string(message.length(), ' ') << "\r";
         message = progress.message();
-        std::cout << message << "\r";
+        std::cout << message << std::flush << "\r";
     }
     job.join();
     std::cout << std::string(message.length(), ' ') << "\r";
@@ -307,8 +307,8 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
-bool TG195Case2AbsorbedEnergy(bool tomo = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case2AbsorbedEnergy(bool tomo = false)
 {
 
     constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
@@ -488,8 +488,8 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
-bool TG195Case3AbsorbedEnergy(bool tomo = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case3AbsorbedEnergy(bool tomo = false)
 {
     ResultKeys<T> res;
     res.rCase = "Case 3";
@@ -759,8 +759,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
-bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
@@ -984,8 +984,8 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
 }
 
 template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>)
-bool TG195Case5AbsorbedEnergy()
+    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>) bool
+TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
@@ -1203,8 +1203,8 @@ int main(int argc, char* argv[])
     printStart();
 
     auto success = true;
-
-    success = success && runAll<double>();
+    for (std::size_t i = 0; i < 30; ++i)
+        success = success && runAll<double>();
     // success = success && runAll<float>();
 
     // std::cout << "Press any key to exit";
