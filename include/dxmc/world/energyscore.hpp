@@ -39,7 +39,7 @@ public:
             auto restref = std::atomic_ref(m_energyImparted_rest);
             restref.fetch_add(r, std::memory_order_relaxed);
             if (restref.load(std::memory_order_relaxed) > T { 1e5 }) {
-                aref.fetch_add(restref.exchange(T { 0 }, std::memory_order_relaxed), std::memory_order_relaxed);
+                aref.fetch_add(restref.exchange(T { 0 }));
             }
         }
         {
@@ -51,7 +51,7 @@ public:
             auto restref = std::atomic_ref(m_energyImpartedSquared_rest);
             restref.fetch_add(r, std::memory_order_relaxed);
             if (restref.load(std::memory_order_relaxed) > T { 1e5 }) {
-                aref.fetch_add(restref.exchange(T { 0 }, std::memory_order_relaxed), std::memory_order_relaxed);
+                aref.fetch_add(restref.exchange(T { 0 }));
             }
         }
         {
