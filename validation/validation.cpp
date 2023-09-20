@@ -49,6 +49,7 @@ struct ResultKeys {
     T result = 0;
     T result_std = 0;
     std::uint64_t nEvents = 0;
+    std::uint64_t nMilliseconds = 0;
     int precision = sizeof(T);
 };
 
@@ -67,7 +68,7 @@ public:
     }
     void header()
     {
-        m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, nEvents, Precision\n";
+        m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, nEvents, SimulationTime, Precision\n";
     }
 
     template <typename T>
@@ -87,6 +88,7 @@ public:
         m_myfile << r.result << ", ";
         m_myfile << r.result_std << ", ";
         m_myfile << r.nEvents << ", ";
+        m_myfile << r.nMilliseconds << ", ";
         m_myfile << r.precision << std::endl;
 
         if (terminal) {
@@ -98,6 +100,7 @@ public:
             std::cout << r.result << ", ";
             std::cout << r.result_std << ", ";
             std::cout << r.nEvents << ", ";
+            std::cout << r.nMilliseconds << ", ";
             std::cout << r.precision << std::endl;
         }
     }
@@ -307,8 +310,8 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case2AbsorbedEnergy(bool tomo = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case2AbsorbedEnergy(bool tomo = false)
 {
 
     constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
@@ -417,7 +420,7 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
     res.result = total_ev / (total_hist / 1000);
     res.result_std = std::sqrt(total_ev_var) / (total_hist / 1000);
     res.nEvents = total_number_events;
-
+    res.nMilliseconds = time_elapsed.count();
     ResultPrint print;
     print(res, false);
 
@@ -476,6 +479,7 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
         res.result = TG195_value;
         res.result_std = 0;
         res.nEvents = 0;
+        res.nMilliseconds = 0;
         print(res, false);
         for (std::size_t i = 0; i < TG195_voi_values.size(); ++i) {
             res.volume = "VOI " + std::to_string(i + 1);
@@ -488,8 +492,8 @@ TG195Case2AbsorbedEnergy(bool tomo = false)
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case3AbsorbedEnergy(bool tomo = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case3AbsorbedEnergy(bool tomo = false)
 {
     ResultKeys<T> res;
     res.rCase = "Case 3";
@@ -603,6 +607,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         res.volume = "Total body";
         res.result_std = 0;
         res.nEvents = 0;
+        res.nMilliseconds = 0;
         print(res, false);
         for (int i = 0; i < sim_subvol.size(); ++i) {
             res.volume = "VOI " + std::to_string(i + 1);
@@ -619,6 +624,7 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
     res.result = breast.energyScored(8).energyImparted() * evNormal;
     res.result_std = breast.energyScored(8).standardDeviation() * evNormal;
     res.nEvents = breast.energyScored(8).numberOfEvents();
+    res.nMilliseconds = time_elapsed.count();
     print(res, false);
     std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_ev << ", difference: [" << (res.result / sim_ev - 1) * 100 << "%]\n";
     for (int i = 0; i < 7; ++i) {
@@ -629,17 +635,6 @@ TG195Case3AbsorbedEnergy(bool tomo = false)
         print(res, false);
         std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_subvol[i] << ", difference: [" << (res.result / sim_subvol[i] - 1) * 100 << "%]\n";
     }
-
-    VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 2.0f / 4);
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4);
-    viz.setDistance(600);
-    viz.suggestFOV(5);
-    int height = 1024;
-    int width = 1024;
-    std::vector<T> buffer(height * width * 4, T { 1 });
-    viz.generate(world, buffer, width, height);
-    saveBinaryArray(buffer, "color.bin");
 
     return true;
 }
@@ -664,6 +659,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     world.build(60);
     cylinder.setMaterial(mat);
     cylinder.setMaterialDensity(mat_dens);
+    std::chrono::milliseconds time_elapsed;
     if (specter) {
         using Beam = IsotropicBeam<T>;
         Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
@@ -675,7 +671,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
         Transport transport;
-        auto time_elapsed = runDispatcher(transport, world, beam);
+        time_elapsed = runDispatcher(transport, world, beam);
     } else {
         using Beam = IsotropicMonoEnergyBeam<T>;
         Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 }, T { 56.4 });
@@ -685,7 +681,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
         Transport transport;
-        auto time_elapsed = runDispatcher(transport, world, beam);
+        time_elapsed = runDispatcher(transport, world, beam);
     }
     const std::array<T, 4> voi_locations = { 0, 1, 2, 3 };
     std::array<T, 4> ev_history, ev_history_var;
@@ -724,6 +720,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     res.rCase = "Case 4.1";
     res.model = model;
     res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
+    res.nMilliseconds = time_elapsed.count();
 
     std::cout << res.rCase << " specter: " << res.specter << " collimation: " << res.modus << " " << res.model << std::endl;
 
@@ -752,6 +749,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
             res.result = tg195[i];
             res.result_std = 0;
             res.nEvents = 0;
+            res.nMilliseconds = 0;
             print(res, false);
         }
     }
@@ -759,8 +757,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 }
 
 template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case42AbsorbedEnergy(bool large_collimation = false)
+    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
@@ -815,7 +813,8 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
         beam.setPosition(p_ang);
         beam.setDirectionCosines(x, co_y);
 
-        runDispatcher(transport, world, beam);
+        auto time_elepased = runDispatcher(transport, world, beam);
+        res.nMilliseconds = time_elepased.count();
 
         std::cout << "Angle " << angInt;
         res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
@@ -862,6 +861,7 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
             res.result = d;
             res.result_std = 0;
             res.nEvents = 0;
+            res.nMilliseconds = 0;
             print(res, false);
         }
         angInd = 0;
@@ -872,6 +872,7 @@ TG195Case42AbsorbedEnergy(bool large_collimation = false)
             res.result = d;
             res.result_std = 0;
             res.nEvents = 0;
+            res.nMilliseconds = 0;
             print(res, false);
         }
     }
@@ -984,8 +985,8 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
 }
 
 template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>) bool
-TG195Case5AbsorbedEnergy()
+    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>)
+bool TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
@@ -1038,6 +1039,7 @@ TG195Case5AbsorbedEnergy()
         std::cout << "Angle " << angInt << "...Done" << std::endl;
 
         res.modus = std::to_string(angInt);
+        res.nMilliseconds = time_elapsed.count();
 
         const auto doseScore = grid.getEnergyScores();
         const auto materialIndex = grid.getMaterialIndex();
@@ -1080,6 +1082,7 @@ TG195Case5AbsorbedEnergy()
     if constexpr (LOWENERGYCORRECTION == 0) {
         res.model = "TG195";
         res.nEvents = 0;
+        res.nMilliseconds = 0;
         std::array<std::array<T, 17>, 8> tg195_doses;
         if constexpr (std::same_as<B, IsotropicBeam<T>>) {
             tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };
@@ -1203,13 +1206,10 @@ int main(int argc, char* argv[])
     printStart();
 
     auto success = true;
-    for (std::size_t i = 0; i < 30; ++i)
-        success = success && runAll<double>();
-    // success = success && runAll<float>();
 
-    // std::cout << "Press any key to exit";
-    // std::string dummy;
-    // std::cin >> dummy;
+    success = runAll<double>();
+    success = runAll<float>();
+
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;
