@@ -189,7 +189,7 @@ namespace basicshape {
             auto t_cand = intersectInterval(p, cylinder);
             if (t_cand) {
                 auto& v = t_cand.value();
-                if (v[1] < T { 0 })
+                if (v[1] <= T { 0 })
                     return std::nullopt;
                 v[0] = std::max(v[0], T { 0 });
             }
@@ -204,7 +204,7 @@ namespace basicshape {
             if (t_cand) {
                 const auto& v = t_cand.value();
                 if (v[1] > T { 0 }) {
-                    res.rayOriginIsInsideItem = v[0] < T { 0 };
+                    res.rayOriginIsInsideItem = v[0] <= T { 0 };
                     res.intersection = res.rayOriginIsInsideItem ? v[1] : v[0];
                     res.intersectionValid = true;
                 }
@@ -221,7 +221,7 @@ namespace basicshape {
             if (t_cand) {
                 const auto& v = t_cand.value();
                 if (v[1] > T { 0 }) {
-                    res.rayOriginIsInsideItem = v[0] < T { 0 };
+                    res.rayOriginIsInsideItem = v[0] <= T { 0 };
                     res.intersection = res.rayOriginIsInsideItem ? v[1] : v[0];
                     res.intersectionValid = true;
 

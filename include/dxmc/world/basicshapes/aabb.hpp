@@ -84,7 +84,7 @@ namespace basicshape {
                 t[0] = tzmin;
             if (tzmax < t[1])
                 t[1] = tzmax;
-            if (t[1] < 0)
+            if (t[1] <= 0)
                 return std::nullopt;
             if constexpr (FORWARD) {
                 if (t[0] < T { 0 })
@@ -142,15 +142,16 @@ namespace basicshape {
                 t[0] = tzmin;
             if (tzmax < t[1])
                 t[1] = tzmax;
-            if (t[1] < 0)
+            if (t[1] <= 0)
                 return res;
 
-            res.rayOriginIsInsideItem = t[0] < 0;
+            res.rayOriginIsInsideItem = t[0] <= 0;
             res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
             res.intersectionValid = true;
 
             return res;
         }
+
         // Branched version with early exits
         template <Floating T, typename U>
         VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 6>& aabb)
@@ -210,10 +211,10 @@ namespace basicshape {
                 t[1] = tzmax;
                 axis_max = 2;
             }
-            if (t[1] < 0)
+            if (t[1] <= 0)
                 return res;
 
-            res.rayOriginIsInsideItem = t[0] < 0;
+            res.rayOriginIsInsideItem = t[0] <= 0;
             res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
             res.intersectionValid = true;
             const int axis = res.rayOriginIsInsideItem ? axis_max : axis_min;
