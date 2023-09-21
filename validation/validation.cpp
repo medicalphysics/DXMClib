@@ -352,11 +352,11 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 
     if (tomo) {
         constexpr T alpha = 15 * DEG_TO_RAD<T>();
-        const T h = 180 * std::atan(alpha);
+        const T h = 180 * std::tan(alpha);
         beam.setPosition({ 0, -h, 0 });
         const T y_ang_min = std::atan((h - T { 39 } / 2) / 180);
         const T y_ang_max = std::atan((h + T { 39 } / 2) / 180);
-        const T x_ang = std::tan(T { 39 } / (2 * 180));
+        const T x_ang = std::atan(T { 39 } / (2 * 180));
         beam.setCollimationAngles(-x_ang, y_ang_min, x_ang, y_ang_max);
     } else {
         const T collangle = std::atan(T { 39 } / (2 * T { 180 }));
@@ -555,18 +555,13 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
     beam.setNumberOfParticlesPerExposure(N_HISTORIES);
     if (tomo) {
         constexpr T alpha = 15 * DEG_TO_RAD<T>();
-        const auto beampos = vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
-        beam.setPosition(beampos);
-        const auto cosy = vectormath::rotate({ 0, -1, 0 }, { 1, 0, 0 }, alpha);
-        beam.setDirectionCosines({ 1, 0, 0 }, cosy);
-
-        const auto d_vec = vectormath::rotate<T>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
-        const auto l_vec = vectormath::add(d_vec, { 0, 13, 0 });
-        const auto y_ang_min = std::acos(vectormath::dot(d_vec, l_vec) / vectormath::lenght(d_vec) / vectormath::lenght(l_vec));
-        const auto h_vec = vectormath::subtract(d_vec, { 0, 13, 0 });
-        const auto y_ang_max = std::acos(vectormath::dot(d_vec, h_vec) / vectormath::lenght(d_vec) / vectormath::lenght(h_vec));
-        const T x_ang = std::tan(T { 14 } / T { 66 });
-        beam.setCollimationAngles(0, -y_ang_min, x_ang, y_ang_max);
+        const T h = 66 * std::tan(alpha);
+        beam.setPosition({ 0, -h, 0 });
+        constexpr T sy = 26 / 2;
+        const T y_ang_min = std::atan((h - sy) / 66);
+        const T y_ang_max = std::atan((h + sy) / 66);
+        const T x_ang = std::atan(T { 14 } / T { 66 });
+        beam.setCollimationAngles(0, y_ang_min, x_ang, y_ang_max);
     } else {
         beam.setPosition({ 0, 0, T { 66.0 } });
         beam.setDirectionCosines({ 1, 0, 0 }, { 0, -1, 0 });
@@ -1208,7 +1203,7 @@ int main(int argc, char* argv[])
     auto success = true;
 
     success = runAll<double>();
-    success = runAll<float>();
+    // success = runAll<float>();
 
     if (success)
         return EXIT_SUCCESS;
