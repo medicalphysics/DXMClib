@@ -18,6 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/beams/beamtype.hpp"
 #include "dxmc/beams/ctspiralbeam.hpp"
+#include "dxmc/beams/ctspiraldualenergybeam.hpp"
 #include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
@@ -79,6 +80,16 @@ bool testCTSpiralBeam()
     return true;
 }
 
+template <typename T>
+bool testCTSpiralDEBeam()
+{
+    using Beam = dxmc::CTSpiralDualEnergyBeam<T>;
+    Beam beam;
+    beam.setTubeAVoltage(120);
+    beam.calibrationFactor();
+    return true;
+}
+
 int main()
 {
     std::cout << "Testing beams\n";
@@ -92,6 +103,8 @@ int main()
     success = success && testpencilbeam<double>();
     success = success && testCTSpiralBeam<float>();
     success = success && testCTSpiralBeam<double>();
+    success = success && testCTSpiralDEBeam<double>();
+    success = success && testCTSpiralDEBeam<float>();
 
     if (success)
         return EXIT_SUCCESS;

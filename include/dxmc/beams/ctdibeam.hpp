@@ -32,10 +32,11 @@ template <Floating T>
 class CTDIBeamExposure {
 public:
     CTDIBeamExposure(T angle, T SDD, std::uint64_t historiesPerExposure,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter)
+        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter, T weight = 1)
         : m_Nparticles(historiesPerExposure)
         , m_collimationAngles(collimationAngles)
         , m_specter(specter)
+        , m_weight(weight)
     {
         m_dirCosineX = vectormath::rotate(m_dirCosineX, m_dirCosineY, angle);
         const auto beamdir = vectormath::cross(m_dirCosineX, m_dirCosineY);
@@ -68,30 +69,34 @@ public:
             .pos = m_pos,
             .dir = pdir,
             .energy = m_specter->sampleValue(state),
-            .weight = 1
+            .weight = m_weight
         };
         return p;
     }
 
 private:
-    std::uint64_t m_Nparticles = 1;
+    std::uint64_t m_Nparticles
+        = 1;
+
     std::array<T, 3> m_pos = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 1, 0 };
     std::array<T, 3> m_dirCosineX = { 1, 0, 0 };
     std::array<T, 3> m_dirCosineY = { 0, 0, 1 };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
+    T m_weight = 1;
     const SpecterDistribution<T>* m_specter = nullptr;
 };
 
 template <Floating T>
 class CTDIBeam {
 public:
-    CTDIBeam(T angleStep, T SDD, const std::array<T, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<T>& specter)
+    CTDIBeam(T angleStep, T SDD, const std::array<T, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<T>& specter, T weight = 1)
         : m_angleStep(angleStep)
         , m_sdd(SDD)
         , m_collimationAngles(collimationAngles)
         , m_particlesPerExposure(particlesPerExposure)
         , m_specter(specter)
+        , m_weight(weight)
     {
     }
 
@@ -106,10 +111,10 @@ public:
     CTDIBeamExposure<T> exposure(std::size_t i) const noexcept
     {
         const auto angle = i * m_angleStep;
-        return CTDIBeamExposure(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter);
+        return CTDIBeamExposure(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter, m_weight);
     }
 
-    T calibrationFactor(TransportProgress* progress=nullptr) const
+    T calibrationFactor(TransportProgress* progress = nullptr) const
     {
         return 1;
     }
@@ -117,9 +122,9 @@ public:
 private:
     T m_angleStep = 0;
     T m_sdd = 1;
+    T m_weight = 1;
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_particlesPerExposure = 1;
     SpecterDistribution<T> m_specter;
 };
-
 }
