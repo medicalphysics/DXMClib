@@ -95,6 +95,7 @@ function(dxmclib_add_physics_list func_target)
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${DXMCLIB_EPICS_PHYSICSLISTS}"
                 "$<TARGET_PROPERTY:${func_target},BINARY_DIR>/physicslist.bin"
+            COMMENT "Copying ${DXMCLIB_EPICS_PHYSICSLISTS} to $<TARGET_PROPERTY:${func_target},BINARY_DIR>/physicslist.bin"
         )        
 endfunction()
 
