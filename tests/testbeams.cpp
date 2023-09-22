@@ -75,9 +75,9 @@ bool testCTSpiralBeam()
     beam.setStepAngleDeg(5);
     beam.setSourceDetectorDistance(115);
     dxmc::TransportProgress progress;
-    auto f = beam.calibrationFactor(&progress);
+    //auto f = beam.calibrationFactor(&progress);
 
-    return true;
+    return initiateBeam<T, Beam>(beam);
 }
 
 template <typename T>
@@ -85,9 +85,10 @@ bool testCTSpiralDEBeam()
 {
     using Beam = dxmc::CTSpiralDualEnergyBeam<T>;
     Beam beam;
-    beam.setTubeAVoltage(120);
-    beam.calibrationFactor();
-    return true;
+    beam.setTubeAVoltage(140);
+    beam.setTubeBVoltage(80);
+    
+    return initiateBeam<T, Beam>(beam);
 }
 
 int main()

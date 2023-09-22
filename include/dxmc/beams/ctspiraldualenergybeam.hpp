@@ -180,7 +180,7 @@ public:
 
     CTSpiralBeamExposure<T> exposure(std::size_t dualExposureIndex) const noexcept
     {
-        const std::size_t i = dualIndex / 2;
+        const std::size_t i = dualExposureIndex / 2;
         const bool isTubeB = dualExposureIndex % 2 == 1;
 
         constexpr auto pi2 = PI_VAL<T>() * 2;
@@ -210,7 +210,7 @@ public:
         std::array<T, 2> angles = { angx, angy };
 
         const auto weight = isTubeB ? m_weightB : m_weightA;
-        const SpecterDstribution<T>* const specter = isTubeB ? &m_specterB : &m_specterA;
+        const SpecterDistribution<T>* const specter = isTubeB ? &m_specterB : &m_specterA;
         CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, specter);
         return exp;
     }
@@ -256,8 +256,8 @@ protected:
         const auto weightB = std::reduce(std::execution::par_unseq, weightsB.cbegin(), weightsB.cend(), T { 0 });
         m_specterB = SpecterDistribution(energiesB, weightsB);
 
-        m_weightA = weightA / (weightA + weightB);
-        m_weightB = weightB / (weightA + weightB);
+        m_weightA = 2 * weightA / (weightA + weightB);
+        m_weightB = 2 * weightB / (weightA + weightB);
     }
 
 private:
