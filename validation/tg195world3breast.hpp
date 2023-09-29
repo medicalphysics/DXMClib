@@ -109,7 +109,7 @@ public:
         return m_energyScored;
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1)
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
     {
         T skin_volume = std::numbers::pi_v<T> * (m_halfHeight - m_skin_thick) * 2 * (m_radius * m_radius - (m_radius - m_skin_thick) * (m_radius - m_skin_thick));
         skin_volume += std::numbers::pi_v<T> * 2 * m_skin_thick * m_radius * m_radius;
@@ -137,7 +137,7 @@ public:
         }
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
     {
         if (index < m_dose_boxes.size())
             return m_dose_boxes[index].doseScored;
@@ -146,7 +146,7 @@ public:
         return m_doseScored;
     }
 
-    void clearDoseScored()
+    void clearDoseScored() override
     {
         m_doseScored.clear();
         m_skin_dose.clear();

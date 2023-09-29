@@ -194,7 +194,7 @@ public:
             return m_periferyChild_energyScored;
         return m_energyScored;
     }
-    void addEnergyScoredToDoseScore(T calibration_factor = 1)
+    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
     {
         const T c_vol = m_centerChild.volume();
         const T p_vol = m_periferyChild.volume();
@@ -203,7 +203,7 @@ public:
         m_centerChild_doseScored.addScoredEnergy(m_centerChild_energyScored, c_vol, m_materialDensity, calibration_factor);
         m_periferyChild_doseScored.addScoredEnergy(m_periferyChild_energyScored, p_vol, m_materialDensity, calibration_factor);
     };
-    const DoseScore<T>& doseScored(std::size_t index = 0) const
+    const DoseScore<T>& doseScored(std::size_t index = 0) const override
     {
         if (index == 0)
             return m_centerChild_doseScored;
@@ -211,7 +211,7 @@ public:
             return m_periferyChild_doseScored;
         return m_doseScored;
     }
-    void clearDoseScored()
+    void clearDoseScored() override
     {
         m_doseScored.clear();
         m_centerChild_doseScored.clear();
