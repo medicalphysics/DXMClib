@@ -555,13 +555,20 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
     beam.setNumberOfParticlesPerExposure(N_HISTORIES);
     if (tomo) {
         constexpr T alpha = 15 * DEG_TO_RAD<T>();
-        const T h = 66 * std::tan(alpha);
-        beam.setPosition({ 0, -h, 0 });
-        constexpr T sy = 26 / 2;
-        const T y_ang_min = std::atan((h - sy) / 66);
-        const T y_ang_max = std::atan((h + sy) / 66);
-        const T x_ang = std::atan(T { 14 } / T { 66 });
-        beam.setCollimationAngles(0, y_ang_min, x_ang, y_ang_max);
+        auto beampos = vectormath::rotate({ 0, 0, T { 66 } }, { 1, 0, 0 }, alpha);
+        constexpr T plane_sizey = 13;
+        const auto height = beampos[2];
+        const auto angy_max = std::atan((plane_sizey - beampos[1]) / height);
+        const auto angy_min = std::atan((-plane_sizey - beampos[1]) / height);
+        constexpr T plane_sizex = 14;
+        const auto angx_max = std::atan(plane_sizex / T { 66 });
+        constexpr T angx_min = 0;
+        beam.setCollimationAngles(angx_min, -angy_max, angx_max, -angy_min); // since we have ycosine = {0,-1,0}
+
+        beam.setPosition(beampos);
+        const std::array<T, 3> cosinex = { 1, 0, 0 };
+        const std::array<T, 3> cosiney = { 0, -1, 0 };
+        beam.setDirectionCosines(cosinex, cosiney);
     } else {
         beam.setPosition({ 0, 0, T { 66.0 } });
         beam.setDirectionCosines({ 1, 0, 0 }, { 0, -1, 0 });
@@ -1119,8 +1126,6 @@ bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
-
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
     success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
@@ -1205,7 +1210,7 @@ int main(int argc, char* argv[])
     auto success = true;
 
     success = runAll<double>();
-    // success = runAll<float>();
+    success = runAll<float>();
 
     if (success)
         return EXIT_SUCCESS;
