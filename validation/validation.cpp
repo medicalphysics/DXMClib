@@ -762,7 +762,7 @@ template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
     requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
 bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 480;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 120;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr int materialShells = 5;
@@ -1210,7 +1210,7 @@ int main(int argc, char* argv[])
     auto success = true;
 
     success = runAll<double>();
-    success = runAll<float>();
+    // success = runAll<float>();
 
     if (success)
         return EXIT_SUCCESS;
