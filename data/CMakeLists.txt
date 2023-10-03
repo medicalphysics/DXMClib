@@ -70,16 +70,10 @@ target_compile_definitions(libdxmc INTERFACE DXMCLIB_PHYSICSLISTSPATH="${DXMCLIB
 target_compile_definitions(libdxmc INTERFACE DXMCLIB_MAXENERGY=${DXMCLIB_MAX_ENERGY_KEV})
 target_compile_definitions(libdxmc INTERFACE DXMCLIB_MINENERGY=${DXMCLIB_MIN_ENERGY_KEV})
 
-if(WIN32)
-    add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
-        COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser.exe" 
-        DEPENDS EPICSparser)
-else()
-    add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"
-        COMMAND "${CMAKE_CURRENT_BINARY_DIR}/EPICSparser" 
-        DEPENDS EPICSparser)
-endif()
-
+## Generating physicslist
+add_custom_command(OUTPUT "${DXMCLIB_EPICS_PHYSICSLISTS}"        
+    COMMAND $<TARGET_FILE_DIR:EPICSparser>/EPICSparser
+    DEPENDS EPICSparser)
 
 add_custom_target(libdxmc_physics ALL
     DEPENDS "${DXMCLIB_EPICS_PHYSICSLISTS}")
@@ -88,14 +82,13 @@ add_dependencies(libdxmc libdxmc_physics)
 install(FILES ${DXMCLIB_EPICS_PHYSICSLISTS} DESTINATION bin)
 
 # Function to copy generated physicslist binary file to target binary directory
-# Dependency on physicslist.bin file is handlles by linking target to libdxmc
+# Dependency on physicslist.bin file is handles by linking target to libdxmc
 function(dxmclib_add_physics_list func_target)
         add_custom_command(
             TARGET ${func_target} POST_BUILD
             COMMAND ${CMAKE_COMMAND} -E copy_if_different
                 "${DXMCLIB_EPICS_PHYSICSLISTS}"
-                "$<TARGET_PROPERTY:${func_target},BINARY_DIR>/physicslist.bin"
-            COMMENT "Copying ${DXMCLIB_EPICS_PHYSICSLISTS} to $<TARGET_PROPERTY:${func_target},BINARY_DIR>/physicslist.bin"
+                "$<TARGET_FILE_DIR:${func_target}>/physicslist.bin"            
         )        
 endfunction()
 
