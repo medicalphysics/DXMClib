@@ -31,9 +31,9 @@ def readData():
         return dt.dropna()
     return dt
 
-def fix_axis(fg, rotate_labels=True):
+def fix_axis(fg, rotate_labels=True, ylabel="Energy [eV/history]"):
     fg.set(ylim=(0, None))
-    fg.set_axis_labels(y_var="Energy [eV/history]")
+    fg.set_axis_labels(y_var=ylabel)
     if rotate_labels:
         for ax in fg.axes_dict.values():             
             for tick in ax.get_xticklabels():
@@ -117,14 +117,27 @@ def plotCase5(dt_full, show=False):
         if show:
             plt.show()
 
+def plotRuntimes(dt, show=False):
+    df = dt[dt['Model'] != 'TG195']    
+    for cas in set(df['Case']):        
+        dff = df[df['Case'] == cas]        
+        g = sns.catplot(x="Mode", y="SimulationTime",col='Model', row='Specter', hue='Precision', data=dff, kind='bar')
+        fix_axis(g, ylabel='Simulation time [ms]')
+        plt.savefig("plots/Runtimes_{}.png".format(cas), dpi=900)
+        if show:
+            plt.show()
+        plt.clf()
+
 if __name__=='__main__':
     dt = readData()
     try:
         os.mkdir("plots")
-    except Exception as e:
-        print(e)
+    except Exception:
+        pass
+    
     plotCase2(dt)
     plotCase3(dt)
     plotCase41(dt)
     plotCase42(dt)
     plotCase5(dt)
+    plotRuntimes(dt)

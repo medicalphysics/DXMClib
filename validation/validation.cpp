@@ -37,6 +37,7 @@ Copyright 2023 Erlend Andersen
 
 using namespace dxmc;
 
+// Set this to true for a reduced number of photons (for testing)
 constexpr bool SAMPLE_RUN = false;
 
 template <Floating T>
@@ -270,7 +271,7 @@ std::pair<T, std::map<std::size_t, T>> TG195_breast_tissue()
 
     const T gland_d = T { 1.04 };
 
-    // weighetd 20% gland 80% adipose
+    // weighted 20% gland 80% adipose
     std::map<std::size_t, T> w;
     for (const auto [Z, n] : adipose_w) {
         if (!w.contains(Z))
@@ -1210,7 +1211,7 @@ int main(int argc, char* argv[])
     auto success = true;
 
     success = runAll<double>();
-    // success = runAll<float>();
+    success = runAll<float>();
 
     if (success)
         return EXIT_SUCCESS;
