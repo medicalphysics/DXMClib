@@ -103,7 +103,7 @@ public:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     static bool savePNG(const std::string& filename, const std::vector<U>& buffer, std::size_t width, std::size_t height)
     {
-        auto test = dxmclodepng::savePNG(filename, buffer, width, height);
+        dxmclodepng::savePNG(filename, buffer, width, height);
         return true;
     }
 
@@ -111,7 +111,7 @@ public:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     static bool savePNG(const std::string& filename, const VisualizationBuffer<U>& buffer)
     {
-        auto test = dxmclodepng::savePNG(filename, buffer.buffer, buffer.width, buffer.height);
+        dxmclodepng::savePNG(filename, buffer.buffer, buffer.width, buffer.height);
         return true;
     }
 #endif

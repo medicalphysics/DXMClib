@@ -28,7 +28,7 @@ namespace dxmclodepng {
     {
         std::vector<unsigned char> png;
         if (image.size() == width * height * 4) {
-            auto error = lodepng::encode(png, image, width, height);
+            lodepng::encode(png, image, width, height);
         }
         return png;
     }

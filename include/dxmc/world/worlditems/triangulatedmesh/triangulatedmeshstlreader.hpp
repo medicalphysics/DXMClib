@@ -202,7 +202,6 @@ protected:
 
         std::ifstream f(path, std::ios::in);
         if (f.is_open()) {
-            std::size_t teller { 0 };
             for (std::string line; std::getline(f, line);) {
                 auto res = processLine(line);
                 if (res) {

@@ -900,9 +900,6 @@ protected:
         Matrix sol(A.rows() + BT.rows() + C.rows(), A.cols() + BT.cols() + CT.cols());
         sol.setZero();
 
-        auto nrows = sol.rows();
-        auto ncols = sol.cols();
-
         for (std::size_t r = 0; r < sol.rows(); ++r) {
             for (std::size_t c = 0; c < sol.cols(); ++c) {
                 if ((r < N + 1) && (c < N + 1)) {

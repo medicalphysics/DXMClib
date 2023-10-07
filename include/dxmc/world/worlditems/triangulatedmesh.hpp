@@ -48,16 +48,16 @@ public:
 
     TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         setData(triangles, max_tree_dept);
     }
 
     TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader<T> reader;
         auto triangles = reader(path);

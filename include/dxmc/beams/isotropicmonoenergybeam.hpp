@@ -34,8 +34,8 @@ class IsotropicMonoEnergyBeamExposure {
 public:
     IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, T energy, std::uint64_t N)
         : m_pos(pos)
-        , m_dirCosines(dircosines)
         , m_energy(energy)
+        , m_dirCosines(dircosines)
         , m_NParticles(N)
     {
     }
@@ -82,8 +82,8 @@ template <Floating T>
 class IsotropicMonoEnergyBeam {
 public:
     IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 }, T energy = 60)
-        : m_pos(pos)
-        , m_energy(energy)
+        :m_energy(energy)
+        , m_pos(pos)
     {
         setDirectionCosines(dircosines);
     }

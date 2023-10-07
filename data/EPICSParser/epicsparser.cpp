@@ -186,7 +186,6 @@ void EPICSparser::read(const std::string& path)
         std::string line;
         std::uint8_t headerline = 1;
         DataSegment segment;
-        std::size_t linenumber = 0;
         while (std::getline(stream, line)) {
             if (headerline == 0) {
                 if (line.size() >= endIdx()) {
@@ -200,9 +199,6 @@ void EPICSparser::read(const std::string& path)
                     if (segment.dataDim == 0) { // find data dimenionality
                         segment.dataDim = data.size();
                     }
-                    if (segment.dataDim != data.size()) {
-                        bool test = false;
-                    }
                     for (const auto d : data) {
                         segment.data.push_back(d);
                     }
@@ -214,8 +210,7 @@ void EPICSparser::read(const std::string& path)
             } else if (headerline == 1) {
                 processFirstHeaderLine(line, segment);
                 headerline++;
-            }
-            ++linenumber;
+            }            
         }
     }
     processSegments(segments, m_elements);

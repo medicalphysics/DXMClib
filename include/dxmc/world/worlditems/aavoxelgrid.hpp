@@ -344,16 +344,13 @@ protected:
     template <typename Intersection = WorldIntersectionResult<T>, std::uint_fast8_t IGNOREIDX = 255>
     void voxelIntersect(const Particle<T>& p, Intersection& intersection) const
     {
-
         static_assert(std::is_same<Intersection, WorldIntersectionResult<T>>::value || std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value);
         std::array<std::size_t, 3> xyz;
 
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
         } else {
-            // make sure we are well inside a voxel
-            constexpr auto h = std::numeric_limits<T>::max();
-            constexpr auto l = std::numeric_limits<T>::lowest();
+            // make sure we are well inside a voxel            
             const auto t = intersection.intersection + T { 1E-5 };
             const std::array<T, 3> pos = {
                 p.pos[0] + p.dir[0] * t,

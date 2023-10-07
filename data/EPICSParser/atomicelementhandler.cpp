@@ -51,8 +51,7 @@ void AtomicElementHandler::setCoherentData(const std::vector<double>& data)
     auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
     m_atom.coherent.clear();
     m_atom.coherent.reserve((end - start) / 2);
-    for (std::size_t i = start; i <= end; i = i + 2) {
-        const auto ind = i * 2;
+    for (std::size_t i = start; i <= end; i = i + 2) {        
         const double e = data[i] * MeVTokeV();
         const double a = data[i + 1] * barnToAtt();
         m_atom.coherent.push_back(std::make_pair(e, a));
@@ -93,7 +92,7 @@ void AtomicElementHandler::setFormFactor(const std::vector<double>& data)
     m_atom.formFactor.clear();
     m_atom.formFactor.reserve(N);
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
-        const auto x = data[i] * 1E6; // for units of per Å
+        const auto x = data[i] * 1E6; // for units of per ï¿½
         const auto f = data[i + 1];
         if (x <= momentumTransferMax() && x > 0.0) {
             m_atom.formFactor.push_back(std::make_pair(x, f));
@@ -131,7 +130,7 @@ void AtomicElementHandler::setIncoherentSF(const std::vector<double>& data)
     m_atom.incoherentSF.clear();
     m_atom.incoherentSF.reserve(N);
     for (std::size_t i = 0; i < N * 2; i = i + 2) {
-        const auto x = data[i] * 1E6; // for units of per Å
+        const auto x = data[i] * 1E6; // for units of per ï¿½
         const auto f = data[i + 1];
         if (x <= momentumTransferMax() && x > 0.0) {
             m_atom.incoherentSF.push_back(std::make_pair(x, f));
@@ -295,18 +294,18 @@ void AtomicElementHandler::setStandardDensity(double dens)
 constexpr double AtomicElementHandler::momentumTransferMax()
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m
-    constexpr double m2A = 1E10; // meters to Ångstrøm
+    constexpr double m2A = 1E10; // meters to ï¿½ngstrï¿½m
     constexpr double eV2keV = 1E-3; // eV to keV
-    constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
+    constexpr double hc = hc_si * m2A * eV2keV; // kev*ï¿½
     constexpr double hc_inv = 1.0 / hc;
-    return maxPhotonEnergy() * hc_inv; // per Å
+    return maxPhotonEnergy() * hc_inv; // per ï¿½
 }
 double AtomicElementHandler::momentumTransfer(double energy, double angle)
 {
     constexpr double hc_si = 1.239841193E-6; // ev*m
-    constexpr double m2A = 1E10; // meters to Ångstrøm
+    constexpr double m2A = 1E10; // meters to ï¿½ngstrï¿½m
     constexpr double eV2keV = 1E-3; // eV to keV
-    constexpr double hc = hc_si * m2A * eV2keV; // kev*Å
+    constexpr double hc = hc_si * m2A * eV2keV; // kev*ï¿½
     constexpr double hc_inv = 1.0 / hc;
-    return energy * std::sin(angle * 0.5) * hc_inv; // per Å
+    return energy * std::sin(angle * 0.5) * hc_inv; // per ï¿½
 }
