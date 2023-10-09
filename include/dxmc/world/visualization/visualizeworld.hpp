@@ -181,15 +181,35 @@ public:
             {
                 obj.directionCosines()
             } -> std::convertible_to<std::array<std::array<T, 3>, 2>>;
-            {
-                obj.collimationAngles()
-            } -> std::convertible_to<std::array<T, 2>>;
+
+            obj.collimationAngles();
         }
     void addLineProp(const B& obj, T lenght = -1, T radii = 1)
     {
         const auto start = obj.position();
         const auto cos = obj.directionCosines();
         const auto dir = vectormath::cross(cos[0], cos[1]);
+
+        constexpr bool has_advanced_collimation = requires(B obj) {
+            {
+                obj.collimationAngles()
+            } -> std::convertible_to<std::array<T, 4>>;
+        };
+        constexpr bool has_simple_collimation = requires(B obj) {
+            {
+                obj.collimationAngles()
+            } -> std::convertible_to<std::array<T, 2>>;
+        };
+
+        std::array<T, 4> angs;
+        if constexpr (has_advanced_collimation) {
+            angs = obj.collimationAngles();
+        } else if constexpr (has_simple_collimation) {
+            auto sang = obj.collimationAngles();
+            angs = { -sang[0], -sang[1], sang[0], sang[1] };
+        } else {
+            return;
+        }
 
         auto f = [](const auto& cosines, const auto& dir, T angx, T angy) -> std::array<T, 3> {
             const auto sinx = std::sin(angx);
@@ -202,11 +222,11 @@ public:
             };
             return pdir;
         };
-        const auto angs = obj.collimationAngles();
+
+        addLineProp(start, f(cos, dir, angs[2], angs[3]), lenght, radii);
+        addLineProp(start, f(cos, dir, angs[0], angs[3]), lenght, radii);
+        addLineProp(start, f(cos, dir, angs[2], angs[1]), lenght, radii);
         addLineProp(start, f(cos, dir, angs[0], angs[1]), lenght, radii);
-        addLineProp(start, f(cos, dir, -angs[0], angs[1]), lenght, radii);
-        addLineProp(start, f(cos, dir, angs[0], -angs[1]), lenght, radii);
-        addLineProp(start, f(cos, dir, -angs[0], -angs[1]), lenght, radii);
     }
 
     template <typename U = std::uint8_t>
