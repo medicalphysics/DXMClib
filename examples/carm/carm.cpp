@@ -30,7 +30,6 @@ Copyright 2023 Erlend Andersen
 
 dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
 {
-
     auto d = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
 
     dxmc::AAVoxelGrid<double, 5, 1, 0> phantom;
@@ -63,33 +62,32 @@ int main()
     world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
-    /*
+
     auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
-
     table.translate({ 0, 0, -17 });
     ctdi.translate({ 0, 0, -17 });
     auto ctdi_aabb = ctdi.AABB();
-    */
-    auto& phantom = world.addItem(testPhantom());
+
+    /*auto& phantom = world.addItem(testPhantom());
     phantom.rollAxis(2, 0);
-    phantom.rollAxis(2,1);
+    phantom.rollAxis(2, 1);
     phantom.flipAxis(2);
     auto table_aabb = table.AABB();
     auto phantom_aabb = phantom.AABB();
-    phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] });
+    phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] }); */
+
     world.build();
 
     // adding beam
     using Beam = dxmc::DXBeam<double>;
     const std::array<double, 3> source_pos = { 16, 0, -70 };
     Beam beam(source_pos);
-    // beam.setCollimationAnglesDeg(7, 7);
     beam.setBeamSize(20, 20, 100);
 
     Viz viz(world);
     auto buffer = viz.createBuffer(1024, 1024);
-    viz.addLineProp(beam, 150, 0.1);
+    viz.addLineProp(beam, 150, .2);
 
     viz.setDistance(500);
     viz.setAzimuthalAngleDeg(90);
