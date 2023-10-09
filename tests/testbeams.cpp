@@ -41,7 +41,6 @@ template <typename T>
 bool testDXBeam()
 {
     dxmc::DXBeam<T> beam;
-
     auto& tube = beam.tube();
     return initiateBeam<T>(beam);
 }
@@ -75,7 +74,7 @@ bool testCTSpiralBeam()
     beam.setStepAngleDeg(5);
     beam.setSourceDetectorDistance(115);
     dxmc::TransportProgress progress;
-    //auto f = beam.calibrationFactor(&progress);
+    // auto f = beam.calibrationFactor(&progress);
 
     return initiateBeam<T, Beam>(beam);
 }
@@ -87,7 +86,7 @@ bool testCTSpiralDEBeam()
     Beam beam;
     beam.setTubeAVoltage(140);
     beam.setTubeBVoltage(80);
-    
+
     return initiateBeam<T, Beam>(beam);
 }
 

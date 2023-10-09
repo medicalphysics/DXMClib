@@ -38,9 +38,9 @@ public:
         const std::array<T, 2>& collimationAngles, const SpecterDistribution<T> specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
+        , m_collimationAngles(collimationAngles)
         , m_NParticles(N)
         , m_weight(weight)
-        , m_collimationAngles(collimationAngles)
         , m_specter(specter)
     {
     }
@@ -84,7 +84,7 @@ private:
 template <Floating T>
 class DXBeam {
 public:
-    DXBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
+    DXBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } })
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
@@ -219,7 +219,7 @@ protected:
 
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<std::array<T, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
     std::array<T, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;

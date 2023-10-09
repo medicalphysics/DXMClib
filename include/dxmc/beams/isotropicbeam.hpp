@@ -87,7 +87,7 @@ private:
 template <Floating T>
 class IsotropicBeam {
 public:
-    IsotropicBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 })
+    IsotropicBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } })
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
@@ -153,7 +153,7 @@ public:
 
 private:
     std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<std::array<T, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;

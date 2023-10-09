@@ -33,8 +33,8 @@ template <Floating T>
 class IsotropicMonoEnergyBeamExposure {
 public:
     IsotropicMonoEnergyBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, T energy, std::uint64_t N)
-        : m_pos(pos)
-        , m_energy(energy)
+        : m_energy(energy)
+        , m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
     {
@@ -81,8 +81,8 @@ private:
 template <Floating T>
 class IsotropicMonoEnergyBeam {
 public:
-    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { 1, 0, 0, 0, 1, 0 }, T energy = 60)
-        :m_energy(energy)
+    IsotropicMonoEnergyBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } }, T energy = 60)
+        : m_energy(energy)
         , m_pos(pos)
     {
         setDirectionCosines(dircosines);
@@ -145,7 +145,7 @@ public:
 private:
     T m_energy = 60;
     std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<std::array<T, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
     std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;

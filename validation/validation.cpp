@@ -665,7 +665,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     std::chrono::milliseconds time_elapsed;
     if (specter) {
         using Beam = IsotropicBeam<T>;
-        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+        Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } });
         const auto specter = TG195_120KV<T>();
         beam.setEnergySpecter(specter);
         const auto collangle_y = std::atan(T { 16 } / T { 60 });
@@ -677,7 +677,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         time_elapsed = runDispatcher(transport, world, beam);
     } else {
         using Beam = IsotropicMonoEnergyBeam<T>;
-        Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 }, T { 56.4 });
+        Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } }, T { 56.4 });
         const auto collangle_y = std::atan(T { 16 } / T { 60 });
         const auto collangle_z = large_collimation ? std::atan(T { 4 } / T { 60 }) : std::atan(T { 0.5 } / T { 60 });
         beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
@@ -793,7 +793,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 
     std::cout << "Case 4.2 specter: " << res.specter << " collimation: " << res.modus << " model: " << res.model << std::endl;
 
-    Beam beam({ -60, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+    Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } });
     if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
         const auto specter = TG195_120KV<T>();
         beam.setEnergySpecter(specter);

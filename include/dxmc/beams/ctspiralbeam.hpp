@@ -40,10 +40,10 @@ public:
         const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
+        , m_collimationAngles(collimationAngles)
         , m_NParticles(N)
         , m_weight(weight)
         , m_specter(specter)
-        , m_collimationAngles(collimationAngles)
     {
         m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
     }

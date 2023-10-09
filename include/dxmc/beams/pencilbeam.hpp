@@ -32,10 +32,10 @@ template <Floating T>
 class PencilBeamExposure {
 public:
     PencilBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, T weight, std::uint64_t N)
-        : m_pos(pos)
-        , m_dir(dir)
-        , m_energy(energy)
+        : m_energy(energy)
         , m_weight(weight)
+        , m_pos(pos)
+        , m_dir(dir)
         , m_NParticles(N)
     {
     }
@@ -63,9 +63,9 @@ template <Floating T>
 class PencilBeam {
 public:
     PencilBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& dir = { 0, 0, 1 }, T energy = 60)
-        : m_pos(pos)
+        : m_energy(energy)
+        , m_pos(pos)
         , m_dir(dir)
-        , m_energy(energy)
     {
         vectormath::normalize(m_dir);
     }
