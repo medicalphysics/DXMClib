@@ -98,23 +98,24 @@ public:
         suggestFOV();
     }
 
-#ifdef DXMCLIB_USE_LOADPNG
     template <typename U>
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     static bool savePNG(const std::string& filename, const std::vector<U>& buffer, std::size_t width, std::size_t height)
     {
+#ifdef DXMCLIB_USE_LOADPNG
         dxmclodepng::savePNG(filename, buffer, width, height);
         return true;
+#else
+        return false;
+#endif
     }
 
     template <typename U>
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     static bool savePNG(const std::string& filename, const VisualizationBuffer<U>& buffer)
     {
-        dxmclodepng::savePNG(filename, buffer.buffer, buffer.width, buffer.height);
-        return true;
+        return savePNG(filename, buffer.buffer, buffer.width, buffer.height);
     }
-#endif
 
     void setDistance(T dist)
     {
