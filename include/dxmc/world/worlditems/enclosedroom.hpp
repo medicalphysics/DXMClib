@@ -118,8 +118,8 @@ public:
                 auto p_copy = p;
                 p_copy.border_translate(intersection.intersection);
                 const auto past_wall_intersection = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p_copy, m_innerAABB);
-                intersection.intersection = past_wall_intersection.intersection;
-                intersection.rayOriginIsInsideItem = true;
+                intersection.intersection += past_wall_intersection.intersection;
+                intersection.normal = past_wall_intersection.normal;
             }
         } else {
             intersection = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_outerAABB);
