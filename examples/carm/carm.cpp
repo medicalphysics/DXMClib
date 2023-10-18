@@ -22,6 +22,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
+#include "dxmc/world/worlditems/enclosedroom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
 #include "phantomreader.hpp"
@@ -54,14 +55,18 @@ int main()
     using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
     using Sphere = dxmc::WorldSphere<double, 5, 1>;
     using VGrid = dxmc::AAVoxelGrid<double, 5, 1, 0>;
-    using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere, VGrid>;
-
+    using Room = dxmc::EnclosedRoom<double, 5, 1>;
+    using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere, VGrid, Room>;
     using Viz = dxmc::VisualizeWorld<double>;
 
     World world {};
     world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
+    auto& room = world.addItem<Room>();
+    
+    room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120});
+    room.setWallThickness(10);
 
     auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
@@ -86,11 +91,11 @@ int main()
     beam.setBeamSize(20, 20, 100);
 
     Viz viz(world);
-    auto buffer = viz.createBuffer(1024, 1024);
+    auto buffer = viz.createBuffer(2048, 2048);
     viz.addLineProp(beam, 150, .2);
 
-    viz.setDistance(500);
-    viz.setAzimuthalAngleDeg(90);
+    viz.setDistance(5000);
+    viz.setAzimuthalAngleDeg(60);
     std::vector<double> angles;
     for (std::size_t i = 0; i < 5; ++i)
         angles.push_back(i * 30);
