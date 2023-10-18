@@ -22,6 +22,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/enclosedroom.hpp"
 #include "dxmc/world/worlditems/fluencescore.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
@@ -37,17 +38,28 @@ bool testItem()
     dxmc::World<T, U> world;
     world.reserveNumberOfItems(1);
     auto& item = world.template addItem<U>({});
-    world.build();
 
+    item.translate({ 1, 1, 1 });
+    item.translate({ -1, -1, -1 });
+    auto center = item.center();
+    auto aabb = item.AABB();
+    dxmc::Particle<T> p { .pos = { 0, 0, 0 }, .dir = { 0, 0, 1 } };
+    auto intersection = item.intersect(p);
+    auto intersectionViz = item.intersectVisualization(p);
+
+    world.build();
     dxmc::PencilBeam<T> beam;
     beam.setNumberOfExposures(1);
     beam.setNumberOfParticlesPerExposure(8);
-
     dxmc::Transport transport;
     transport.setNumberOfThreads(1);
-
     transport(world, beam);
 
+    auto energy = item.energyScored();
+    item.addEnergyScoredToDoseScore();
+    item.clearEnergyScored();
+    auto dose = item.doseScored(0);
+    item.clearDoseScored();
     return true;
 }
 
@@ -65,6 +77,7 @@ bool basicTestAllItems()
     success = success && testItem<T, dxmc::WorldBoxGrid<T>>();
     success = success && testItem<T, dxmc::WorldCylinder<T>>();
     success = success && testItem<T, dxmc::WorldSphere<T>>();
+    success = success && testItem<T, dxmc::EnclosedRoom<T>>();
 
     return success;
 }
