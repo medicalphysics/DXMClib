@@ -41,8 +41,8 @@ class TriangulatedMesh final : public WorldItemBase<T> {
 public:
     TriangulatedMesh()
         : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 

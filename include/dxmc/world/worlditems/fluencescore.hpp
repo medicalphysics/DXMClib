@@ -40,8 +40,8 @@ class FluenceScore final : public WorldItemBase<T> {
 public:
     FluenceScore(T radius = T { 16 }, const std::array<T, 3>& center = { 0, 0, 0 }, const std::array<T, 3>& normal = { 0, 0, 1 })
         : WorldItemBase<T>()
-        , m_radius(radius)
         , m_center(center)
+        , m_radius(radius)
     {
         setPlaneNormal(normal);
         setEnergyStep(1);
