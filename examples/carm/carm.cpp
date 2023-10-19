@@ -30,7 +30,6 @@ Copyright 2023 Erlend Andersen
 #include <iostream>
 #include <vector>
 
-
 dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
 {
     auto d = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
@@ -96,7 +95,7 @@ int main()
     auto buffer = viz.createBuffer(2048, 2048);
     viz.addLineProp(beam, 150, .2);
 
-    viz.setDistance(200);
+    viz.setDistance(400);
     viz.setAzimuthalAngleDeg(60);
     std::vector<double> angles;
     for (std::size_t i = 0; i < 5; ++i)
