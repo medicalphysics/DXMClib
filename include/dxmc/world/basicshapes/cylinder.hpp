@@ -242,6 +242,9 @@ namespace basicshape {
                         res.normal = d;
                         vectormath::normalize(res.normal);
                     }
+                    if (res.rayOriginIsInsideItem) {
+                        res.normal = vectormath::scale(res.normal, T { -1 });
+                    }
                 }
             }
             return res;

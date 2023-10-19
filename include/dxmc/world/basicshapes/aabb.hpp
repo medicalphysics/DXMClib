@@ -218,7 +218,7 @@ namespace basicshape {
             res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
             res.intersectionValid = true;
             const int axis = res.rayOriginIsInsideItem ? axis_max : axis_min;
-            res.normal[axis] = p.dir[axis] > aabb[axis] ? -1 : 1;
+            res.normal[axis] = p.dir[axis] > 0 ? T { -1 } : T { 1 };            
             return res;
         }
     }

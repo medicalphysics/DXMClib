@@ -286,7 +286,9 @@ namespace basicshape {
             if (res.intersectionValid) {
                 res.rayOriginIsInsideItem = pointInside(p.pos, center, radii, half_height);
             }
-
+            if (res.rayOriginIsInsideItem) {
+                res.normal = vectormath::scale(res.normal, T { -1 });
+            }
             return res;
         }
     }

@@ -134,6 +134,9 @@ namespace basicshape {
                 const auto pos = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
                 res.normal = vectormath::subtract(center, pos);
                 vectormath::normalize(res.normal);
+                if (res.rayOriginIsInsideItem) {
+                    res.normal = vectormath::scale(res.normal, T { -1 });
+                }
             }
             return res;
         }
