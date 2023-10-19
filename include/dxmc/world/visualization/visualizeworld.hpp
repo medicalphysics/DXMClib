@@ -27,9 +27,11 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
+#include <chrono>
 #include <iterator>
 #include <numbers>
 #include <thread>
+#include <unordered_map>
 #include <vector>
 
 #ifdef DXMCLIB_USE_LOADPNG
@@ -44,6 +46,7 @@ struct VisualizationBuffer {
     std::vector<T> buffer;
     std::size_t width = 512;
     std::size_t height = 512;
+    std::chrono::duration<double, std::milli> renderTime;
 
     VisualizationBuffer(std::size_t size)
     {
@@ -91,11 +94,21 @@ template <Floating T>
 class VisualizeWorld {
 public:
     template <WorldType<T> W>
-    VisualizeWorld(W& world)
+    VisualizeWorld(const W& world)
     {
         m_center = world.center();
         m_world_aabb = world.AABB();
         suggestFOV();
+        updateColorsFromWorld(world);
+    }
+
+    template <WorldType<T> W>
+    void updateFromWorld(const W& world)
+    {
+        m_center = world.center();
+        m_world_aabb = world.AABB();
+        suggestFOV();
+        updateColorsFromWorld(world);
     }
 
     template <typename U>
@@ -162,13 +175,14 @@ public:
         const auto [p1, p2] = vectormath::splice(m_world_aabb);
         const auto plen = vectormath::lenght(vectormath::subtract(p1, p2));
         const auto clen = vectormath::lenght(vectormath::subtract(m_camera_pos, m_center));
-        m_fov = std::atan(T { 0.5 } * plen / clen) * 2 / zoom;
+        m_fov = std::atan(T { 0.5 } * plen / clen) / zoom;
     }
 
     void addLineProp(const std::array<T, 3>& start, const std::array<T, 3>& dir, T lenght = -1, T radii = 1)
     {
         m_lines.push_back({ start, dir, lenght, radii });
     }
+
     void clearLineProps()
     {
         m_lines.clear();
@@ -185,6 +199,7 @@ public:
 
             obj.collimationAngles();
         }
+
     void addLineProp(const B& obj, T lenght = -1, T radii = 1)
     {
         const auto start = obj.position();
@@ -242,7 +257,10 @@ public:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     void generate(W& world, VisualizationBuffer<U>& buffer) const
     {
+        const auto t_start = std::chrono::high_resolution_clock::now();
         generate(world, buffer.buffer, buffer.width, buffer.height);
+        const auto t_end = std::chrono::high_resolution_clock::now();
+        buffer.renderTime = t_end - t_start;
     }
 
     template <WorldType<T> W, typename U>
@@ -254,24 +272,7 @@ public:
         else
             std::fill(buffer.begin(), buffer.end(), U { 1 });
 
-        std::vector<std::pair<WorldItemBase<T>*, std::array<U, 3>>> colors;
-        auto items = world.getItemPointers();
-        colors.reserve(items.size());
-        for (std::size_t i = 0; i < items.size(); ++i) {
-            if constexpr (std::is_same<U, std::uint8_t>::value) {
-                const std::uint8_t c = static_cast<std::uint8_t>(i * 55);
-                colors.emplace_back(std::make_pair(items[i], HSVtoRGB(c, 255, 200)));
-            } else {
-                const auto c = (i * 2 * std::numbers::pi_v<T>) / items.size();
-                colors.emplace_back(std::make_pair(items[i], HSVtoRGB(c, T { 1 }, T { 0.85 })));
-            }
-        }
-
-        std::array<U, 3> propcolor = { 0, 1, 0 };
-        if constexpr (std::same_as<U, std::uint8_t>)
-            propcolor[0] = 255;
-
-        const auto step = std::max(m_fov / width, m_fov / height);
+        const auto step = std::max(2 * m_fov / width, 2 * m_fov / height);
         const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
         const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
         const auto dir = vectormath::cross(ycos, xcos);
@@ -291,6 +292,7 @@ public:
                 const auto ind = j * 4;
                 const auto yang = -step * height * T { 0.5 } + y * step;
                 const auto xang = -step * width * T { 0.5 } + x * step;
+
                 p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
 
                 T line_intersection = std::numeric_limits<T>::max();
@@ -311,36 +313,33 @@ public:
                 if (res.valid()) {
                     if (res.intersection < line_intersection) {
                         const auto scaling = std::abs(vectormath::dot(p.dir, res.normal));
-                        for (const auto& cmap : colors) {
-                            if (cmap.first == res.item) {
-                                for (int i = 0; i < 3; ++i) {
-                                    if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                        buffer[ind + i] = static_cast<U>(cmap.second[i] * scaling);
-                                    } else {
-                                        buffer[ind + i] = cmap.second[i] * scaling;
-                                    }
-                                }
+                        const auto color = colorOfItem<U>(res.item);
+                        for (int i = 0; i < 3; ++i) {
+                            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                buffer[ind + i] = static_cast<U>(color[i] * scaling);
+                            } else {
+                                buffer[ind + i] = color[i] * scaling;
                             }
                         }
                     } else {
                         const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                        const auto color = colorOfItem<U>(nullptr);
                         for (int i = 0; i < 3; ++i) {
                             if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                buffer[ind + i] = static_cast<U>(propcolor[i] * scaling);
+                                buffer[ind + i] = static_cast<U>(color[i] * scaling);
                             } else {
-                                buffer[ind + i] = propcolor[i] * scaling;
+                                buffer[ind + i] = color[i] * scaling;
                             }
                         }
                     }
                 } else {
-                    if (line_intersection < std::numeric_limits<T>::max()) {
-                        const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                        for (int i = 0; i < 3; ++i) {
-                            if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                buffer[ind + i] = static_cast<U>(propcolor[i] * scaling);
-                            } else {
-                                buffer[ind + i] = propcolor[i] * scaling;
-                            }
+                    const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                    const auto color = colorOfItem<U>(nullptr);
+                    for (int i = 0; i < 3; ++i) {
+                        if constexpr (std::is_same<U, std::uint8_t>::value) {
+                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
+                        } else {
+                            buffer[ind + i] = color[i] * scaling;
                         }
                     }
                 }
@@ -416,11 +415,46 @@ protected:
         return rgb;
     }
 
+    template <WorldType<T> W>
+    void updateColorsFromWorld(const W& world)
+    {
+        const std::vector<const WorldItemBase<T>*> items = world.getItemPointers();
+        const auto N = items.size();
+        m_colors_char.resize(N);
+        m_colors_float.resize(N);
+        for (std::size_t i = 0; i < N; ++i) {
+            m_colors_char[i] = HSVtoRGB(static_cast<std::uint8_t>((i * 55) % 255), 255, 200);
+            m_colors_float[i] = HSVtoRGB((2 * i * std::numbers::pi_v<T>) / N, T { 1 }, T { 0.8 });
+            m_colorIndex[items[i]] = i;
+        }
+    }
+
+    template <typename U = std::uint8_t>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    std::array<U, 3> colorOfItem(const WorldItemBase<T>* item) const
+    {
+        if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
+            const auto index = search->second;
+            if constexpr (std::same_as<U, std::uint8_t>)
+                return m_colors_char[index];
+            else
+                return m_colors_float[index];
+        } else {
+            if constexpr (std::same_as<U, std::uint8_t>)
+                return std::array<uint8_t, 3> { 0, 0, 0 };
+            else
+                return std::array<T, 3> { 0, 0, 0 };
+        }
+    }
+
 private:
     std::array<T, 6> m_world_aabb;
     std::array<T, 3> m_center = { 0, 0, 0 };
     std::array<T, 3> m_camera_pos = { 100, 1.4, 1 };
     T m_fov = -1;
+    std::vector<std::array<T, 3>> m_colors_float;
+    std::vector<std::array<std::uint8_t, 3>> m_colors_char;
+    std::unordered_map<const WorldItemBase<T>*, std::size_t> m_colorIndex;
     std::vector<visualizationprops::Line<T>> m_lines;
 };
 
