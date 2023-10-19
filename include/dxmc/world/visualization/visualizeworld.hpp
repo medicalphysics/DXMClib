@@ -272,7 +272,6 @@ public:
         else
             std::fill(buffer.begin(), buffer.end(), U { 1 });
 
-        const auto step = std::max(2 * m_fov / width, 2 * m_fov / height);
         const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
         const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
         const auto dir = vectormath::cross(ycos, xcos);
@@ -282,6 +281,11 @@ public:
             m_camera_pos[0] * std::cos(m_camera_pos[2]) + m_center[2]
         };
 
+        const auto len = std::tan(m_fov);
+        const auto xstart = vectormath::scale(xcos, -len);
+        const auto ystart = vectormath::scale(ycos, -(len * height) / width);
+        const auto step = 2 * len / (width - 1);
+
         auto worker = [&](std::size_t start, std::size_t stop) {
             Particle<T> p;
             p.pos = pos;
@@ -290,10 +294,10 @@ public:
                 const auto y = j / width;
                 const auto x = j - y * width;
                 const auto ind = j * 4;
-                const auto yang = -step * height * T { 0.5 } + y * step;
-                const auto xang = -step * width * T { 0.5 } + x * step;
 
-                p.dir = vectormath::rotate(vectormath::rotate(dir, ycos, xang), xcos, yang);
+                const auto xvec = vectormath::add(xstart, vectormath::scale(xcos, x * step));
+                const auto yvec = vectormath::add(ystart, vectormath::scale(ycos, y * step));
+                p.dir = vectormath::normalized(vectormath::add(dir, xvec, yvec));
 
                 T line_intersection = std::numeric_limits<T>::max();
                 std::array<T, 3> line_normal = { 0, 0, 0 };
@@ -312,7 +316,8 @@ public:
 
                 if (res.valid()) {
                     if (res.intersection < line_intersection) {
-                        const auto scaling = std::abs(vectormath::dot(p.dir, res.normal));
+                        const auto scaling = 1 + T { 0.5 } * vectormath::dot(p.dir, res.normal);
+
                         const auto color = colorOfItem<U>(res.item);
                         for (int i = 0; i < 3; ++i) {
                             if constexpr (std::is_same<U, std::uint8_t>::value) {
@@ -333,13 +338,15 @@ public:
                         }
                     }
                 } else {
-                    const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                    const auto color = colorOfItem<U>(nullptr);
-                    for (int i = 0; i < 3; ++i) {
-                        if constexpr (std::is_same<U, std::uint8_t>::value) {
-                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
-                        } else {
-                            buffer[ind + i] = color[i] * scaling;
+                    if (line_intersection < std::numeric_limits<T>::max()) {
+                        const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                        const auto color = colorOfItem<U>(nullptr);
+                        for (int i = 0; i < 3; ++i) {
+                            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                                buffer[ind + i] = static_cast<U>(color[i] * scaling);
+                            } else {
+                                buffer[ind + i] = color[i] * scaling;
+                            }
                         }
                     }
                 }
