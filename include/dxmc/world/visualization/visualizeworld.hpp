@@ -403,7 +403,6 @@ protected:
         const T c = v * s;
         const T h_prime = (h * 3) / std::numbers::pi_v<T>;
         const T x = c * (1 - std::abs(std::fmod(h_prime, 2) - 1));
-        const T m = v - c;
 
         std::array<T, 3> rgb;
         if (h_prime >= 0 && h_prime < 1) {
