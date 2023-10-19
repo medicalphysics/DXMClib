@@ -108,6 +108,15 @@ public:
         return ptrs;
     }
 
+    std::vector<const WorldItemBase<T>*> getItemPointers() const
+    {
+        std::vector<const WorldItemBase<T>*> ptrs(m_items.size());
+        std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
+            return std::visit([](auto&& arg) -> const WorldItemBase<T>* { return &arg; }, v);
+        });
+        return ptrs;
+    }
+
     void clearEnergyScored()
     {
         m_energyScored.clear();
