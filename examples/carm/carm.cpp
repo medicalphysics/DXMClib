@@ -27,7 +27,9 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worldsphere.hpp"
 #include "phantomreader.hpp"
 
+#include <iostream>
 #include <vector>
+
 
 dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
 {
@@ -64,8 +66,8 @@ int main()
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
     auto& room = world.addItem<Room>();
-    
-    room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120});
+
+    room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120 });
     room.setWallThickness(10);
 
     auto& ctdi = world.addItem<CTDIPhantom>({});
@@ -94,7 +96,7 @@ int main()
     auto buffer = viz.createBuffer(2048, 2048);
     viz.addLineProp(beam, 150, .2);
 
-    viz.setDistance(5000);
+    viz.setDistance(200);
     viz.setAzimuthalAngleDeg(60);
     std::vector<double> angles;
     for (std::size_t i = 0; i < 5; ++i)
@@ -106,6 +108,8 @@ int main()
         viz.generate(world, buffer);
         std::string name = "test" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
+        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
+                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
 
     return 0;
