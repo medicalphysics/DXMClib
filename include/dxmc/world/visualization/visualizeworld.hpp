@@ -28,6 +28,7 @@ Copyright 2023 Erlend Andersen
 
 #include <array>
 #include <chrono>
+#include <execution>
 #include <iterator>
 #include <numbers>
 #include <thread>
@@ -267,10 +268,6 @@ public:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512) const
     {
-        if constexpr (std::is_same<U, std::uint8_t>::value)
-            std::fill(buffer.begin(), buffer.end(), 255);
-        else
-            std::fill(buffer.begin(), buffer.end(), U { 1 });
 
         const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
         const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
@@ -286,94 +283,98 @@ public:
         const auto ystart = vectormath::scale(ycos, -(len * height) / width);
         const auto step = 2 * len / (width - 1);
 
-        auto worker = [&](std::size_t start, std::size_t stop) {
+        std::vector<int> indices(width * height);
+        std::iota(indices.begin(), indices.end(), 0);
+
+        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](const int j) {
             Particle<T> p;
             p.pos = pos;
 
-            for (std::size_t j = start; j < stop; ++j) {
-                const auto y = j / width;
-                const auto x = j - y * width;
-                const auto ind = j * 4;
+            const auto y = j / width;
+            const auto x = j - y * width;
+            const auto ind = j * 4;
 
-                const auto xvec = vectormath::add(xstart, vectormath::scale(xcos, x * step));
-                const auto yvec = vectormath::add(ystart, vectormath::scale(ycos, y * step));
-                p.dir = vectormath::normalized(vectormath::add(dir, xvec, yvec));
+            const auto xvec = vectormath::add(xstart, vectormath::scale(xcos, x * step));
+            const auto yvec = vectormath::add(ystart, vectormath::scale(ycos, y * step));
+            p.dir = vectormath::normalized(vectormath::add(dir, xvec, yvec));
 
-                T line_intersection = std::numeric_limits<T>::max();
-                std::array<T, 3> line_normal = { 0, 0, 0 };
-                for (const auto& line : m_lines) {
-                    const auto opt = line.intersect(p);
-                    if (opt) {
-                        const auto& [l_cand, l_normal] = opt.value();
-                        if (l_cand < line_intersection) {
-                            line_intersection = l_cand;
-                            line_normal = l_normal;
-                        }
-                    }
-                }
-
-                const auto res = world.intersectVisualization(p);
-
-                if (res.valid()) {
-                    if (res.intersection < line_intersection) {
-                        const auto scaling = 1 + T { 0.5 } * vectormath::dot(p.dir, res.normal);
-
-                        const auto color = colorOfItem<U>(res.item);
-                        for (int i = 0; i < 3; ++i) {
-                            if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                buffer[ind + i] = static_cast<U>(color[i] * scaling);
-                            } else {
-                                buffer[ind + i] = color[i] * scaling;
-                            }
-                        }
-                    } else {
-                        const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                        const auto color = colorOfLineProp<U>();
-                        for (int i = 0; i < 3; ++i) {
-                            if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                buffer[ind + i] = static_cast<U>(color[i] * scaling);
-                            } else {
-                                buffer[ind + i] = color[i] * scaling;
-                            }
-                        }
-                    }
-                } else {
-                    if (line_intersection < std::numeric_limits<T>::max()) {
-                        const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                        const auto color = colorOfLineProp<U>();
-                        for (int i = 0; i < 3; ++i) {
-                            if constexpr (std::is_same<U, std::uint8_t>::value) {
-                                buffer[ind + i] = static_cast<U>(color[i] * scaling);
-                            } else {
-                                buffer[ind + i] = color[i] * scaling;
-                            }
-                        }
-                    } else {
-                        const auto color = colorOfBackgroundProp<U>();
-                        for (int i = 0; i < 3; ++i) {
-                            buffer[ind + i] = color[i];
-                        }
+            T line_intersection = std::numeric_limits<T>::max();
+            std::array<T, 3> line_normal = { 0, 0, 0 };
+            for (const auto& line : m_lines) {
+                const auto opt = line.intersect(p);
+                if (opt) {
+                    const auto& [l_cand, l_normal] = opt.value();
+                    if (l_cand < line_intersection) {
+                        line_intersection = l_cand;
+                        line_normal = l_normal;
                     }
                 }
             }
-        };
 
-        const auto nThreads = std::max(static_cast<std::uint32_t>(std::thread::hardware_concurrency()), std::uint32_t { 1 });
-        const auto jobsize = static_cast<std::size_t>(width * height / nThreads);
-        std::vector<std::jthread> threads;
-        threads.reserve(nThreads - 1);
-        std::size_t start = 0;
-        auto stop = jobsize;
-        for (auto i = nThreads - 1; i > 0; --i) {
-            threads.emplace_back(std::jthread(worker, start, stop));
-            start = stop;
-            stop += jobsize;
-        }
+            const auto res = world.intersectVisualization(p);
 
-        worker(start, static_cast<std::size_t>(height * width));
-        for (auto& t : threads) {
-            t.join();
-        }
+            if (res.valid()) {
+                if (res.intersection < line_intersection) {
+                    const auto scaling = 1 + T { 0.5 } * vectormath::dot(p.dir, res.normal);
+
+                    const auto color = colorOfItem<U>(res.item);
+                    for (int i = 0; i < 3; ++i) {
+                        if constexpr (std::is_same<U, std::uint8_t>::value) {
+                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
+                        } else {
+                            buffer[ind + i] = color[i] * scaling;
+                        }
+                    }
+                    if constexpr (std::is_same<U, std::uint8_t>::value) {
+                        buffer[ind + 3] = 255;
+                    } else {
+                        buffer[ind + 3] = 1;
+                    }
+                } else {
+                    const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                    const auto color = colorOfLineProp<U>();
+                    for (int i = 0; i < 3; ++i) {
+                        if constexpr (std::is_same<U, std::uint8_t>::value) {
+                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
+                        } else {
+                            buffer[ind + i] = color[i] * scaling;
+                        }
+                    }
+                    if constexpr (std::is_same<U, std::uint8_t>::value) {
+                        buffer[ind + 3] = 255;
+                    } else {
+                        buffer[ind + 3] = 1;
+                    }
+                }
+            } else {
+                if (line_intersection < std::numeric_limits<T>::max()) {
+                    const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
+                    const auto color = colorOfLineProp<U>();
+                    for (int i = 0; i < 3; ++i) {
+                        if constexpr (std::is_same<U, std::uint8_t>::value) {
+                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
+                        } else {
+                            buffer[ind + i] = color[i] * scaling;
+                        }
+                    }
+                    if constexpr (std::is_same<U, std::uint8_t>::value) {
+                        buffer[ind + 3] = 255;
+                    } else {
+                        buffer[ind + 3] = 1;
+                    }
+                } else {
+                    const auto color = colorOfBackgroundProp<U>();
+                    for (int i = 0; i < 3; ++i) {
+                        buffer[ind + i] = color[i];
+                    }
+                    if constexpr (std::is_same<U, std::uint8_t>::value) {
+                        buffer[ind + 3] = 255;
+                    } else {
+                        buffer[ind + 3] = 1;
+                    }
+                }
+            }
+        });
     }
 
 protected:
