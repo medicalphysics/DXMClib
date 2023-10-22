@@ -283,7 +283,7 @@ public:
         const auto ystart = vectormath::scale(ycos, -(len * height) / width);
         const auto step = 2 * len / (width - 1);
 
-        std::vector<int> indices(width * height);
+        std::vector<std::size_t> indices(width * height);
         std::iota(indices.begin(), indices.end(), 0);
 
         std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](const int j) {
@@ -318,7 +318,7 @@ public:
                     const auto scaling = 1 + T { 0.5 } * vectormath::dot(p.dir, res.normal);
 
                     const auto color = colorOfItem<U>(res.item);
-                    for (int i = 0; i < 3; ++i) {
+                    for (std::size_t i = 0; i < 3; ++i) {
                         if constexpr (std::is_same<U, std::uint8_t>::value) {
                             buffer[ind + i] = static_cast<U>(color[i] * scaling);
                         } else {
