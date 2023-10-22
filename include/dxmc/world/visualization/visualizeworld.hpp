@@ -328,7 +328,7 @@ public:
                         }
                     } else {
                         const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                        const auto color = colorOfItem<U>(nullptr);
+                        const auto color = colorOfLineProp<U>();
                         for (int i = 0; i < 3; ++i) {
                             if constexpr (std::is_same<U, std::uint8_t>::value) {
                                 buffer[ind + i] = static_cast<U>(color[i] * scaling);
@@ -340,13 +340,18 @@ public:
                 } else {
                     if (line_intersection < std::numeric_limits<T>::max()) {
                         const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                        const auto color = colorOfItem<U>(nullptr);
+                        const auto color = colorOfLineProp<U>();
                         for (int i = 0; i < 3; ++i) {
                             if constexpr (std::is_same<U, std::uint8_t>::value) {
                                 buffer[ind + i] = static_cast<U>(color[i] * scaling);
                             } else {
                                 buffer[ind + i] = color[i] * scaling;
                             }
+                        }
+                    } else {
+                        const auto color = colorOfBackgroundProp<U>();
+                        for (int i = 0; i < 3; ++i) {
+                            buffer[ind + i] = color[i];
                         }
                     }
                 }
@@ -453,6 +458,38 @@ protected:
         }
     }
 
+    template <typename U = std::uint8_t>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    std::array<U, 3> colorOfLineProp() const
+    {
+        if constexpr (std::same_as<U, std::uint8_t>) {
+            return m_propColor;
+        } else {
+            const std::array<T, 3> a = {
+                static_cast<T>(m_propColor[0]) / 255,
+                static_cast<T>(m_propColor[1]) / 255,
+                static_cast<T>(m_propColor[2]) / 255
+            };
+            return a;
+        }
+    }
+
+    template <typename U = std::uint8_t>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    std::array<U, 3> colorOfBackgroundProp() const
+    {
+        if constexpr (std::same_as<U, std::uint8_t>) {
+            return m_backgroundColor;
+        } else {
+            const std::array<T, 3> a = {
+                static_cast<T>(m_backgroundColor[0]) / 255,
+                static_cast<T>(m_backgroundColor[1]) / 255,
+                static_cast<T>(m_backgroundColor[2]) / 255
+            };
+            return a;
+        }
+    }
+
 private:
     std::array<T, 6> m_world_aabb;
     std::array<T, 3> m_center = { 0, 0, 0 };
@@ -462,6 +499,8 @@ private:
     std::vector<std::array<std::uint8_t, 3>> m_colors_char;
     std::unordered_map<const WorldItemBase<T>*, std::size_t> m_colorIndex;
     std::vector<visualizationprops::Line<T>> m_lines;
+    std::array<std::uint8_t, 3> m_propColor = { 0, 0, 0 };
+    std::array<std::uint8_t, 3> m_backgroundColor = { 255, 255, 255 };
 };
 
 }
