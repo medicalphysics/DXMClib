@@ -239,6 +239,22 @@ public:
         return energy * hc_inv; // per �
     }
 
+    static bool validCompoundString(const std::string& cmp)
+    {
+        const auto m = parseCompoundStr(cmp);
+        bool valid == true;
+        for (const auto& [Z, w] : m) {
+            valid = valid && Z > 0 && Z <= 99 && w > 0;
+        }
+        return valid;
+    }
+
+    static bool validNistName(const std::string& name)
+    {
+        const auto& w = NISTMaterials<T>::Composition(name);
+        return !w.empty();
+    }
+
 protected:
     Material()
     {
@@ -537,6 +553,7 @@ protected:
 
         return m;
     }
+
     static void generateFormFactorInverseSampling(Material<T, N>& material)
     {
         const T qmax = Material<T, N>::momentumTransferMax(MAX_ENERGY<T>());
