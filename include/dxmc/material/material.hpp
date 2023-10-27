@@ -242,7 +242,7 @@ public:
     static bool validCompoundString(const std::string& cmp)
     {
         const auto m = parseCompoundStr(cmp);
-        bool valid == true;
+        bool valid = true;
         for (const auto& [Z, w] : m) {
             valid = valid && Z > 0 && Z <= 99 && w > 0;
         }
