@@ -13,7 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2020 Erlend Andersen
+Copyright 2024 Erlend Andersen
 */
 
 #pragma once
@@ -48,9 +48,9 @@ template <Floating T>
 consteval T KEV_TO_ANGSTROM()
 {
     /* consteval T hc_si = T { 1.239841193E-6 }; // ev*m
-    consteval T m2A = T { 1E10 }; // meters to Ångstrøm
+    consteval T m2A = T { 1E10 }; // meters to Angstrom
     consteval T eV2keV = T { 1E-3 }; // eV to keV
-    consteval T hc = hc_si * m2A * eV2keV; // kev*Å
+    consteval T hc = hc_si * m2A * eV2keV; // kev*Angstrom
     consteval T hc_inv = T { 1.0 } / hc;
     */
     return T { 12.398520 };
