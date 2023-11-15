@@ -20,6 +20,7 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/beams/ctdibeam.hpp"
 #include "dxmc/beams/ctspiralbeam.hpp"
+#include "dxmc/beams/filters/ctaecfilter.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
@@ -177,6 +178,10 @@ public:
         m_tubeB.setEnergyResolution(energyResolution);
         tubeChanged();
     }
+    void setAECFilterData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
+    {
+        m_aecFilter.setData(start, stop, data);
+    }
 
     CTSpiralBeamExposure<T> exposure(std::size_t dualExposureIndex) const noexcept
     {
@@ -209,7 +214,8 @@ public:
 
         std::array<T, 2> angles = { angx, angy };
 
-        const auto weight = isTubeB ? m_weightB : m_weightA;
+        auto weight = isTubeB ? m_weightB : m_weightA;
+        weight *= m_aecFilter(pos);
         const SpecterDistribution<T>* const specter = isTubeB ? &m_specterB : &m_specterA;
         CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, specter);
         return exp;
@@ -280,6 +286,7 @@ private:
     Tube<T> m_tubeB;
     SpecterDistribution<T> m_specterA;
     SpecterDistribution<T> m_specterB;
+    CTAECFilter<T> m_aecFilter;
 };
 
 }

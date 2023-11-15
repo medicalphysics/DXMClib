@@ -20,9 +20,9 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
+#include "dxmc/vectormath.hpp"
 
 #include <array>
-#include <pair>
 #include <vector>
 
 namespace dxmc {
@@ -30,66 +30,59 @@ namespace dxmc {
 template <Floating T>
 class CTAECFilter {
 public:
-    CTAECFilter(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<std::pair<T, T>>& values)
+    CTAECFilter()
     {
+        m_data.resize(2);
+        std::fill(m_data.begin(), m_data.end(), T { 1 });
     }
 
-    void setStart(const std::array<T, 3>& pos)
+    CTAECFilter(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& values)
     {
-        m_start = pos;
+        setData(start, stop, values);
     }
 
-    void setStop(const std::array<T, 3>& pos)
+    void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
     {
-        m_stop = pos;
-    }
+        m_start = start;
+        const auto dir = vectormath::subtract(stop, start);
+        m_dir = vectormath::normalized(dir);
+        m_length = vectormath::lenght(dir);
 
-    void setData(const std::vector<std::pair<T, T>>& values)
-    {
+        if (data.size() < 2) {
+            m_data.resize(2);
+            std::fill(m_data.begin(), m_data.end(), T { 1 });
+            m_step = m_length;
+            return;
+        }
+
+        m_step = m_length / (data.size() - 1);
         m_data = data;
-        // Sorting based on pos
-        std::sort(m_data.begin(), m_data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
-
-        // normalize to mean of 1
-        const auto E = expectationValue(m_data);
-        std::for_each(std::execution::par_unseq, m_data.begin(), m_data.end(), [=](auto& d) { d.second /= E; });
-    }
-    void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<std::pair<T, T>>& values)
-    {
-        setStart(start);
-        setStop(stop);
-        setData(data);
+        // normalize
+        const auto mean = std::reduce(m_data.cbegin(), m_data.cend()) / m_data.size();
+        for (auto& d : m_data)
+            d /= mean;
     }
 
     T operator()(const std::array<T, 3>& pos) const
     {
-        if constexpr (ONESIDED)
-            return m_inter(std::abs(angle));
-        else
-            return m_inter(angle);
+        const auto dist = vectormath::subtract(m_start, pos);
+        const auto proj = vectormath::dot(dist, m_dir);
+        if (proj > m_length)
+            return m_data.back();
+        else if (proj < 0)
+            return m_data.front();
+
+        const auto idx0 = std::clamp(static_cast<std::size_t>(proj / m_step), std::size_t { 0 }, m_data.size() - 2);
+        const auto idx1 = idx0 + 1;
+        return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], proj);
     }
 
 protected:
-    static T expectationValue(std::vector<std::pair<T, T>> data)
-    {
-        const auto N = data.size();
-        if (N < 2)
-            return T { 1 };
-
-        T in = 0;
-        T ine = 0;
-        for (std::size_t i = 1; i < N; ++i) {
-            const auto& p0 = data[i - 1];
-            const auto& p1 = data[i];
-            const auto dx = p1.first - p0.first;
-            fortsett her
-        }
-        return in;
-    }
-
 private:
     std::array<T, 3> m_start = { 0, 0, 0 };
-    std::array<T, 3> m_stop = { 0, 0, 0 };
-    std::vector<std::pair<T, T>> m_data;
+    std::array<T, 3> m_dir = { 0, 0, 1 };
+    T m_length = 1;
+    T m_step = 1;
+    std::vector<T> m_data;
 };
 }
