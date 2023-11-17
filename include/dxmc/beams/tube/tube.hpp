@@ -262,7 +262,7 @@ protected:
         T g;
 
         do {
-            x = x + step;
+            x = std::max(x + step, T { 0.0001 });
             g = std::transform_reduce(std::execution::par_unseq, specter.cbegin(), specter.cend(), att.cbegin(), T { 0 }, std::plus<T>(), [x](auto s, auto a) -> T { return s * std::exp(-a * x); });
             step = (g - T { 0.5 }) * std::max(5 - iter, 1);
         } while ((std::abs(g - T { 0.5 }) > T { 0.005 } && iter++ < 10));
