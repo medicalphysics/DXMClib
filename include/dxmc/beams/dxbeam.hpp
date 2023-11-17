@@ -165,7 +165,15 @@ public:
         tubeChanged();
     }
 
-    const std::array<T, 2>& collimationAngles() const { return m_collimationAngles; }
+    T tubeAlHalfValueLayer()
+    {
+        return m_tube.mmAlHalfValueLayer();
+    }
+
+    const std::array<T, 2>& collimationAngles() const
+    {
+        return m_collimationAngles;
+    }
     void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
     void setCollimationAngles(T X, T Y)
     {
