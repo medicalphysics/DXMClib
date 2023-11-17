@@ -169,8 +169,17 @@ public:
         m_collimationAngles[1] = Y;
     }
 
-    std::array<T, 2> collimationAnglesDeg() const { return vectormath::scale(m_collimationAngles, RAD_TO_DEG<T>()); }
-    void setCollimationAnglesDeg(const std::array<T, 2>& angles) { m_collimationAngles = vectormath::scale(angles, DEG_TO_RAD<T>()); }
+    std::array<T, 2> collimationAnglesDeg() const
+    {
+        auto d = m_collimationAngles;
+        d[0] *= RAD_TO_DEG<T>();
+        d[1] *= RAD_TO_DEG<T>();
+        return d;
+    }
+    void setCollimationAnglesDeg(const std::array<T, 2>& angles)
+    {
+        setCollimationAngles(angles[0], angles[1]);
+    }
     void setCollimationAnglesDeg(T X, T Y)
     {
         m_collimationAngles[0] = DEG_TO_RAD<T>() * X;
