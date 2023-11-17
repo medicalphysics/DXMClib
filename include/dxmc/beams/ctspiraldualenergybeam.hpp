@@ -172,6 +172,14 @@ public:
         m_tubeB.clearFiltrationMaterials();
         tubeChanged();
     }
+    T tubeAAlHalfValueLayer()
+    {
+        return m_tubeA.mmAlHalfValueLayer();
+    }
+    T tubeBAlHalfValueLayer()
+    {
+        return m_tubeB.mmAlHalfValueLayer();
+    }
     void setTubesEnergyResolution(T energyResolution)
     {
         m_tubeA.setEnergyResolution(energyResolution);
