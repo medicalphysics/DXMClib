@@ -150,7 +150,11 @@ public:
         m_tube.addFiltrationMaterial(Z, mm);
         tubeChanged();
     }
-    void clearTubeFiltrationMaterials(std::size_t Z, T mm)
+    T tubeFiltration(std::size_t Z) const
+    {
+        return m_tube.filtration(Z);
+    }
+    void clearTubeFiltrationMaterials()
     {
         m_tube.clearFiltrationMaterials();
         tubeChanged();
