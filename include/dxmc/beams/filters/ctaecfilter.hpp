@@ -58,26 +58,74 @@ public:
         m_step = m_length / (data.size() - 1);
         m_data = data;
         // normalize
-        const auto mean = std::reduce(m_data.cbegin(), m_data.cend()) / m_data.size();
-        for (auto& d : m_data)
-            d /= mean;
+        normalize();
     }
 
     T operator()(const std::array<T, 3>& pos) const
     {
         const auto dist = vectormath::subtract(m_start, pos);
         const auto proj = vectormath::dot(dist, m_dir);
-        if (proj > m_length)
-            return m_data.back();
-        else if (proj < 0)
-            return m_data.front();
+        return this->operator()(proj);
+    }
 
-        const auto idx0 = std::clamp(static_cast<std::size_t>(proj / m_step), std::size_t { 0 }, m_data.size() - 2);
+    T operator()(T d) const
+    {
+        const auto dc = std::clamp(d, T { 0 }, m_lenght);
+        const auto idx0 = std::clamp(static_cast<std::size_t>(d / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx1 = idx0 + 1;
-        return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], proj);
+        return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
     }
 
 protected:
+    T integrate() const
+    {
+        T s = 0;
+        for (std::size_t i = 0; i < m_data.size() - 1; ++i) {
+            const auto d0 = m_data[i];
+            const auto d1 = m_data[i + 1];
+            s += (d0 + d1) * m_step * T { 0.5 };
+        }
+        return s;
+    }
+
+    T integrate(T start_r, T stop_r) const
+    {
+        const auto start = std::clamp(std::min(start_r, stop_r), T { 0 }, m_lenght);
+        const auto stop = std::clamp(std::max(start_r, stop_r), T { 0 }, m_lenght);
+        const auto idx_start = std::clamp(static_cast<std::size_t>(start / m_step), std::size_t { 0 }, m_data.size() - 2);
+        const auto idx_stop = std::clamp(static_cast<std::size_t>(stop / m_step) + 1, std::size_t { 0 }, m_data.size() - 2);
+
+        T s = 0;
+        for (std::size_t i = idx_start; i < idx_stop; ++i) {
+            const auto d0 = m_data[i];
+            const auto d1 = m_data[i + 1];
+            s += (d0 + d1) * m_step * T { 0.5 };
+        }
+
+        const auto begin_part = (m_step * idx_start - start) * (this->operator()(start) + m_data[idx_start + 1]) / 2;
+        const auto end_part = (m_step * idx_stop - stop) * (this->operator()(stop) + m_data[idx_stop]) / 2;
+
+        return s - begin_part - end_part;
+    }
+
+    void normalize()
+    {
+        const auto area = integrate();
+        // we want the total area equal to m_lenght * 1 for an expected value of 1.0;
+        const auto k = m_lenght / area;
+        for (auto& d : m_data)
+            d *= k;
+    }
+
+    void normalize(T start, T stop)
+    {
+        const auto area = integrate(start, stop);
+        // we want the total area equal to m_lenght * 1 for an expected value of 1.0;
+        const auto k = m_lenght / area;
+        for (auto& d : m_data)
+            d *= k;
+    }
+
 private:
     std::array<T, 3> m_start = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 0, 1 };
