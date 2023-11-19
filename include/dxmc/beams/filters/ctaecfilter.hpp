@@ -70,13 +70,13 @@ public:
 
     T operator()(T d) const
     {
-        const auto dc = std::clamp(d, T { 0 }, m_lenght);
+        const auto dc = std::clamp(d, T { 0 }, m_length);
         const auto idx0 = std::clamp(static_cast<std::size_t>(d / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx1 = idx0 + 1;
         return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
     }
 
-protected:
+
     T integrate() const
     {
         T s = 0;
@@ -90,8 +90,8 @@ protected:
 
     T integrate(T start_r, T stop_r) const
     {
-        const auto start = std::clamp(std::min(start_r, stop_r), T { 0 }, m_lenght);
-        const auto stop = std::clamp(std::max(start_r, stop_r), T { 0 }, m_lenght);
+        const auto start = std::clamp(std::min(start_r, stop_r), T { 0 }, m_length);
+        const auto stop = std::clamp(std::max(start_r, stop_r), T { 0 }, m_length);
         const auto idx_start = std::clamp(static_cast<std::size_t>(start / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx_stop = std::clamp(static_cast<std::size_t>(stop / m_step) + 1, std::size_t { 0 }, m_data.size() - 2);
 
@@ -108,11 +108,12 @@ protected:
         return s - begin_part - end_part;
     }
 
+protected:
     void normalize()
     {
         const auto area = integrate();
         // we want the total area equal to m_lenght * 1 for an expected value of 1.0;
-        const auto k = m_lenght / area;
+        const auto k = m_length / area;
         for (auto& d : m_data)
             d *= k;
     }
@@ -121,7 +122,7 @@ protected:
     {
         const auto area = integrate(start, stop);
         // we want the total area equal to m_lenght * 1 for an expected value of 1.0;
-        const auto k = m_lenght / area;
+        const auto k = m_length / area;
         for (auto& d : m_data)
             d *= k;
     }

@@ -69,7 +69,7 @@ bool testCTSpiralBeam()
 {
     using Beam = dxmc::CTSpiralBeam<T>;
     Beam beam;
-    beam.setStartStop({ 0, 0, 0 }, { 0, 0, 10 });
+    beam.setStartStopPosition({ 0, 0, 0 }, { 0, 0, 10 });
     beam.setNumberOfParticlesPerExposure(1E6);
     beam.setStepAngleDeg(5);
     beam.setSourceDetectorDistance(115);
