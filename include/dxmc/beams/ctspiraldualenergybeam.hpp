@@ -59,9 +59,11 @@ public:
     std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    const std::array<T, 3>& start() const { return m_start; }
-    const std::array<T, 3>& stop() const { return m_stop; }
-    void setStartStop(const std::array<T, 3>& start, const std::array<T, 3>& stop)
+    const std::array<T, 3>& startPosition() const { return m_start; }
+    const std::array<T, 3>& stopPosition() const { return m_stop; }
+    void setStartPosition(const std::array<T, 3>& start) { m_start = start; }
+    void setStopPosition(const std::array<T, 3>& stop) { m_stop = stop; }
+    void setStartStopPosition(const std::array<T, 3>& start, const std::array<T, 3>& stop)
     {
         m_start = start;
         m_stop = stop;
