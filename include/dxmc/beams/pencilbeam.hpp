@@ -40,6 +40,8 @@ public:
     {
     }
 
+    const std::array<T, 3>& position() const { return m_pos; }
+
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
     Particle<T> sampleParticle(RandomState& state) const noexcept
