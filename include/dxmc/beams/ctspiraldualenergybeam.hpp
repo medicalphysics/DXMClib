@@ -286,7 +286,7 @@ private:
     T m_pitch = 1;
     T m_startAngle = 0;
     T m_tubeBoffsetAngle = DEG_TO_RAD<T>() * 90;
-    T m_stepAngle = T { 0.018 }; // about a degree;
+    T m_stepAngle = DEG_TO_RAD<T>();
     T m_weightA = 1;
     T m_weightB = 1;
     T m_CTDIvol = 1;
