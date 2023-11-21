@@ -176,13 +176,15 @@ public:
     {
         return m_collimationAngles;
     }
-    void setCollimationAngles(const std::array<T, 2>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(const std::array<T, 2>& angles)
+    {
+        setCollimationAngles(angles[0], angles[1]);
+    }
     void setCollimationAngles(T X, T Y)
     {
-        m_collimationAngles[0] = X;
-        m_collimationAngles[1] = Y;
+        m_collimationAngles[0] = std::clamp(X, T { 0 }, PI_VAL<T>() / 2);
+        m_collimationAngles[1] = std::clamp(Y, T { 0 }, PI_VAL<T>() / 2);
     }
-
     std::array<T, 2> collimationAnglesDeg() const
     {
         auto d = m_collimationAngles;
@@ -192,12 +194,11 @@ public:
     }
     void setCollimationAnglesDeg(const std::array<T, 2>& angles)
     {
-        setCollimationAngles(angles[0], angles[1]);
+        setCollimationAnglesDeg(angles[0], angles[1]);
     }
     void setCollimationAnglesDeg(T X, T Y)
     {
-        m_collimationAngles[0] = DEG_TO_RAD<T>() * X;
-        m_collimationAngles[1] = DEG_TO_RAD<T>() * Y;
+        setCollimationAngles(DEG_TO_RAD<T>() * X, DEG_TO_RAD<T>() * Y);
     }
 
     void setBeamSize(T beamSizeX, T beamSizeY, T sourceDetectorDistance)
