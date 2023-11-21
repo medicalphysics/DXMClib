@@ -40,6 +40,8 @@ public:
     {
     }
 
+    const std::array<T, 3>& position() const { return m_pos; }
+
     void setCollimationAngles(const std::array<T, 4>& angles)
     {
         for (std::size_t i = 0; i < angles.size(); ++i)
