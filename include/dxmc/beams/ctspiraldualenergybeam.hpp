@@ -97,7 +97,8 @@ public:
     {
         std::array<T, 2> r = {
             2 * std::atan(m_FOVA / m_SDD),
-            2 * std::atan(2 * m_collimation / m_SDD);
+            2 * std::atan(2 * m_collimation / m_SDD)
+        };
         return r;
     }
 
@@ -105,7 +106,8 @@ public:
     {
         std::array<T, 2> r = {
             2 * std::atan(m_FOVB / m_SDD),
-            2 * std::atan(2 * m_collimation / m_SDD);
+            2 * std::atan(2 * m_collimation / m_SDD)
+        };
         return r;
     }
 
