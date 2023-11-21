@@ -53,6 +53,10 @@ public:
 
     const std::array<T, 3>& position() const { return m_pos; }
 
+    const std::array<std::array<T, 3>, 2>& directionCosines() const { return m_dirCosines; }
+
+    const std::array<T, 2> collimationAngles() const { return m_collimationAngles; }
+
     std::uint64_t numberOfParticles() const
     {
         return m_NParticles;
