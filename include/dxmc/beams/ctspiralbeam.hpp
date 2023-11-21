@@ -129,7 +129,18 @@ public:
         m_collimation = std::max(std::abs(coll_cm), T { 0.1 });
     }
 
-    T sourceDetectorDistance() const { return m_SDD; }
+    std::array<T, 2> collimationAngles() const
+    {
+        std::array<T, 2> r = {
+            2 * std::atan(m_FOV / m_SDD),
+            2 * std::atan(2 * m_collimation / m_SDD);
+        return r;
+    }
+
+    T sourceDetectorDistance() const
+    {
+        return m_SDD;
+    }
     void setSourceDetectorDistance(T SDD_cm)
     {
         m_SDD = std::max(std::abs(SDD_cm), T { 1 });
@@ -294,5 +305,4 @@ private:
     SpecterDistribution<T> m_specter;
     CTAECFilter<T> m_aecFilter;
 };
-
 }

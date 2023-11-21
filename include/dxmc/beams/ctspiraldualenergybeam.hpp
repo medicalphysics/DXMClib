@@ -93,6 +93,22 @@ public:
         m_FOVA = std::max(std::abs(fov_cm), T { 1 });
     }
 
+    std::array<T, 2> collimationAnglesA() const
+    {
+        std::array<T, 2> r = {
+            2 * std::atan(m_FOVA / m_SDD),
+            2 * std::atan(2 * m_collimation / m_SDD);
+        return r;
+    }
+
+    std::array<T, 2> collimationAnglesB() const
+    {
+        std::array<T, 2> r = {
+            2 * std::atan(m_FOVB / m_SDD),
+            2 * std::atan(2 * m_collimation / m_SDD);
+        return r;
+    }
+
     T pitch() const { return m_pitch; }
     void setPitch(T p)
     {
