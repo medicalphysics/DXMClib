@@ -86,10 +86,16 @@ private:
 template <Floating T>
 class DXBeam {
 public:
-    DXBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } })
+    DXBeam(
+        const std::array<T, 3>& pos = { 0, 0, 0 },
+        const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } },
+        const std::map<std::size_t, T>& filtrationMaterials = {})
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
+
+        for (const auto [Z, mm] : filtrationMaterials)
+            m_tube.addFiltrationMaterial(Z, mm);
         tubeChanged();
     }
 

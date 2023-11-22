@@ -31,6 +31,7 @@ Copyright 2023 Erlend Andersen
 
 #include <array>
 #include <cmath>
+#include <map>
 
 namespace dxmc {
 
@@ -98,10 +99,15 @@ private:
 template <Floating T>
 class CTSpiralBeam {
 public:
-    CTSpiralBeam(const std::array<T, 3>& start_pos = { 0, 0, 0 }, const std::array<T, 3>& stop_pos = { 0, 0, 0 })
+    CTSpiralBeam(
+        const std::array<T, 3>& start_pos = { 0, 0, 0 },
+        const std::array<T, 3>& stop_pos = { 0, 0, 0 },
+        const std::map<std::size_t, T>& filtrationMaterials = {})
         : m_start(start_pos)
         , m_stop(stop_pos)
     {
+        for (const auto [Z, mm] : filtrationMaterials)
+            m_tube.addFiltrationMaterial(Z, mm);
         tubeChanged();
     }
 
