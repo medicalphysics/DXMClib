@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include <atomic>
 #include <chrono>
 #include <string>
+#include <utility>
 
 namespace dxmc {
 class TransportProgress {
@@ -33,10 +34,12 @@ public:
 
     void start(std::uint64_t N)
     {
+        m_continue_simulation_flag = true;
         m_nParticles = N;
         m_nParticleCount = 0;
         m_start = std::chrono::high_resolution_clock::now();
     }
+
     void addCompletedNumber(std::uint64_t N)
     {
         auto aref = std::atomic_ref(m_nParticleCount);
@@ -51,6 +54,17 @@ public:
         }
     }
 
+    bool continueSimulation() const
+    {
+        return m_continue_simulation_flag;
+    }
+
+    void setStopSimulation()
+    {
+        auto flag = std::atomic_ref(m_continue_simulation_flag);
+        flag.store(false);
+    }
+
     std::string humanTotalTime() const
     {
         if (m_nParticleCount == m_nParticles) {
@@ -58,6 +72,7 @@ public:
         }
         return "Not done yet";
     }
+
     std::chrono::milliseconds totalTime() const
     {
         return std::chrono::duration_cast<std::chrono::milliseconds>(m_end - m_start);
@@ -96,6 +111,7 @@ private:
     std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_end;
     std::chrono::milliseconds m_elapsed;
+    bool m_continue_simulation_flag = true;
 };
 
 }
