@@ -286,7 +286,7 @@ public:
         std::vector<std::size_t> indices(width * height);
         std::iota(indices.begin(), indices.end(), 0);
 
-        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](const int j) {
+        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](const auto j) {
             Particle<T> p;
             p.pos = pos;
 
