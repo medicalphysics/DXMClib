@@ -59,6 +59,11 @@ public:
         return m_continue_simulation_flag;
     }
 
+    std::pair<std::uint64_t, std::uint64_t> progress() const
+    {
+        return std::make_pair(m_nParticleCount, m_nParticles);
+    }
+
     void setStopSimulation()
     {
         auto flag = std::atomic_ref(m_continue_simulation_flag);
@@ -113,5 +118,4 @@ private:
     std::chrono::milliseconds m_elapsed;
     bool m_continue_simulation_flag = true;
 };
-
 }
