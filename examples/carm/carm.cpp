@@ -69,19 +69,26 @@ int main()
     room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120 });
     room.setWallThickness(10);
 
-    auto& ctdi = world.addItem<CTDIPhantom>({});
+    /*auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
     table.translate({ 0, 0, -17 });
     ctdi.translate({ 0, 0, -17 });
     auto ctdi_aabb = ctdi.AABB();
-
-    /*auto& phantom = world.addItem(testPhantom());
+*/
+    auto& phantom = world.addItem(testPhantom());
     phantom.rollAxis(2, 0);
     phantom.rollAxis(2, 1);
     phantom.flipAxis(2);
     auto table_aabb = table.AABB();
     auto phantom_aabb = phantom.AABB();
-    phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] }); */
+    phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] });
+
+    auto& doctor = world.addItem(testPhantom());
+    //doctor.rollAxis(2, 0);
+    //doctor.rollAxis(2, 1);
+    //doctor.flipAxis(2);
+    auto doctor_aabb = doctor.AABB();
+    doctor.translate({ 0, 40, -doctor_aabb[2]-120});
 
     world.build();
 
