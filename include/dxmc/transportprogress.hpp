@@ -35,7 +35,7 @@ public:
     void start(std::uint64_t N)
     {
         m_continue_simulation_flag = true;
-        m_nParticles = N;
+        m_nParticles = std::max(N, std::uint64_t { 1 });
         m_nParticleCount = 0;
         m_start = std::chrono::high_resolution_clock::now();
     }
@@ -111,7 +111,7 @@ public:
     }
 
 private:
-    std::uint64_t m_nParticles = 0;
+    std::uint64_t m_nParticles = 1;
     std::uint64_t m_nParticleCount = 0;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_start;
     std::chrono::time_point<std::chrono::high_resolution_clock> m_end;
