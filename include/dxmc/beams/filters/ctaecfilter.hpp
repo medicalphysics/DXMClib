@@ -88,7 +88,7 @@ public:
 
     T operator()(const std::array<T, 3>& pos) const
     {
-        const auto dist = vectormath::subtract(m_start, pos);
+        const auto dist = vectormath::subtract(pos, m_start);
         const auto proj = vectormath::dot(dist, m_dir);
         return this->operator()(proj);
     }
