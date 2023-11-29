@@ -96,7 +96,7 @@ public:
     T operator()(T d) const
     {
         const auto dc = std::clamp(d, T { 0 }, m_lenght);
-        const auto idx0 = std::clamp(static_cast<std::size_t>(d / m_step), std::size_t { 0 }, m_data.size() - 2);
+        const auto idx0 = std::clamp(static_cast<std::size_t>(dc / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx1 = idx0 + 1;
         return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
     }
