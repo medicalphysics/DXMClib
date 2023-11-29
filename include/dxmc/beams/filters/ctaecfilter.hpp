@@ -41,6 +41,11 @@ public:
         setData(start, stop, values);
     }
 
+    std::size_t size() const
+    {
+        return m_data.size();
+    }
+
     void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
     {
         m_start = start;
@@ -75,7 +80,6 @@ public:
         const auto idx1 = idx0 + 1;
         return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
     }
-
 
     T integrate() const
     {

@@ -214,9 +214,18 @@ public:
         m_tubeB.setEnergyResolution(energyResolution);
         tubeChanged();
     }
+
+    void setAECFilter(const CTAECFilter<T>& filter)
+    {
+        m_aecFilter = filter;
+    }
     void setAECFilterData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
     {
         m_aecFilter.setData(start, stop, data);
+    }
+    const CTAECFilter<T>& AECFilter() const
+    {
+        return m_aecFilter;
     }
 
     CTSpiralBeamExposure<T> exposure(std::size_t dualExposureIndex) const noexcept
