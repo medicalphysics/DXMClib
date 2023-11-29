@@ -60,10 +60,13 @@ protected:
                 auto particle = exposure.sampleParticle(state);
                 world.transport(particle, state);
             }
+            n = exposureStart.fetch_add(1);
             if (progress) {
                 progress->addCompletedNumber(nParticles);
+                if (!progress->continueSimulation()) {
+                    n = exposureEnd; // we stop simulation
+                }
             }
-            n = exposureStart.fetch_add(1);
         }
     }
 
