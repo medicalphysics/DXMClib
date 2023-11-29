@@ -51,6 +51,16 @@ public:
         return m_data;
     }
 
+    const std::array<T, 3>& start() const
+    {
+        return m_start;
+    }
+
+    const std::array<T, 3>& stop() const
+    {
+        return m_stop;
+    }
+
     void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
     {
         m_start = start;
