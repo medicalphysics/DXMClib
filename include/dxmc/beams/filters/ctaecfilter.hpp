@@ -46,6 +46,11 @@ public:
         return m_data.size();
     }
 
+    const std::vector<T>& weights() const
+    {
+        return m_data;
+    }
+
     void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
     {
         m_start = start;
