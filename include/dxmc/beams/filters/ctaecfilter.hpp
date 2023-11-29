@@ -58,12 +58,12 @@ public:
 
     std::array<T, 3> stop() const
     {
-        dxmc::vectormath::add(m_start, vectormath::scale(m_dir, m_length));
+        dxmc::vectormath::add(m_start, vectormath::scale(m_dir, m_lenght));
     }
 
-    T lenght() const
+    T length() const
     {
-        return m_length;
+        return m_lenght;
     }
 
     void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
@@ -71,16 +71,16 @@ public:
         m_start = start;
         const auto dir = vectormath::subtract(stop, start);
         m_dir = vectormath::normalized(dir);
-        m_length = vectormath::lenght(dir);
+        m_lenght = vectormath::lenght(dir);
 
         if (data.size() < 2) {
             m_data.resize(2);
             std::fill(m_data.begin(), m_data.end(), T { 1 });
-            m_step = m_length;
+            m_step = m_lenght;
             return;
         }
 
-        m_step = m_length / (data.size() - 1);
+        m_step = m_lenght / (data.size() - 1);
         m_data = data;
         // normalize
         normalize();
@@ -95,7 +95,7 @@ public:
 
     T operator()(T d) const
     {
-        const auto dc = std::clamp(d, T { 0 }, m_length);
+        const auto dc = std::clamp(d, T { 0 }, m_lenght);
         const auto idx0 = std::clamp(static_cast<std::size_t>(d / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx1 = idx0 + 1;
         return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
@@ -114,8 +114,8 @@ public:
 
     T integrate(T start_r, T stop_r) const
     {
-        const auto start = std::clamp(std::min(start_r, stop_r), T { 0 }, m_length);
-        const auto stop = std::clamp(std::max(start_r, stop_r), T { 0 }, m_length);
+        const auto start = std::clamp(std::min(start_r, stop_r), T { 0 }, m_lenght);
+        const auto stop = std::clamp(std::max(start_r, stop_r), T { 0 }, m_lenght);
         const auto idx_start = std::clamp(static_cast<std::size_t>(start / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx_stop = std::clamp(static_cast<std::size_t>(stop / m_step) + 1, std::size_t { 0 }, m_data.size() - 2);
 
@@ -137,7 +137,7 @@ protected:
     {
         const auto area = integrate();
         // we want the total area equal to m_lenght * 1 for an expected value of 1.0;
-        const auto k = m_length / area;
+        const auto k = m_lenght / area;
         for (auto& d : m_data)
             d *= k;
     }
@@ -146,7 +146,7 @@ protected:
     {
         const auto area = integrate(start, stop);
         // we want the total area equal to m_lenght * 1 for an expected value of 1.0;
-        const auto k = m_length / area;
+        const auto k = m_lenght / area;
         for (auto& d : m_data)
             d *= k;
     }
@@ -154,7 +154,7 @@ protected:
 private:
     std::array<T, 3> m_start = { 0, 0, 0 };
     std::array<T, 3> m_dir = { 0, 0, 1 };
-    T m_length = 1;
+    T m_lenght = 1;
     T m_step = 1;
     std::vector<T> m_data;
 };
