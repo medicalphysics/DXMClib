@@ -56,9 +56,9 @@ public:
         return m_start;
     }
 
-    const std::array<T, 3>& stop() const
+    std::array<T, 3> stop() const
     {
-        return m_stop;
+        dxmc::vectormath::add(m_start, vectormath::scale(m_dir, m_length));
     }
 
     void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
