@@ -67,15 +67,14 @@ public:
     {
         const auto elapsed = std::chrono::duration_cast<std::chrono::milliseconds>(std::chrono::high_resolution_clock::now() - m_start);
 
-        const auto p = std::to_string((m_nParticleCount * 100) / m_nParticles);
-
-        std::string message = "Time elapsed: " + human_time(elapsed) + " Estimated remaining time: ";
+        std::string message = human_time(elapsed) + ", remaining ";
 
         if (m_nParticleCount > 0) {
+            const auto p = std::to_string((m_nParticleCount * 100) / m_nParticles);
             const auto remaining = (m_elapsed * (m_nParticles - m_nParticleCount)) / m_nParticleCount;
             message += human_time(remaining) + " [" + p + "%]";
         } else {
-            message += "NA [" + p + "%]";
+            message += "NA [0%]";
         }
         return message;
     }
