@@ -132,6 +132,15 @@ public:
         return s - begin_part - end_part;
     }
 
+    T integrate(const std::array<T, 3>& start, const std::array<T, 3>& stop) const
+    {
+        const auto dist_start = vectormath::subtract(start, m_start);
+        const auto proj_start = vectormath::dot(dist_start, m_dir);
+        const auto dist_stop = vectormath::subtract(stop, m_start);
+        const auto proj_stop = vectormath::dot(dist_stop, m_dir);
+        return integrate(proj_start, proj_stop);
+    }
+
 protected:
     void normalize()
     {
