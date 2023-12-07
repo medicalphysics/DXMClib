@@ -42,7 +42,7 @@ public:
     BowtieFilter()
     {
         // generic filter from a Siemens Definition Flash
-        constexpr std::vector<std::pair<T, T>> data = {
+        static std::vector<std::pair<T, T>> data = {
             { 0.166511074, 3.53208 },
             { 0.000000000, 13.9167 },
             { 0.041992107, 12.5868 },
