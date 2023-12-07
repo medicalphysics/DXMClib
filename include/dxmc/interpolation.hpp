@@ -174,7 +174,7 @@ T trapz(const std::vector<std::pair<T, T>>& f)
 }
 
 template <Floating T>
-constexpr T gaussIntegration(const T start, const T stop, std::array<T, 20>& gaussPoints)
+constexpr T gaussIntegration(const T start, const T stop, const std::array<T, 20>& gaussPoints)
 {
     constexpr std::array<T, 20> weights = {
         1.5275338713072585E-01,
@@ -246,6 +246,306 @@ constexpr T gaussIntegration(const T start, const T stop, const F function)
 }
 
 template <Floating T>
+class AkimaSpline {
+public:
+    AkimaSpline()
+    {
+        m_data.resize(2);
+        m_data[1].x = 1;
+    }
+    AkimaSpline(const std::vector<std::pair<T, T>>& data)
+    {
+        setup(data);
+    }
+
+    AkimaSpline(const std::vector<T>& x, const std::vector<T>& y)
+    {
+        std::vector<std::pair<T, T>> data(std::min(x.size(), y.size()));
+        for (std::size_t i = 0; i < std::min(x.size(), y.size()); ++i) {
+            data[i].first = x[i];
+            data[i].second = y[i];
+        }
+
+        setup(data);
+    }
+
+    T operator()(T x) const
+    {
+        const Interval v { .x = x };
+        const auto i1 = std::upper_bound(m_data.cbegin() + 1, m_data.cend() - 1, v, [](const auto& lh, const auto& rh) {
+            return lh.x < rh.x;
+        });
+        const auto i0 = i1 - 1;
+        const auto& seg = *i0;
+        const auto xd = x - seg.x;
+
+        return seg.a + seg.b * xd + seg.c * xd * xd + seg.d * xd * xd * xd;
+    }
+
+    void scale(T s)
+    {
+        for (auto& v : m_data) {
+            v.a *= s;
+            v.b *= s;
+            v.c *= s;
+            v.d *= s;
+        }
+    }
+
+    T integral(T start, T stop) const
+    {
+        start = std::max(start, m_data.front().x);
+
+        T integrand = 0;
+        for (std::size_t i = 0; i < m_data.size() - 1; ++i) {
+            if (m_data[i].x <= start && start <= m_data[i + 1].x && stop > start) {
+
+                const auto& x0 = m_data[i].x;
+                const auto& a = m_data[i].a;
+                const auto& b = m_data[i].b;
+                const auto& c = m_data[i].c;
+                const auto& d = m_data[i].d;
+
+                const auto xa = start - x0;
+                auto xb = m_data[i + 1].x - x0;
+                if (stop < m_data[i + 1].x)
+                    xb = stop - x0;
+
+                const auto fa = a * xa + b * xa * xa / 2 + c * xa * xa * xa / 3 + d * xa * xa * xa * xa / 4;
+                const auto fb = a * xb + b * xb * xb / 2 + c * xb * xb * xb / 3 + d * xb * xb * xb * xb / 4;
+
+                integrand += (fb - fa);
+
+                start = m_data[i + 1].x;
+            }
+        }
+        if (start < stop) {
+            // we have a rest
+            const auto& x0 = m_data.back().x;
+            const auto& a = m_data.back().a;
+            const auto& b = m_data.back().b;
+            const auto& c = m_data.back().c;
+            const auto& d = m_data.back().d;
+
+            const auto xa = start - x0;
+            auto xb = stop - x0;
+
+            const auto fa = a * xa + b * xa * xa / 2 + c * xa * xa * xa / 3 + d * xa * xa * xa * xa / 4;
+            const auto fb = a * xb + b * xb * xb / 2 + c * xb * xb * xb / 3 + d * xb * xb * xb * xb / 4;
+
+            integrand += (fb - fa);
+        }
+        return integrand;
+    }
+
+    void setup(std::vector<std::pair<T, T>> data)
+    {
+        if (data.size() < 5) {
+            m_data.resize(2);
+            m_data[1].x = 1;
+            return;
+        }
+        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+
+        m_data.resize(data.size() - 1);
+        std::vector<T> m(data.size() - 1);
+        for (std::size_t i = 0; i < data.size() - 1; ++i) {
+            m[i] = (data[i + 1].second - data[i].second) / (data[i + 1].first - data[i].first);
+        }
+        std::vector<T> s(data.size());
+        s[0] = m[0];
+        s[1] = (m[0] + m[1]) / 2;
+        for (std::size_t i = 2; i < data.size() - 2; ++i) {
+            const auto den = std::abs(m[i + 1] - m[i]) + std::abs(m[i - 1] - m[i - 2]);
+            if (den > 0.000001)
+                s[i] = (std::abs(m[i + 1] - m[i]) * m[i - 1] + std::abs(m[i - 1] - m[i - 2]) * m[i]) / den;
+            else
+                s[i] = (m[i - 1] + m[i]) / 2;
+        }
+        s[data.size() - 2] = (m[data.size() - 3] + m[data.size() - 2]) / 2;
+        s[data.size() - 1] = m[data.size() - 2];
+
+        for (std::size_t i = 0; i < s.size() - 1; ++i) {
+            m_data[i].x = data[i].first;
+            m_data[i].a = data[i].second;
+            m_data[i].b = s[i];
+            const auto xdiff = data[i + 1].first - data[i].first;
+            m_data[i].c = (3 * m[i] - 2 * s[i] - s[i + 1]) / xdiff;
+            m_data[i].d = (s[i] + s[i + 1] - 2 * m[i]) / (xdiff * xdiff);
+        }
+    }
+
+private:
+    struct Interval {
+        T x = 0, a = 1, b = 0, c = 0, d = 0;
+    };
+    std::vector<Interval> m_data;
+};
+
+template <Floating T, std::size_t N_KNOTS = 5>
+class AkimaSplineStatic {
+public:
+    AkimaSplineStatic()
+    {
+        static_assert(N_KNOTS >= 5);
+        for (std::size_t i = 0; i < N_KNOTS; ++i)
+            m_data[i].x = static_cast<T>(i);
+    }
+    AkimaSplineStatic(const std::vector<std::pair<T, T>>& data)
+    {
+        static_assert(N_KNOTS >= 5);
+        setup(data);
+    }
+
+    AkimaSplineStatic(const std::vector<T>& x, const std::vector<T>& y)
+    {
+        static_assert(N_KNOTS >= 5);
+        std::vector<std::pair<T, T>> data(std::min(x.size(), y.size()));
+        for (std::size_t i = 0; i < std::min(x.size(), y.size()); ++i) {
+            data[i].first = x[i];
+            data[i].second = y[i];
+        }
+        setup(data);
+    }
+
+    void scale(T s)
+    {
+        for (auto& v : m_data) {
+            v.a *= s;
+            v.b *= s;
+            v.c *= s;
+            v.d *= s;
+        }
+    }
+
+    T integral(T start, T stop) const
+    {
+        start = std::max(start, m_data.front().x);
+
+        T integrand = 0;
+        for (std::size_t i = 0; i < m_data.size() - 1; ++i) {
+            if (m_data[i].x <= start && start <= m_data[i + 1].x && stop > start) {
+
+                const auto& x0 = m_data[i].x;
+                const auto& a = m_data[i].a;
+                const auto& b = m_data[i].b;
+                const auto& c = m_data[i].c;
+                const auto& d = m_data[i].d;
+
+                const auto xa = start - x0;
+                auto xb = m_data[i + 1].x - x0;
+                if (stop < m_data[i + 1].x)
+                    xb = stop - x0;
+
+                const auto fa = a * xa + b * xa * xa / 2 + c * xa * xa * xa / 3 + d * xa * xa * xa * xa / 4;
+                const auto fb = a * xb + b * xb * xb / 2 + c * xb * xb * xb / 3 + d * xb * xb * xb * xb / 4;
+
+                integrand += (fb - fa);
+
+                start = m_data[i + 1].x;
+            }
+        }
+        if (start < stop) {
+            // we have a rest
+            const auto& x0 = m_data.back().x;
+            const auto& a = m_data.back().a;
+            const auto& b = m_data.back().b;
+            const auto& c = m_data.back().c;
+            const auto& d = m_data.back().d;
+
+            const auto xa = start - x0;
+            auto xb = stop - x0;
+
+            const auto fa = a * xa + b * xa * xa / 2 + c * xa * xa * xa / 3 + d * xa * xa * xa * xa / 4;
+            const auto fb = a * xb + b * xb * xb / 2 + c * xb * xb * xb / 3 + d * xb * xb * xb * xb / 4;
+
+            integrand += (fb - fa);
+        }
+        return integrand;
+    }
+
+    T operator()(T x) const
+    {
+        const Interval v { .x = x };
+        const auto i1 = std::upper_bound(m_data.cbegin() + 1, m_data.cend() - 1, v, [](const auto& lh, const auto& rh) {
+            return lh.x < rh.x;
+        });
+        const auto i0 = i1 - 1;
+        const auto& seg = *i0;
+        const auto xd = x - seg.x;
+
+        return seg.a + seg.b * xd + seg.c * xd * xd + seg.d * xd * xd * xd;
+    }
+
+    void setup(std::vector<std::pair<T, T>> data_r)
+    {
+        std::sort(data_r.begin(), data_r.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+
+        std::vector<std::pair<T, T>> data(N_KNOTS + 1);
+        if (data_r.size() < N_KNOTS + 1) {
+            std::copy(data_r.cbegin(), data_r.cend(), data.begin());
+            AkimaSpline<T> sp(data_r);
+            const auto N_rest = N_KNOTS + 1 - data_r.size();
+            for (std::size_t i = 0; i < N_rest; ++i) {
+                const auto idx = data_r.size() * (i + 1) / (N_rest + 1);
+                const auto x = (data_r[idx].first + data_r[idx + 1].first) / 2;
+                const auto y = sp(x);
+                data[i + data_r.size()] = std::make_pair(x, y);
+            }
+            std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+        } else if (data_r.size() > N_KNOTS + 1) {
+            for (std::size_t i = 0; i < N_KNOTS + 1; ++i) {
+                const auto frac = static_cast<T>(i) / N_KNOTS;
+                const auto dIdx = static_cast<std::size_t>(frac * (data_r.size() - 1));
+                data[i] = data_r[dIdx];
+            }
+            std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+        } else {
+            data = data_r;
+        }
+
+        std::array<T, N_KNOTS> m;
+        for (std::size_t i = 0; i < N_KNOTS; ++i) {
+            m[i] = (data[i + 1].second - data[i].second) / (data[i + 1].first - data[i].first);
+        }
+        std::array<T, N_KNOTS + 1> s;
+
+        for (std::size_t i = 0; i < N_KNOTS + 1; ++i) {
+            if (i == 0)
+                s[i] = m[i];
+            else if (i == 1)
+                s[i] = (m[i - 1] + m[i]) / 2;
+            else if (i == N_KNOTS - 1)
+                s[i] = (m[i - 1] + m[i]) / 2;
+            else if (i == N_KNOTS)
+                s[i] = m[i - 1];
+            else {
+                const auto den = std::abs(m[i + 1] - m[i]) + std::abs(m[i - 1] - m[i - 2]);
+                if (den > 0.0001)
+                    s[i] = (std::abs(m[i + 1] - m[i]) * m[i - 1] + std::abs(m[i - 1] - m[i - 2]) * m[i]) / den;
+                else
+                    s[i] = (m[i - 1] + m[i]) / 2;
+            }
+        }
+
+        for (std::size_t i = 0; i < N_KNOTS; ++i) {
+            m_data[i].x = data[i].first;
+            m_data[i].a = data[i].second;
+            m_data[i].b = s[i];
+            const auto xdiff = data[i + 1].first - data[i].first;
+            m_data[i].c = (3 * m[i] - 2 * s[i] - s[i + 1]) / xdiff;
+            m_data[i].d = (s[i] + s[i + 1] - 2 * m[i]) / (xdiff * xdiff);
+        }
+    }
+
+private:
+    struct Interval {
+        T x = 0, a = 1, b = 0, c = 0, d = 0;
+    };
+    std::array<Interval, N_KNOTS> m_data;
+};
+
+template <Floating T>
 class CubicSplineInterpolator {
 public:
     CubicSplineInterpolator()
@@ -258,12 +558,26 @@ public:
             for (std::size_t i = 1; i < 4; ++i)
                 c[i] = 0;
         }
-    };
+    }
+
+    CubicSplineInterpolator(const std::vector<T>& x, const std::vector<T>& y)
+    {
+        const auto N = std::min(x.size(), y.size());
+        std::vector<std::pair<T, T>> data(N);
+        for (std::size_t i = 0; i < N; ++i) {
+            data[i].first = x[i];
+            data[i].second = y[i];
+        }
+        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+        setup(data);
+    }
+
     CubicSplineInterpolator(std::vector<std::pair<T, T>> data)
     {
         std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
         setup(data);
     }
+
     void setup(const std::vector<std::pair<T, T>>& data)
     {
 
@@ -377,9 +691,44 @@ private:
 template <Floating T, int N = 30>
 class CubicSplineInterpolatorStatic {
 public:
+    CubicSplineInterpolatorStatic(const std::vector<T>& x, const std::vector<T>& y)
+    {
+        const auto N = std::min(x.size(), y.size());
+        std::vector<std::pair<T, T>> data(N);
+        for (std::size_t i = 0; i < N; ++i) {
+            data[i].first = x[i];
+            data[i].second = y[i];
+        }
+        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+        setup(data);
+    }
+
+    CubicSplineInterpolatorStatic(std::vector<std::pair<T, T>> data)
+    {
+        std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+        setup(data);
+    }
+
     template <std::regular_invocable<T> F>
         requires std::is_same<std::invoke_result_t<F, T>, T>::value
     CubicSplineInterpolatorStatic(const T start, const T stop, F function)
+    {
+        setup(start, stop, function);
+    }
+
+    T operator()(const T x_val) const
+    {
+        const T x = std::clamp(x_val, m_start, m_stop);
+
+        const std::size_t index = x > m_start ? static_cast<std::size_t>((x - m_start) / m_step) : 0;
+        const std::size_t offset = index < N - 1 ? index * 4 : (N - 2) * 4;
+        return m_coefficients[offset] + m_coefficients[offset + 1] * x + m_coefficients[offset + 2] * x * x + m_coefficients[offset + 3] * x * x * x;
+    }
+
+protected:
+    template <std::regular_invocable<T> F>
+        requires std::is_same<std::invoke_result_t<F, T>, T>::value
+    void setup(const T start, const T stop, F function)
     {
         std::vector<T> y(N);
         m_start = start;
@@ -423,16 +772,15 @@ public:
             m_coefficients[offset + 3] = (s[i + 1] - s[i]) / (6 * h[i]);
         }
     }
-    T operator()(const T x_val) const
-    {
-        const T x = std::clamp(x_val, m_start, m_stop);
 
-        const std::size_t index = x > m_start ? static_cast<std::size_t>((x - m_start) / m_step) : 0;
-        const std::size_t offset = index < N - 1 ? index * 4 : (N - 2) * 4;
-        return m_coefficients[offset] + m_coefficients[offset + 1] * x + m_coefficients[offset + 2] * x * x + m_coefficients[offset + 3] * x * x * x;
+    void setup(const std::vector<std::pair<T, T>>& data)
+    {
+        CubicSplineInterpolator f(data);
+        const auto start = data.front().first;
+        const auto stop = data.back().first;
+        setup(start, stop, f);
     }
 
-protected:
     static std::vector<T> thomasPenSplineElimination(const std::vector<T>& h_p, const std::vector<T>& H_p, const std::vector<T>& d_p)
     {
         // Thomas algorithm for gaussian elimination for a trigonal system of equations
@@ -945,4 +1293,5 @@ protected:
 private:
     std::vector<std::array<T, 3>> m_data; // array of m_t, m_z, m_zp
 };
+
 }

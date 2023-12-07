@@ -26,7 +26,7 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, bool ONESIDED = false>
+template <Floating T, bool ONESIDED = true>
 class BowtieFilter {
 public:
     BowtieFilter(const std::vector<T>& angles_r, const std::vector<T>& intensity_r)
@@ -46,9 +46,12 @@ public:
 
         m_inter.setup(data);
 
-        // normalize to expected value of 1;
-        const auto meanValue = m_inter.meanValue();
-        m_inter.scale(1 / meanValue);
+        const auto start = data.front().first;
+        const auto stop = data.back().first;
+        const auto area = m_inter.integral(start, stop);
+        const auto scale = (stop - start) / area;
+
+        m_inter.scale((stop - start) / area);
     }
 
     T operator()(T angle) const
@@ -60,6 +63,6 @@ public:
     }
 
 private:
-    CubicSplineInterpolator<T> m_inter;
+    AkimaSplineStatic<T, 6> m_inter;
 };
 }
