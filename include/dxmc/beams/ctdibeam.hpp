@@ -95,12 +95,13 @@ private:
 template <Floating T>
 class CTDIBeam {
 public:
-    CTDIBeam(T angleStep, T SDD, const std::array<T, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<T>& specter, T weight = 1)
+    CTDIBeam(T angleStep, T SDD, const std::array<T, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<T>& specter, const BowtieFilter<T>& bowtie, T weight = 1)
         : m_angleStep(angleStep)
         , m_sdd(SDD)
         , m_collimationAngles(collimationAngles)
         , m_particlesPerExposure(particlesPerExposure)
         , m_specter(specter)
+        , m_bowtieFilter(bowtie)
         , m_weight(weight)
     {
     }

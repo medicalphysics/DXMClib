@@ -293,7 +293,7 @@ public:
         const auto angx = std::atan(m_FOV / m_SDD);
         const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
         const std::array<T, 2> collimationAngles = { angx, angy };
-        CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter);
+        CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter);
 
         Transport transport;
 

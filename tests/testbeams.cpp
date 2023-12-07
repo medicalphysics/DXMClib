@@ -69,12 +69,12 @@ bool testCTSpiralBeam()
 {
     using Beam = dxmc::CTSpiralBeam<T>;
     Beam beam;
-    beam.setStartStopPosition({ 0, 0, 0 }, { 0, 0, 10 });
-    beam.setNumberOfParticlesPerExposure(1E6);
+    beam.setStartStopPosition({ 0, 0, 0 }, { 0, 0, 1 });
+    beam.setNumberOfParticlesPerExposure(1E2);
     beam.setStepAngleDeg(5);
     beam.setSourceDetectorDistance(115);
     dxmc::TransportProgress progress;
-    // auto f = beam.calibrationFactor(&progress);
+    auto f = beam.calibrationFactor(&progress);
 
     return initiateBeam<T, Beam>(beam);
 }
