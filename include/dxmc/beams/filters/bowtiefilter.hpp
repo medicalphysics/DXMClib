@@ -31,17 +31,44 @@ class BowtieFilter {
 public:
     BowtieFilter(const std::vector<T>& angles_r, const std::vector<T>& intensity_r)
     {
-        const auto N = std::min(angles_r.size(), intensity_r.size());
-        std::vector<std::pair<T, T>> data(N);
+        setData(angles_r, intensity_r);
+    }
 
-        for (std::size_t i = 0; i < N; ++i) {
+    BowtieFilter(const std::vector<std::pair<T, T>>& data)
+    {
+        setData(data);
+    }
+
+    BowtieFilter()
+    {
+        // generic filter from a Siemens Definition Flash
+        constexpr std::vector<std::pair<T, T>> data = {
+            { 0.166511074, 3.53208 },
+            { 0.000000000, 13.9167 },
+            { 0.041992107, 12.5868 },
+            { 0.083836642, 9.41943 },
+            { 0.246954945, 1.96665 },
+            { 0.324269441, 1.27605 },
+            { 0.390607044, 0.947716 }
+        };
+        setData(data);
+    }
+
+    T operator()(T angle) const
+    {
+        if constexpr (ONESIDED)
+            return m_inter(std::abs(angle));
+        else
+            return m_inter(angle);
+    }
+
+    void setData(std::vector<std::pair<T, T>> data)
+    {
+        for (auto& d : data) {
             if constexpr (ONESIDED)
-                data[i].first = std::abs(angles_r[i]);
-            else
-                data[i].first = angles_r[i];
-            data[i].second = std::abs(intensity_r[i]);
+                d.first = std::abs(d.first);
+            d.second = std::abs(d.second);
         }
-
         std::sort(data.begin(), data.end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
 
         m_inter.setup(data);
@@ -54,12 +81,20 @@ public:
         m_inter.scale((stop - start) / area);
     }
 
-    T operator()(T angle) const
+    void setData(const std::vector<T>& angles_r, const std::vector<T>& intensity_r)
     {
-        if constexpr (ONESIDED)
-            return m_inter(std::abs(angle));
-        else
-            return m_inter(angle);
+        const auto N = std::min(angles_r.size(), intensity_r.size());
+        std::vector<std::pair<T, T>> data(N);
+
+        for (std::size_t i = 0; i < N; ++i) {
+            if constexpr (ONESIDED)
+                data[i].first = std::abs(angles_r[i]);
+            else
+                data[i].first = angles_r[i];
+            data[i].second = std::abs(intensity_r[i]);
+        }
+
+        setData(data);
     }
 
 private:

@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/beams/ctdibeam.hpp"
+#include "dxmc/beams/filters/bowtiefilter.hpp"
 #include "dxmc/beams/filters/ctaecfilter.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
@@ -39,13 +40,14 @@ template <Floating T>
 class CTSpiralBeamExposure {
 public:
     CTSpiralBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter)
+        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter, const BowtieFilter<T>* bowtie)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_collimationAngles(collimationAngles)
         , m_NParticles(N)
         , m_weight(weight)
         , m_specter(specter)
+        , m_bowtieFilter(bowtie)
     {
         m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
     }
@@ -76,12 +78,12 @@ public:
             m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + m_dir[1] * sinz,
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + m_dir[2] * sinz
         };
-
+        const auto bowtie_weight = m_bowtieFilter->operator()(angx);
         Particle<T> p = {
             .pos = m_pos,
             .dir = pdir,
             .energy = m_specter->sampleValue(state),
-            .weight = m_weight
+            .weight = m_weight * bowtie_weight
         };
         return p;
     }
@@ -94,6 +96,7 @@ private:
     std::uint64_t m_NParticles = 100;
     T m_weight = 1;
     const SpecterDistribution<T>* m_specter = nullptr;
+    const BowtieFilter<T>* m_bowtieFilter = nullptr;
 };
 
 template <Floating T>
@@ -273,7 +276,7 @@ public:
 
         const T weight = m_weight * m_aecFilter(pos);
 
-        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter);
+        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter, &m_bowtieFilter);
         return exp;
     }
 
@@ -326,5 +329,6 @@ private:
     Tube<T> m_tube;
     SpecterDistribution<T> m_specter;
     CTAECFilter<T> m_aecFilter;
+    BowtieFilter<T> m_bowtieFilter;
 };
 }

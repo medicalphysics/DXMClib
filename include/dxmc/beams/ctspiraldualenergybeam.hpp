@@ -262,7 +262,8 @@ public:
         auto weight = isTubeB ? m_weightB : m_weightA;
         weight *= m_aecFilter(pos);
         const SpecterDistribution<T>* const specter = isTubeB ? &m_specterB : &m_specterA;
-        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, specter);
+        const BowtieFilter<T>* const bowtie = isTubeB ? &m_bowtieFilterB : &m_bowtieFilterA;
+        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, specter, bowtie);
         return exp;
     }
 
@@ -279,13 +280,13 @@ public:
         const auto angxA = std::atan(m_FOVA / m_SDD);
         const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
         const std::array<T, 2> collimationAnglesA = { angxA, angy };
-        CTDIBeam<T> beamA(m_stepAngle, m_SDD, collimationAnglesA, m_particlesPerExposure, m_specterA, m_weightA);
+        CTDIBeam<T> beamA(m_stepAngle, m_SDD, collimationAnglesA, m_particlesPerExposure, m_specterA, m_bowtieFilterA, m_weightA);
         Transport transport;
         transport(world, beamA, progress, false);
 
         const auto angxB = std::atan(m_FOVB / m_SDD);
         const std::array<T, 2> collimationAnglesB = { angxB, angy };
-        CTDIBeam<T> beamB(m_stepAngle, m_SDD, collimationAnglesB, m_particlesPerExposure, m_specterB, m_weightB);
+        CTDIBeam<T> beamB(m_stepAngle, m_SDD, collimationAnglesB, m_particlesPerExposure, m_specterB, m_bowtieFilterB, m_weightB);
         transport(world, beamB, progress, false);
 
         const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
@@ -332,6 +333,8 @@ private:
     SpecterDistribution<T> m_specterA;
     SpecterDistribution<T> m_specterB;
     CTAECFilter<T> m_aecFilter;
+    BowtieFilter<T> m_bowtieFilterA;
+    BowtieFilter<T> m_bowtieFilterB;
 };
 
 }
