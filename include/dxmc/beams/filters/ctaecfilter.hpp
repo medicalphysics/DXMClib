@@ -46,6 +46,11 @@ public:
         return m_data.size();
     }
 
+    bool isEmpty() const
+    {
+        return m_data.size() == 2;
+    }
+
     const std::vector<T>& weights() const
     {
         return m_data;
