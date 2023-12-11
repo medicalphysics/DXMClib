@@ -22,7 +22,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/interpolation.hpp"
 
 #include <array>
-#include <vector>
 
 namespace dxmc {
 
