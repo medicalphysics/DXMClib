@@ -25,6 +25,8 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/enclosedroom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
+#include "dxmc/transportprogress.hpp"
+
 #include "phantomreader.hpp"
 
 #include <iostream>
@@ -47,6 +49,28 @@ dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
     phantom.setData(d.dimensions(), d.densityData(), d.mediaData(), materials);
     phantom.setSpacing(d.spacing());
     return phantom;
+}
+
+template <typename T, typename W, typename B>
+auto runDispatcher(T& transport, W& world, const B& beam)
+{
+    dxmc::TransportProgress progress;
+
+    bool running = true;
+    std::thread job([&]() {
+        transport(world, beam, &progress);
+        running = false;
+    });
+    std::string message;
+    while (running) {
+        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::cout << std::string(message.length(), ' ') << "\r";
+        message = progress.message();
+        std::cout << message << std::flush << "\r";
+    }
+    job.join();
+    std::cout << std::string(message.length(), ' ') << "\r";
+    return progress.totalTime();
 }
 
 int main()
@@ -84,11 +108,11 @@ int main()
     phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] });
 
     auto& doctor = world.addItem(testPhantom());
-    //doctor.rollAxis(2, 0);
-    //doctor.rollAxis(2, 1);
-    //doctor.flipAxis(2);
+    // doctor.rollAxis(2, 0);
+    // doctor.rollAxis(2, 1);
+    // doctor.flipAxis(2);
     auto doctor_aabb = doctor.AABB();
-    doctor.translate({ 0, 40, -doctor_aabb[2]-120});
+    doctor.translate({ 0, 40, -doctor_aabb[2] - 120 });
 
     world.build();
 
@@ -97,6 +121,12 @@ int main()
     const std::array<double, 3> source_pos = { 16, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(20, 20, 100);
+    beam.setNumberOfExposures(24);
+    beam.setNumberOfParticlesPerExposure(1e3);
+
+    dxmc::Transport transport;
+    runDispatcher(transport, world, beam);
+    //transport(world, beam, &progress);
 
     Viz viz(world);
     auto buffer = viz.createBuffer(2048, 2048);
