@@ -170,6 +170,7 @@ public:
             res_int.intersection = res.intersection;
             res_int.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
             res_int.intersectionValid = true;
+            res_int.value = m_dose.dose();
         }
         return res_int;
     }

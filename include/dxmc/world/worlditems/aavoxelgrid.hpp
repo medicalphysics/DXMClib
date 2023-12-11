@@ -350,7 +350,7 @@ protected:
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
         } else {
-            // make sure we are well inside a voxel            
+            // make sure we are well inside a voxel
             const auto t = intersection.intersection + T { 1E-5 };
             const std::array<T, 3> pos = {
                 p.pos[0] + p.dir[0] * t,
@@ -405,6 +405,7 @@ protected:
             intersection.rayOriginIsInsideItem = false;
             if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value) {
                 intersection.normal[dIdx] = p.dir[dIdx] < 0 ? -1 : 1;
+                intersection.value = m_dose[index_flat].dose();
             }
             intersection.intersectionValid = true;
         } else {

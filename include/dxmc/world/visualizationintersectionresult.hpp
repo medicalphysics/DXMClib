@@ -31,7 +31,7 @@ struct VisualizationIntersectionResult {
     const U* item = nullptr;
     bool rayOriginIsInsideItem = false;
     bool intersectionValid = false;
-
+    T value = 0;
     inline bool valid() const
     {
         return intersectionValid;

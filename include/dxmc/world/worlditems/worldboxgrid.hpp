@@ -27,6 +27,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
+#include <cmath>
 #include <limits>
 #include <optional>
 
@@ -78,13 +79,10 @@ public:
 
     std::size_t gridIndex(const std::array<T, 3>& pos) const noexcept
     {
-        const auto x = static_cast<std::size_t>((pos[0] - m_aabb[0]) / m_voxelSize[0]);
-        const auto y = static_cast<std::size_t>((pos[1] - m_aabb[1]) / m_voxelSize[1]);
-        const auto z = static_cast<std::size_t>((pos[2] - m_aabb[2]) / m_voxelSize[2]);
-        if (x < m_voxelDim[0] && y < m_voxelDim[1] && z < m_voxelDim[2]) {
-            return x + y * m_voxelDim[0] + z * m_voxelDim[0] * m_voxelDim[1];
-        }
-        return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
+        const auto x = static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) / m_voxelSize[0], T { 0 }, static_cast<T>(m_voxelDim[0] - 1)));
+        const auto y = static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) / m_voxelSize[0], T { 0 }, static_cast<T>(m_voxelDim[1] - 1)));
+        const auto z = static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) / m_voxelSize[0], T { 0 }, static_cast<T>(m_voxelDim[2] - 1)));
+        return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
     }
 
     void setMaterialDensity(T density) { m_materialDensity = density; }
@@ -130,7 +128,14 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
+        auto inter = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
+        if (inter.valid()) {
+            auto p_int = p;
+            p_int.translate(inter.intersection);
+            const auto ind = gridIndex(p_int.pos);
+            inter.value = m_dose[ind].dose();
+        }
+        return inter;
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override

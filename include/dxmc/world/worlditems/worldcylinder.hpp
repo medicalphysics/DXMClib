@@ -98,7 +98,10 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        auto inter= basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        if (inter.valid())
+            inter.value = m_dose.dose();
+        return inter;
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override

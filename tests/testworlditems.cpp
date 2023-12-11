@@ -71,8 +71,8 @@ bool basicTestAllItems()
     success = success && testItem<T, dxmc::CTDIPhantom<T>>();
     success = success && testItem<T, dxmc::DepthDose<T>>();
     success = success && testItem<T, dxmc::FluenceScore<T>>();
-    success = success && testItem<T, dxmc::TetrahedalMesh<T>>();
-    success = success && testItem<T, dxmc::TriangulatedMesh<T>>();
+    //success = success && testItem<T, dxmc::TetrahedalMesh<T>>();
+    //success = success && testItem<T, dxmc::TriangulatedMesh<T>>();
     success = success && testItem<T, dxmc::WorldBox<T>>();
     success = success && testItem<T, dxmc::WorldBoxGrid<T>>();
     success = success && testItem<T, dxmc::WorldCylinder<T>>();

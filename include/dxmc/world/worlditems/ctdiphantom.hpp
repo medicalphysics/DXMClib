@@ -152,7 +152,17 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::cylinder::intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        auto res = basicshape::cylinder::intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        if (res.valid()) {
+            const std::array<T, 2> tbox = { res.intersection, res.intersection + m_cylinder.radius };
+            auto holes = m_kdtree.intersect(p, tbox);
+            if (holes.valid()) {
+                res.value = m_dose[holes.item->index].dose();
+            } else {
+                res.value = m_dose[0].dose();
+            }
+        }
+        return res;
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override

@@ -106,7 +106,10 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        return basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
+        auto inter = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
+        if (inter.valid())
+            inter.value = m_dose.dose();
+        return inter;
     }
 
     void transport(Particle<T>& p, RandomState& state) noexcept override

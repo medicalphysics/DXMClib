@@ -129,6 +129,8 @@ public:
             w.intersection = res.intersection();
             w.intersectionValid = true;
             w.item = this;
+            const auto collection = res.item->collection();
+            w.value = m_dose[collection].dose();
             w.normal = w.rayOriginIsInsideItem ? res.normal_exit : res.normal_enter;
             vectormath::normalize(w.normal);
         }
