@@ -119,7 +119,7 @@ public:
         return r;
     }
 
-    const BowtieFilter& bowtiefilterA() const
+    const BowtieFilter& bowtieFilterA() const
     {
         return m_bowtieFilterA;
     }
@@ -127,7 +127,7 @@ public:
     {
         m_bowtieFilterA = filter;
     }
-    const BowtieFilter& bowtiefilterB() const
+    const BowtieFilter& bowtieFilterB() const
     {
         return m_bowtieFilterB;
     }
