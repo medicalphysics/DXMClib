@@ -168,6 +168,15 @@ public:
         m_FOV = std::max(std::abs(fov_cm), T { 1 });
     }
 
+    const BowtieFilter& bowtiefilter() const
+    {
+        return m_bowtieFilter;
+    }
+    void setBowtieFilter(const Bowtiefilter& filter)
+    {
+        m_bowtieFilter = filter;
+    }
+
     T pitch() const { return m_pitch; }
     void setPitch(T p)
     {

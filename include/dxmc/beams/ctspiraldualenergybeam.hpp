@@ -119,6 +119,23 @@ public:
         return r;
     }
 
+    const BowtieFilter& bowtiefilterA() const
+    {
+        return m_bowtieFilterA;
+    }
+    void setBowtieFilterA(const Bowtiefilter& filter)
+    {
+        m_bowtieFilterA = filter;
+    }
+    const BowtieFilter& bowtiefilterB() const
+    {
+        return m_bowtieFilterB;
+    }
+    void setBowtieFilterB(const Bowtiefilter& filter)
+    {
+        m_bowtieFilterB = filter;
+    }
+
     T pitch() const { return m_pitch; }
     void setPitch(T p)
     {
