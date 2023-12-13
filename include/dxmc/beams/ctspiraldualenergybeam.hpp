@@ -119,19 +119,19 @@ public:
         return r;
     }
 
-    const BowtieFilter& bowtieFilterA() const
+    const BowtieFilter<T>& bowtieFilterA() const
     {
         return m_bowtieFilterA;
     }
-    void setBowtieFilterA(const Bowtiefilter& filter)
+    void setBowtieFilterA(const BowtieFilter<T>& filter)
     {
         m_bowtieFilterA = filter;
     }
-    const BowtieFilter& bowtieFilterB() const
+    const BowtieFilter<T>& bowtieFilterB() const
     {
         return m_bowtieFilterB;
     }
-    void setBowtieFilterB(const Bowtiefilter& filter)
+    void setBowtieFilterB(const BowtieFilter<T>& filter)
     {
         m_bowtieFilterB = filter;
     }
