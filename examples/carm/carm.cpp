@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/transport.hpp"
+#include "dxmc/transportprogress.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
@@ -25,7 +26,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/enclosedroom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
-#include "dxmc/transportprogress.hpp"
 
 #include "phantomreader.hpp"
 
@@ -88,10 +88,14 @@ int main()
     world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
-    auto& room = world.addItem<Room>();
-
+    
+    /* auto& room = world.addItem<Room>();
     room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120 });
-    room.setWallThickness(10);
+    room.setWallThickness(2);
+    const auto lead = dxmc::Material<double, 5>::byZ(82).value();
+    const auto lead_dens = dxmc::AtomHandler<double>::Atom(82).standardDensity;
+    room.setMaterial(lead, lead_dens * 0.2 / 2.0);
+    */
 
     /*auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
@@ -99,34 +103,36 @@ int main()
     ctdi.translate({ 0, 0, -17 });
     auto ctdi_aabb = ctdi.AABB();
 */
+
+    table.translate({ -30, 0, 0 });
+
     auto& phantom = world.addItem(testPhantom());
     phantom.rollAxis(2, 0);
     phantom.rollAxis(2, 1);
     phantom.flipAxis(2);
     auto table_aabb = table.AABB();
     auto phantom_aabb = phantom.AABB();
-    phantom.translate({ 0, 0, table_aabb[5] - phantom_aabb[2] });
+    phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
     auto& doctor = world.addItem(testPhantom());
     // doctor.rollAxis(2, 0);
     // doctor.rollAxis(2, 1);
-    // doctor.flipAxis(2);
+    doctor.flipAxis(1);
     auto doctor_aabb = doctor.AABB();
-    doctor.translate({ 0, 40, -doctor_aabb[2] - 120 });
+    doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
     world.build();
 
     // adding beam
     using Beam = dxmc::DXBeam<double>;
-    const std::array<double, 3> source_pos = { 16, 0, -70 };
+    const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(20, 20, 100);
-    beam.setNumberOfExposures(24);
-    beam.setNumberOfParticlesPerExposure(1e3);
+    beam.setNumberOfExposures(240);
+    beam.setNumberOfParticlesPerExposure(100000);
 
     dxmc::Transport transport;
     runDispatcher(transport, world, beam);
-    //transport(world, beam, &progress);
 
     Viz viz(world);
     auto buffer = viz.createBuffer(2048, 2048);
@@ -135,7 +141,7 @@ int main()
     viz.setDistance(400);
     viz.setAzimuthalAngleDeg(60);
     std::vector<double> angles;
-    for (std::size_t i = 0; i < 5; ++i)
+    for (std::size_t i = 0; i < 7; ++i)
         angles.push_back(i * 30);
 
     for (auto a : angles) {

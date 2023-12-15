@@ -52,7 +52,7 @@ public:
 
     void setMaterial(const Material<T, NMaterialShells>& material) { m_material = material; }
 
-    bool setMaterial(const Material<T, NMaterialShells>& material, T density)
+    void setMaterial(const Material<T, NMaterialShells>& material, T density)
     {
         m_material = material;
         m_density = density;
