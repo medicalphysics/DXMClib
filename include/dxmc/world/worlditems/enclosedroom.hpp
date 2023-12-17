@@ -198,15 +198,7 @@ protected:
 
     bool pointInside(const std::array<T, 3>& p) const noexcept
     {
-        bool inside = true;
-        inside = inside && m_outerAABB[0] <= p[0] && p[0] <= m_innerAABB[0];
-        inside = inside && m_outerAABB[1] <= p[1] && p[1] <= m_innerAABB[1];
-        inside = inside && m_outerAABB[2] <= p[2] && p[2] <= m_innerAABB[2];
-
-        inside = inside && m_innerAABB[3] <= p[0] && p[0] <= m_outerAABB[3];
-        inside = inside && m_innerAABB[4] <= p[1] && p[1] <= m_outerAABB[4];
-        inside = inside && m_innerAABB[5] <= p[2] && p[2] <= m_outerAABB[5];
-        return inside;
+        return basicshape::AABB::pointInside(p, m_outerAABB) && !basicshape::AABB::pointInside(p, m_innerAABB);
     }
 
 private:

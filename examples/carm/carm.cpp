@@ -88,14 +88,15 @@ int main()
     world.reserveNumberOfItems(4);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
-    
-    /* auto& room = world.addItem<Room>();
+    table.translate({ -30, 0, 0 });
+
+    auto& room = world.addItem<Room>();
     room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120 });
     room.setWallThickness(2);
     const auto lead = dxmc::Material<double, 5>::byZ(82).value();
+    const auto lead_atom = dxmc::AtomHandler<double>::Atom(82);
     const auto lead_dens = dxmc::AtomHandler<double>::Atom(82).standardDensity;
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
-    */
 
     /*auto& ctdi = world.addItem<CTDIPhantom>({});
     ctdi.translate({ 16, 0, 9 });
@@ -103,8 +104,6 @@ int main()
     ctdi.translate({ 0, 0, -17 });
     auto ctdi_aabb = ctdi.AABB();
 */
-
-    table.translate({ -30, 0, 0 });
 
     auto& phantom = world.addItem(testPhantom());
     phantom.rollAxis(2, 0);
