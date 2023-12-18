@@ -22,6 +22,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/basicshapes/aabb.hpp"
 
 #include <array>
 #include <limits>
@@ -54,6 +55,10 @@ namespace visualizationprops {
 
         std::optional<std::pair<T, std::array<T, 3>>> intersect(const Particle<T>& p) const noexcept override
         {
+            const auto aabb = AABB();
+            const auto inter = basicshape::AABB::intersect(p, aabb);
+            if (!inter.valid())
+                return std::nullopt;
 
             const auto n = vectormath::cross(p.dir, m_dir);
             const auto n_lenght = vectormath::lenght(n);
@@ -84,6 +89,17 @@ namespace visualizationprops {
             d = vectormath::subtract(d, vectormath::scale(m_dir, vectormath::dot(d, m_dir)));
             vectormath::normalize(d);
             return std::make_optional(std::make_pair(t1, d));
+        }
+
+        std::array<T, 6> AABB() const
+        {
+            const auto end = vectormath::add(m_pos, vectormath::scale(m_dir, m_lenght));
+            std::array<T, 6> aabb;
+            for (std::size_t i = 0; i < 3; ++i) {
+                aabb[i] = std::min(m_pos[i], end[i]);
+                aabb[i + 3] = std::max(m_pos[i], end[i]);
+            }
+            return aabb;
         }
 
     private:

@@ -27,6 +27,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
+#include <atomic>
 #include <chrono>
 #include <execution>
 #include <iterator>
@@ -200,7 +201,6 @@ public:
 
             obj.collimationAngles();
         }
-
     void addLineProp(const B& obj, T lenght = -1, T radii = 1)
     {
         const auto start = obj.position();
@@ -268,7 +268,6 @@ public:
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
     void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512) const
     {
-
         const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
         const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
         const auto dir = vectormath::cross(ycos, xcos);
@@ -283,16 +282,46 @@ public:
         const auto ystart = vectormath::scale(ycos, -(len * height) / width);
         const auto step = 2 * len / (width - 1);
 
-        std::vector<std::size_t> indices(width * height);
-        std::iota(indices.begin(), indices.end(), 0);
+        const auto n_threads = std::max(static_cast<int>(std::thread::hardware_concurrency()), 1);
+        std::vector<std::jthread> threads;
+        threads.reserve(n_threads - 1);
+        std::atomic<int> idx(0);
+        for (std::size_t i = 0; i < n_threads - 1; ++i) {
+            threads.emplace_back(&VisualizeWorld::template generateWorker<W, U>, this, std::ref(world), std::ref(buffer), width, height, std::ref(idx));
+        }
+        generateWorker<W, U>(world, buffer, width, height, idx);
+        for (auto& thread : threads) {
+            thread.join();
+        }
+    }
 
-        std::for_each(std::execution::par_unseq, indices.begin(), indices.end(), [&](const auto j) {
+protected:
+    template <WorldType<T> W, typename U>
+        requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
+    void generateWorker(W& world, std::vector<U>& buffer, int width, int height, std::atomic<int>& idx) const
+    {
+        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
+        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
+        const auto dir = vectormath::cross(ycos, xcos);
+        const std::array pos = {
+            m_camera_pos[0] * std::cos(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[0],
+            m_camera_pos[0] * std::sin(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[1],
+            m_camera_pos[0] * std::cos(m_camera_pos[2]) + m_center[2]
+        };
+
+        const auto len = std::tan(m_fov);
+        const auto xstart = vectormath::scale(xcos, -len);
+        const auto ystart = vectormath::scale(ycos, -(len * height) / width);
+        const auto step = 2 * len / (width - 1);
+
+        auto cIndex = idx.fetch_add(1);
+        while (cIndex < width * height) {
             Particle<T> p;
             p.pos = pos;
 
-            const auto y = j / width;
-            const auto x = j - y * width;
-            const auto ind = j * 4;
+            const auto y = cIndex / width;
+            const auto x = cIndex - y * width;
+            const auto ind = cIndex * 4;
 
             const auto xvec = vectormath::add(xstart, vectormath::scale(xcos, x * step));
             const auto yvec = vectormath::add(ystart, vectormath::scale(ycos, y * step));
@@ -300,6 +329,7 @@ public:
 
             T line_intersection = std::numeric_limits<T>::max();
             std::array<T, 3> line_normal = { 0, 0, 0 };
+
             for (const auto& line : m_lines) {
                 const auto opt = line.intersect(p);
                 if (opt) {
@@ -313,38 +343,19 @@ public:
 
             const auto res = world.intersectVisualization(p);
 
-            if (res.valid()) {
-                if (res.intersection < line_intersection) {
-                    const auto scaling = 1 + T { 0.5 } * vectormath::dot(p.dir, res.normal);
-
-                    const auto color = colorOfItem<U>(res.item);
-                    for (std::size_t i = 0; i < 3; ++i) {
-                        if constexpr (std::is_same<U, std::uint8_t>::value) {
-                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
-                        } else {
-                            buffer[ind + i] = color[i] * scaling;
-                        }
-                    }
+            if (res.valid() && res.intersection < line_intersection) {
+                const auto color = colorOfItem<U>(p, res.normal, res.item);
+                for (std::size_t i = 0; i < 3; ++i) {
                     if constexpr (std::is_same<U, std::uint8_t>::value) {
-                        buffer[ind + 3] = 255;
+                        buffer[ind + i] = color[i];
                     } else {
-                        buffer[ind + 3] = 1;
+                        buffer[ind + i] = color[i];
                     }
+                }
+                if constexpr (std::is_same<U, std::uint8_t>::value) {
+                    buffer[ind + 3] = 255;
                 } else {
-                    const auto scaling = std::abs(vectormath::dot(p.dir, line_normal));
-                    const auto color = colorOfLineProp<U>();
-                    for (int i = 0; i < 3; ++i) {
-                        if constexpr (std::is_same<U, std::uint8_t>::value) {
-                            buffer[ind + i] = static_cast<U>(color[i] * scaling);
-                        } else {
-                            buffer[ind + i] = color[i] * scaling;
-                        }
-                    }
-                    if constexpr (std::is_same<U, std::uint8_t>::value) {
-                        buffer[ind + 3] = 255;
-                    } else {
-                        buffer[ind + 3] = 1;
-                    }
+                    buffer[ind + 3] = 1;
                 }
             } else {
                 if (line_intersection < std::numeric_limits<T>::max()) {
@@ -374,10 +385,10 @@ public:
                     }
                 }
             }
-        });
+            cIndex = idx.fetch_add(1);
+        }
     }
 
-protected:
     static std::array<std::uint8_t, 3> HSVtoRGB(const std::uint8_t H, const std::uint8_t S, const std::uint8_t V = 255)
     {
         // H in [0, 255], S in [0, 255], V in [0, 255]
@@ -443,14 +454,19 @@ protected:
 
     template <typename U = std::uint8_t>
         requires(std::same_as<U, T> || std::same_as<U, std::uint8_t>)
-    std::array<U, 3> colorOfItem(const WorldItemBase<T>* item) const
+    std::array<U, 3> colorOfItem(const Particle<T>& p, const std::array<T, 3>& normal, const WorldItemBase<T>* item) const
     {
         if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
+            const auto scaling = 1 + T { 0.5 } * vectormath::dot(p.dir, normal);
+
             const auto index = search->second;
-            if constexpr (std::same_as<U, std::uint8_t>)
-                return m_colors_char[index];
-            else
-                return m_colors_float[index];
+            if constexpr (std::same_as<U, std::uint8_t>) {
+                auto c = m_colors_char[index];
+                for (auto& cp : c)
+                    cp = static_cast<std::uint8_t>(cp * scaling);
+                return c;
+            } else
+                return vectormath::scale(m_colors_float[index], scaling);
         } else {
             if constexpr (std::same_as<U, std::uint8_t>)
                 return std::array<uint8_t, 3> { 0, 0, 0 };
