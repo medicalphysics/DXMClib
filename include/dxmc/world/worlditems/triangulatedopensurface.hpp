@@ -13,7 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2023 Erlend Andersen
 */
 
 #pragma once
@@ -37,44 +37,36 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class TriangulatedMesh final : public WorldItemBase<T> {
+class TriangulatedOpenSurface final : public WorldItemBase<T> {
 public:
-    TriangulatedMesh()
+    TriangulatedOpenSurface()
         : WorldItemBase<T>()
         , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
         , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
-    TriangulatedMesh(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
+    TriangulatedOpenSurface(const std::vector<Triangle<T>>& triangles, T surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
         , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
         , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        setData(triangles, max_tree_dept);
+        setData(triangles, surfaceThickness, max_tree_dept);
     }
 
-    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
+    TriangulatedOpenSurface(const std::string& path, T surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
         : WorldItemBase<T>()
         , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
         , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader<T> reader;
         auto triangles = reader(path);
-        setData(triangles, max_tree_dept);
+        setData(triangles, surfaceThickness, max_tree_dept);
     }
 
-    TriangulatedMesh(const std::string& path, T scale, const std::size_t max_tree_dept = 8)
-        : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
+    T surfaceAttenuationThickness() const
     {
-        STLReader<T> reader;
-        auto triangles = reader(path);
-        std::for_each(std::execution::par_unseq, triangles.begin(), triangles.end(), [=](auto& tri) {
-            tri.scale(scale);
-        });
-        setData(triangles, max_tree_dept);
+        return m_thickness;
     }
 
     void setMaterial(const Material<T, NMaterialShells>& mat)
@@ -130,11 +122,11 @@ public:
             e *= s;
     }
 
-    void setData(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept)
+    void setData(const std::vector<Triangle<T>>& triangles, T surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
     {
+        m_thickness = std::abs(surfaceThickness);
         m_kdtree.setData(triangles, max_tree_dept);
         m_aabb = expandAABB(m_kdtree.AABB());
-        m_volume = calculateVolume(triangles, m_aabb);
     }
 
     std::array<T, 3> center() const override
@@ -156,7 +148,7 @@ public:
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
-        return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
+        return WorldIntersectionResult<T> { .intersection = res.intersection, .rayOriginIsInsideItem = false, .intersectionValid = res.item != nullptr };
     }
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
@@ -164,9 +156,11 @@ public:
         const auto res = m_kdtree.intersect(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> res_int;
         if (res.valid()) {
-            res_int.normal = vectormath::normalized(res.item->planeVector());
+            res_int.normal = vectormath::normalized(res.item->planeVector());            
+            if (res.rayOriginIsInsideItem) // fix normal vector
+                res_int.normal = vectormath::scale(res_int.normal, T { -1 });
             res_int.intersection = res.intersection;
-            res_int.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+            res_int.rayOriginIsInsideItem = false;
             res_int.intersectionValid = true;
             res_int.value = m_dose.dose();
         }
@@ -175,32 +169,19 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) override
     {
-        bool cont = true;
-        bool updateAtt = true;
-        dxmc::AttenuationValues<T> att;
-        T attSumInv;
-        while (cont) {
-            if (updateAtt) {
-                att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_materialDensity);
-                updateAtt = false;
+        const dxmc::AttenuationValues<T> att = m_material.attenuationValues(p.energy);
+        const auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        updateAtt = false;
+        const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+        if (stepLen > m_thickness) {
+            // transport to edge
+            p.border_translate(m_thickness * T { 0.5 });
+        } else {
+            const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+            if (intRes.particleEnergyChanged) {
+                m_energyScored.scoreEnergy(intRes.energyImparted);
             }
-
-            const auto intM = intersect(p);
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-            if (intM.intersection < stepLen) {
-                // transport to edge
-                p.border_translate(intM.intersection);
-                cont = false;
-            } else {
-                p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                updateAtt = intRes.particleEnergyChanged;
-                cont = intRes.particleAlive;
-                if (intRes.particleEnergyChanged) {
-                    m_energyScored.scoreEnergy(intRes.energyImparted);
-                }
-            }
+            p.border_translate(m_thickness * T { 0.5 });
         }
     }
 
@@ -216,8 +197,9 @@ public:
 
     void addEnergyScoredToDoseScore(T calibration_factor = 1) override
     {
-        // not defined for fleunce counter
-        m_dose.addScoredEnergy(m_energyScored, m_volume, m_materialDensity, calibration_factor);
+        const auto triangles = getTriangles();
+        const auto volume = calculateVolume(triangles);
+        m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
     const DoseScore<T>& doseScored(std::size_t index = 0) const override
@@ -246,32 +228,18 @@ protected:
         return aabb;
     }
 
-    static T calculateVolume(const std::vector<Triangle<T>>& triangles, const std::array<T, 6>& aabb)
+    static T calculateVolume(const std::vector<Triangle<T>>& triangles)
     {
-        // using signed volume of a thetrahedron by a point and the three vertices (Gauss theorem of divergence)
-        // sign_vol = v1 * (v2 x v3) / 6 for three vectors defining a triangle, i.e triple product
-        // volume is then the sum of signed volumes over all triangles
-
-        // finding a neat reference point instead of {0,0,0}
-        const std::array center = {
-            (aabb[0] + aabb[3]) / 2,
-            (aabb[1] + aabb[4]) / 2,
-            (aabb[2] + aabb[5]) / 2
-        };
-
-        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, std::plus<>(), [&center](const auto& tri) {
-            const auto& v = tri.vertices();
-            const auto v1 = vectormath::subtract(v[0], center);
-            const auto v2 = vectormath::subtract(v[1], center);
-            const auto v3 = vectormath::subtract(v[2], center);
-            return vectormath::tripleProduct(v1, v2, v3);
+        const auto thickness = m_thickness;
+        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, std::plus<>(), [thickness](const auto& tri) {
+            return tri.area() * thickness;
         });
-        return std::abs(volume) / 6;
+        return volume;
     }
 
 private:
     T m_materialDensity = 1;
-    T m_volume = 0; // cm3
+    T m_thickness = 0.035; // cm
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     EnergyScore<T> m_energyScored;
     DoseScore<T> m_dose;

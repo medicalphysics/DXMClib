@@ -77,9 +77,8 @@ public:
     {
         const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
         const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
-        auto n = vectormath::cross(a, b);
-        vectormath::normalize(n);
-        return n;
+        const auto n = vectormath::cross(a, b);
+        return vectormath::normalized(n);        
     }
 
     const std::array<std::array<T, 3>, 3>& vertices() const
@@ -99,6 +98,7 @@ public:
             cent[i] *= factor;
         return cent;
     }
+
     std::array<T, 6> AABB() const
     {
         std::array<T, 6> aabb {
@@ -119,6 +119,13 @@ public:
             }
         }
         return aabb;
+    }
+
+    T area() const
+    { // Triangle of ABC, area = |AB x AC|/2
+        const auto AB = vectormath::subtract(m_vertices[1], m_vertices[0]);
+        const auto AC = vectormath::subtract(m_vertices[2], m_vertices[0]);
+        return vectormath::length(vectormath::cross(AB, AC)) / 2;
     }
 
     template <int FORWARD = 1>
