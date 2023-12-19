@@ -85,7 +85,7 @@ int main()
     using Viz = dxmc::VisualizeWorld<double>;
 
     World world {};
-    world.reserveNumberOfItems(4);
+    world.reserveNumberOfItems(5);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
@@ -127,20 +127,28 @@ int main()
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(20, 20, 100);
-    beam.setNumberOfExposures(240);
-    beam.setNumberOfParticlesPerExposure(100000);
+    beam.setNumberOfExposures(1000);
+    beam.setNumberOfParticlesPerExposure(1000000);
 
     dxmc::Transport transport;
     runDispatcher(transport, world, beam);
 
+    double max_doctor_dose = 0;
+    for (const auto d : doctor.getDoseScores()) {
+        max_doctor_dose = std::max(max_doctor_dose, d.dose());
+    }
+
     Viz viz(world);
-    auto buffer = viz.createBuffer(2048, 2048);
+    viz.addColorByValueItem(&doctor);
+    viz.addColorByValueItem(&phantom);
+    viz.setColorByValueMinMax(0, max_doctor_dose * 0.01);
+    auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 150, .2);
 
     viz.setDistance(400);
     viz.setAzimuthalAngleDeg(60);
     std::vector<double> angles;
-    for (std::size_t i = 0; i < 7; ++i)
+    for (std::size_t i = 0; i < 12; ++i)
         angles.push_back(i * 30);
 
     for (auto a : angles) {
@@ -153,5 +161,15 @@ int main()
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
 
+    viz.setAzimuthalAngleDeg(120);
+    for (auto a : angles) {
+        viz.setPolarAngleDeg(a);
+        viz.suggestFOV();
+        viz.generate(world, buffer);
+        std::string name = "test_low" + std::to_string(int(a)) + ".png";
+        viz.savePNG(name, buffer);
+        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
+                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
+    }
     return 0;
 }
