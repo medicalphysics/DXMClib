@@ -270,7 +270,7 @@ public:
         return i;
     }
 
-    std::vector<DoseScore<T>>& getDoseScores() const
+    const std::vector<DoseScore<T>>& getDoseScores() const
     {
         return m_dose;
     }
