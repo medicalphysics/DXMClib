@@ -34,13 +34,13 @@ namespace vectormath {
     concept Index = std::is_integral_v<T> && std::is_same<bool, T>::value == false;
 
     template <Floating T>
-    [[nodiscard]] inline constexpr T lenght_sqr(const std::array<T, 3>& vec) noexcept
+    [[nodiscard]] inline constexpr T length_sqr(const std::array<T, 3>& vec) noexcept
     {
         return vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
     }
 
     template <Floating T>
-    [[nodiscard]] inline T lenght(const std::array<T, 3>& vec) noexcept
+    [[nodiscard]] inline T length(const std::array<T, 3>& vec) noexcept
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
         return std::sqrt(lsqr);

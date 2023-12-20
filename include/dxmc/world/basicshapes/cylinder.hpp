@@ -86,7 +86,7 @@ namespace basicshape {
         {
             const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
             // test if point inside infinite cylinder
-            if (vectormath::lenght_sqr(d) <= cylinder.radius * cylinder.radius) {
+            if (vectormath::length_sqr(d) <= cylinder.radius * cylinder.radius) {
                 // test for side of two end planes
                 const auto e = vectormath::scale(cylinder.direction, cylinder.half_height);
                 const auto p0 = vectormath::subtract(cylinder.center, e);
@@ -121,11 +121,11 @@ namespace basicshape {
                     const auto tp0 = vectormath::add(p.pos, vectormath::scale(p.dir, t0));
 
                     const auto r2 = cylinder.radius * cylinder.radius;
-                    if (vectormath::lenght_sqr(vectormath::subtract(tp0, p0)) <= r2)
+                    if (vectormath::length_sqr(vectormath::subtract(tp0, p0)) <= r2)
                         tplane0 = t0;
                     const auto t1 = vectormath::dot(vectormath::subtract(p1, p.pos), cylinder.direction) * den_inv;
                     const auto tp1 = vectormath::add(p.pos, vectormath::scale(p.dir, t1));
-                    if (vectormath::lenght_sqr(vectormath::subtract(tp1, p1)) <= r2)
+                    if (vectormath::length_sqr(vectormath::subtract(tp1, p1)) <= r2)
                         tplane1 = t1;
                     // sorting hits
                     if (tplane0 && tplane1) {
@@ -231,7 +231,7 @@ namespace basicshape {
                     const auto ns = vectormath::dot(pa, cylinder.direction);
                     const auto d = vectormath::subtract(pa, vectormath::scale(cylinder.direction, ns));
                     const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR<T>());
-                    if (vectormath::lenght_sqr(d) < r * r) {
+                    if (vectormath::length_sqr(d) < r * r) {
                         // we hit plane
                         if (vectormath::dot(pa, cylinder.direction) < 0) {
                             res.normal = vectormath::scale(cylinder.direction, T { -1 });

@@ -157,7 +157,7 @@ public:
     void setCameraPosition(const std::array<T, 3>& pos)
     {
         const auto c = vectormath::subtract(m_center, pos);
-        const auto l = vectormath::lenght(c);
+        const auto l = vectormath::length(c);
         m_camera_pos[0] = l;
         const auto k = std::sqrt(c[0] * c[0] + c[1] * c[1]);
         if (c[2] > k)
@@ -176,8 +176,8 @@ public:
     void suggestFOV(T zoom = 1)
     {
         const auto [p1, p2] = vectormath::splice(m_world_aabb);
-        const auto plen = vectormath::lenght(vectormath::subtract(p1, p2));
-        const auto clen = vectormath::lenght(vectormath::subtract(m_camera_pos, m_center));
+        const auto plen = vectormath::length(vectormath::subtract(p1, p2));
+        const auto clen = vectormath::length(vectormath::subtract(m_camera_pos, m_center));
         m_fov = std::atan(T { 0.5 } * plen / clen) / zoom;
     }
 

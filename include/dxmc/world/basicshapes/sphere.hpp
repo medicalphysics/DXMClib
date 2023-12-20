@@ -50,7 +50,7 @@ namespace basicshape {
             const auto b = -vectormath::dot(f, p.dir);
 
             // positive c means ray starts outside of sphere
-            const auto c = vectormath::lenght_sqr(f) - r2;
+            const auto c = vectormath::length_sqr(f) - r2;
 
             if ((c > 0) && (b < 0)) {
                 // if ray starts outside sphere and center is begind ray
@@ -58,7 +58,7 @@ namespace basicshape {
                 return res;
             }
 
-            const auto delta1 = vectormath::lenght_sqr(vectormath::add(f, vectormath::scale(p.dir, b)));
+            const auto delta1 = vectormath::length_sqr(vectormath::add(f, vectormath::scale(p.dir, b)));
 
             const auto delta = r2 - delta1;
 
@@ -92,7 +92,7 @@ namespace basicshape {
             const auto b = -vectormath::dot(f, p.dir);
 
             // positive c means ray starts outside of sphere
-            const auto c = vectormath::lenght_sqr(f) - r2;
+            const auto c = vectormath::length_sqr(f) - r2;
 
             if ((c > 0) && (b < 0)) {
                 // if ray starts outside sphere and center is begind ray
@@ -100,7 +100,7 @@ namespace basicshape {
                 return std::nullopt;
             }
 
-            const auto delta1 = vectormath::lenght_sqr(vectormath::add(f, vectormath::scale(p.dir, b)));
+            const auto delta1 = vectormath::length_sqr(vectormath::add(f, vectormath::scale(p.dir, b)));
 
             const auto delta = r2 - delta1;
 

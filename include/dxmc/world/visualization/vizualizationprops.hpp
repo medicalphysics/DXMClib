@@ -61,7 +61,7 @@ namespace visualizationprops {
                 return std::nullopt;
 
             const auto n = vectormath::cross(p.dir, m_dir);
-            const auto n_lenght = vectormath::lenght(n);
+            const auto n_lenght = vectormath::length(n);
             if (std::abs(n_lenght) < GEOMETRIC_ERROR<T>()) { // lines are parallell
                 return std::nullopt;
             }

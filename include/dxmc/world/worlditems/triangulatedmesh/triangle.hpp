@@ -78,7 +78,7 @@ public:
         const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
         const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
         const auto n = vectormath::cross(a, b);
-        return vectormath::normalized(n);        
+        return vectormath::normalized(n);
     }
 
     const std::array<std::array<T, 3>, 3>& vertices() const
