@@ -45,8 +45,13 @@ public:
     {
     }
 
-    TetrahedalMesh(std::vector<Tetrahedron<T>>&& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
+    TetrahedalMesh(std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
         : WorldItemBase<T>()
+    {
+        setData(tets, collectionDensities, materials, collectionNames);
+    }
+
+    bool setData(std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
     {
         // finding max collectionIdx and Material index
         const auto maxCollectionIdx = std::transform_reduce(
@@ -58,7 +63,7 @@ public:
             [](const auto lh, const auto rh) { return std::max(lh, rh); },
             [](const auto& t) { return t.materialIndex(); });
         if (collectionDensities.size() <= maxCollectionIdx || materials.size() <= maxMaterialIdx)
-            return;
+            return false;
         m_materials = materials;
         m_collections.reserve(collectionDensities.size());
 
@@ -83,6 +88,7 @@ public:
         m_kdtree.setData(std::move(tets));
         m_aabb = m_kdtree.AABB();
         m_aabb = expandAABB(m_aabb);
+        return true;
     }
 
     void translate(const std::array<T, 3>& dist) override

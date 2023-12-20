@@ -186,6 +186,7 @@ public:
             });
         }
     }
+
     template <int FORWARD = 1>
     KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
@@ -193,7 +194,7 @@ public:
             const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
             return inter ? intersect<FORWARD>(particle, *inter) : KDTreeIntersectionResult<T, const U> {};
         } else {
-            const auto inter = basicshape::AABB::intersect(particle, aabb);
+            const auto inter = basicshape::AABB::template intersectForwardInterval<T, false>(particle, aabb);
             return inter ? intersect<FORWARD>(particle, *inter) : KDTreeIntersectionResult<T, const U> {};
         }
     }
@@ -218,7 +219,7 @@ protected:
                                 res.rayOriginIsInsideItem = vectormath::dot(particle.dir, triangle.planeVector()) > 0;
                             }
                         }
-                    }else {
+                    } else {
                         if (std::abs(*t_cand) < std::abs(res.intersection)) {
                             if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
                                 res.intersection = *t_cand;

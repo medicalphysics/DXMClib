@@ -171,22 +171,21 @@ public:
     {
         const dxmc::AttenuationValues<T> att = m_material.attenuationValues(p.energy);
         const auto attSumInv = 1 / (att.sum() * m_materialDensity);
-        updateAtt = false;
         const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
 
         constexpr int FORWARD = 0;
         const auto intersection = m_kdtree.template intersect<FORWARD>(p, m_aabb);
         const auto normal = intersection.item->planeVector();
-        const auto lenght_scale = std : abs(vectormath::length(vectormath::dot(p.dir, normal)));
-        const auto lenght = m_thickness / lenght_scale;
+        const auto length_scale = std::abs(vectormath::dot(p.dir, normal));
+        const auto length = m_thickness / length_scale;
 
-        if (stepLen < lenght) {
+        if (stepLen < length) {
             const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
             if (intRes.particleEnergyChanged) {
                 m_energyScored.scoreEnergy(intRes.energyImparted);
             }
         }
-        p.border_translate(lenght * T { 0.5 });
+        p.border_translate(length * T { 0.5 });
     }
 
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
@@ -202,7 +201,7 @@ public:
     void addEnergyScoredToDoseScore(T calibration_factor = 1) override
     {
         const auto triangles = getTriangles();
-        const auto volume = calculateVolume(triangles);
+        const auto volume = calculateVolume(triangles, m_thickness);
         m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
@@ -232,9 +231,8 @@ protected:
         return aabb;
     }
 
-    static T calculateVolume(const std::vector<Triangle<T>>& triangles)
+    static T calculateVolume(const std::vector<Triangle<T>>& triangles, T thickness)
     {
-        const auto thickness = m_thickness;
         const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), T { 0 }, std::plus<>(), [thickness](const auto& tri) {
             return tri.area() * thickness;
         });

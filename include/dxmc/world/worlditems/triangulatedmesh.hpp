@@ -130,7 +130,7 @@ public:
             e *= s;
     }
 
-    void setData(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept)
+    void setData(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
     {
         m_kdtree.setData(triangles, max_tree_dept);
         m_aabb = expandAABB(m_kdtree.AABB());
