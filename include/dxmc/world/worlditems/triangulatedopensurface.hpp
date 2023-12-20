@@ -156,7 +156,7 @@ public:
         const auto res = m_kdtree.intersect(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> res_int;
         if (res.valid()) {
-            res_int.normal = vectormath::normalized(res.item->planeVector());            
+            res_int.normal = vectormath::normalized(res.item->planeVector());
             if (res.rayOriginIsInsideItem) // fix normal vector
                 res_int.normal = vectormath::scale(res_int.normal, T { -1 });
             res_int.intersection = res.intersection;
@@ -173,16 +173,20 @@ public:
         const auto attSumInv = 1 / (att.sum() * m_materialDensity);
         updateAtt = false;
         const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
-        if (stepLen > m_thickness) {
-            // transport to edge
-            p.border_translate(m_thickness * T { 0.5 });
-        } else {
+
+        constexpr int FORWARD = 0;
+        const auto intersection = m_kdtree.template intersect<FORWARD>(p, m_aabb);
+        const auto normal = intersection.item->planeVector();
+        const auto lenght_scale = std : abs(vectormath::length(vectormath::dot(p.dir, normal)));
+        const auto lenght = m_thickness / lenght_scale;
+
+        if (stepLen < lenght) {
             const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
             if (intRes.particleEnergyChanged) {
                 m_energyScored.scoreEnergy(intRes.energyImparted);
             }
-            p.border_translate(m_thickness * T { 0.5 });
         }
+        p.border_translate(lenght * T { 0.5 });
     }
 
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
