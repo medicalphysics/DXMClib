@@ -63,7 +63,7 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     });
     std::string message;
     while (running) {
-        std::this_thread::sleep_for(std::chrono::milliseconds(500));
+        std::this_thread::sleep_for(std::chrono::milliseconds(2000));
         std::cout << std::string(message.length(), ' ') << "\r";
         message = progress.message();
         std::cout << message << std::flush << "\r";
@@ -126,24 +126,28 @@ int main()
     using Beam = dxmc::DXBeam<double>;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
-    beam.setBeamSize(20, 20, 100);
-    beam.setNumberOfExposures(1000);
+    beam.setBeamSize(12, 12, 114);
+    beam.setNumberOfExposures(200);
     beam.setNumberOfParticlesPerExposure(1000000);
+    beam.setDAPvalue(1.0);
 
     dxmc::Transport transport;
     runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
-    for (const auto d : doctor.getDoseScores()) {
+    for (const auto& d : doctor.getDoseScores()) {
         max_doctor_dose = std::max(max_doctor_dose, d.dose());
     }
+
+    constexpr double dosenorm = 0.0000005;
+    std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << dosenorm << std::endl;
 
     Viz viz(world);
     viz.addColorByValueItem(&doctor);
     viz.addColorByValueItem(&phantom);
-    viz.setColorByValueMinMax(0, max_doctor_dose * 0.01);
+    viz.setColorByValueMinMax(0, dosenorm);
     auto buffer = viz.createBuffer<double>(2048, 2048);
-    viz.addLineProp(beam, 150, .2);
+    viz.addLineProp(beam, 114, .2);
 
     viz.setDistance(400);
     viz.setAzimuthalAngleDeg(60);
