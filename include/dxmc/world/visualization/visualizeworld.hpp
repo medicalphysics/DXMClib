@@ -361,7 +361,7 @@ protected:
         const auto ystart = vectormath::scale(ycos, -(len * height) / width);
         const auto step = 2 * len / (width - 1);
 
-        auto cIndex = idx.fetch_add(1);
+        auto cIndex = idx.fetch_add(1, std::memory_order_relaxed);
         while (cIndex < width * height) {
             Particle<T> p;
             p.pos = pos;
