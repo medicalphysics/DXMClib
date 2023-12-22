@@ -187,6 +187,18 @@ public:
         }
     }
 
+    void rotate(T radians, const std::array<T, 3>& axis)
+    {
+        if (m_left) {
+            m_left->rotate(radians, axis);
+            m_right->rotate(radians, axis);
+        } else {
+            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+                tri.rotate(radians, axis);
+            });
+        }
+    }
+
     template <int FORWARD = 1>
     KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {

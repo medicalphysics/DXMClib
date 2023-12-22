@@ -25,6 +25,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/enclosedroom.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
+#include "dxmc/world/worlditems/triangulatedopensurface.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
 
 #include "phantomreader.hpp"
@@ -78,34 +79,33 @@ int main()
 
     using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
     using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
+    using Surface = dxmc::TriangulatedOpenSurface<double, 5, 1>;
     using Sphere = dxmc::WorldSphere<double, 5, 1>;
     using VGrid = dxmc::AAVoxelGrid<double, 5, 1, 0>;
     using Room = dxmc::EnclosedRoom<double, 5, 1>;
-    using World = dxmc::World<double, CTDIPhantom, Mesh, Sphere, VGrid, Room>;
+    using World = dxmc::World<double, Mesh, Sphere, VGrid, Room, Surface>;
     using Viz = dxmc::VisualizeWorld<double>;
 
     World world {};
-    world.reserveNumberOfItems(5);
+    world.reserveNumberOfItems(6);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
 
+    auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
+    ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
+    ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 0, 0, 1 });
+    ceilingshield.translate({ 20, 20, 100 });
+
     auto& room = world.addItem<Room>();
-    room.setInnerRoomAABB({ -250, -150, -120, 150, 150, 120 });
+    room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
     room.setWallThickness(2);
     const auto lead = dxmc::Material<double, 5>::byZ(82).value();
     const auto lead_atom = dxmc::AtomHandler<double>::Atom(82);
     const auto lead_dens = dxmc::AtomHandler<double>::Atom(82).standardDensity;
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
 
-    /*auto& ctdi = world.addItem<CTDIPhantom>({});
-    ctdi.translate({ 16, 0, 9 });
-    table.translate({ 0, 0, -17 });
-    ctdi.translate({ 0, 0, -17 });
-    auto ctdi_aabb = ctdi.AABB();
-*/
-
-    auto& phantom = world.addItem(testPhantom());
+    /* auto& phantom = world.addItem(testPhantom());
     phantom.rollAxis(2, 0);
     phantom.rollAxis(2, 1);
     phantom.flipAxis(2);
@@ -114,11 +114,10 @@ int main()
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
     auto& doctor = world.addItem(testPhantom());
-    // doctor.rollAxis(2, 0);
-    // doctor.rollAxis(2, 1);
     doctor.flipAxis(1);
     auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
+    */
 
     world.build();
 
@@ -126,14 +125,15 @@ int main()
     using Beam = dxmc::DXBeam<double>;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
-    beam.setBeamSize(12, 12, 114);
-    beam.setNumberOfExposures(200);
+    beam.setBeamSize(6, 6, 114);
+    beam.setNumberOfExposures(2000);
     beam.setNumberOfParticlesPerExposure(1000000);
-    beam.setDAPvalue(1.0);
+    beam.setDAPvalue(0.25);
 
     dxmc::Transport transport;
-    runDispatcher(transport, world, beam);
+    // runDispatcher(transport, world, beam);
 
+    /*
     double max_doctor_dose = 0;
     for (const auto& d : doctor.getDoseScores()) {
         max_doctor_dose = std::max(max_doctor_dose, d.dose());
@@ -141,11 +141,12 @@ int main()
 
     constexpr double dosenorm = 0.0000005;
     std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << dosenorm << std::endl;
+    */
 
     Viz viz(world);
-    viz.addColorByValueItem(&doctor);
-    viz.addColorByValueItem(&phantom);
-    viz.setColorByValueMinMax(0, dosenorm);
+    // viz.addColorByValueItem(&doctor);
+    // viz.addColorByValueItem(&phantom);
+    // viz.setColorByValueMinMax(0, dosenorm);
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 

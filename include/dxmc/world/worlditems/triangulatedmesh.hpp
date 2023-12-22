@@ -130,6 +130,17 @@ public:
             e *= s;
     }
 
+    void rotate(T radians, const std::array<T, 3>& axis)
+    {
+        const auto axisn = vectormath::normalized(axis);
+        const auto c = center();
+        const auto cm = vectormath::scale(c, T { -1 });
+        m_kdtree.translate(cm);
+        m_kdtree.rotate(radians, axisn);
+        m_kdtree.translate(c);
+        m_aabb = expandAABB(m_kdtree.AABB());
+    }
+
     void setData(const std::vector<Triangle<T>>& triangles, const std::size_t max_tree_dept = 8)
     {
         m_kdtree.setData(triangles, max_tree_dept);

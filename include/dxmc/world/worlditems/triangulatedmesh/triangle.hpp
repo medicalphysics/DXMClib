@@ -57,7 +57,7 @@ public:
 
     void translate(const std::array<T, 3>& dist)
     {
-        std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
+        std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
                 vert[i] += dist[i];
             }
@@ -66,10 +66,17 @@ public:
 
     void scale(T scale)
     {
-        std::for_each(std::execution::par_unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
+        std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
                 vert[i] *= scale;
             }
+        });
+    }
+
+    void rotate(T radians, const std::array<T, 3>& axis)
+    {
+        std::transform(std::execution::unseq, m_vertices.cbegin(), m_vertices.cend(), m_vertices.begin(), [&](auto& vert) {
+            return vectormath::rotate(vert, axis, radians);
         });
     }
 

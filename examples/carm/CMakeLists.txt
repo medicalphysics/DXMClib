@@ -18,6 +18,8 @@ target_link_libraries(carm PRIVATE libdxmc)
 
 set(CARM_ARM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCarm.stl")
 set(CARM_TABLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmTable.stl")
+set(CARM_CSHIELD_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCeilingShield.stl")
+
 
 add_custom_command(TARGET carm POST_BUILD
 			COMMENT "Copying carmCarm.stl for C-arm example"
@@ -31,6 +33,13 @@ add_custom_command(TARGET carm POST_BUILD
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CARM_TABLE_PATH} table.stl
 			WORKING_DIRECTORY $<TARGET_FILE_DIR:carm>
 			)
+add_custom_command(TARGET carm POST_BUILD
+			COMMENT "Copying ceilingshield.stl for C-arm example"
+			DEPENDS ${CARM_CSHIELD_PATH}
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CARM_CSHIELD_PATH} ceilingshield.stl
+			WORKING_DIRECTORY $<TARGET_FILE_DIR:carm>
+			)
+
 
 #Adding interaction binary data to example 
 dxmclib_add_physics_list(carm)
