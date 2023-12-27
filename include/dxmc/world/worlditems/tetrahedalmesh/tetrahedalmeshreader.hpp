@@ -311,7 +311,7 @@ protected:
         return tets;
     }
 
-    static std::vector<std::tuple<std::size_t, std::array<std::size_t, 4>, std::size_t>> readTetrahedalIndices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
+    static std::vector<std::tuple<std::size_t, std::array<std::size_t, 4>, std::size_t>> readTetrahedalIndices(const std::string& path, int nHeaderLines = 1, std::size_t collength = 80)
     {
         // reads a file formatted as <index n0 n1 n2 n3 matIdx000>, i.e "512 51 80 90 101"
 
@@ -323,7 +323,7 @@ protected:
 
         // finding line endings
         std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
-        lineIdx.reserve(data.size() / colLenght);
+        lineIdx.reserve(data.size() / collength);
         std::size_t start = 0;
         for (std::size_t i = 0; i < data.size(); ++i) {
             if (data[i] == '\n') {
@@ -372,7 +372,7 @@ protected:
         return nodes;
     }
 
-    static std::vector<std::pair<std::size_t, std::array<T, 3>>> readVertices(const std::string& path, int nHeaderLines = 1, std::size_t colLenght = 80)
+    static std::vector<std::pair<std::size_t, std::array<T, 3>>> readVertices(const std::string& path, int nHeaderLines = 1, std::size_t collength = 80)
     {
         // reads a file formatted as <index v0 v1 v2>, i.e "512 0.2 0.4523 -0.974"
         // # is treated as comment start
@@ -385,7 +385,7 @@ protected:
 
         // finding line endings
         std::vector<std::pair<std::size_t, std::size_t>> lineIdx;
-        lineIdx.reserve(data.size() / colLenght);
+        lineIdx.reserve(data.size() / collength);
         std::size_t start = 0;
         for (std::size_t i = 0; i < data.size(); ++i) {
             if (data[i] == '\n') {

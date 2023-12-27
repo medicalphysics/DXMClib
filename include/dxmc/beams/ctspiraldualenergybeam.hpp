@@ -58,7 +58,7 @@ public:
     {
         const auto direction = vectormath::subtract(m_stop, m_start);
         const auto dz = m_pitch * m_collimation;
-        const auto total_rot_angle = vectormath::lenght(direction) * (PI_VAL<T>() * 2) / dz;
+        const auto total_rot_angle = vectormath::length(direction) * (PI_VAL<T>() * 2) / dz;
         auto N_angles = static_cast<std::uint64_t>(total_rot_angle / m_stepAngle);
         return N_angles * 2;
     }

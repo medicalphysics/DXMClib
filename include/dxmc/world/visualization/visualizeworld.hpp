@@ -181,9 +181,9 @@ public:
         m_fov = std::atan(T { 0.5 } * plen / clen) / zoom;
     }
 
-    void addLineProp(const std::array<T, 3>& start, const std::array<T, 3>& dir, T lenght = -1, T radii = 1)
+    void addLineProp(const std::array<T, 3>& start, const std::array<T, 3>& dir, T length = -1, T radii = 1)
     {
-        m_lines.push_back({ start, dir, lenght, radii });
+        m_lines.push_back({ start, dir, length, radii });
     }
 
     void clearLineProps()
@@ -212,7 +212,7 @@ public:
 
             obj.collimationAngles();
         }
-    void addLineProp(const B& obj, T lenght = -1, T radii = 1)
+    void addLineProp(const B& obj, T length = -1, T radii = 1)
     {
         const auto start = obj.position();
         const auto cos = obj.directionCosines();
@@ -251,10 +251,10 @@ public:
             return pdir;
         };
 
-        addLineProp(start, f(cos, dir, angs[2], angs[3]), lenght, radii);
-        addLineProp(start, f(cos, dir, angs[0], angs[3]), lenght, radii);
-        addLineProp(start, f(cos, dir, angs[2], angs[1]), lenght, radii);
-        addLineProp(start, f(cos, dir, angs[0], angs[1]), lenght, radii);
+        addLineProp(start, f(cos, dir, angs[2], angs[3]), length, radii);
+        addLineProp(start, f(cos, dir, angs[0], angs[3]), length, radii);
+        addLineProp(start, f(cos, dir, angs[2], angs[1]), length, radii);
+        addLineProp(start, f(cos, dir, angs[0], angs[1]), length, radii);
     }
 
     template <typename U = std::uint8_t>

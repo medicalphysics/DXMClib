@@ -214,13 +214,13 @@ public:
             }
 
             const auto r1 = state.randomUniform<T>();
-            const auto stepLenght = -std::log(r1) * attenuationTotalInv; // cm
+            const auto stepLength = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
             const KDTreeIntersectionResult<T, WorldItemBase<T>> intersection = m_kdtree.intersect(p, m_aabb);
 
             if (intersection.valid()) { // Do we intersect anything?
-                if (intersection.intersection < stepLenght) {
+                if (intersection.intersection < stepLength) {
                     // Object is closer than free path.
                     if (!intersection.rayOriginIsInsideItem) { // if we are not already inside the object (we seldom are)
                         p.border_translate(intersection.intersection);
@@ -228,14 +228,14 @@ public:
                     intersection.item->transport(p, state);
                     continueSampling = p.energy > 0;
                 } else { // Free path is closer than object, we interact in the world empty space
-                    p.translate(stepLenght);
+                    p.translate(stepLength);
                     const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
                     m_energyScored.scoreEnergy(interactionResult.energyImparted);
                 }
             } else { // We do not intersect any object
-                p.translate(stepLenght);
+                p.translate(stepLength);
                 if (basicshape::AABB::pointInside(p.pos, m_aabb)) { // Are we still inside world?
                     const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;

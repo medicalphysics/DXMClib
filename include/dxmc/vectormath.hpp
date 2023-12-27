@@ -184,9 +184,9 @@ namespace vectormath {
         // Do not edit parenthesis and such
 
         const auto vec3 = subtract(vec1, vec2);
-        const T a = lenght(vec1);
-        const T b = lenght(vec2);
-        const T c = lenght(vec3);
+        const T a = length(vec1);
+        const T b = length(vec2);
+        const T c = length(vec3);
 
         const T u = b >= c ? c - (a - b) : b - (a - c);
 
