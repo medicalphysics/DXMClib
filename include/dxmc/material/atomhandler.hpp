@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/material/atomicelement.hpp"
 #include "dxmc/material/atomserializer.hpp"
 
+#include <concepts>
 #include <execution>
 #include <filesystem>
 #include <fstream>
@@ -54,6 +55,16 @@ public:
     {
         const auto& instance = Instance();
         return instance.m_elements;
+    }
+
+    static std::string toSymbol(std::integral auto Z)
+    {
+        std::string res;
+        if (0 < Z && Z < 101) {
+            const std::array<std::string, 100> S { "H", "He", "Li", "Be", "B", "C", "N", "O", "F", "Ne", "Na", "Mg", "Al", "Si", "P", "S", "Cl", "Ar", "K", "Ca", "Sc", "Ti", "V", "Cr", "Mn", "Fe", "Co", "Ni", "Cu", "Zn", "Ga", "Ge", "As", "Se", "Br", "Kr", "Rb", "Sr", "Y", "Zr", "Nb", "Mo", "Tc", "Ru", "Rh", "Pd", "Ag", "Cd", "In", "Sn", "Sb", "Te", "I", "Xe", "Cs", "Ba", "La", "Ce", "Pr", "Nd", "Pm", "Sm", "Eu", "Gd", "Tb", "Dy", "Ho", "Er", "Tm", "Yb", "Lu", "Hf", "Ta", "W", "Re", "Os", "Ir", "Pt", "Au", "Hg", "Tl", "Pb", "Bi", "Po", "At", "Rn", "Fr", "Ra", "Ac", "Th", "Pa", "U", "Np", "Pu", "Am", "Cm", "Bk", "Cf", "Es", "Fm" };
+            res = S[Z - 1];
+        }
+        return res;
     }
 
     AtomHandler(const AtomHandler&) = delete;

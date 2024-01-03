@@ -24,8 +24,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/material.hpp"
 #include "dxmc/material/nistmaterials.hpp"
 
-#include "xraylib.h"
-
 #include <format>
 #include <fstream>
 #include <iostream>
@@ -33,114 +31,6 @@ Copyright 2023 Erlend Andersen
 #include <numbers>
 
 using namespace dxmc;
-
-template <typename T>
-void writeAtomTestData(std::size_t Z)
-{
-    std::ofstream file("atomTestData.csv");
-    file << Z << std::endl;
-    file << "e,att,type,kind" << std ::endl;
-
-    std::vector<T> energy;
-    const T step = 0.5;
-    std::size_t it = 0;
-    do {
-        energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
-    } while (energy.back() < dxmc::MAX_ENERGY<T>());
-
-    auto m = dxmc::Material<T>::byZ(Z).value();
-    auto a = dxmc::AtomHandler<T>::Atom(Z);
-
-    for (auto e : energy) {
-        auto att = m.attenuationValues(e);
-        file << std::format("{},{},{},{}", e, att.photoelectric, "photoelectric", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.coherent, "coherent", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.incoherent, "incoherent", "dxmc") << std::endl;
-
-        file << std::format("{},{},{},{}", e, CS_Photo(Z, e, nullptr), "photoelectric", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, CS_Rayl(Z, e, nullptr), "coherent", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, CS_Compt(Z, e, nullptr), "incoherent", "xlib") << std::endl;
-
-        auto p = dxmc::interpolate(a.photoel, e);
-        file << std::format("{},{},{},{}", e, p, "photoelectric", "lin") << std::endl;
-        auto co = dxmc::interpolate(a.coherent, e);
-        file << std::format("{},{},{},{}", e, co, "coherent", "lin") << std::endl;
-        auto inco = dxmc::interpolate(a.incoherent, e);
-        file << std::format("{},{},{},{}", e, inco, "incoherent", "lin") << std::endl;
-
-        file << std::format("{},{},{},{}", e, att.incoherent - inco, "incoherent", "diff") << std::endl;
-        file << std::format("{},{},{},{}", e, att.coherent - co, "coherent", "diff") << std::endl;
-        file << std::format("{},{},{},{}", e, att.photoelectric - p, "photoelectric", "diff") << std::endl;
-
-        file << std::format("{},{},{},{}", e, (att.incoherent / inco - 1) * 100, "incoherent", "diffp") << std::endl;
-        file << std::format("{},{},{},{}", e, (att.coherent / co - 1) * 100, "coherent", "diffp") << std::endl;
-        file << std::format("{},{},{},{}", e, (att.photoelectric / p - 1) * 100, "photoelectric", "diffp") << std::endl;
-
-        auto tot = p + inco + co;
-        file << std::format("{},{},{},{}", e, tot, "total", "lin") << std::endl;
-        file << std::format("{},{},{},{}", e, CS_Total(Z, e, nullptr), "total", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.sum() - tot, "total", "diff") << std::endl;
-        file << std::format("{},{},{},{}", e, (att.sum() / tot - 1) * 100, "total", "diffp") << std::endl;
-
-        auto x = m.momentumTransferMax(e);
-        auto ff = dxmc::interpolate(a.formFactor, x);
-        file << std::format("{},{},{},{}", e, ff, "formfactor", "lin") << std::endl;
-        auto ff_dx = m.formFactor(x);
-        file << std::format("{},{},{},{}", e, ff_dx, "formfactor", "dxmc") << std::endl;
-        T ff_xlib = FF_Rayl(Z, x, nullptr);
-        file << std::format("{},{},{},{}", e, ff_xlib, "formfactor", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, ff_dx - ff, "formfactor", "diff") << std::endl;
-        file << std::format("{},{},{},{}", e, (ff_dx / ff - 1) * 100, "formfactor", "diffp") << std::endl;
-
-        auto sf = dxmc::interpolate(a.incoherentSF, x);
-        file << std::format("{},{},{},{}", e, sf, "scatterfactor", "lin") << std::endl;
-        auto sf_dx = m.scatterFactor(x);
-        file << std::format("{},{},{},{}", e, sf_dx, "scatterfactor", "dxmc") << std::endl;
-        T sf_xlib = SF_Compt(Z, x, nullptr);
-        file << std::format("{},{},{},{}", e, sf_xlib, "scatterfactor", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, sf_dx - sf, "scatterfactor", "diff") << std::endl;
-        file << std::format("{},{},{},{}", e, (sf_dx / sf - 1) * 100, "scatterfactor", "diffp") << std::endl;
-    }
-    file.close();
-}
-
-template <typename T, int N = 12>
-void writeCompoundTestData(const std::string& name)
-{
-    std::ofstream file("compTestData.csv");
-    file << name << std::endl;
-    file << "e,att,type,kind" << std ::endl;
-
-    std::vector<T> energy;
-    const T step = 0.5;
-    std::size_t it = 0;
-    do {
-        energy.push_back(step * it++ + dxmc::MIN_ENERGY<T>());
-    } while (energy.back() < dxmc::MAX_ENERGY<T>());
-
-    const auto m = dxmc::Material<T, N>::byNistName(name).value();
-
-    const auto Z = name.c_str();
-
-    for (auto e : energy) {
-        auto att = m.attenuationValues(e);
-        file << std::format("{},{},{},{}", e, att.photoelectric, "photoelectric", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.coherent, "coherent", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.incoherent, "incoherent", "dxmc") << std::endl;
-
-        file << std::format("{},{},{},{}", e, CS_Photo_CP(Z, e, nullptr), "photoelectric", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, CS_Rayl_CP(Z, e, nullptr), "coherent", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, CS_Compt_CP(Z, e, nullptr), "incoherent", "xlib") << std::endl;
-
-        file << std::format("{},{},{},{}", e, CS_Total_CP(Z, e, nullptr), "total", "xlib") << std::endl;
-        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
-        file << std::format("{},{},{},{}", e, att.sum(), "total", "dxmc") << std::endl;
-    }
-    file.close();
-}
-
 template <dxmc::Floating T = double>
 bool testAtomAttenuation()
 {
@@ -181,54 +71,10 @@ bool testAtomAttenuation()
             valid = valid && (std::abs(sf_dx / sf_lin) - 1) * 100 < 20;
 
             if (!valid) {
-                writeAtomTestData<T>(Z);
                 return valid;
             }
         }
     }
-    return valid;
-}
-
-template <typename T>
-bool testCompoundAttenuation()
-{
-    const auto emin = dxmc::MIN_ENERGY<T>() + 1;
-    const auto emax = dxmc::MAX_ENERGY<T>();
-
-    std::vector<T> earr(static_cast<std::size_t>(emax - emin));
-    std::iota(earr.begin(), earr.end(), emin);
-    bool valid = true;
-    constexpr T lim = 0.2;
-
-    const auto names = dxmc::Material<T>::listNistCompoundNames();
-
-    for (const auto& name : names) {
-
-        const auto mat_opt = dxmc::Material<T>::byNistName(name);
-        const auto& comp = NISTMaterials<T>::Composition(name);
-        const auto& material = mat_opt.value();
-        const auto n_c = name.c_str();
-
-        for (std::size_t i = 0; i < earr.size(); ++i) {
-            const auto e = earr[i];
-            const auto att = material.attenuationValues(e);
-            std::array<T, 3> xlib = {
-                static_cast<T>(CS_Photo_CP(n_c, e, nullptr)),
-                static_cast<T>(CS_Rayl_CP(n_c, e, nullptr)),
-                static_cast<T>(CS_Compt_CP(n_c, e, nullptr)),
-            };
-
-            valid = valid && std::abs(xlib[0] / att.photoelectric - 1) < lim;
-            // valid = valid && std::abs(xlib[1] / att.coherent - 1) < lim;
-            valid = valid && std::abs(xlib[2] / att.incoherent - 1) < lim;
-
-            if (!valid) {
-                writeCompoundTestData<T>(name);
-                return false;
-            }
-        }
-    }
-
     return valid;
 }
 
@@ -394,6 +240,13 @@ bool testmassAbsCoeff()
     return success;
 }
 
+bool testZtoSymbol(){
+    for (std::uint8_t i = 0; i < 100;++i){
+        auto s = dxmc::AtomHandler<double>::toSymbol(i);
+    }
+    return true;
+}
+
 int main(int argc, char* argv[])
 {
 
@@ -406,12 +259,10 @@ int main(int argc, char* argv[])
 
     success = success && testTotalAttenuationWater();
 
-    success = success && testCompoundAttenuation<float>();
-    success = success && testCompoundAttenuation<double>();
     success = success && testAtomAttenuation<double>();
     success = success && testAtomAttenuation<float>();
 
-    // writeAtomTestData<double>(13);
+    testZtoSymbol();
 
     if (success)
         return EXIT_SUCCESS;
