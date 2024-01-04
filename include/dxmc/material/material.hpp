@@ -255,25 +255,6 @@ public:
         return !w.empty();
     }
 
-protected:
-    Material()
-    {
-    }
-
-    inline T attenuationPhotoelectricShell_logEnergy(std::uint8_t shell, const T logEnergy) const
-    {
-        if (shell < m_numberOfShells) {
-            const auto start = m_attenuationTableOffset[6 + shell];
-            const auto stop = m_attenuationTableOffset[6 + shell + 1];
-            const auto begin = m_attenuationTable.cbegin() + start;
-            const auto end = m_attenuationTable.cbegin() + stop;
-            if (logEnergy >= (*begin)[0]) {
-                return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
-            }
-        }
-        return T { 0 };
-    }
-
     /**
      * This function parses a chemical formula string and returns a map of elements
      * Z and number density (not normalized). It's kinda messy but supports parenthesis
@@ -354,6 +335,25 @@ protected:
             }
         }
         return parsed;
+    }
+
+protected:
+    Material()
+    {
+    }
+
+    inline T attenuationPhotoelectricShell_logEnergy(std::uint8_t shell, const T logEnergy) const
+    {
+        if (shell < m_numberOfShells) {
+            const auto start = m_attenuationTableOffset[6 + shell];
+            const auto stop = m_attenuationTableOffset[6 + shell + 1];
+            const auto begin = m_attenuationTable.cbegin() + start;
+            const auto end = m_attenuationTable.cbegin() + stop;
+            if (logEnergy >= (*begin)[0]) {
+                return std::exp(CubicLSInterpolator<T>::evaluateSpline(logEnergy, begin, end));
+            }
+        }
+        return T { 0 };
     }
 
     enum class LUTType {
