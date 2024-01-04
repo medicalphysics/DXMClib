@@ -63,7 +63,7 @@ public:
 
     std::array<T, 3> stop() const
     {
-        dxmc::vectormath::add(m_start, vectormath::scale(m_dir, m_length));
+        return dxmc::vectormath::add(m_start, vectormath::scale(m_dir, m_length));
     }
 
     T length() const
