@@ -86,8 +86,7 @@ public:
             m_collectionNames.resize(m_collections.size());
         m_dose.resize(m_collections.size());
         m_kdtree.setData(std::move(tets));
-        m_aabb = m_kdtree.AABB();
-        m_aabb = expandAABB(m_aabb);
+        m_aabb = expandAABB(m_kdtree.AABB());
         return true;
     }
 

@@ -24,6 +24,8 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/enclosedroom.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/triangulatedopensurface.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
@@ -52,6 +54,21 @@ dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
     return phantom;
 }
 
+dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true)
+{
+
+    const std::string name = female ? "MRCP_AF" : "MRCP_AM";
+
+    const std::string elefile = name + ".ele";
+    const std::string nodefile = name + ".node";
+    const std::string mediafile = name + "_media.dat";
+    const std::string organfile = "icrp145organs.csv";
+
+    dxmc::TetrahedalmeshReader<double, 5, 1> reader(nodefile, elefile, mediafile, organfile);
+    reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
+    return reader.getMesh();
+}
+
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
 {
@@ -76,14 +93,14 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 
 int main()
 {
-
     using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
     using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
     using Surface = dxmc::TriangulatedOpenSurface<double, 5, 1>;
     using Sphere = dxmc::WorldSphere<double, 5, 1>;
     using VGrid = dxmc::AAVoxelGrid<double, 5, 1, 0>;
     using Room = dxmc::EnclosedRoom<double, 5, 1>;
-    using World = dxmc::World<double, Mesh, Sphere, VGrid, Room, Surface>;
+    using TetMesh = dxmc::TetrahedalMesh<double, 5, 1>;
+    using World = dxmc::World<double, Mesh, Sphere, VGrid, Room, Surface, TetMesh>;
     using Viz = dxmc::VisualizeWorld<double>;
 
     World world {};
@@ -92,10 +109,11 @@ int main()
     auto& table = world.addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
 
-    auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
+    /*auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 0, 0, 1 });
     ceilingshield.translate({ 20, 20, 100 });
+    */
 
     auto& room = world.addItem<Room>();
     room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
@@ -105,7 +123,7 @@ int main()
     const auto lead_dens = dxmc::AtomHandler<double>::Atom(82).standardDensity;
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
 
-    /* auto& phantom = world.addItem(testPhantom());
+    auto& phantom = world.addItem(testPhantom());
     phantom.rollAxis(2, 0);
     phantom.rollAxis(2, 1);
     phantom.flipAxis(2);
@@ -113,12 +131,17 @@ int main()
     auto phantom_aabb = phantom.AABB();
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
-    auto& doctor = world.addItem(testPhantom());
-    doctor.flipAxis(1);
-    auto doctor_aabb = doctor.AABB();
-    doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
-    */
-
+    /*
+        auto& doctor = world.addItem(testPhantom());
+        doctor.flipAxis(1);
+        auto doctor_aabb = doctor.AABB();
+        doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
+        */
+    {
+        auto& doctor = world.addItem(readICRP145Phantom(true));
+        const auto doctor_aabb = doctor.AABB();
+        doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
+    }
     world.build();
 
     // adding beam
@@ -144,6 +167,7 @@ int main()
     */
 
     Viz viz(world);
+  
     // viz.addColorByValueItem(&doctor);
     // viz.addColorByValueItem(&phantom);
     // viz.setColorByValueMinMax(0, dosenorm);
@@ -158,7 +182,7 @@ int main()
 
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV();
+        viz.suggestFOV(2);
         viz.generate(world, buffer);
         std::string name = "test" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);

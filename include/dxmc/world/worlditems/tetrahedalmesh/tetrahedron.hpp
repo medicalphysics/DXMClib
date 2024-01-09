@@ -88,6 +88,13 @@ public:
         });
     }
 
+    void rotate(const std::array<T, 3>& axis, T angle)
+    {
+        std::transform(std::execution::unseq, m_vertices.cbegin(), m_vertices.cend(), m_vertices.begin(), [&axis, angle](const auto& v) {
+            return vectormath::rotate(v, axis, angle);
+        });
+    }
+
     void scale(T scale)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {

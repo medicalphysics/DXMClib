@@ -284,20 +284,6 @@ public:
         else
             std::fill(buffer.begin(), buffer.end(), T { 1 });
 
-        const auto xcos = vectormath::rotate({ T { 0 }, T { 1 }, T { 0 } }, { T { 0 }, T { 0 }, T { 1 } }, m_camera_pos[1]);
-        const auto ycos = vectormath::rotate({ T { 0 }, T { 0 }, T { 1 } }, xcos, m_camera_pos[2] - std::numbers::pi_v<T> / 2);
-        const auto dir = vectormath::cross(ycos, xcos);
-        const std::array pos = {
-            m_camera_pos[0] * std::cos(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[0],
-            m_camera_pos[0] * std::sin(m_camera_pos[1]) * std::sin(m_camera_pos[2]) + m_center[1],
-            m_camera_pos[0] * std::cos(m_camera_pos[2]) + m_center[2]
-        };
-
-        const auto len = std::tan(m_fov);
-        const auto xstart = vectormath::scale(xcos, -len);
-        const auto ystart = vectormath::scale(ycos, -(len * height) / width);
-        const auto step = 2 * len / (width - 1);
-
         const auto n_threads = std::max(static_cast<int>(std::thread::hardware_concurrency()), 1);
         std::vector<std::jthread> threads;
         threads.reserve(n_threads - 1);

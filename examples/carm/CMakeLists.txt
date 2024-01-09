@@ -12,14 +12,12 @@ IF( NOT TARGET libdxmc)
 	FetchContent_MakeAvailable(libdxmc)
 ENDIF()
 
-
 add_executable(carm carm.cpp phantomreader.cpp phantomreader.hpp)
 target_link_libraries(carm PRIVATE libdxmc)
 
 set(CARM_ARM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCarm.stl")
 set(CARM_TABLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmTable.stl")
 set(CARM_CSHIELD_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCeilingShield.stl")
-
 
 add_custom_command(TARGET carm POST_BUILD
 			COMMENT "Copying carmCarm.stl for C-arm example"
@@ -40,6 +38,12 @@ add_custom_command(TARGET carm POST_BUILD
 			WORKING_DIRECTORY $<TARGET_FILE_DIR:carm>
 			)
 
+add_custom_command(TARGET carm POST_BUILD
+			COMMENT "Copying icrp145 organdata for C-arm example"
+			DEPENDS ${CMAKE_SOURCE_DIR}/data/phantomdata/icrp145/icrp145organs.csv
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CMAKE_SOURCE_DIR}/data/phantomdata/icrp145/icrp145organs.csv icrp145organs.csv
+			WORKING_DIRECTORY $<TARGET_FILE_DIR:carm>
+			)
 
 #Adding interaction binary data to example 
 dxmclib_add_physics_list(carm)

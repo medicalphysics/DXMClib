@@ -20,6 +20,7 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
+#include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 
@@ -38,7 +39,16 @@ class TetrahedalmeshReader {
 public:
     TetrahedalmeshReader() { }
 
-    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> readICRP145Phantom(
+    TetrahedalmeshReader(
+        const std::string& nodeFile,
+        const std::string& elementFile,
+        const std::string& matfilePath,
+        const std::string& organFilePath)
+    {
+        readICRP145Phantom(nodeFile, elementFile, matfilePath, organFilePath);
+    }
+
+    void readICRP145Phantom(
         const std::string& nodeFile,
         const std::string& elementFile,
         const std::string& matfilePath,
@@ -64,30 +74,40 @@ public:
             org_lut[key] = i;
         }
 
-        auto tets = readICRP145PhantomGeometry(nodeFile, elementFile);
+        m_tets = readICRP145PhantomGeometry(nodeFile, elementFile);
 
         // updating material ond organ indices in tets
-        std::for_each(std::execution::par_unseq, tets.begin(), tets.end(), [&orgs, &org_lut](auto& t) {
+        std::for_each(std::execution::par_unseq, m_tets.begin(), m_tets.end(), [&orgs, &org_lut](auto& t) {
             const auto oldOidx = t.collection();
             const auto newOidx = org_lut[oldOidx];
             t.setCollection(newOidx);
             t.setMaterialIndex(orgs[newOidx].materialIdx);
         });
 
-        std::vector<T> densities(orgs.size());
-        std::vector<std::string> organNames(orgs.size());
+        m_densities.resize(orgs.size());
+        m_organNames.resize(orgs.size());
         for (std::size_t i = 0; i < orgs.size(); ++i) {
             const auto matIdx = orgs[i].materialIdx;
-            densities[i] = mats[matIdx].density;
-            organNames[i] = orgs[i].name;
+            m_densities[i] = mats[matIdx].density;
+            m_organNames[i] = orgs[i].name;
         }
-        std::vector<Material<T, Nshells>> materials;
-        materials.reserve(mats.size());
-        for (const auto& m : mats)
-            materials.emplace_back(m.material);
 
-        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(std::move(tets), densities, materials, organNames);
+        m_materials.reserve(mats.size());
+        for (const auto& m : mats)
+            m_materials.emplace_back(m.material);
+    }
+
+    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh()
+    {
+        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames);
         return mesh;
+    }
+
+    void rotate(const std::array<T, 3>& axis, T angle)
+    {
+        std::for_each(std::execution::par_unseq, m_tets.begin(), m_tets.end(), [&axis, angle](auto& v) {
+            v.rotate(axis, angle);
+        });
     }
 
 protected:
@@ -281,7 +301,7 @@ protected:
         return res;
     }
 
-    std::vector<Tetrahedron<T>> readICRP145PhantomGeometry(const std::string& nodeFile, const std::string& elementFile)
+    static std::vector<Tetrahedron<T>> readICRP145PhantomGeometry(const std::string& nodeFile, const std::string& elementFile)
     {
         auto vertices = readVertices(nodeFile, 1, 80);
         auto nodes = readTetrahedalIndices(elementFile, 1, 80);
@@ -446,5 +466,9 @@ protected:
     }
 
 private:
+    std::vector<Tetrahedron<T>> m_tets;
+    std::vector<T> m_densities;
+    std::vector<Material<T, Nshells>> m_materials;
+    std::vector<std::string> m_organNames;
 };
 }
