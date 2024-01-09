@@ -79,6 +79,12 @@ public:
 
     auto operator<=>(const Tetrahedron<T>& other) const = default;
 
+    std::array<T, 3> center() const
+    {
+        const auto c_sum = vectormath::add(m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
+        return vectormath::scale(c_sum, T { 0.25 });
+    }
+
     void translate(const std::array<T, 3>& dist)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {

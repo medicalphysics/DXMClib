@@ -106,6 +106,12 @@ namespace vectormath {
     }
 
     template <Floating T>
+    [[nodiscard]] inline constexpr std::array<T, 3> scale(const std::array<T, 3>& v, const std::array<T, 3>& s)
+    {
+        return std::array { v[0] * s[0], v[1] * s[1], v[2] * s[2] };
+    }
+
+    template <Floating T>
     inline void normalize(std::array<T, 3>& vec) noexcept
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];

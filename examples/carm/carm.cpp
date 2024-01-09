@@ -54,7 +54,7 @@ dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
     return phantom;
 }
 
-dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true)
+dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true, std::size_t depth=8)
 {
 
     const std::string name = female ? "MRCP_AF" : "MRCP_AM";
@@ -66,7 +66,7 @@ dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true)
 
     dxmc::TetrahedalmeshReader<double, 5, 1> reader(nodefile, elefile, mediafile, organfile);
     reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
-    return reader.getMesh();
+    return reader.getMesh(depth);
 }
 
 template <typename T, typename W, typename B>
@@ -137,11 +137,11 @@ int main()
         auto doctor_aabb = doctor.AABB();
         doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
         */
-    {
-        auto& doctor = world.addItem(readICRP145Phantom(true));
-        const auto doctor_aabb = doctor.AABB();
-        doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
-    }
+
+    auto& doctor = world.addItem(readICRP145Phantom(true, 4));
+    const auto doctor_aabb = doctor.AABB();
+    doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
+
     world.build();
 
     // adding beam
@@ -167,7 +167,7 @@ int main()
     */
 
     Viz viz(world);
-  
+
     // viz.addColorByValueItem(&doctor);
     // viz.addColorByValueItem(&phantom);
     // viz.setColorByValueMinMax(0, dosenorm);

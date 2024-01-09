@@ -45,13 +45,13 @@ public:
     {
     }
 
-    TetrahedalMesh(std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
+    TetrahedalMesh(std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::size_t max_depth = 8)
         : WorldItemBase<T>()
     {
         setData(tets, collectionDensities, materials, collectionNames);
     }
 
-    bool setData(std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {})
+    bool setData(std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::size_t max_depth = 8)
     {
         // finding max collectionIdx and Material index
         const auto maxCollectionIdx = std::transform_reduce(
@@ -85,7 +85,7 @@ public:
         else
             m_collectionNames.resize(m_collections.size());
         m_dose.resize(m_collections.size());
-        m_kdtree.setData(std::move(tets));
+        m_kdtree.setData(std::move(tets), max_depth);
         m_aabb = expandAABB(m_kdtree.AABB());
         return true;
     }
@@ -125,9 +125,10 @@ public:
         return w;
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
+    template <std::uint16_t COLLECTION = 65535>
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualizationCollection(const Particle<T>& p) const
     {
-        const auto res = m_kdtree.intersect(p, m_aabb);
+        const auto res = m_kdtree.intersect<COLLECTION>(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
         if (res.valid()) {
             w.rayOriginIsInsideItem = res.rayOriginIsInsideItem();
@@ -140,6 +141,11 @@ public:
             vectormath::normalize(w.normal);
         }
         return w;
+    }
+
+    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
+    {
+        return intersectVisualizationCollection(p);
     }
 
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
