@@ -31,22 +31,24 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int N = 16>
-    requires N > 1 && N <= 1000;
+template <Floating T>
 class TetrahedalMeshGrid {
 public:
     TetrahedalMeshGrid() { }
-    TetrahedalMeshGrid(const std::vector<Tetrahedron<T>>& tets)
+    TetrahedalMeshGrid(const std::vector<Tetrahedron<T>>& tets, int depth = 32)
     {
+        setData(tets, depth);
     }
-    void setData(const std::vector<Tetrahedron<T>>& tets)
+    void setData(const std::vector<Tetrahedron<T>>& tets, int depth = 32)
     {
+        m_N = std::clamp(depth, 1, 1000);
         m_tets = tets;
         // sorting tets by diagonal
         std::sort(std::execution::par_unseq, m_tets.begin(), m_tets.end(), [](const auto& lh, const auto& rh) {
             constexpr std::array<T, 3> n = { 1, 1, 1 };
             return vectormath::dot(lh.center(), n) < vectormath::dot(rh.center(), n);
         });
+
         calculateAABB();
         assignGrid();
     }
@@ -82,20 +84,20 @@ public:
 
 protected:
     template <bool CHECK_BOUNDS = false>
-    std::array<int, 3> getIndices(const std::array<T, 3>& pos)
+    std::array<int, 3> getIndices(const std::array<T, 3>& pos) const
     {
         if constexpr (CHECK_BOUNDS) {
             std::array<int, 3> res = {
-                static_cast<int>((pos[0] - m_aabb[0]) / m_spacing[0]),
-                static_cast<int>((pos[1] - m_aabb[1]) / m_spacing[1]),
-                static_cast<int>((pos[2] - m_aabb[2]) / m_spacing[2])
+                std::clamp(static_cast<int>((pos[0] - m_aabb[0]) / m_spacing[0]), 0, m_N - 1),
+                std::clamp(static_cast<int>((pos[1] - m_aabb[1]) / m_spacing[1]), 0, m_N - 1),
+                std::clamp(static_cast<int>((pos[2] - m_aabb[2]) / m_spacing[2]), 0, m_N - 1)
             };
             return res;
         } else {
             std::array<int, 3> res = {
-                std::clamp(static_cast<int>((pos[0] - m_aabb[0]) / m_spacing[0]), 0, N - 1),
-                std::clamp(static_cast<int>((pos[1] - m_aabb[1]) / m_spacing[1]), 0, N - 1),
-                std::clamp(static_cast<int>((pos[2] - m_aabb[2]) / m_spacing[2]), 0, N - 1)
+                static_cast<int>((pos[0] - m_aabb[0]) / m_spacing[0]),
+                static_cast<int>((pos[1] - m_aabb[1]) / m_spacing[1]),
+                static_cast<int>((pos[2] - m_aabb[2]) / m_spacing[2])
             };
             return res;
         }
@@ -108,7 +110,7 @@ protected:
     }
 
     template <std::uint16_t COLLECTION = 65535>
-    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 2>& t) const
+    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& p, const std::array<T, 2>& t) const
     {
         auto idx = getIndices<true>(vectormath::add(p.pos, vectormath::scale(p.dir, t[0])));
         const std::array<int, 3> step = {
@@ -124,35 +126,37 @@ protected:
 
         std::array<T, 3> tmax;
         for (int i = 0; i < 3; ++i) {
-            tmax[i] = step[i] > 0 ? (aabb[i] + (idx[i] + 1) * m_spacing[i] - p.pos[i]) / p.dir[i] : (aabb[i] + idx[i] * m_spacing[i] - p.pos[i]) / p.dir[i];
+            tmax[i] = step[i] > 0 ? (m_aabb[i] + (idx[i] + 1) * m_spacing[i] - p.pos[i]) / p.dir[i] : (m_aabb[i] + idx[i] * m_spacing[i] - p.pos[i]) / p.dir[i];
         };
 
-        int dimension = argmin3<int, T>(tmax);
+        int dimension = argmin3(tmax);
         TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res;
-        res.intersection = std::numeric_limits<T>::max();
+        res.t_enter = std::numeric_limits<T>::max();
+        res.t_exit = std::numeric_limits<T>::max();
         bool cont = true;
         while (cont) {
             // we have a valid voxel, check intersections
-            const auto voxel_ind = idx[0] + (idx[1] + idx[2] * N) * N;
+            const auto voxel_ind = idx[0] + (idx[1] + idx[2] * m_N) * m_N;
             for (const auto& tetIdx : m_grid[voxel_ind]) {
+                const auto& tet = m_tets[tetIdx];
                 if constexpr (COLLECTION == 65535) {
-                    const auto res_cand = m_tets[tetIdx].intersect(p);
-                    if (res.valid() && res_cand.intersection < res.intersection && res_cand.intersection < tmax[dimension]) {
-                        std::swap(res, res_cand);
+                    const auto res_cand = tet.intersect(p);
+                    if (res_cand.valid() && res_cand.intersection() < res.intersection() && res_cand.intersection() < tmax[dimension]) {
+                        res = res_cand;
                     }
                 } else {
-                    if (m_tets[tetIdx].collection == COLLECTION) {
-                        const auto res_cand = m_tets[tetIdx].intersect(p);
-                        if (res.valid() && res_cand.intersection < res.intersection && res_cand.intersection < tmax[dimension]) {
-                            std::swap(res, res_cand);
+                    if (tet.collection == COLLECTION) {
+                        const auto res_cand = tet.intersect(p);
+                        if (res_cand.valid() && res_cand.intersection < res.intersection && res_cand.intersection < tmax[dimension]) {
+                            res = res_cand;
                         }
                     }
                 }
             }
             idx[dimension] += step[dimension];
-            if (!res.valid() && 0 <= idx[dimension] && idx[dimension] < N) {
+            if (!res.valid() && 0 <= idx[dimension] && idx[dimension] < m_N) {
                 tmax[dimension] += delta[dimension];
-                dimension = argmin3<int, T>(tmax);
+                dimension = argmin3(tmax);
             } else {
                 cont = false;
             }
@@ -177,40 +181,43 @@ protected:
             }
         }
         for (std::size_t i = 0; i < 3; ++i)
-            m_spacing[i] = (m_aabb[i + 3] - m_aabb[i]) / N;
+            m_spacing[i] = (m_aabb[i + 3] - m_aabb[i]) / m_N;
     }
 
     void assignGrid()
     {
         const auto [start, stop] = vectormath::splice(m_aabb);
-        // Inefficient loop over grid, better to loop over tetrahedrons?
-        for (int z = 0; z < N; ++z) {
-            for (int y = 0; y < N; ++y) {
-                for (int x = 0; x < N; ++x) {
-                    const auto idx = x + y * N + z * N * N;
-                    const std::array<T, 6> aabb = {
-                        start[0] + x * m_spacing[0],
-                        start[1] + y * m_spacing[1],
-                        start[2] + z * m_spacing[2],
-                        start[0] + (x + 1) * m_spacing[0],
-                        start[1] + (y + 1) * m_spacing[1],
-                        start[2] + (z + 1) * m_spacing[2],
-                    };
-                    for (std::size_t i = 0; i < m_tets.size(), ++i) {
-                        const auto tet_aabb = m_tets[i].AABB();
-                        if (basicshape::AABB::overlap(aabb, tet_aabb)) {
-                            m_grid[idx].push_back(i);
-                        }
+        m_grid.resize(m_N * m_N * m_N);
+
+        const int N = m_N - 1;
+        auto caster = [N](const std::array<T, 3>& v) -> std::array<int, 3> {
+            std::array<int, 3> vi = {
+                std::clamp(static_cast<int>(v[0]), 0, N),
+                std::clamp(static_cast<int>(v[1]), 0, N),
+                std::clamp(static_cast<int>(v[2]), 0, N)
+            };
+            return vi;
+        };
+        const std::array<T, 3> inv_spacing = { 1 / m_spacing[0], 1 / m_spacing[1], 1 / m_spacing[2] };
+        for (std::size_t i = 0; i < m_tets.size(); ++i) {
+            const auto tet_aabb = m_tets[i].AABB();
+            const auto [tet_start, tet_stop] = vectormath::splice(tet_aabb);
+            const auto start_ind = caster(vectormath::scale(vectormath::subtract(tet_start, start), inv_spacing));
+            const auto stop_ind = caster(vectormath::scale(vectormath::subtract(tet_stop, start), inv_spacing));
+            for (int z = start_ind[2]; z <= stop_ind[2]; ++z)
+                for (int y = start_ind[1]; y <= stop_ind[1]; ++y)
+                    for (int x = start_ind[0]; x <= stop_ind[0]; ++x) {
+                        const int idx = x + m_N * y + m_N * m_N * z;
+                        m_grid[idx].push_back(i);
                     }
-                }
-            }
         }
     }
 
 private:
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::array<T, 6> m_spacing = { 1, 1, 1 };
-    std::array<std::vector<std::size_t>, N * N * N> m_grid;
+    std::vector<std::vector<std::size_t>> m_grid;
     std::vector<Tetrahedron<T>> m_tets;
+    int m_N = 32;
 };
 }

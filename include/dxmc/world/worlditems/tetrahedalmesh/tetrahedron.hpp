@@ -115,19 +115,6 @@ public:
         return m_vertices;
     }
 
-    std::array<T, 3> center() const
-    {
-        std::array<T, 3> cent { 0, 0, 0 };
-        for (const auto& vert : m_vertices) {
-            for (std::size_t i = 0; i < 3; i++)
-                cent[i] += vert[i];
-        }
-        constexpr T factor = 1 / T { 4 };
-        for (std::size_t i = 0; i < 3; i++)
-            cent[i] *= factor;
-        return cent;
-    }
-
     T volume() const
     {
         const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);

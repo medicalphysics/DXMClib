@@ -341,6 +341,6 @@ private:
     std::vector<Tetrahedron<T>> m_tets;
     std::unique_ptr<TetrahedalMeshKDTree<T>> m_left = nullptr;
     std::unique_ptr<TetrahedalMeshKDTree<T>> m_right = nullptr;
-    friend class TetrahedalMeshKDTree<T>;
+    //friend class TetrahedalMeshKDTree<T>;
 };
 }

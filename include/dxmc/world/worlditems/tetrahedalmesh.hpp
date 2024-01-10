@@ -26,6 +26,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/nistmaterials.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
@@ -85,14 +86,14 @@ public:
         else
             m_collectionNames.resize(m_collections.size());
         m_dose.resize(m_collections.size());
-        m_kdtree.setData(std::move(tets), max_depth);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        m_acc.setData(std::move(tets));
+        m_aabb = expandAABB(m_acc.AABB());
         return true;
     }
 
     void translate(const std::array<T, 3>& dist) override
     {
-        m_kdtree.translate(dist);
+        m_acc.translate(dist);
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
             m_aabb[i + 3] += dist[i];
@@ -114,7 +115,7 @@ public:
     }
     WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
     {
-        const auto res = m_kdtree.intersect(p, m_aabb);
+        const auto res = m_acc.intersect(p, m_aabb);
         WorldIntersectionResult<T> w;
 
         if (res.valid()) {
@@ -128,7 +129,7 @@ public:
     template <std::uint16_t COLLECTION = 65535>
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualizationCollection(const Particle<T>& p) const
     {
-        const auto res = m_kdtree.intersect<COLLECTION>(p, m_aabb);
+        const auto res = m_acc.template intersect<COLLECTION>(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
         if (res.valid()) {
             w.rayOriginIsInsideItem = res.rayOriginIsInsideItem();
@@ -180,7 +181,7 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) override
     {
-        TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> inter = m_kdtree.intersect(p, m_aabb);
+        TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> inter = m_acc.intersect(p, m_aabb);
         bool updateAtt = true;
         std::uint16_t currentCollection;
         std::uint16_t currentMaterialIdx;
@@ -208,14 +209,14 @@ public:
                 energyScored.scoreEnergy(intRes.energyImparted);
                 updateAtt = true;
                 if (intRes.particleAlive) {
-                    inter = m_kdtree.intersect(p, m_aabb);
+                    inter = m_acc.intersect(p, m_aabb);
                 } else {
                     inter.item = nullptr; // we exits
                 }
             } else {
                 // transport to border of tetrahedron
                 p.border_translate(inter.t_exit);
-                inter = m_kdtree.intersect(p, m_aabb);
+                inter = m_acc.intersect(p, m_aabb);
                 if (inter.valid()) {
                     updateAtt = currentCollection != inter.item->collection();
                 }
@@ -254,7 +255,7 @@ private:
     };
 
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    TetrahedalMeshKDTree<T> m_kdtree;
+    TetrahedalMeshGrid<T> m_acc;
     std::vector<Collection> m_collections;
     std::vector<DoseScore<T>> m_dose;
     std::vector<Material<T, NMaterialShells>> m_materials;
