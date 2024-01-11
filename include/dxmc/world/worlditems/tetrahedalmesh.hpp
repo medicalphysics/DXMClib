@@ -215,6 +215,15 @@ public:
             const auto steplen = -std::log(state.randomUniform<T>()) * attMaxInv;
             p.translate(steplen);
 
+            if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
+                // we have left AABB, backtrack to right after mesh
+                const Particle<T> pback = { .pos = p.pos, .dir = vectormath::scale(p.dir, T { -1 }) };
+                const auto inter_back = intersect(pback);
+                if (inter_back.valid())
+                    p.border_translate(-inter_back.intersection);
+                return;
+            }
+
             // finding current tet
             const auto idx = getGridIndices<true>(p.pos);
             const auto idx_flat = getGridIndicesFlat(idx);
@@ -226,7 +235,7 @@ public:
                     const auto& ctet = m_tets[*it];
                     if (ctet.pointInside(p.pos)) {
                         tet = &ctet;
-                        it = m_gridIndices[idx_flat].cend();
+                        it = end;
                     } else {
                         it++;
                     }
@@ -274,7 +283,7 @@ protected:
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest(),
             std::numeric_limits<T>::lowest() };
-        for (const auto tet : m_tets) {
+        for (const auto& tet : m_tets) {
             for (const auto& v : tet.vertices()) {
                 for (std::size_t i = 0; i < 3; ++i) {
                     m_aabb[i] = std::min(m_aabb[i], v[i]);
@@ -434,12 +443,12 @@ protected:
         while (cont) {
             // we have a valid voxel, check intersections
             // const auto voxel_ind = idx[0] + (idx[1] + idx[2] * m_N[1]) * m_N[0];
-            const auto voxel_ind = idx[0] + idx[1] * m_gridDimensions[0] + idx[2] * m_gridDimensions[0] * m_gridDimensions[1];
-            for (const auto& tetIdx : m_gridIndices[voxel_ind]) {
+            const auto voxel_ind = getGridIndicesFlat(idx);
+            for (const auto tetIdx : m_gridIndices[voxel_ind]) {
                 const auto& tet = m_tets[tetIdx];
                 if constexpr (COLLECTION == 65535) {
                     const auto res_cand = tet.intersect(p);
-                    if (res_cand.valid() && res_cand.intersection <= tmax[dimension] && res_cand.intersection < res.intersection) {
+                    if (res_cand.valid() && (res_cand.intersection <= tmax[dimension]) && (res_cand.intersection < res.intersection)) {
                         res.intersection = res_cand.intersection;
                         res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
                         res.item = &tet;
@@ -449,7 +458,7 @@ protected:
                 } else {
                     if (tet.collection == COLLECTION) {
                         const auto res_cand = tet.intersect(p);
-                        if (res_cand.valid() && res_cand.intersection <= tmax[dimension] && res_cand.intersection < res.intersection) {
+                        if (res_cand.valid() && (res_cand.intersection <= tmax[dimension]) && (res_cand.intersection < res.intersection)) {
                             res.intersection = res_cand.intersection;
                             res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
                             res.item = &tet;
@@ -460,7 +469,7 @@ protected:
                 }
             }
             idx[dimension] += step[dimension];
-            if (!res.valid() && 0 <= idx[dimension] && idx[dimension] < m_gridDimensions[dimension]) {
+            if (!res.valid() && (0 <= idx[dimension]) && (idx[dimension] < m_gridDimensions[dimension])) {
                 tmax[dimension] += delta[dimension];
                 dimension = argmin3(tmax);
             } else {

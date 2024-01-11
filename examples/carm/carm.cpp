@@ -143,9 +143,9 @@ int main()
         doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
     */
 
-    auto& doctor = world.addItem(readICRP145Phantom({ 64, 64, 256 }, true));
+    //auto& doctor = world.addItem(readICRP145Phantom({ 64, 64, 256 }, true));
     // auto& doctor = world.addItem(readICRP145Phantom({ 32, 32, 128 }, true));
-    // auto& doctor = world.addItem(readICRP145Phantom(32, true));
+     auto& doctor = world.addItem(readICRP145Phantom(32, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
@@ -161,7 +161,7 @@ int main()
     beam.setDAPvalue(0.25);
 
     dxmc::Transport transport;
-    runDispatcher(transport, world, beam);
+    //runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
     for (const auto& d : doctor.getDoseScores()) {
@@ -173,9 +173,9 @@ int main()
 
     Viz viz(world);
 
-    viz.addColorByValueItem(&doctor);
-    viz.addColorByValueItem(&phantom);
-    viz.setColorByValueMinMax(0, max_doctor_dose );
+   // viz.addColorByValueItem(&doctor);
+   // viz.addColorByValueItem(&phantom);
+   // viz.setColorByValueMinMax(0, max_doctor_dose );
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 
