@@ -317,7 +317,7 @@ public:
     }
 
     T maxAttenuationValue(const T energy) const
-    {        
+    {
         return interpolate(m_woodcockStepTableLin, energy);
     }
 
@@ -451,7 +451,7 @@ protected:
             T interaction_accum = 1;
             const T interaction_thres = state.randomUniform<T>();
 
-            const auto tLimit = basicshape::AABB::intersectForwardInterval(p, m_aabb).value()[1];
+            const auto tLimit = (*basicshape::AABB::intersectForwardInterval(p, m_aabb))[1];
 
             bool cont = true;
             std::uint_fast8_t dIdx;
@@ -571,7 +571,7 @@ protected:
                 attMaxInv = 1 / maxAttenuationValue(p.energy);
                 updateAtt = false;
             }
-            const auto steplen = -log(state.randomUniform<T>()) * attMaxInv;
+            const auto steplen = -std::log(state.randomUniform<T>()) * attMaxInv;
 
             const auto intersection = basicshape::AABB::intersect(p, m_aabb);
 
