@@ -21,32 +21,13 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/worldintersectionresult.hpp"
 
 #include <algorithm>
 #include <array>
 #include <execution>
 
 namespace dxmc {
-
-template <Floating T, typename U>
-struct TetrahedalMeshIntersectionResult {
-    const U* item = nullptr;
-    T t_enter, t_exit;
-    std::array<T, 3> normal_enter, normal_exit;
-
-    inline bool valid() const
-    {
-        return item != nullptr;
-    }
-    inline T intersection() const
-    {
-        return t_enter > T { 0 } ? t_enter : t_exit;
-    }
-    inline T rayOriginIsInsideItem() const
-    {
-        return t_enter <= T { 0 };
-    }
-};
 
 template <Floating T>
 class Tetrahedron {
@@ -153,9 +134,65 @@ public:
     auto end() const { return m_vertices.end(); }
     auto cend() const { return m_vertices.cend(); }
 
-    inline TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle) const
+    WorldIntersectionResult<T> intersect(const Particle<T>& particle) const
     {
-        return forwardIntersect<false>(particle);
+
+        std::array<T, 2> t;
+        int n_hits = 0;
+        const auto h3 = intersectTriangle(m_vertices[0], m_vertices[1], m_vertices[2], particle);
+        if (h3) {
+            t[0] = *h3;
+            n_hits++;
+        }
+        const auto h2 = intersectTriangle(m_vertices[1], m_vertices[0], m_vertices[3], particle);
+        if (h2) {
+
+            t[n_hits] = *h2;
+            n_hits++;
+        }
+        if (n_hits < 2) {
+            const auto h1 = intersectTriangle(m_vertices[2], m_vertices[3], m_vertices[0], particle);
+            if (h1) {
+                t[n_hits] = *h1;
+                n_hits++;
+            }
+            if (n_hits < 2) {
+                const auto h0 = intersectTriangle(m_vertices[3], m_vertices[2], m_vertices[1], particle);
+                if (h0) {
+                    t[n_hits] = *h0;
+                    n_hits++;
+                }
+            }
+        }
+        WorldIntersectionResult<T> res;
+        if (n_hits == 2) {
+            const auto [min, max] = std::minmax(t[0], t[1]);
+            res.rayOriginIsInsideItem = min <= 0 && max > 0;
+            res.intersection = res.rayOriginIsInsideItem ? max : min;
+            res.intersectionValid = res.intersection >= 0;
+        }
+        return res;
+    }
+
+    std::array<T, 3> normal(const std::array<T, 3>& point) const
+    {
+        auto distance = [](const std::array<T, 3>& pointf, const std::array<T, 3>& pointinplane, const std::array<T, 3>& normal_arr) {
+            return std::abs(vectormath::dot(vectormath::subtract(pointf, pointinplane), normal_arr));
+        };
+        const std::array<std::array<T, 3>, 4> normals = {
+            normalVector(m_vertices[0], m_vertices[1], m_vertices[2]),
+            normalVector(m_vertices[1], m_vertices[0], m_vertices[3]),
+            normalVector(m_vertices[2], m_vertices[3], m_vertices[0]),
+            normalVector(m_vertices[3], m_vertices[2], m_vertices[1])
+        };
+        const std::array<T, 4> dist = {
+            distance(point, m_vertices[0], normals[0]),
+            distance(point, m_vertices[1], normals[1]),
+            distance(point, m_vertices[2], normals[2]),
+            distance(point, m_vertices[3], normals[3])
+        };
+        auto idx = std::min_element(dist.cbegin(), dist.cend());
+        return normals[std::distance(dist.cbegin(), idx)];
     }
 
     bool validVerticeOrientation() const
@@ -210,141 +247,28 @@ protected:
     {
         const auto s1 = vectormath::subtract(p1, p0);
         const auto s2 = vectormath::subtract(p2, p0);
-        auto normal = vectormath::cross(s1, s2);
         if constexpr (NORMALIZE)
-            vectormath::normalize(normal);
-        return normal;
+            return vectormath::normalized(vectormath::cross(s1, s2));
+        else
+            return vectormath::cross(s1, s2);
     }
 
-    template <bool PROPERNORMAL = true>
-    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> forwardIntersect(const Particle<T>& p) const
+    static std::optional<T> intersectTriangle(const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2, const Particle<T>& p)
     {
-        // translate such as p.pos lies at origo
+        const auto E1 = vectormath::subtract(v1, v0);
+        const auto TT = vectormath::subtract(p.pos, v0);
+        const auto Q = vectormath::cross(TT, E1);
 
-        const auto A = vectormath::subtract(m_vertices[0], p.pos);
-        const auto B = vectormath::subtract(m_vertices[1], p.pos);
-        const auto C = vectormath::subtract(m_vertices[2], p.pos);
-        const auto D = vectormath::subtract(m_vertices[3], p.pos);
+        const auto E2 = vectormath::subtract(v2, v0);
+        const auto P = vectormath::cross(p.dir, E2);
 
-        // Let A B C D define tetrahedron such that faces are clockwise when viewed from front (outside)
-        // i.e F3 = ABC, F2 = BAD, F1 = CDA, F0 = DCB
+        const auto det_inv = 1 / vectormath::dot(P, E1);
 
-        // Write triple scalar product = (p * (q x r)) as [p q r] and Q = p.dir
+        const auto v = vectormath::dot(Q, p.dir) * det_inv;
+        const auto u = vectormath::dot(P, TT) * det_inv;
 
-        constexpr T e = sizeof(T) > 4 ? 1e-7 : 1e-5f;
-        constexpr T ne = -e;
-        TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res;
-
-        bool noEnter = true;
-        bool noExit = true;
-
-        // test for F3
-        // [Q A B] >= 0 && [Q B C] >= 0 && [Q C A] >= 0
-        const auto QAB = vectormath::tripleProduct(p.dir, A, B);
-        const auto QBC = vectormath::tripleProduct(p.dir, B, C);
-        const auto QCA = vectormath::tripleProduct(p.dir, C, A);
-        if (noEnter && QAB >= ne && QBC >= ne && QCA >= ne) {
-            // enter
-            res.normal_enter = normalVector<PROPERNORMAL>(A, B, C);
-            const auto den = vectormath::dot(p.dir, res.normal_enter);
-            if (std::abs(den) > e) {
-                noEnter = false;
-                const auto t = vectormath::dot(A, res.normal_enter) / den;
-                res.t_enter = t;
-            }
-        } else if (noExit && QAB <= e && QBC <= e && QCA <= e) {
-            // exit
-            res.normal_exit = normalVector<PROPERNORMAL>(A, B, C);
-            const auto den = vectormath::dot(p.dir, res.normal_exit);
-            if (std::abs(den) > e) {
-                noExit = false;
-                const auto t = vectormath::dot(A, res.normal_exit) / den;
-                res.t_exit = t;
-            }
-        }
-
-        // test for F2
-        //  [Q B A] >= 0 && [Q A D] >= 0 && [Q D B] >= 0
-        const auto QBA = -QAB; // tp(p.dir, B, A);
-        const auto QAD = vectormath::tripleProduct(p.dir, A, D);
-        const auto QDB = vectormath::tripleProduct(p.dir, D, B);
-        if (noEnter && QBA >= ne && QAD >= ne && QDB >= ne) {
-            // enter
-            res.normal_enter = normalVector<PROPERNORMAL>(B, A, D);
-            const auto den = vectormath::dot(p.dir, res.normal_enter);
-            if (std::abs(den) > e) {
-                noEnter = false;
-                const auto t = vectormath::dot(B, res.normal_enter) / den;
-                res.t_enter = t;
-            }
-        } else if (noExit && QBA <= e && QAD <= e && QDB <= e) {
-            // exit
-            res.normal_exit = normalVector<PROPERNORMAL>(B, A, D);
-            const auto den = vectormath::dot(p.dir, res.normal_exit);
-            if (std::abs(den) > e) {
-                noExit = false;
-                const auto t = vectormath::dot(B, res.normal_exit) / den;
-                res.t_exit = t;
-            }
-        }
-
-        // test for F1
-        // [Q C D] >= 0 && [Q D A] >= 0 && [Q A C]
-        const auto QCD = vectormath::tripleProduct(p.dir, C, D);
-        const auto QDA = -QAD; // tp(p.dir, D, A);
-        const auto QAC = -QCA; // tp(p.dir, A, C);
-        if (noEnter && QCD >= ne && QDA >= ne && QAC >= ne) {
-            // enter
-            res.normal_enter = normalVector<PROPERNORMAL>(C, D, A);
-            const auto den = vectormath::dot(p.dir, res.normal_enter);
-            if (std::abs(den) > e) {
-                noEnter = false;
-                const auto t = vectormath::dot(C, res.normal_enter) / den;
-                res.t_enter = t;
-            }
-        } else if (noExit && QCD <= e && QDA <= e && QAC <= e) {
-            // exit
-            res.normal_exit = normalVector<PROPERNORMAL>(C, D, A);
-            const auto den = vectormath::dot(p.dir, res.normal_exit);
-            if (std::abs(den) > e) {
-                noExit = false;
-                const auto t = vectormath::dot(C, res.normal_exit) / den;
-                res.t_exit = t;
-            }
-        }
-
-        const auto oneIntersection = (noEnter || noExit) || (!noEnter && !noExit);
-        if (oneIntersection) {
-            // test for F0
-            // [Q D C] >= 0 && [Q C B] >= 0 && [Q B D] >= 0
-            const auto QDC = -QCD; // tp(p.dir, D, C);
-            const auto QCB = -QBC; // tp(p.dir, C, B);
-            const auto QBD = -QDB; // tp(p.dir, B, D);
-            if (noEnter && QDC >= ne && QCB >= ne && QBD >= ne) {
-                // enter
-                res.normal_enter = normalVector<PROPERNORMAL>(D, C, B);
-                const auto den = vectormath::dot(p.dir, res.normal_enter);
-                if (std::abs(den) > e) {
-                    noEnter = false;
-                    const auto t = vectormath::dot(D, res.normal_enter) / den;
-                    res.t_enter = t;
-                }
-            } else if (noExit && QDC <= e && QCB <= e && QBD <= e) {
-                // exit
-                res.normal_exit = normalVector<PROPERNORMAL>(D, C, B);
-                const auto den = vectormath::dot(p.dir, res.normal_exit);
-                if (std::abs(den) > e) {
-                    noExit = false;
-                    const auto t = vectormath::dot(D, res.normal_exit) / den;
-                    res.t_exit = t;
-                }
-            }
-        }
-        if (!noEnter && !noExit) { // two intersections
-            if (res.t_exit > res.t_enter && res.t_exit > T { 0 }) // we ignore glancing hits
-                res.item = this;
-        }
-        return res;
+        return v >= 0 && u >= 0 && (u + v) <= 1 ? std::make_optional(vectormath::dot(Q, E2) * det_inv)
+                                                : std::nullopt;
     }
 
 private:

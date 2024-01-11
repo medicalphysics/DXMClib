@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
+#include "dxmc/world/kdtreeintersectionresult.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 
 #include <algorithm>
@@ -76,10 +77,10 @@ public:
     }
 
     template <std::uint16_t COLLECTION = 65535>
-    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    KDTreeIntersectionResult<T, const Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto inter = basicshape::AABB::intersectForwardInterval<T, false>(particle, aabb);
-        return inter ? intersect<COLLECTION>(particle, *inter) : TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> {};
+        return inter ? intersect<COLLECTION>(particle, *inter) : KDTreeIntersectionResult<T, const Tetrahedron<T>> {};
     }
 
 protected:
@@ -110,7 +111,7 @@ protected:
     }
 
     template <std::uint16_t COLLECTION = 65535>
-    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& p, const std::array<T, 2>& t) const
+    KDTreeIntersectionResult<T, const Tetrahedron<T>> intersect(const Particle<T>& p, const std::array<T, 2>& t) const
     {
         auto idx = getIndices<true>(vectormath::add(p.pos, vectormath::scale(p.dir, t[0])));
         const std::array<int, 3> step = {
@@ -130,9 +131,8 @@ protected:
         };
 
         int dimension = argmin3(tmax);
-        TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res;
-        res.t_enter = std::numeric_limits<T>::max();
-        res.t_exit = std::numeric_limits<T>::max();
+        KDTreeIntersectionResult<T, const Tetrahedron<T>> res;
+        res.intersection = std::numeric_limits<T>::max();
         bool cont = true;
         while (cont) {
             // we have a valid voxel, check intersections
@@ -141,14 +141,22 @@ protected:
                 const auto& tet = m_tets[tetIdx];
                 if constexpr (COLLECTION == 65535) {
                     const auto res_cand = tet.intersect(p);
-                    if (res_cand.valid() && res_cand.intersection() < res.intersection() && res_cand.intersection() < tmax[dimension]) {
-                        res = res_cand;
+                    if (res_cand.valid() && res_cand.intersection < res.intersection) {
+                        res.intersection = res_cand.intersection;
+                        res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
+                        res.item = &tet;
+                        if (res.rayOriginIsInsideItem) // early exit if we are inside tet
+                            return res;
                     }
                 } else {
                     if (tet.collection == COLLECTION) {
                         const auto res_cand = tet.intersect(p);
-                        if (res_cand.valid() && res_cand.intersection < res.intersection && res_cand.intersection < tmax[dimension]) {
-                            res = res_cand;
+                        if (res_cand.valid() && res_cand.intersection < res.intersection) {
+                            res.intersection = res_cand.intersection;
+                            res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
+                            res.item = &tet;
+                            if (res.rayOriginIsInsideItem) // early exit if we are inside tet
+                                return res;
                         }
                     }
                 }

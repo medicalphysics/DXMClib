@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
+#include "dxmc/world/kdtreeintersectionresult.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 
 #include <algorithm>
@@ -156,46 +157,41 @@ public:
     }
 
     template <std::uint16_t COLLECTION = 65535>
-    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    KDTreeIntersectionResult<T, const Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
         const auto inter = basicshape::AABB::intersectForwardInterval<T, false>(particle, aabb);
-        return inter ? intersect<COLLECTION>(particle, *inter) : TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> {};
+        return inter ? intersect<COLLECTION>(particle, *inter) : KDTreeIntersectionResult<T, const Tetrahedron<T>> {};
     }
 
 protected:
     template <std::uint16_t COLLECTION = 65535>
-    TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    KDTreeIntersectionResult<T, const Tetrahedron<T>> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
             // intersect tetrahedrons between tbox and return;
-            TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> res { .item = nullptr, .t_enter = std::numeric_limits<T>::max(), .t_exit = std::numeric_limits<T>::max() };
+            KDTreeIntersectionResult<T, const Tetrahedron<T>> res;
+
+            res.intersection = std::numeric_limits<T>::max();
+
             for (const auto& tet : m_tets) {
                 if constexpr (COLLECTION == 65535) {
-                    auto t_cand = tet.intersect(particle);
-                    if (t_cand.valid()) {
-                        if (t_cand.t_enter > T { 0 }) {
-                            if (t_cand.t_enter < res.t_enter && tbox[0] <= t_cand.t_enter && t_cand.t_enter <= tbox[1]) {
-                                // we select the closest infront intersection, must be inside tbox
-                                std::swap(res, t_cand);
-                            }
-                        } else if (t_cand.t_enter <= T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
-                            // we are inside a thetrahedron and t_exit is inside tbox, no better candidate
-                            return t_cand;
-                        }
+                    const auto res_cand = tet.intersect(particle);
+                    if (res_cand.valid() && res_cand.intersection < res.intersection) {
+                        res.intersection = res_cand.intersection;
+                        res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
+                        res.item = &tet;
+                        if (res.rayOriginIsInsideItem) // early exit if we are inside tet
+                            return res;
                     }
                 } else {
-                    if (tet.collection() == COLLECTION) {
-                        auto t_cand = tet.intersect(particle);
-                        if (t_cand.valid()) {
-                            if (t_cand.t_enter > T { 0 }) {
-                                if (t_cand.t_enter < res.t_enter && tbox[0] <= t_cand.t_enter && t_cand.t_enter <= tbox[1]) {
-                                    // we select the closest infront intersection, must be inside tbox                                    
-                                    std::swap(res, t_cand);
-                                }
-                            } else if (t_cand.t_enter <= T { 0 } && t_cand.t_exit > T { 0 } && tbox[0] <= t_cand.t_exit && t_cand.t_exit <= tbox[1]) {
-                                // we are inside a thetrahedron and t_exit is inside tbox, no better candidate
-                                return t_cand;
-                            }
+                    if (tet.collection == COLLECTION) {
+                        const auto res_cand = tet.intersect(particle);
+                        if (res_cand.valid() && res_cand.intersection < res.intersection) {
+                            res.intersection = res_cand.intersection;
+                            res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
+                            res.item = &tet;
+                            if (res.rayOriginIsInsideItem) // early exit if we are inside tet
+                                return res;
                         }
                     }
                 }
@@ -208,7 +204,7 @@ protected:
             auto hit_left = m_left->template intersect<COLLECTION>(particle, tbox);
             auto hit_right = m_right->template intersect<COLLECTION>(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
-                return hit_left.intersection() > hit_right.intersection() ? hit_right : hit_left;
+                return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
             if (hit_right.valid())
                 return hit_right;
             return hit_left;
@@ -231,7 +227,7 @@ protected:
         const std::array<T, 2> t_front { tbox[0], t };
         auto hit = front->intersect<COLLECTION>(particle, t_front);
         if (hit.valid()) {
-            if (hit.intersection() <= t) {
+            if (hit.intersection <= t) {
                 return hit;
             }
         }
@@ -341,6 +337,6 @@ private:
     std::vector<Tetrahedron<T>> m_tets;
     std::unique_ptr<TetrahedalMeshKDTree<T>> m_left = nullptr;
     std::unique_ptr<TetrahedalMeshKDTree<T>> m_right = nullptr;
-    //friend class TetrahedalMeshKDTree<T>;
+    // friend class TetrahedalMeshKDTree<T>;
 };
 }

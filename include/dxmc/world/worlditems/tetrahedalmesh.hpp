@@ -119,8 +119,8 @@ public:
         WorldIntersectionResult<T> w;
 
         if (res.valid()) {
-            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem();
-            w.intersection = res.intersection();
+            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+            w.intersection = res.intersection;
             w.intersectionValid = true;
         }
         return w;
@@ -132,14 +132,14 @@ public:
         const auto res = m_acc.template intersect<COLLECTION>(p, m_aabb);
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
         if (res.valid()) {
-            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem();
-            w.intersection = res.intersection();
+            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+            w.intersection = res.intersection;
             w.intersectionValid = true;
             w.item = this;
             const auto collection = res.item->collection();
             w.value = m_dose[collection].dose();
-            w.normal = w.rayOriginIsInsideItem ? res.normal_exit : res.normal_enter;
-            vectormath::normalize(w.normal);
+            const auto hit_pos = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
+            w.normal = res.item->normal(hit_pos);
         }
         return w;
     }
@@ -181,14 +181,14 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) override
     {
-        TetrahedalMeshIntersectionResult<T, Tetrahedron<T>> inter = m_acc.intersect(p, m_aabb);
+        auto inter = m_acc.intersect(p, m_aabb);
         bool updateAtt = true;
         std::uint16_t currentCollection;
         std::uint16_t currentMaterialIdx;
         AttenuationValues<T> att;
         T attSumInv;
 
-        while (inter.valid() && inter.rayOriginIsInsideItem()) {
+        while (inter.valid() && inter.rayOriginIsInsideItem) {
             if (updateAtt) {
                 currentCollection = inter.item->collection();
                 currentMaterialIdx = inter.item->materialIndex();
@@ -200,7 +200,7 @@ public:
 
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
 
-            if (stepLen < inter.t_exit) {
+            if (stepLen < inter.intersection) {
                 // interaction happends
                 p.translate(stepLen);
                 const auto& material = m_materials[currentMaterialIdx];
@@ -215,7 +215,7 @@ public:
                 }
             } else {
                 // transport to border of tetrahedron
-                p.border_translate(inter.t_exit);
+                p.border_translate(inter.intersection);
                 inter = m_acc.intersect(p, m_aabb);
                 if (inter.valid()) {
                     updateAtt = currentCollection != inter.item->collection();
@@ -256,6 +256,7 @@ private:
 
     std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     TetrahedalMeshGrid<T> m_acc;
+    //TetrahedalMeshKDTree<T> m_acc;
     std::vector<Collection> m_collections;
     std::vector<DoseScore<T>> m_dose;
     std::vector<Material<T, NMaterialShells>> m_materials;

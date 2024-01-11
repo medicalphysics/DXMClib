@@ -54,7 +54,7 @@ dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
     return phantom;
 }
 
-dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true, std::size_t depth=8)
+dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true, std::size_t depth = 8)
 {
 
     const std::string name = female ? "MRCP_AF" : "MRCP_AM";
@@ -136,9 +136,9 @@ int main()
         doctor.flipAxis(1);
         auto doctor_aabb = doctor.AABB();
         doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
-        */
+    */
 
-    auto& doctor = world.addItem(readICRP145Phantom(true, 4));
+    auto& doctor = world.addItem(readICRP145Phantom(true, 32));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
