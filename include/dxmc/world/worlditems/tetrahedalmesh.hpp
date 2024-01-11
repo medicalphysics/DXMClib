@@ -27,8 +27,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/nistmaterials.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
-#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"
-#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
 #include "dxmc/world/worlditems/worlditembase.hpp"
 
@@ -138,26 +136,31 @@ public:
     WorldIntersectionResult<T> intersect(const Particle<T>& particle) const override
     {
         const auto inter = basicshape::AABB::intersectForwardInterval(particle, m_aabb);
+        WorldIntersectionResult<T> res;
         if (inter) {
-            return intersect(particle, *inter);
+            const auto kres = intersect(particle, *inter);
+            res.intersection = kres.intersection;
+            res.rayOriginIsInsideItem = kres.rayOriginIsInsideItem;
+            res.intersectionValid = kres.valid();
         }
-        return WorldIntersectionResult<T> {};
+        return res;
     }
 
-    
-
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
-    {        
+    {
         VisualizationIntersectionResult<T, WorldItemBase<T>> w;
-        if (const auto res = intersect(p); res.valid()) {
-            w.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
-            w.intersection = res.intersection;
-            w.intersectionValid = true;
-            w.item = this;
-            const auto collection = res.item->collection();
-            w.value = m_dose[collection].dose();
-            const auto hit_pos = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
-            w.normal = res.item->normal(hit_pos);
+        const auto inter = basicshape::AABB::intersectForwardInterval(p, m_aabb);
+        if (inter) {
+            if (const auto res = intersect(p, *inter); res.valid()) {
+                w.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+                w.intersection = res.intersection;
+                w.intersectionValid = true;
+                w.item = this;
+                const auto collection = res.item->collection();
+                w.value = m_dose[collection].dose();
+                const auto hit_pos = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
+                w.normal = res.item->normal(hit_pos);
+            }
         }
         return w;
     }
@@ -199,8 +202,59 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) override
     {
-//        siddonTransport(p, state);
-        // woodcockTransport(p, state);
+        bool still_inside = true;
+        T attMaxInv;
+        bool updateAtt = true;
+        do {
+            if (updateAtt) {
+                attMaxInv = 1 / interpolate(m_woodcockStepTableLin, p.energy);
+                bool updateAtt = false;
+            }
+
+            // making interaction step
+            const auto steplen = -std::log(state.randomUniform<T>()) * attMaxInv;
+            p.translate(steplen);
+
+            // finding current tet
+            const auto idx = getGridIndices<true>(p.pos);
+            const auto idx_flat = getGridIndicesFlat(idx);
+            const Tetrahedron<T>* tet = nullptr;
+            {
+                auto it = m_gridIndices[idx_flat].cbegin();
+                auto end = m_gridIndices[idx_flat].cend();
+                while (it != end) {
+                    const auto& ctet = m_tets[*it];
+                    if (ctet.pointInside(p.pos)) {
+                        tet = &ctet;
+                        it = m_gridIndices[idx_flat].cend();
+                    } else {
+                        it++;
+                    }
+                }
+            }
+            if (!tet) {
+                // we are outside item, backtrack and return
+                const Particle<T> pback = { .pos = p.pos, .dir = vectormath::scale(p.dir, T { -1 }) };
+                const auto inter_back = intersect(pback);
+                if (inter_back.valid())
+                    p.border_translate(-inter_back.intersection);
+                return;
+            }
+
+            // is interaction virtual?
+            const auto materialIdx = tet->materialIndex();
+            const auto collectionIdx = tet->collection();
+            const auto attenuation = m_materials[materialIdx].attenuationValues(p.energy);
+            const auto attSum = attenuation.sum() * m_collections[collectionIdx].density;
+            if (state.randomUniform<T>() < attSum * attMaxInv) {
+                // we have a real interaction
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(attenuation, p, m_materials[materialIdx], state);
+                m_collections[collectionIdx].energyScored.scoreEnergy(intRes.energyImparted);
+                still_inside = intRes.particleAlive;
+                updateAtt = intRes.particleEnergyChanged;
+            }
+
+        } while (still_inside);
     }
 
     std::size_t numberOfCollections() const { return m_collections.size(); }
@@ -269,10 +323,94 @@ protected:
         std::for_each(std::execution::par_unseq, m_gridIndices.begin(), m_gridIndices.end(), [](auto& v) { v.shrink_to_fit(); });
     }
 
+    void generateWoodcockStepTable()
+    {
+        std::vector<T> energy;
+        {
+            T e = std::log(MIN_ENERGY<T>());
+            const T emax = std::log(MAX_ENERGY<T>());
+            const T estep = (emax - e) / 10;
+            while (e <= emax) {
+                energy.push_back(e);
+                e += estep;
+            }
+        }
+        // adding edges;
+        for (const auto& mat : m_materials) {
+            for (std::size_t i = 0; i < mat.numberOfShells(); ++i) {
+                const auto& shell = mat.shell(i);
+                const auto e = shell.bindingEnergy + T { 0.01 };
+                if (e > MIN_ENERGY<T>()) {
+                    energy.push_back(std::log(e));
+                }
+            }
+        }
+        std::sort(energy.begin(), energy.end());
+        auto remove = std::unique(energy.begin(), energy.end());
+        energy.erase(remove, energy.end());
+        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), energy.begin(), [](const auto e) { return std::exp(e); });
+
+        // finding max density for each material;
+        std::vector<T> dens(m_materials.size(), T { 0 });
+        for (const auto& tet : m_tets) {
+            const auto i = tet.materialIndex();
+            const auto c = tet.collection();
+            dens[i] = std::max(m_collections[c].density, dens[i]);
+        }
+
+        // finding max attenuation for each energy
+        std::vector<T> att(energy.size(), T { 0 });
+        for (std::size_t mIdx = 0; mIdx < m_materials.size(); ++mIdx) {
+            const auto& mat = m_materials[mIdx];
+            const auto d = dens[mIdx];
+            for (std::size_t i = 0; i < energy.size(); ++i) {
+                const auto aval = mat.attenuationValues(energy[i]);
+                att[i] = std::max(aval.sum() * d, att[i]);
+            }
+        }
+        std::vector<std::pair<T, T>> data(energy.size());
+        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.cbegin(), data.begin(), [](const auto e, const auto a) {
+            return std::make_pair(e, a);
+        });
+
+        m_woodcockStepTableLin = data;
+    }
+
+    template <bool CHECK_BOUNDS = false>
+    std::array<int, 3> getGridIndices(const std::array<T, 3>& pos) const
+    {
+        if constexpr (CHECK_BOUNDS) {
+            std::array<int, 3> res = {
+                std::clamp(static_cast<int>((pos[0] - m_aabb[0]) / m_gridSpacing[0]), 0, m_gridDimensions[0] - 1),
+                std::clamp(static_cast<int>((pos[1] - m_aabb[1]) / m_gridSpacing[1]), 0, m_gridDimensions[1] - 1),
+                std::clamp(static_cast<int>((pos[2] - m_aabb[2]) / m_gridSpacing[2]), 0, m_gridDimensions[2] - 1)
+            };
+            return res;
+        } else {
+            std::array<int, 3> res = {
+                static_cast<int>((pos[0] - m_aabb[0]) / m_gridSpacing[0]),
+                static_cast<int>((pos[1] - m_aabb[1]) / m_gridSpacing[1]),
+                static_cast<int>((pos[2] - m_aabb[2]) / m_gridSpacing[2])
+            };
+            return res;
+        }
+    }
+
+    int getGridIndicesFlat(const std::array<int, 3>& idx) const
+    {
+        return idx[0] + m_gridDimensions[0] * (idx[1] + m_gridDimensions[1] * idx[2]);
+    }
+
+    static inline int argmin3(const std::array<T, 3>& a)
+    {
+        return a[0] < a[2] ? a[0] < a[1] ? 0 : 1 : a[2] < a[1] ? 2
+                                                               : 1;
+    }
+
     template <std::uint16_t COLLECTION = 65535>
     KDTreeIntersectionResult<T, const Tetrahedron<T>> intersect(const Particle<T>& p, const std::array<T, 2>& t) const
     {
-        auto idx = getIndices<true>(vectormath::add(p.pos, vectormath::scale(p.dir, t[0])));
+        auto idx = getGridIndices<true>(vectormath::add(p.pos, vectormath::scale(p.dir, t[0])));
         const std::array<int, 3> step = {
             p.dir[0] < 0 ? -1 : 1,
             p.dir[1] < 0 ? -1 : 1,
@@ -331,147 +469,6 @@ protected:
         }
         return res;
     }
-    /*
-    void siddonTransport(Particle<T>& p, RandomState& state)
-    {
-        auto inter = m_acc.intersect(p, m_aabb);
-        bool updateAtt = true;
-        std::uint16_t currentCollection;
-        std::uint16_t currentMaterialIdx;
-        AttenuationValues<T> att;
-        T attSumInv;
-
-        while (inter.valid() && inter.rayOriginIsInsideItem) {
-            if (updateAtt) {
-                currentCollection = inter.item->collection();
-                currentMaterialIdx = inter.item->materialIndex();
-                const auto& material = m_materials[currentMaterialIdx];
-                att = material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_collections[currentCollection].density);
-                updateAtt = false;
-            }
-
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-
-            if (stepLen < inter.intersection) {
-                // interaction happends
-                p.translate(stepLen);
-                const auto& material = m_materials[currentMaterialIdx];
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, material, state);
-                auto& energyScored = m_collections[currentCollection].energyScored;
-                energyScored.scoreEnergy(intRes.energyImparted);
-                updateAtt = true;
-                if (intRes.particleAlive) {
-                    inter = m_acc.intersect(p, m_aabb);
-                } else {
-                    inter.item = nullptr; // we exits
-                }
-            } else {
-                // transport to border of tetrahedron
-                p.border_translate(inter.intersection);
-                inter = m_acc.intersect(p, m_aabb);
-                if (inter.valid()) {
-                    updateAtt = currentCollection != inter.item->collection();
-                }
-            }
-        }
-    }
-
-    void woodcockTransport(Particle<T>& p, RandomState& state)
-    {
-        bool updateAtt = true;
-        auto intersectionExit = m_acc.intersectExit(p, m_aabb);
-        bool valid = intersectionExit.valid();
-
-        T attMaxInv;
-        while (valid) {
-            if (updateAtt) {
-                attMaxInv = 1 / interpolate(m_woodcockStepTableLin, p.energy);
-                updateAtt = false;
-            }
-            const auto steplen = -log(state.randomUniform<T>()) * attMaxInv;
-
-            if (steplen < intersectionExit.intersection) {
-                p.translate(steplen);
-                const Tetrahedron<T>* tet = m_acc.pointInside(p.pos);
-                if (tet) {
-                    const auto currentCollection = tet->collection();
-                    const auto currentMaterialIdx = tet->materialIndex();
-                    const auto& material = m_materials[currentMaterialIdx];
-                    const auto att = material.attenuationValues(p.energy);
-                    const auto attTot = att.sum() * m_collections[currentCollection].density;
-                    // check if real or virtual interaction
-                    if (state.randomUniform<T>() < attTot * attMaxInv) {
-                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[currentMaterialIdx], state);
-                        m_collections[currentCollection].energyScored.scoreEnergy(intRes.energyImparted);
-                        valid = intRes.particleAlive;
-                        updateAtt = intRes.particleEnergyChanged;
-                        // update exit intersection
-                        intersectionExit = m_acc.intersectExit(p, m_aabb);
-                        valid = valid && intersectionExit.valid();
-                    }
-                } else {
-                    valid = false;
-                }
-            } else {
-                p.border_translate(intersectionExit.intersection);
-                valid = false;
-            }
-        }
-    }
-    */
-    void generateWoodcockStepTable()
-    {
-        std::vector<T> energy;
-        {
-            T e = std::log(MIN_ENERGY<T>());
-            const T emax = std::log(MAX_ENERGY<T>());
-            const T estep = (emax - e) / 10;
-            while (e <= emax) {
-                energy.push_back(e);
-                e += estep;
-            }
-        }
-        // adding edges;
-        for (const auto& mat : m_materials) {
-            for (std::size_t i = 0; i < mat.numberOfShells(); ++i) {
-                const auto& shell = mat.shell(i);
-                const auto e = shell.bindingEnergy + T { 0.01 };
-                if (e > MIN_ENERGY<T>()) {
-                    energy.push_back(std::log(e));
-                }
-            }
-        }
-        std::sort(energy.begin(), energy.end());
-        auto remove = std::unique(energy.begin(), energy.end());
-        energy.erase(remove, energy.end());
-        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), energy.begin(), [](const auto e) { return std::exp(e); });
-
-        // finding max density for each material;
-        std::vector<T> dens(m_materials.size(), T { 0 });
-        for (const auto& tet : m_tets) {
-            const auto i = tet.materialIndex();
-            const auto c = tet.collection();
-            dens[i] = std::max(m_collections[c].density, dens[i]);
-        }
-
-        // finding max attenuation for each energy
-        std::vector<T> att(energy.size(), T { 0 });
-        for (std::size_t mIdx = 0; mIdx < m_materials.size(); ++mIdx) {
-            const auto& mat = m_materials[mIdx];
-            const auto d = dens[mIdx];
-            for (std::size_t i = 0; i < energy.size(); ++i) {
-                const auto aval = mat.attenuationValues(energy[i]);
-                att[i] = std::max(aval.sum() * d, att[i]);
-            }
-        }
-        std::vector<std::pair<T, T>> data(energy.size());
-        std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.cbegin(), data.begin(), [](const auto e, const auto a) {
-            return std::make_pair(e, a);
-        });
-
-        m_woodcockStepTableLin = data;
-    }
 
 private:
     struct Collection {
@@ -490,9 +487,7 @@ private:
     std::array<T, 3> m_gridSpacing = { 1, 1, 1 };
     std::vector<std::vector<std::size_t>> m_gridIndices;
     std::vector<Tetrahedron<T>> m_tets;
-    // TetrahedalMeshGrid<T> m_acc;
     std::vector<std::pair<T, T>> m_woodcockStepTableLin;
-    // TetrahedalMeshKDTree<T> m_acc;
     std::vector<Collection> m_collections;
     std::vector<DoseScore<T>> m_dose;
     std::vector<Material<T, NMaterialShells>> m_materials;
