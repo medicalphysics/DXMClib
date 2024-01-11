@@ -13,7 +13,7 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2024 Erlend Andersen
 */
 
 #pragma once
@@ -146,7 +146,6 @@ public:
         }
         const auto h2 = intersectTriangle(m_vertices[1], m_vertices[0], m_vertices[3], particle);
         if (h2) {
-
             t[n_hits] = *h2;
             n_hits++;
         }
@@ -191,8 +190,29 @@ public:
             distance(point, m_vertices[2], normals[2]),
             distance(point, m_vertices[3], normals[3])
         };
-        auto idx = std::min_element(dist.cbegin(), dist.cend());
-        return normals[std::distance(dist.cbegin(), idx)];
+        const auto idx = std::distance(dist.cbegin(), std::min_element(dist.cbegin(), dist.cend()));
+
+        return normals[idx];
+    }
+
+    bool pointInside(const std::array<T, 3>& point) const
+    {
+        const std::array<std::array<T, 3>, 4> normals = {
+            normalVector<false>(m_vertices[0], m_vertices[1], m_vertices[2]),
+            normalVector<false>(m_vertices[1], m_vertices[0], m_vertices[3]),
+            normalVector<false>(m_vertices[2], m_vertices[3], m_vertices[0]),
+            normalVector<false>(m_vertices[3], m_vertices[2], m_vertices[1])
+        };
+
+        const auto cent = center();
+        bool inside = true;
+        for (int i = 0; i < 4; ++i) {
+            if (inside && vectormath::dot(vectormath::subtract(cent, m_vertices[i]), normals[i]) < 0)
+                inside = inside && vectormath::dot(vectormath::subtract(point, m_vertices[i]), normals[i]) <= 0;
+            else
+                inside = inside && vectormath::dot(vectormath::subtract(point, m_vertices[i]), normals[i]) >= 0;
+        }
+        return inside;
     }
 
     bool validVerticeOrientation() const

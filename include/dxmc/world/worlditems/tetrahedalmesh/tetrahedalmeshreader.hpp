@@ -97,7 +97,13 @@ public:
             m_materials.emplace_back(m.material);
     }
 
-    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(std::size_t depth=8)
+    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(int depth = 8)
+    {
+        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
+        return mesh;
+    }
+
+    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(const std::array<int, 3>& depth)
     {
         TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
         return mesh;

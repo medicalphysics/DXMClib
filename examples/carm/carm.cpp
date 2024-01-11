@@ -54,7 +54,7 @@ dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
     return phantom;
 }
 
-dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true, std::size_t depth = 8)
+dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
 {
 
     const std::string name = female ? "MRCP_AF" : "MRCP_AM";
@@ -67,6 +67,11 @@ dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(bool female = true, std::s
     dxmc::TetrahedalmeshReader<double, 5, 1> reader(nodefile, elefile, mediafile, organfile);
     reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
     return reader.getMesh(depth);
+}
+
+dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(int depth = 8, bool female = true)
+{
+    return readICRP145Phantom({ depth, depth, depth }, female);
 }
 
 template <typename T, typename W, typename B>
@@ -138,7 +143,9 @@ int main()
         doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
     */
 
-    auto& doctor = world.addItem(readICRP145Phantom(true, 32));
+    auto& doctor = world.addItem(readICRP145Phantom({ 64, 64, 256 }, true));
+    // auto& doctor = world.addItem(readICRP145Phantom({ 32, 32, 128 }, true));
+    // auto& doctor = world.addItem(readICRP145Phantom(32, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
@@ -149,14 +156,13 @@ int main()
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(2000);
-    beam.setNumberOfParticlesPerExposure(1000000);
+    beam.setNumberOfExposures(120);
+    beam.setNumberOfParticlesPerExposure(100000);
     beam.setDAPvalue(0.25);
 
     dxmc::Transport transport;
-    // runDispatcher(transport, world, beam);
+    runDispatcher(transport, world, beam);
 
-    /*
     double max_doctor_dose = 0;
     for (const auto& d : doctor.getDoseScores()) {
         max_doctor_dose = std::max(max_doctor_dose, d.dose());
@@ -164,13 +170,12 @@ int main()
 
     constexpr double dosenorm = 0.0000005;
     std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << dosenorm << std::endl;
-    */
 
     Viz viz(world);
 
-    // viz.addColorByValueItem(&doctor);
-    // viz.addColorByValueItem(&phantom);
-    // viz.setColorByValueMinMax(0, dosenorm);
+    viz.addColorByValueItem(&doctor);
+    viz.addColorByValueItem(&phantom);
+    viz.setColorByValueMinMax(0, max_doctor_dose );
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 
@@ -182,7 +187,7 @@ int main()
 
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(2);
+        viz.suggestFOV(6);
         viz.generate(world, buffer);
         std::string name = "test" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
@@ -190,7 +195,7 @@ int main()
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
 
-    viz.setAzimuthalAngleDeg(120);
+    /*viz.setAzimuthalAngleDeg(120);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
         viz.suggestFOV();
@@ -200,5 +205,6 @@ int main()
         std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
+    */
     return 0;
 }

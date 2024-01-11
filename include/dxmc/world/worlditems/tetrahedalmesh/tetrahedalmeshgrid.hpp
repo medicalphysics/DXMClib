@@ -36,13 +36,36 @@ template <Floating T>
 class TetrahedalMeshGrid {
 public:
     TetrahedalMeshGrid() { }
-    TetrahedalMeshGrid(const std::vector<Tetrahedron<T>>& tets, int depth = 32)
+    TetrahedalMeshGrid(const std::vector<Tetrahedron<T>>& tets, int depth = 8)
     {
         setData(tets, depth);
     }
-    void setData(const std::vector<Tetrahedron<T>>& tets, int depth = 32)
+    TetrahedalMeshGrid(const std::vector<Tetrahedron<T>>& tets, int dx, int dy, int dz)
     {
-        m_N = std::clamp(depth, 1, 1000);
+        setData(tets, dx, dy, dz);
+    }
+    TetrahedalMeshGrid(const std::vector<Tetrahedron<T>>& tets, const std::array<int, 3> depth)
+    {
+        setData(tets, depth);
+    }
+
+    void setData(const std::vector<Tetrahedron<T>>& tets, int depth = 8)
+    {
+        std::array<int, 3> d = { depth, depth, depth };
+        setData(tets, d);
+    }
+
+    void setData(const std::vector<Tetrahedron<T>>& tets, int dx, int dy, int dz)
+    {
+        std::array<int, 3> d = { dx, dy, dz };
+        setData(tets, d);
+    }
+
+    void setData(const std::vector<Tetrahedron<T>>& tets, const std::array<int, 3>& depth)
+    {
+        for (int i = 0; i < 3; ++i)
+            m_N[i] = std::clamp(depth[i], 1, 1000);
+
         m_tets = tets;
         // sorting tets by diagonal
         std::sort(std::execution::par_unseq, m_tets.begin(), m_tets.end(), [](const auto& lh, const auto& rh) {
@@ -51,6 +74,18 @@ public:
         });
 
         calculateAABB();
+        assignGrid();
+    }
+
+    const std::vector<Tetrahedron<T>>& tetrahedrons() const
+    {
+        return m_tets;
+    }
+
+    void resample(const std::array<int, 3>& depth)
+    {
+        for (int i = 0; i < 3; ++i)
+            m_N[i] = std::clamp(depth[i], 1, 1000);
         assignGrid();
     }
 
@@ -83,15 +118,44 @@ public:
         return inter ? intersect<COLLECTION>(particle, *inter) : KDTreeIntersectionResult<T, const Tetrahedron<T>> {};
     }
 
+    template <std::uint16_t COLLECTION = 65535>
+    KDTreeIntersectionResult<T, const Tetrahedron<T>> intersectExit(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    {
+        const auto inter = basicshape::AABB::intersectForwardInterval<T, false>(particle, aabb);
+        if (inter) {
+            auto p_reverse = particle;
+            const auto& t = *inter;
+            p_reverse.translate(t[1]);
+            p_reverse.dir = vectormath::scale(p_reverse.dir, T { -1 });
+            auto res = intersect<COLLECTION>(p_reverse, *inter);
+            res.intersection = t[1] - res.intersection;
+            return res;
+        }
+        return KDTreeIntersectionResult<T, const Tetrahedron<T>> {};
+    }
+
+    const Tetrahedron<T>* pointInside(const std::array<T, 3>& pos) const
+    {
+        const auto idx = getIndices<true>(pos);
+        const auto idx_flat = idx[0] + idx[1] * m_N[0] + idx[2] * m_N[0] * m_N[1];
+        for (const auto tet_idx : m_grid[idx_flat]) {
+            const auto& tet = m_tets[tet_idx];
+            if (tet.pointInside(pos)) {
+                return &tet;
+            }
+        }
+        return nullptr;
+    }
+
 protected:
     template <bool CHECK_BOUNDS = false>
     std::array<int, 3> getIndices(const std::array<T, 3>& pos) const
     {
         if constexpr (CHECK_BOUNDS) {
             std::array<int, 3> res = {
-                std::clamp(static_cast<int>((pos[0] - m_aabb[0]) / m_spacing[0]), 0, m_N - 1),
-                std::clamp(static_cast<int>((pos[1] - m_aabb[1]) / m_spacing[1]), 0, m_N - 1),
-                std::clamp(static_cast<int>((pos[2] - m_aabb[2]) / m_spacing[2]), 0, m_N - 1)
+                std::clamp(static_cast<int>((pos[0] - m_aabb[0]) / m_spacing[0]), 0, m_N[0] - 1),
+                std::clamp(static_cast<int>((pos[1] - m_aabb[1]) / m_spacing[1]), 0, m_N[1] - 1),
+                std::clamp(static_cast<int>((pos[2] - m_aabb[2]) / m_spacing[2]), 0, m_N[2] - 1)
             };
             return res;
         } else {
@@ -136,12 +200,13 @@ protected:
         bool cont = true;
         while (cont) {
             // we have a valid voxel, check intersections
-            const auto voxel_ind = idx[0] + (idx[1] + idx[2] * m_N) * m_N;
+            // const auto voxel_ind = idx[0] + (idx[1] + idx[2] * m_N[1]) * m_N[0];
+            const auto voxel_ind = idx[0] + idx[1] * m_N[0] + idx[2] * m_N[0] * m_N[1];
             for (const auto& tetIdx : m_grid[voxel_ind]) {
                 const auto& tet = m_tets[tetIdx];
                 if constexpr (COLLECTION == 65535) {
                     const auto res_cand = tet.intersect(p);
-                    if (res_cand.valid() && res_cand.intersection < res.intersection) {
+                    if (res_cand.valid() && res_cand.intersection <= tmax[dimension] && res_cand.intersection < res.intersection) {
                         res.intersection = res_cand.intersection;
                         res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
                         res.item = &tet;
@@ -151,7 +216,7 @@ protected:
                 } else {
                     if (tet.collection == COLLECTION) {
                         const auto res_cand = tet.intersect(p);
-                        if (res_cand.valid() && res_cand.intersection < res.intersection) {
+                        if (res_cand.valid() && res_cand.intersection <= tmax[dimension] && res_cand.intersection < res.intersection) {
                             res.intersection = res_cand.intersection;
                             res.rayOriginIsInsideItem = res_cand.rayOriginIsInsideItem;
                             res.item = &tet;
@@ -162,7 +227,7 @@ protected:
                 }
             }
             idx[dimension] += step[dimension];
-            if (!res.valid() && 0 <= idx[dimension] && idx[dimension] < m_N) {
+            if (!res.valid() && 0 <= idx[dimension] && idx[dimension] < m_N[dimension]) {
                 tmax[dimension] += delta[dimension];
                 dimension = argmin3(tmax);
             } else {
@@ -189,20 +254,21 @@ protected:
             }
         }
         for (std::size_t i = 0; i < 3; ++i)
-            m_spacing[i] = (m_aabb[i + 3] - m_aabb[i]) / m_N;
+            m_spacing[i] = (m_aabb[i + 3] - m_aabb[i]) / m_N[i];
     }
 
     void assignGrid()
     {
         const auto [start, stop] = vectormath::splice(m_aabb);
-        m_grid.resize(m_N * m_N * m_N);
+        const auto size = std::reduce(m_N.cbegin(), m_N.cend(), 1, std::multiplies {});
+        m_grid.resize(size);
 
-        const int N = m_N - 1;
+        const std::array<int, 3> N = { m_N[0] - 1, m_N[1] - 1, m_N[2] - 1 };
         auto caster = [N](const std::array<T, 3>& v) -> std::array<int, 3> {
             std::array<int, 3> vi = {
-                std::clamp(static_cast<int>(v[0]), 0, N),
-                std::clamp(static_cast<int>(v[1]), 0, N),
-                std::clamp(static_cast<int>(v[2]), 0, N)
+                std::clamp(static_cast<int>(v[0]), 0, N[0]),
+                std::clamp(static_cast<int>(v[1]), 0, N[1]),
+                std::clamp(static_cast<int>(v[2]), 0, N[2])
             };
             return vi;
         };
@@ -215,10 +281,11 @@ protected:
             for (int z = start_ind[2]; z <= stop_ind[2]; ++z)
                 for (int y = start_ind[1]; y <= stop_ind[1]; ++y)
                     for (int x = start_ind[0]; x <= stop_ind[0]; ++x) {
-                        const int idx = x + m_N * y + m_N * m_N * z;
+                        const int idx = x + m_N[0] * y + m_N[0] * m_N[1] * z;
                         m_grid[idx].push_back(i);
                     }
         }
+        std::for_each(std::execution::par_unseq, m_grid.begin(), m_grid.end(), [](auto& v) { v.shrink_to_fit(); });
     }
 
 private:
@@ -226,6 +293,7 @@ private:
     std::array<T, 6> m_spacing = { 1, 1, 1 };
     std::vector<std::vector<std::size_t>> m_grid;
     std::vector<Tetrahedron<T>> m_tets;
-    int m_N = 32;
+    std::array<int, 3> m_N = { 8, 8, 8 };
+    // int m_N = 32;
 };
 }

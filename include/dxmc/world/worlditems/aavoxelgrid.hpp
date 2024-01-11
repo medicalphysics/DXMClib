@@ -317,9 +317,7 @@ public:
     }
 
     T maxAttenuationValue(const T energy) const
-    {
-        // const auto loge = std::log(energy);
-        // return std::exp(CubicLSInterpolator<T>::evaluateSpline(loge, m_woodcockStepTable));
+    {        
         return interpolate(m_woodcockStepTableLin, energy);
     }
 
