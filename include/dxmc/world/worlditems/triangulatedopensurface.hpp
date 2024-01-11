@@ -185,7 +185,7 @@ public:
         const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
 
         constexpr int FORWARD = 0;
-        const auto intersection = m_kdtree.template intersect<FORWARD>(p, m_aabb);
+        const auto intersection = m_kdtree.intersect(p, m_aabb);
         const auto normal = intersection.item->planeVector();
         const auto length_scale = std::abs(vectormath::dot(p.dir, normal));
         const auto length = m_thickness / length_scale;

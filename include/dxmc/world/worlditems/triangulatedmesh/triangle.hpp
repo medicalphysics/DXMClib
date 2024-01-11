@@ -135,40 +135,27 @@ public:
         return vectormath::length(vectormath::cross(AB, AC)) / 2;
     }
 
-    template <int FORWARD = 1>
-    std::optional<T> intersect(const Particle<T>& particle) const
+    std::optional<T> intersect(const Particle<T>& p) const
     {
-        const auto& v1 = m_vertices[0];
-        const auto& v2 = m_vertices[1];
-        const auto& v3 = m_vertices[2];
+        // from moller trombore paper
+        const auto& v0 = m_vertices[0];
+        const auto& v1 = m_vertices[1];
+        const auto& v2 = m_vertices[2];
 
-        const std::array<T, 3> v1v2 { v2[0] - v1[0], v2[1] - v1[1], v2[2] - v1[2] };
-        const std::array<T, 3> v1v3 { v3[0] - v1[0], v3[1] - v1[1], v3[2] - v1[2] };
-        const auto& pvec = vectormath::cross(particle.dir, v1v3);
-        const auto det = vectormath::dot(v1v2, pvec);
+        const auto E1 = vectormath::subtract(v1, v0);
+        const auto TT = vectormath::subtract(p.pos, v0);
+        const auto Q = vectormath::cross(TT, E1);
 
-        if (std::abs(det) <= std::numeric_limits<T>::epsilon())
-            return std::nullopt;
+        const auto E2 = vectormath::subtract(v2, v0);
+        const auto P = vectormath::cross(p.dir, E2);
+       
+        const auto det_inv = 1 / vectormath::dot(P, E1);
 
-        const T invDet = T { 1 } / det;
+        const auto v = vectormath::dot(Q, p.dir) * det_inv;
+        const auto u = vectormath::dot(P, TT) * det_inv;
 
-        const std::array<T, 3> tvec { particle.pos[0] - v1[0], particle.pos[1] - v1[1], particle.pos[2] - v1[2] };
-        const T u = vectormath::dot(tvec, pvec) * invDet;
-        if (u < T { 0 } || u > T { 1 })
-            return std::nullopt;
-
-        const auto qvec = vectormath::cross(tvec, v1v2);
-        const T v = vectormath::dot(particle.dir, qvec) * invDet;
-        if (v < T { 0 } || u + v > T { 1 })
-            return std::nullopt;
-
-        const auto t = vectormath::dot(v1v3, qvec) * invDet;
-        if constexpr (FORWARD == 1)
-            return t > T { 0 } ? std::make_optional(t) : std::nullopt;
-        else if constexpr (FORWARD == -1)
-            return t < T { 0 } ? std::make_optional(t) : std::nullopt;
-        else
-            return std::make_optional(t);
+        return v >= 0 && u >= 0 && (u + v) <= 1 ? std::make_optional(vectormath::dot(Q, E2) * det_inv)
+                                                : std::nullopt;
     }
 
 private:

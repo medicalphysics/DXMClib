@@ -199,20 +199,13 @@ public:
         }
     }
 
-    template <int FORWARD = 1>
     KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
     {
-        if constexpr (FORWARD == 1) {
-            const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-            return inter ? intersect<FORWARD>(particle, *inter) : KDTreeIntersectionResult<T, const U> {};
-        } else {
-            const auto inter = basicshape::AABB::template intersectForwardInterval<T, false>(particle, aabb);
-            return inter ? intersect<FORWARD>(particle, *inter) : KDTreeIntersectionResult<T, const U> {};
-        }
+        const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
+        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<T, const U> {};
     }
 
 protected:
-    template <int FORWARD = 1>
     KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
@@ -221,23 +214,13 @@ protected:
             res.intersection = std::numeric_limits<T>::max();
 
             for (const U& triangle : m_triangles) {
-                const auto t_cand = triangle.template intersect<FORWARD>(particle);
+                const auto t_cand = triangle.intersect(particle);
                 if (t_cand) {
-                    if constexpr (FORWARD == 1) {
-                        if (*t_cand < res.intersection) {
-                            if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
-                                res.intersection = *t_cand;
-                                res.item = &triangle;
-                                res.rayOriginIsInsideItem = vectormath::dot(particle.dir, triangle.planeVector()) > 0;
-                            }
-                        }
-                    } else {
-                        if (std::abs(*t_cand) < std::abs(res.intersection)) {
-                            if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
-                                res.intersection = *t_cand;
-                                res.item = &triangle;
-                                res.rayOriginIsInsideItem = vectormath::dot(particle.dir, triangle.planeVector()) > 0;
-                            }
+                    if (0 <= *t_cand && *t_cand < res.intersection) {
+                        if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
+                            res.intersection = *t_cand;
+                            res.item = &triangle;
+                            res.rayOriginIsInsideItem = vectormath::dot(particle.dir, triangle.planeVector()) > 0;
                         }
                     }
                 }
@@ -247,8 +230,8 @@ protected:
 
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
-            auto hit_left = m_left->template intersect<FORWARD>(particle, tbox);
-            auto hit_right = m_right->template intersect<FORWARD>(particle, tbox);
+            auto hit_left = m_left->intersect(particle, tbox);
+            auto hit_right = m_right->intersect(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
                 return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
             if (hit_right.valid())
@@ -263,22 +246,22 @@ protected:
 
         if (t <= tbox[0]) {
             // back only
-            return back->template intersect<FORWARD>(particle, tbox);
+            return back->intersect(particle, tbox);
         } else if (t >= tbox[1]) {
             // front only
-            return front->template intersect<FORWARD>(particle, tbox);
+            return front->intersect(particle, tbox);
         }
 
         // both directions (start with front)
         const std::array<T, 2> t_front { tbox[0], t };
-        auto hit = front->template intersect<FORWARD>(particle, t_front);
+        auto hit = front->intersect(particle, t_front);
         if (hit.valid()) {
             if (hit.intersection <= t) {
                 return hit;
             }
         }
         const std::array<T, 2> t_back { t, tbox[1] };
-        return back->template intersect<FORWARD>(particle, t_back);
+        return back->intersect(particle, t_back);
     }
 
     T planeSplit(const std::vector<U>& triangles) const
