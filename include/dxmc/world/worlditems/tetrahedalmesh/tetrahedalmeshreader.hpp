@@ -103,6 +103,13 @@ public:
         return mesh;
     }
 
+    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(int x, int y, int z)
+    {
+        std::array<int, 3> d = { x, y, z };
+        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, d);
+        return mesh;
+    }
+
     TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(const std::array<int, 3>& depth)
     {
         TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);

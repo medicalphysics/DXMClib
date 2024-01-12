@@ -21,6 +21,8 @@ Copyright 2024 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
+#include "dxmc/world/dosescore.hpp"
+#include "dxmc/world/energyscore.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
 
 #include <algorithm>
@@ -155,7 +157,7 @@ public:
                 t[n_hits] = *h1;
                 n_hits++;
             }
-            if (n_hits < 2) {
+            if (n_hits == 1) {
                 const auto h0 = intersectTriangle(m_vertices[3], m_vertices[2], m_vertices[1], particle);
                 if (h0) {
                     t[n_hits] = *h0;
@@ -198,10 +200,10 @@ public:
     bool pointInside(const std::array<T, 3>& point) const
     {
         const std::array<std::array<T, 3>, 4> normals = {
-            normalVector<false>(m_vertices[0], m_vertices[1], m_vertices[2]),
-            normalVector<false>(m_vertices[1], m_vertices[0], m_vertices[3]),
-            normalVector<false>(m_vertices[2], m_vertices[3], m_vertices[0]),
-            normalVector<false>(m_vertices[3], m_vertices[2], m_vertices[1])
+            normalVector<true>(m_vertices[0], m_vertices[1], m_vertices[2]),
+            normalVector<true>(m_vertices[1], m_vertices[0], m_vertices[3]),
+            normalVector<true>(m_vertices[2], m_vertices[3], m_vertices[0]),
+            normalVector<true>(m_vertices[3], m_vertices[2], m_vertices[1])
         };
 
         const auto cent = center();
@@ -261,6 +263,35 @@ public:
         return valid;
     }
 
+    const DoseScore<T>& doseScored() const
+    {
+        return m_dose;
+    }
+
+    const EnergyScore<T>& energyImparted() const
+    {
+        return m_energy_imparted;
+    }
+
+    void clearEnergyScored()
+    {
+        m_energy_imparted.clear();
+    }
+    void clearDoseScored()
+    {
+        m_dose.clear();
+    }
+
+    void scoreEnergy(T energy)
+    {
+        m_energy_imparted.scoreEnergy(energy);
+    }
+
+    void addEnergyScoredToDoseScore(T density, T calibration_factor = 1)
+    {
+        m_dose.addScoredEnergy(m_energy_imparted, volume(), density, calibration_factor);
+    }
+
 protected:
     template <bool NORMALIZE = true>
     static std::array<T, 3> normalVector(const std::array<T, 3>& p0, const std::array<T, 3>& p1, const std::array<T, 3>& p2)
@@ -293,6 +324,8 @@ protected:
 
 private:
     std::array<std::array<T, 3>, 4> m_vertices;
+    EnergyScore<T> m_energy_imparted;
+    DoseScore<T> m_dose;
     std::uint16_t m_collectionIdx = 0;
     std::uint16_t m_materialIdx = 0;
 };

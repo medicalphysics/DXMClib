@@ -64,6 +64,7 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
             n *= 10;
 
     std::vector<dxmc::Tetrahedron<T>> t(6);
+
     t[0] = { v[1], v[7], v[0], v[2], 0, 0 }; //*
     t[1] = { v[7], v[3], v[0], v[6], 0, 0 }; //*
     t[2] = { v[1], v[3], v[0], v[4], 0, 0 }; //*
@@ -90,7 +91,7 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
     std::vector<T> dens(tets.size(), 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L> mesh(std::move(tets), dens, mats, names);
+    dxmc::TetrahedalMesh<T, N, L> mesh(tets, dens, mats, names, 1);
 
     return mesh;
 }
@@ -117,7 +118,7 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
     std::vector<T> dens(1, 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L> mesh(std::move(tets), dens, mats, names);
+    dxmc::TetrahedalMesh<T, N, L> mesh(tets, dens, mats, names);
 
     return mesh;
 }
@@ -125,14 +126,13 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
 template <typename T, std::size_t N = 5, int L = 2>
 void testMeshCubeVisualization()
 {
-
     using Mesh = dxmc::TetrahedalMesh<T, N, L>;
-    using World = dxmc::World2<T, Mesh>;
+    using World = dxmc::World<T, Mesh>;
 
     World world;
 
-    // dxmc::TetrahedalmeshReader<T> reader;
-    // auto& mesh = world.template addItem<Mesh>(reader.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele", "MRCP_AM_media.dat", "icrp145organs.csv"));
+    // dxmc::TetrahedalmeshReader<T> reader("MRCP_AF.node", "MRCP_AF.ele", "MRCP_AF_media.dat", "icrp145organs.csv");
+    // auto& mesh = world.template addItem<Mesh>(reader.getMesh(64, 64, 256));
 
     auto& mesh = world.template addItem<Mesh>(simpletetrahedron<T, N, L>());
 
@@ -143,9 +143,9 @@ void testMeshCubeVisualization()
 
     dxmc::VisualizeWorld<T> viz(world);
 
-    int height = 512;
-    int width = 512;
-    std::vector<T> buffer(height * width * 4, T { 1 });
+    int height = 2048;
+    int width = 2048;
+    auto buffer = viz.createBuffer<double>(width, height);
 
     for (std::size_t i = 0; i < 12; ++i) {
         viz.setDistance(500);
@@ -153,53 +153,11 @@ void testMeshCubeVisualization()
         viz.setAzimuthalAngle(std::numbers::pi_v<T> * i / 6.0);
         // viz.setCameraPosition({ -60, -30, -10 });
         viz.suggestFOV();
-        viz.generate(world, buffer, width, height);
-        std::string name = "color_" + std::to_string(i) + ".bin";
-        writeImage(buffer, name);
-    }
-}
-
-template <dxmc::Floating T, std::size_t N = 5, int L = 2, bool BOX = false>
-T testDoseScoring(std::array<T, 3> pos = { 0, -100, 0 }, std::array<T, 3> dir = { 0, 1, 0 })
-{
-    using Mesh = dxmc::TetrahedalMesh<T, N, L>;
-    using Box = dxmc::WorldBox<T, N, L>;
-    using World = dxmc::World2<T, Mesh, Box>;
-    using Material = dxmc::Material<T, N>;
-    World world;
-
-    if constexpr (BOX) {
-        auto& box = world.template addItem<Box>({ 10 });
-        auto water = Material::byNistName("Water, Liquid").value();
-        const T density = 1;
-        box.setMaterial(water, density);
-    } else {
-        world.template addItem<Mesh>(simpletetrahedron<T, N, L>());
-    }
-    world.build();
-
-    auto c = world.center();
-    auto d = dxmc::vectormath::subtract({ 0, 0, 0 }, c);
-    world.translate(d);
-    auto c1 = world.center();
-
-    dxmc::PencilBeam<T> beam(pos, dir);
-    beam.setNumberOfParticlesPerExposure(1E6);
-    beam.setNumberOfExposures(4);
-
-    dxmc::Transport transport;
-    // transport.setNumberOfThreads(1);
-    transport(world, beam);
-    if constexpr (BOX) {
-        auto& boxes = world.template getItems<Box>();
-        return boxes[0].energyScored(0).energyImparted();
-    } else {
-        auto& meshes = world.template getItems<Mesh>();
-        auto& mesh = meshes[0];
-        T energyScored = 0;
-        for (std::size_t i = 0; i < mesh.numberOfCollections(); ++i)
-            energyScored += mesh.energyScored(i).energyImparted();
-        return energyScored;
+        viz.generate(world, buffer);
+        std::string name = "color_" + std::to_string(i) + ".png";
+        viz.savePNG(name, buffer);
+        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
+                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
 }
 
@@ -219,12 +177,6 @@ int main()
     bp.push_back(std::make_pair(std::array<double, 3> { 100, 0, 0 }, std::array<double, 3> { -1, 0, 0 }));
     bp.push_back(std::make_pair(std::array<double, 3> { 0, 100, 0 }, std::array<double, 3> { 0, -1, 0 }));
     bp.push_back(std::make_pair(std::array<double, 3> { 0, 0, 100 }, std::array<double, 3> { 0, 0, -1 }));
-
-    for (const auto& [pos, dir] : bp) {
-        const auto tm = testDoseScoring<double, 5, 1, false>({ -100, 0, 0 }, { 1, 0, 0 });
-        const auto tc = testDoseScoring<double, 5, 1, true>({ -100, 0, 0 }, { 1, 0, 0 });
-        std::cout << "Dose to mesh: " << tm << ", dose cube: " << tc << ", difference[%]: " << (tm / tc - 1) * 100 << "\n";
-    }
 
     if (success)
         std::cout << "SUCCESS ";

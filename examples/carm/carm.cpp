@@ -136,16 +136,7 @@ int main()
     auto phantom_aabb = phantom.AABB();
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
-    /*
-        auto& doctor = world.addItem(testPhantom());
-        doctor.flipAxis(1);
-        auto doctor_aabb = doctor.AABB();
-        doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
-    */
-
-    //auto& doctor = world.addItem(readICRP145Phantom({ 64, 64, 256 }, true));
-    // auto& doctor = world.addItem(readICRP145Phantom({ 32, 32, 128 }, true));
-     auto& doctor = world.addItem(readICRP145Phantom(32, true));
+    auto& doctor = world.addItem(readICRP145Phantom({ 64, 64, 256 }, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
@@ -156,26 +147,25 @@ int main()
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(120);
-    beam.setNumberOfParticlesPerExposure(100000);
-    beam.setDAPvalue(0.25);
+    beam.setNumberOfExposures(600);
+    beam.setNumberOfParticlesPerExposure(1000000);
+    beam.setDAPvalue(25);
 
     dxmc::Transport transport;
-    //runDispatcher(transport, world, beam);
+    runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
-    for (const auto& d : doctor.getDoseScores()) {
-        max_doctor_dose = std::max(max_doctor_dose, d.dose());
+    for (const auto& tet : doctor.tetrahedrons()) {
+        max_doctor_dose = std::max(max_doctor_dose, tet.doseScored().dose());
     }
 
-    constexpr double dosenorm = 0.0000005;
-    std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << dosenorm << std::endl;
+    std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << std::endl;
 
     Viz viz(world);
 
-   // viz.addColorByValueItem(&doctor);
-   // viz.addColorByValueItem(&phantom);
-   // viz.setColorByValueMinMax(0, max_doctor_dose );
+    viz.addColorByValueItem(&doctor);
+    viz.addColorByValueItem(&phantom);
+    viz.setColorByValueMinMax(0, 0.0002);
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 
