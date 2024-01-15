@@ -206,61 +206,34 @@ public:
             normalVector<true>(m_vertices[3], m_vertices[2], m_vertices[1])
         };
 
-        const auto cent = center();
         bool inside = true;
         for (int i = 0; i < 4; ++i) {
-            if (inside && vectormath::dot(vectormath::subtract(cent, m_vertices[i]), normals[i]) < 0)
-                inside = inside && vectormath::dot(vectormath::subtract(point, m_vertices[i]), normals[i]) <= 0;
-            else
-                inside = inside && vectormath::dot(vectormath::subtract(point, m_vertices[i]), normals[i]) >= 0;
+            inside = inside && vectormath::dot(vectormath::subtract(m_vertices[i], point), normals[i]) >= 0;
         }
         return inside;
     }
 
     bool validVerticeOrientation() const
     {
-        auto center = std::reduce(m_vertices.cbegin(), m_vertices.cend(), std::array<T, 3> { 0, 0, 0 }, [](const auto& lh, const auto& rh) { return vectormath::add(lh, rh); });
-        for (auto& c : center)
-            c /= T { 4 };
 
         std::array<T, 3> pv0, pv1;
         std::array<T, 4> proj;
 
         // F3 (V0V1V2), F2 (V1V0V3), F1 (V2V3V0), F0 (V3V2V1)
-        {
-            const auto d = vectormath::subtract(center, m_vertices[3]);
-            const auto pv0 = vectormath::subtract(m_vertices[1], m_vertices[0]);
-            const auto pv1 = vectormath::subtract(m_vertices[2], m_vertices[0]);
-            const auto n = vectormath::cross(pv0, pv1);
-            proj[3] = vectormath::dot(d, n);
-        }
-        {
-            const auto d = vectormath::subtract(center, m_vertices[2]);
-            const auto pv0 = vectormath::subtract(m_vertices[0], m_vertices[1]);
-            const auto pv1 = vectormath::subtract(m_vertices[3], m_vertices[1]);
-            const auto n = vectormath::cross(pv0, pv1);
-            proj[2] = vectormath::dot(d, n);
-        }
-        {
-            const auto d = vectormath::subtract(center, m_vertices[1]);
-            const auto pv0 = vectormath::subtract(m_vertices[3], m_vertices[2]);
-            const auto pv1 = vectormath::subtract(m_vertices[0], m_vertices[2]);
-            const auto n = vectormath::cross(pv0, pv1);
-            proj[1] = vectormath::dot(d, n);
-        }
-        {
-            const auto d = vectormath::subtract(center, m_vertices[0]);
-            const auto pv0 = vectormath::subtract(m_vertices[2], m_vertices[3]);
-            const auto pv1 = vectormath::subtract(m_vertices[1], m_vertices[3]);
-            const auto n = vectormath::cross(pv0, pv1);
-            proj[0] = vectormath::dot(d, n);
-        }
 
-        bool valid = true;
-        for (auto p : proj)
-            valid = valid && p <= T { 0 };
+        auto normal_dir = [](const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2, const std::array<T, 3>& c) -> T {
+            const auto v01 = vectormath::subtract(v1, v0);
+            const auto v02 = vectormath::subtract(v2, v0);
+            const auto n = vectormath::normalized(vectormath::cross(v01, v02));
+            const auto cv0 = vectormath::subtract(v0, c);
+            return vectormath::dot(cv0, n);
+        };
 
-        return valid;
+        const auto p0 = normal_dir(m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
+        const auto p1 = normal_dir(m_vertices[1], m_vertices[0], m_vertices[3], m_vertices[2]);
+        const auto p2 = normal_dir(m_vertices[2], m_vertices[3], m_vertices[0], m_vertices[1]);
+        const auto p3 = normal_dir(m_vertices[3], m_vertices[2], m_vertices[1], m_vertices[0]);
+        return p0 <= 0 && p1 <= 0 && p2 <= 0 && p3 <= 3;
     }
 
     const DoseScore<T>& doseScored() const
@@ -299,9 +272,9 @@ protected:
         const auto s1 = vectormath::subtract(p1, p0);
         const auto s2 = vectormath::subtract(p2, p0);
         if constexpr (NORMALIZE)
-            return vectormath::normalized(vectormath::cross(s1, s2));
+            return vectormath::normalized(vectormath::cross(s2, s1));
         else
-            return vectormath::cross(s1, s2);
+            return vectormath::cross(s2, s1);
     }
 
     static std::optional<T> intersectTriangle(const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2, const Particle<T>& p)

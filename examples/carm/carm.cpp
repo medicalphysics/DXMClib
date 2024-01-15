@@ -140,8 +140,6 @@ int main()
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
-    world.build();
-
     // adding beam
     using Beam = dxmc::DXBeam<double>;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
