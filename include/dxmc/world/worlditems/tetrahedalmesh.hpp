@@ -134,7 +134,6 @@ public:
             res.rayOriginIsInsideItem = kres.rayOriginIsInsideItem;
             res.intersectionValid = kres.valid();
             res.item = this;
-            const auto collection = kres.item->collection();
             res.value = kres.item->doseScored().dose();
             const auto hit_pos = vectormath::add(p.pos, vectormath::scale(p.dir, kres.intersection));
             res.normal = kres.item->normal(hit_pos);
@@ -184,7 +183,7 @@ public:
         do {
             if (updateAtt) {
                 attMaxInv = 1 / interpolate(m_woodcockStepTableLin, p.energy);
-                bool updateAtt = false;
+                updateAtt = false;
             }
 
             // making interaction step
