@@ -147,7 +147,7 @@ int main()
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(600);
+    beam.setNumberOfExposures(6000);
     beam.setNumberOfParticlesPerExposure(1000000);
     beam.setDAPvalue(25);
 
@@ -165,7 +165,7 @@ int main()
 
     viz.addColorByValueItem(&doctor);
     viz.addColorByValueItem(&phantom);
-    viz.setColorByValueMinMax(0, 0.0002);
+    viz.setColorByValueMinMax(0, 0.00001);
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 
@@ -177,7 +177,7 @@ int main()
 
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(6);
+        viz.suggestFOV(3);
         viz.generate(world, buffer);
         std::string name = "test" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
@@ -185,16 +185,16 @@ int main()
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
 
-    /*viz.setAzimuthalAngleDeg(120);
+    viz.setAzimuthalAngleDeg(120);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV();
+        viz.suggestFOV(3);
         viz.generate(world, buffer);
         std::string name = "test_low" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
         std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
-    */
+
     return 0;
 }
