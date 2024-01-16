@@ -140,12 +140,13 @@ int main()
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
+
     // adding beam
     using Beam = dxmc::DXBeam<double>;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(6000);
+    beam.setNumberOfExposures(600);
     beam.setNumberOfParticlesPerExposure(1000000);
     beam.setDAPvalue(25);
 
@@ -163,7 +164,7 @@ int main()
 
     viz.addColorByValueItem(&doctor);
     viz.addColorByValueItem(&phantom);
-    viz.setColorByValueMinMax(0, 0.00001);
+    viz.setColorByValueMinMax(0, 0.000001);
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 

@@ -199,6 +199,14 @@ public:
 
     bool pointInside(const std::array<T, 3>& point) const
     {
+        // F3 (V0V1V2), F2 (V1V0V3), F1 (V2V3V0), F0 (V3V2V1)
+        /*const std::array<std::array<T, 3>, 4> normals = {
+            normalVector<false>(m_vertices[0], m_vertices[1], m_vertices[2]),
+            normalVector<false>(m_vertices[1], m_vertices[0], m_vertices[3]),
+            normalVector<false>(m_vertices[2], m_vertices[3], m_vertices[0]),
+            normalVector<false>(m_vertices[3], m_vertices[2], m_vertices[1])
+        };*/
+
         const std::array<std::array<T, 3>, 4> normals = {
             normalVector<true>(m_vertices[0], m_vertices[1], m_vertices[2]),
             normalVector<true>(m_vertices[1], m_vertices[0], m_vertices[3]),
@@ -215,25 +223,8 @@ public:
 
     bool validVerticeOrientation() const
     {
-
-        std::array<T, 3> pv0, pv1;
-        std::array<T, 4> proj;
-
-        // F3 (V0V1V2), F2 (V1V0V3), F1 (V2V3V0), F0 (V3V2V1)
-
-        auto normal_dir = [](const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2, const std::array<T, 3>& c) -> T {
-            const auto v01 = vectormath::subtract(v1, v0);
-            const auto v02 = vectormath::subtract(v2, v0);
-            const auto n = vectormath::normalized(vectormath::cross(v01, v02));
-            const auto cv0 = vectormath::subtract(v0, c);
-            return vectormath::dot(cv0, n);
-        };
-
-        const auto p0 = normal_dir(m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
-        const auto p1 = normal_dir(m_vertices[1], m_vertices[0], m_vertices[3], m_vertices[2]);
-        const auto p2 = normal_dir(m_vertices[2], m_vertices[3], m_vertices[0], m_vertices[1]);
-        const auto p3 = normal_dir(m_vertices[3], m_vertices[2], m_vertices[1], m_vertices[0]);
-        return p0 <= 0 && p1 <= 0 && p2 <= 0 && p3 <= 3;
+        const auto c = center();
+        return pointInside(c);
     }
 
     const DoseScore<T>& doseScored() const
