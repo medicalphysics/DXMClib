@@ -81,7 +81,7 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
     return t;
 }
 
-template <typename T, std::size_t N = 5, int L = 2>
+template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
 dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
 {
     auto tets = tetCube<T>();
@@ -91,12 +91,12 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
     std::vector<T> dens(tets.size(), 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L> mesh(tets, dens, mats, names, 1);
+    dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names, 1);
 
     return mesh;
 }
 
-template <typename T, std::size_t N = 5, int L = 2>
+template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
 dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
 {
     std::vector<dxmc::Tetrahedron<T>> tets;
@@ -118,12 +118,12 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
     std::vector<T> dens(1, 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L> mesh(tets, dens, mats, names);
+    dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names);
 
     return mesh;
 }
 
-template <typename T, std::size_t N = 5, int L = 2>
+template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
 void testMeshCubeVisualization()
 {
     using Mesh = dxmc::TetrahedalMesh<T, N, L>;
@@ -134,7 +134,7 @@ void testMeshCubeVisualization()
     // dxmc::TetrahedalmeshReader<T> reader("MRCP_AF.node", "MRCP_AF.ele", "MRCP_AF_media.dat", "icrp145organs.csv");
     // auto& mesh = world.template addItem<Mesh>(reader.getMesh(64, 64, 256));
 
-    auto& mesh = world.template addItem<Mesh>(simpletetrahedron<T, N, L>());
+    auto& mesh = world.template addItem<Mesh>(simpletetrahedron<T, N, L, Fluence>());
 
     // const auto [nodes, vertices] = tetrahedron<T>();
     // mesh.setData(nodes, vertices);
