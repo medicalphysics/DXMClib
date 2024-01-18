@@ -128,7 +128,7 @@ public:
 
     inline T massEnergyTransferAttenuation(T energy) const
     {
-        auto att = attenuationValues(energy);
+        const auto att = attenuationValues(energy);
         return massEnergyTransferAttenuation(att, energy);
     }
 

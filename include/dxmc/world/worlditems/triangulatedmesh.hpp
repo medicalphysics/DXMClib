@@ -188,7 +188,7 @@ public:
     {
         bool cont = true;
         bool updateAtt = true;
-        dxmc::AttenuationValues<T> att;
+        AttenuationValues<T> att;
         T attSumInv;
         while (cont) {
             if (updateAtt) {
