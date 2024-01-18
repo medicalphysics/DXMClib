@@ -29,24 +29,6 @@ Copyright 2022 Erlend Andersen
 #include <vector>
 
 template <typename T>
-void writeImage(const std::vector<T>& buffer, const std::string& name)
-{
-    std::ofstream file;
-    file.open(name, std::ios::out | std::ios::binary);
-    file.write((char*)buffer.data(), buffer.size() * sizeof(T));
-    file.close();
-}
-
-template <typename T>
-bool testReader()
-{
-    dxmc::TetrahedalmeshReader<T> reader;
-    reader.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele", "MRCP_AM_media.dat", "icrp145organs.csv");
-    // mesh.readICRP145Phantom("MRCP_AM.node", "MRCP_AM.ele");
-    return false;
-}
-
-template <typename T>
 std::vector<dxmc::Tetrahedron<T>> tetCube()
 {
     std::vector<std::array<T, 3>> v(8);
@@ -72,17 +54,17 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
     t[4] = { v[7], v[3], v[4], v[0], 0, 0 }; //*
     t[5] = { v[1], v[3], v[5], v[0], 0, 0 }; //*
 
+    bool success = true;
     for (auto& tet : t)
-        tet.validVerticeOrientation();
+        success = success && tet.validVerticeOrientation();
 
-    // std::vector<dxmc::Tetrahedron<T>> t(1);
-    // t[0] = { v[2], v[6], v[3], v[0], 0, 0 };
-
+    if (!success)
+        t.clear();
     return t;
 }
 
 template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
-dxmc::TetrahedalMesh<T, N, L> simpletetrahedron()
+dxmc::TetrahedalMesh<T, N, L, Fluence> simpletetrahedron()
 {
     auto tets = tetCube<T>();
 
@@ -118,75 +100,50 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
     std::vector<T> dens(1, 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names);
+    dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names, 1);
 
     return mesh;
 }
 
-template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
-void testMeshCubeVisualization()
+bool testintersection()
 {
-    using Mesh = dxmc::TetrahedalMesh<T, N, L>;
-    using World = dxmc::World<T, Mesh>;
+    auto mesh = simpletetrahedron<double, 5, 1, false>();
+    dxmc::Particle<double> p { .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 } };
+    auto res = mesh.intersect(p);
+    bool success = res.valid() && std::abs(res.intersection - 90) < 0.001;
+    return success;
+}
 
-    World world;
+bool testTransport()
+{
 
-    // dxmc::TetrahedalmeshReader<T> reader("MRCP_AF.node", "MRCP_AF.ele", "MRCP_AF_media.dat", "icrp145organs.csv");
-    // auto& mesh = world.template addItem<Mesh>(reader.getMesh(64, 64, 256));
+    dxmc::World<double, dxmc::TetrahedalMesh<double, 5, 1, true>> w;
+    w.reserveNumberOfItems(1);
+    auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, true>());
+    w.build();
 
-    auto& mesh = world.template addItem<Mesh>(simpletetrahedron<T, N, L, Fluence>());
+    dxmc::PencilBeam<double> beam({ 0, 0.0001, -100 }, { 0, 0, 1 }, 60);
+    beam.setNumberOfExposures(32);
+    beam.setNumberOfParticlesPerExposure(10000);
+    dxmc::Transport transport;
+    transport.setNumberOfThreads(1);
+    transport(w, beam);
 
-    // const auto [nodes, vertices] = tetrahedron<T>();
-    // mesh.setData(nodes, vertices);
-
-    world.build(T { 0 });
-
-    dxmc::VisualizeWorld<T> viz(world);
-
-    int height = 2048;
-    int width = 2048;
-    auto buffer = viz.createBuffer<double>(width, height);
-
-    for (std::size_t i = 0; i < 12; ++i) {
-        viz.setDistance(500);
-        viz.setPolarAngle(std::numbers::pi_v<T> / 3.0);
-        viz.setAzimuthalAngle(std::numbers::pi_v<T> * i / 6.0);
-        // viz.setCameraPosition({ -60, -30, -10 });
-        viz.suggestFOV();
-        viz.generate(world, buffer);
-        std::string name = "color_" + std::to_string(i) + ".png";
-        viz.savePNG(name, buffer);
-        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
-                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
+    for (const auto& tet : mesh.tetrahedrons()) {
+        std::cout << tet.doseScored().dose() << std::endl;
     }
+
+    return false;
 }
 
 int main()
 {
-    std::cout << "Testing ray intersection on tetrahedal mesh\n";
-
-    testMeshCubeVisualization<double>();
 
     bool success = true;
-    std::cout << "Test tetrahedalmesh dose scoring\n";
-
-    std::vector<std::pair<std::array<double, 3>, std::array<double, 3>>> bp;
-    bp.push_back(std::make_pair(std::array<double, 3> { -100, 0, 0 }, std::array<double, 3> { 1, 0, 0 }));
-    bp.push_back(std::make_pair(std::array<double, 3> { 0, -100, 0 }, std::array<double, 3> { 0, 1, 0 }));
-    bp.push_back(std::make_pair(std::array<double, 3> { 0, 0, -100 }, std::array<double, 3> { 0, 0, 1 }));
-    bp.push_back(std::make_pair(std::array<double, 3> { 100, 0, 0 }, std::array<double, 3> { -1, 0, 0 }));
-    bp.push_back(std::make_pair(std::array<double, 3> { 0, 100, 0 }, std::array<double, 3> { 0, -1, 0 }));
-    bp.push_back(std::make_pair(std::array<double, 3> { 0, 0, 100 }, std::array<double, 3> { 0, 0, -1 }));
-
-    if (success)
-        std::cout << "SUCCESS ";
-    else
-        std::cout << "FAILURE ";
-
-    // success = success && testReader<double>();
-    // success = success && testReader<float>();
-
+    success = success && testintersection();
+    success = success && testTransport();
     if (success)
         return EXIT_SUCCESS;
-    return EXIT_FAILURE;
+    else
+        return EXIT_FAILURE;
 }
