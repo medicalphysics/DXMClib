@@ -170,7 +170,7 @@ public:
             const auto [min, max] = std::minmax(t[0], t[1]);
             res.rayOriginIsInsideItem = min <= 0 && max > 0;
             res.intersection = res.rayOriginIsInsideItem ? max : min;
-            res.intersectionValid = res.intersection >= 0;
+            res.intersectionValid = res.intersection > 0 && max != min;
         }
         return res;
     }

@@ -67,6 +67,8 @@ template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
 dxmc::TetrahedalMesh<T, N, L, Fluence> simpletetrahedron()
 {
     auto tets = tetCube<T>();
+    for (auto& tet:tets)
+        tet.scale(10);
 
     std::vector<dxmc::Material<T, N>> mats;
     mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
@@ -105,10 +107,10 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
     return mesh;
 }
 
-bool testintersection()
+bool testIntersectionMesh()
 {
     auto mesh = simpletetrahedron<double, 5, 1, false>();
-    dxmc::Particle<double> p { .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 } };
+    dxmc::Particle<double> p { .pos = { 0, 0, -1000 }, .dir = { 0, 0, 1 } };
     auto res = mesh.intersect(p);
     bool success = res.valid() && std::abs(res.intersection - 90) < 0.001;
     return success;
@@ -117,30 +119,71 @@ bool testintersection()
 bool testTransport()
 {
 
-    dxmc::World<double, dxmc::TetrahedalMesh<double, 5, 1, true>> w;
-    w.reserveNumberOfItems(1);
-    auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, true>());
-    w.build();
+    using M1 = dxmc::TetrahedalMesh<double, 5, 1, true>;
+    using M2 = dxmc::TetrahedalMesh<double, 5, 1, false>;
 
-    dxmc::PencilBeam<double> beam({ 0, 0.0001, -100 }, { 0, 0, 1 }, 60);
-    beam.setNumberOfExposures(32);
-    beam.setNumberOfParticlesPerExposure(10000);
-    dxmc::Transport transport;
-    transport.setNumberOfThreads(1);
-    transport(w, beam);
+    std::vector<dxmc::Tetrahedron<double>> t1, t2;
+    {
+        dxmc::World<double, M1> w;
+        w.reserveNumberOfItems(1);
+        auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, true>());
+        w.build();
 
-    for (const auto& tet : mesh.tetrahedrons()) {
-        std::cout << tet.doseScored().dose() << std::endl;
+        dxmc::PencilBeam<double> beam({ 0, 0.0001, -1000 }, { 0, 0, 1 }, 60);
+        beam.setNumberOfExposures(32);
+        beam.setNumberOfParticlesPerExposure(10000);
+        dxmc::Transport transport;
+        // transport.setNumberOfThreads(1);
+        transport(w, beam);
+        t1 = mesh.tetrahedrons();
+    }
+    {
+        dxmc::World<double, M2> w;
+        w.reserveNumberOfItems(1);
+        auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, false>());
+        w.build();
+
+        dxmc::PencilBeam<double> beam({ 0, 0.0001, -1000 }, { 0, 0, 1 }, 60);
+        beam.setNumberOfExposures(32);
+        beam.setNumberOfParticlesPerExposure(10000);
+        dxmc::Transport transport;
+        // transport.setNumberOfThreads(1);
+        transport(w, beam);
+        t2 = mesh.tetrahedrons();
+    }
+
+    for (int i = 0; i < t1.size(); ++i) {
+        std::cout << i << " " << t1[i].doseScored().dose() << ", " << t2[i].doseScored().dose() << std::endl;
     }
 
     return false;
+}
+
+bool testIntersection()
+{
+
+    dxmc::Particle<double> p { .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 } };
+    const auto tets = tetCube<double>();
+
+    bool success = true;
+    for (const auto& tet : tets) {
+        auto i1 = tet.intersect(p);
+        auto p2 = p;
+        if (i1.valid()) {
+            p2.border_translate(i1.intersection);
+            bool is_inside = tet.pointInside(p2.pos);
+            auto i2 = tet.intersect(p2);
+            success = success && is_inside == i2.rayOriginIsInsideItem;
+        }
+    }
+    return success;
 }
 
 int main()
 {
 
     bool success = true;
-    success = success && testintersection();
+    success = success && testIntersection();
     success = success && testTransport();
     if (success)
         return EXIT_SUCCESS;

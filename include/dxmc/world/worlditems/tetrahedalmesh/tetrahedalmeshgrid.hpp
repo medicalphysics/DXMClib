@@ -161,18 +161,6 @@ public:
         return nullptr;
     }
 
-    std::optional<std::size_t> pointInsideIndex(const std::array<T, 3>& pos) const
-    {
-        const auto idx_flat = getIndicesFlat<true>(pos);
-        for (const auto tet_idx : m_grid[idx_flat]) {
-            const auto& tet = m_tets[tet_idx];
-            if (tet.pointInside(pos)) {
-                tet_idx;
-            }
-        }
-        return std::nullopt;
-    }
-
     template <bool CHECK_BOUNDS = false>
     std::array<int, 3> getIndices(const std::array<T, 3>& pos) const
     {
