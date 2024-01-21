@@ -126,6 +126,13 @@ public:
         return std::exp(CubicLSInterpolator<T>::evaluateSpline(std::log(energy), begin, end));
     }
 
+    inline T meanIncoherentScatterLogEnergy(T logenergy) const
+    {
+        const auto begin = m_attenuationTable.cbegin() + m_attenuationTableOffset[5];
+        const auto end = m_attenuationTable.cbegin() + m_attenuationTableOffset[6];
+        return std::exp(CubicLSInterpolator<T>::evaluateSpline(logenergy, begin, end));
+    }
+
     inline T massEnergyTransferAttenuation(T energy) const
     {
         const auto att = attenuationValues(energy);
@@ -143,7 +150,7 @@ public:
         avg_fluro_energy /= att.photoelectric;
 
         const auto avg_fluro_frac = avg_fluro_energy / energy;
-        const auto incoherent_scatter_energy = meanIncoherentScatterEnergy(energy);
+        const auto incoherent_scatter_energy = meanIncoherentScatterLogEnergy(logEnergy);
         const auto f_pe = T { 1 } - avg_fluro_frac;
         const auto f_inc = T { 1 } - (incoherent_scatter_energy + avg_fluro_energy) / energy;
         return att.photoelectric * f_pe + att.incoherent * f_inc;

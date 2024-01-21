@@ -122,6 +122,8 @@ bool testTransport()
     using M1 = dxmc::TetrahedalMesh<double, 5, 1, true>;
     using M2 = dxmc::TetrahedalMesh<double, 5, 1, false>;
 
+    constexpr std::size_t N_HIST = 100000;
+
     std::vector<dxmc::Tetrahedron<double>> t1, t2;
     {
         dxmc::World<double, M1> w;
@@ -129,9 +131,9 @@ bool testTransport()
         auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, true>());
         w.build();
 
-        dxmc::PencilBeam<double> beam({ 0, 0.0001, -1000 }, { 0, 0, 1 }, 60);
+        dxmc::PencilBeam<double> beam({ 0, 0, -1000 }, { 0, 0, 1 }, 60);
         beam.setNumberOfExposures(32);
-        beam.setNumberOfParticlesPerExposure(10000);
+        beam.setNumberOfParticlesPerExposure(N_HIST);
         dxmc::Transport transport;
         // transport.setNumberOfThreads(1);
         transport(w, beam);
@@ -143,9 +145,9 @@ bool testTransport()
         auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, false>());
         w.build();
 
-        dxmc::PencilBeam<double> beam({ 0, 0.0001, -1000 }, { 0, 0, 1 }, 60);
+        dxmc::PencilBeam<double> beam({ 0, 0, -1000 }, { 0, 0, 1 }, 60);
         beam.setNumberOfExposures(32);
-        beam.setNumberOfParticlesPerExposure(10000);
+        beam.setNumberOfParticlesPerExposure(N_HIST);
         dxmc::Transport transport;
         // transport.setNumberOfThreads(1);
         transport(w, beam);
