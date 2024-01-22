@@ -139,38 +139,26 @@ public:
     WorldIntersectionResult<T> intersect(const Particle<T>& particle) const
     {
 
-        std::array<T, 2> t;
-        int n_hits = 0;
-        const auto h3 = intersectTriangle(m_vertices[0], m_vertices[1], m_vertices[2], particle);
-        if (h3) {
-            t[0] = *h3;
-            n_hits++;
-        }
-        const auto h2 = intersectTriangle(m_vertices[1], m_vertices[0], m_vertices[3], particle);
-        if (h2) {
-            t[n_hits] = *h2;
-            n_hits++;
-        }
-        if (n_hits < 2) {
-            const auto h1 = intersectTriangle(m_vertices[2], m_vertices[3], m_vertices[0], particle);
-            if (h1) {
-                t[n_hits] = *h1;
-                n_hits++;
-            }
-            if (n_hits == 1) {
-                const auto h0 = intersectTriangle(m_vertices[3], m_vertices[2], m_vertices[1], particle);
-                if (h0) {
-                    t[n_hits] = *h0;
-                    n_hits++;
-                }
+        const std::array<std::optional<T>, 4> hits = {
+            intersectTriangle(m_vertices[0], m_vertices[1], m_vertices[2], particle),
+            intersectTriangle(m_vertices[1], m_vertices[0], m_vertices[3], particle),
+            intersectTriangle(m_vertices[2], m_vertices[3], m_vertices[0], particle),
+            intersectTriangle(m_vertices[3], m_vertices[2], m_vertices[1], particle)
+        };
+
+        T chit = std::numeric_limits<T>::max();
+        for (const auto& h : hits) {
+            if (h) {
+                if (*h > 0)
+                    chit = std::min(*h, chit);
             }
         }
+
         WorldIntersectionResult<T> res;
-        if (n_hits == 2) {
-            const auto [min, max] = std::minmax(t[0], t[1]);
-            res.rayOriginIsInsideItem = min <= 0 && max > 0;
-            res.intersection = res.rayOriginIsInsideItem ? max : min;
-            res.intersectionValid = res.intersection > 0 && max != min;
+        if (chit < std::numeric_limits<T>::max()) {
+            res.rayOriginIsInsideItem = pointInside(particle.pos);
+            res.intersection = chit;
+            res.intersectionValid = true;
         }
         return res;
     }
@@ -200,19 +188,19 @@ public:
     bool pointInside(const std::array<T, 3>& point) const
     {
         // F3 (V0V1V2), F2 (V1V0V3), F1 (V2V3V0), F0 (V3V2V1)
-        /*const std::array<std::array<T, 3>, 4> normals = {
+        const std::array<std::array<T, 3>, 4> normals = {
             normalVector<false>(m_vertices[0], m_vertices[1], m_vertices[2]),
             normalVector<false>(m_vertices[1], m_vertices[0], m_vertices[3]),
             normalVector<false>(m_vertices[2], m_vertices[3], m_vertices[0]),
             normalVector<false>(m_vertices[3], m_vertices[2], m_vertices[1])
-        };*/
+        };
 
-        const std::array<std::array<T, 3>, 4> normals = {
+        /*const std::array<std::array<T, 3>, 4> normals = {
             normalVector<true>(m_vertices[0], m_vertices[1], m_vertices[2]),
             normalVector<true>(m_vertices[1], m_vertices[0], m_vertices[3]),
             normalVector<true>(m_vertices[2], m_vertices[3], m_vertices[0]),
             normalVector<true>(m_vertices[3], m_vertices[2], m_vertices[1])
-        };
+        };*/
 
         bool inside = true;
         for (int i = 0; i < 4; ++i) {
@@ -232,7 +220,7 @@ public:
         return m_dose;
     }
 
-    const EnergyScore<T>& energyImparted() const
+    const EnergyScore<T>& energyScored() const
     {
         return m_energy_imparted;
     }

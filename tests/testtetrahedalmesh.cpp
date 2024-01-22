@@ -18,8 +18,10 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
+#include "dxmc/transportprogress.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
+#include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
@@ -43,7 +45,7 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
 
     for (auto& i : v)
         for (auto& n : i)
-            n *= 10;
+            n *= 100;
 
     std::vector<dxmc::Tetrahedron<T>> t(6);
 
@@ -67,8 +69,6 @@ template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
 dxmc::TetrahedalMesh<T, N, L, Fluence> simpletetrahedron()
 {
     auto tets = tetCube<T>();
-    for (auto& tet:tets)
-        tet.scale(10);
 
     std::vector<dxmc::Material<T, N>> mats;
     mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
@@ -78,6 +78,28 @@ dxmc::TetrahedalMesh<T, N, L, Fluence> simpletetrahedron()
     dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names, 1);
 
     return mesh;
+}
+
+template <typename T, std::size_t N = 5, int L = 2>
+dxmc::WorldBox<T, N, L> simplebox()
+{
+    dxmc::WorldBox<T, N, L> box(100);
+    auto water = dxmc::Material<T, N>::byNistName("Water, Liquid").value();
+    box.setMaterial(water, 1);
+    return box;
+}
+template <typename T, std::size_t N = 5, int L = 2>
+dxmc::AAVoxelGrid<T, N, L, 255> simplegrid()
+{
+
+    dxmc::AAVoxelGrid<T, N, L, 255> grid;
+    std::vector<std::uint8_t> m(1000, 0);
+    std::vector<T> d(1000, 1);
+    std::vector<dxmc::Material<T, N>> mats;
+    mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
+    grid.setData({ 10, 10, 10 }, d, m, mats);
+    grid.setSpacing({ 20, 20, 20 });
+    return grid;
 }
 
 template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
@@ -121,41 +143,73 @@ bool testTransport()
 
     using M1 = dxmc::TetrahedalMesh<double, 5, 1, true>;
     using M2 = dxmc::TetrahedalMesh<double, 5, 1, false>;
+    using B = dxmc::WorldBox<double, 5, 1>;
+    using G = dxmc::AAVoxelGrid<double, 5, 1, 255>;
 
-    constexpr std::size_t N_HIST = 100000;
+    constexpr std::size_t N_HIST = 1000000;
+    constexpr std::size_t N_EXP = 16;
 
-    std::vector<dxmc::Tetrahedron<double>> t1, t2;
+    dxmc::PencilBeam<double> beam({ 50, 50, -1000 }, { 0, 0, 1 }, 60);
+    beam.setNumberOfExposures(N_EXP);
+    beam.setNumberOfParticlesPerExposure(N_HIST);
+
+    dxmc::TransportProgress progress;
+
     {
         dxmc::World<double, M1> w;
         w.reserveNumberOfItems(1);
         auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, true>());
         w.build();
 
-        dxmc::PencilBeam<double> beam({ 0, 0, -1000 }, { 0, 0, 1 }, 60);
-        beam.setNumberOfExposures(32);
-        beam.setNumberOfParticlesPerExposure(N_HIST);
+        double dose = 0;
         dxmc::Transport transport;
         // transport.setNumberOfThreads(1);
-        transport(w, beam);
-        t1 = mesh.tetrahedrons();
+        transport(w, beam, &progress);
+        for (const auto& t : mesh.tetrahedrons())
+            dose += t.energyScored().energyImparted();
+        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
     }
+
     {
         dxmc::World<double, M2> w;
         w.reserveNumberOfItems(1);
         auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, false>());
         w.build();
 
-        dxmc::PencilBeam<double> beam({ 0, 0, -1000 }, { 0, 0, 1 }, 60);
-        beam.setNumberOfExposures(32);
-        beam.setNumberOfParticlesPerExposure(N_HIST);
+        double dose = 0;
         dxmc::Transport transport;
         // transport.setNumberOfThreads(1);
-        transport(w, beam);
-        t2 = mesh.tetrahedrons();
+        transport(w, beam, &progress);
+        for (const auto& t : mesh.tetrahedrons())
+            dose += t.energyScored().energyImparted();
+        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
     }
 
-    for (int i = 0; i < t1.size(); ++i) {
-        std::cout << i << " " << t1[i].doseScored().dose() << ", " << t2[i].doseScored().dose() << std::endl;
+    {
+        dxmc::World<double, G> w;
+        w.reserveNumberOfItems(1);
+        auto& mesh = w.addItem(simplegrid<double, 5, 1>());
+        w.build();
+
+        dxmc::Transport transport;
+        transport(w, beam, &progress);
+        auto s = mesh.size();
+        double dose = 0;
+        for (std::size_t i = 0; i < s; ++i)
+            dose += mesh.energyScored(i).energyImparted();
+        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
+    }
+
+    {
+        dxmc::World<double, B> w;
+        w.reserveNumberOfItems(1);
+        auto& box = w.addItem(simplebox<double, 5, 1>());
+        w.build();
+
+        dxmc::Transport transport;
+        transport(w, beam, &progress);
+        auto dose = box.energyScored().energyImparted();
+        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
     }
 
     return false;
@@ -185,7 +239,7 @@ int main()
 {
 
     bool success = true;
-    success = success && testIntersection();
+    // success = success && testIntersection();
     success = success && testTransport();
     if (success)
         return EXIT_SUCCESS;

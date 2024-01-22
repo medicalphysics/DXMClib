@@ -148,7 +148,7 @@ public:
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
     {
         const auto tets = m_grid.tetrahedrons();
-        return tets.at(index).energyImparted();
+        return tets.at(index).energyScored();
     }
 
     void clearEnergyScored() override
@@ -253,66 +253,67 @@ protected:
         m_woodcockStepTableLin = data;
     }
 
-    void transportSiddon(Particle<T>& p, RandomState& state)
-    {
-        bool still_inside = true;
-        std::uint16_t current_materialIdx = std::numeric_limits<std::uint16_t>::max();
-        AttenuationValues<T> att;
-        T u_tr;
+    /*
+        void transportSiddon(Particle<T>& p, RandomState& state)
+        {
+            bool still_inside = true;
+            std::uint16_t current_materialIdx = std::numeric_limits<std::uint16_t>::max();
+            AttenuationValues<T> att;
+            T u_tr;
 
-        T interaction_accum = 1;
-        T interaction_thres = state.randomUniform<T>();
+            T interaction_accum = 1;
+            T interaction_thres = state.randomUniform<T>();
 
-        Tetrahedron<T>* tet = m_grid.pointInside(p.pos);
-        while (tet) {
-            const auto inter = tet->intersect(p);
-            if (tet->materialIndex() != current_materialIdx) {
-                current_materialIdx = tet->materialIndex();
-                att = m_materials[current_materialIdx].attenuationValues(p.energy);
-                u_tr = m_materials[current_materialIdx].massEnergyTransferAttenuation(att, p.energy);
-            }
-
-            const auto density = m_collections[tet->collection()].density;
-
-            // do the particle interact?
-            interaction_accum *= std::exp(-inter.intersection * att.sum() * density);
-
-            if (interaction_accum < interaction_thres) {
-                // an iteraction happends
-                const auto step_lenght_reverse = -std::log(interaction_thres - interaction_accum) / (att.sum() * density);
-                const auto track_lenght = inter.intersection - step_lenght_reverse;
-
-                // Theory: Fluence is equal to total track lenght per volume
-                // energy imparted is therefore ei = u_tr * fluence * energy * mass
-                // ei = u_tr * t * energy * mass / volume, where u_tr = mass energy trans coeff and t = total track lenght
-                // ei = u_tr * t * energy / density
-                const auto ei = u_tr * track_lenght * p.energy / density;
-                tet->scoreEnergy(ei);
-                p.translate(track_lenght);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[current_materialIdx], state);
-                if (intRes.particleAlive) {
-                    // we need to update att due to energy change
-                    current_materialIdx = std::numeric_limits<std::uint16_t>::max();
-                    interaction_accum = 1;
-                    interaction_thres = state.randomUniform<T>();
-                } else {
-                    tet = nullptr;
+            Tetrahedron<T>* tet = m_grid.pointInside(p.pos);
+            while (tet) {
+                const auto inter = tet->intersect(p);
+                if (tet->materialIndex() != current_materialIdx) {
+                    current_materialIdx = tet->materialIndex();
+                    att = m_materials[current_materialIdx].attenuationValues(p.energy);
+                    u_tr = m_materials[current_materialIdx].massEnergyTransferAttenuation(att, p.energy);
                 }
-            } else {
-                const auto ei = u_tr * inter.intersection * p.energy / density;
-                tet->scoreEnergy(ei);
-                p.border_translate(inter.intersection);
-                tet = m_grid.pointInside(p.pos);
+
+                const auto density = m_collections[tet->collection()].density;
+
+                // do the particle interact?
+                interaction_accum *= std::exp(-inter.intersection * att.sum() * density);
+
+                if (interaction_accum < interaction_thres) {
+                    // an iteraction happends
+                    const auto step_lenght_reverse = -std::log(interaction_thres - interaction_accum) / (att.sum() * density);
+                    const auto track_lenght = inter.intersection - step_lenght_reverse;
+
+                    // Theory: Fluence is equal to total track lenght per volume
+                    // energy imparted is therefore ei = u_tr * fluence * energy * mass
+                    // ei = u_tr * t * energy * mass / volume, where u_tr = mass energy trans coeff and t = total track lenght
+                    // ei = u_tr * t * energy / density
+                    const auto ei = u_tr * track_lenght * p.energy / density;
+                    tet->scoreEnergy(ei);
+                    p.translate(track_lenght);
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[current_materialIdx], state);
+                    if (intRes.particleAlive) {
+                        // we need to update att due to energy change
+                        current_materialIdx = std::numeric_limits<std::uint16_t>::max();
+                        interaction_accum = 1;
+                        interaction_thres = state.randomUniform<T>();
+                    } else {
+                        tet = nullptr;
+                    }
+                } else {
+                    const auto ei = u_tr * inter.intersection * p.energy / density;
+                    tet->scoreEnergy(ei);
+                    p.border_translate(inter.intersection);
+                    tet = m_grid.pointInside(p.pos);
+                }
             }
-        }
-    }
+        }*/
 
     void transportWoodcock(Particle<T>& p, RandomState& state)
     {
         bool still_inside = true;
         T attMaxInv;
         bool updateAtt = true;
-        do {
+        while (still_inside) {
             if (updateAtt) {
                 attMaxInv = 1 / interpolate(m_woodcockStepTableLin, p.energy);
                 updateAtt = false;
@@ -325,29 +326,62 @@ protected:
             // finding current tet
             const auto currentTet = m_grid.pointInside(p.pos);
 
-            if (!currentTet) {
+            if (currentTet) { // is interaction virtual?
+                const auto materialIdx = currentTet->materialIndex();
+                const auto collectionIdx = currentTet->collection();
+                const auto attenuation = m_materials[materialIdx].attenuationValues(p.energy);
+                const auto attSum = attenuation.sum() * m_collections[collectionIdx].density;
+                if (state.randomUniform<T>() < attSum * attMaxInv) {
+                    // we have a real interaction
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(attenuation, p, m_materials[materialIdx], state);
+                    currentTet->scoreEnergy(intRes.energyImparted);
+                    still_inside = intRes.particleAlive;
+                    updateAtt = intRes.particleEnergyChanged;
+                }
+            } else {
                 // we are outside item, backtrack and return
                 const Particle<T> pback = { .pos = p.pos, .dir = vectormath::scale(p.dir, T { -1 }) };
                 const auto inter_back = intersect(pback);
                 if (inter_back.valid()) {
                     p.border_translate(-inter_back.intersection);
                 }
-                return;
+                still_inside = false;
             }
+        }
+    }
 
-            // is interaction virtual?
-            const auto materialIdx = currentTet->materialIndex();
-            const auto collectionIdx = currentTet->collection();
-            const auto attenuation = m_materials[materialIdx].attenuationValues(p.energy);
-            const auto attSum = attenuation.sum() * m_collections[collectionIdx].density;
-            if (state.randomUniform<T>() < attSum * attMaxInv) {
-                // we have a real interaction
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(attenuation, p, m_materials[materialIdx], state);
-                currentTet->scoreEnergy(intRes.energyImparted);
-                still_inside = intRes.particleAlive;
-                updateAtt = intRes.particleEnergyChanged;
+    void transportSiddon(Particle<T>& p, RandomState& state)
+    {
+        Tetrahedron<T>* tet = m_grid.pointInside(p.pos);
+        bool updateAtt = true;
+        AttenuationValues<T> att;
+        T attSumInv;
+        while (tet) {
+            if (updateAtt) {
+                const auto materialIdx = tet->materialIndex();
+                const auto collectionIdx = tet->collection();
+                att = m_materials[materialIdx].attenuationValues(p.energy);
+                attSumInv = 1 / (att.sum() * m_collections[collectionIdx].density);
+                updateAtt = false;
             }
-        } while (still_inside);
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto intLen = tet->intersect(p).intersection;
+            if (stepLen < intLen) {
+                // interaction happends
+                p.translate(stepLen);
+                const auto& material = m_materials[tet->materialIndex()];
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, material, state);
+                tet->scoreEnergy(intRes.energyImparted);
+                if (intRes.particleAlive)
+                    updateAtt = intRes.particleEnergyChanged;
+                else
+                    tet = nullptr;
+            } else {
+                // transport to border
+                p.border_translate(intLen);
+                tet = m_grid.pointInside(p.pos);
+            }
+        }
     }
 
 private:
