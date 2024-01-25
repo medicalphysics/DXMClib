@@ -47,6 +47,7 @@ struct ResultKeys {
     std::string specter = "unknown";
     std::string modus = "unknown";
     std::string model = "unknown";
+    T TG195Result = 0;
     T result = 0;
     T result_std = 0;
     std::uint64_t nEvents = 0;
@@ -69,7 +70,7 @@ public:
     }
     void header()
     {
-        m_myfile << "Case, Volume, Specter, Model, Mode, Result, Stddev, nEvents, SimulationTime, Precision\n";
+        m_myfile << "Case, Volume, Specter, Model, Mode, TG195Result, Result, Stddev, nEvents, SimulationTime, Precision\n";
     }
 
     template <typename T>
@@ -86,6 +87,7 @@ public:
         m_myfile << r.specter << ", ";
         m_myfile << r.model << ", ";
         m_myfile << r.modus << ", ";
+        m_myfile << r.TG195Result << ", ";
         m_myfile << r.result << ", ";
         m_myfile << r.result_std << ", ";
         m_myfile << r.nEvents << ", ";
@@ -93,16 +95,10 @@ public:
         m_myfile << r.precision << std::endl;
 
         if (terminal) {
-            std::cout << r.rCase << ", ";
-            std::cout << r.volume << ", ";
-            std::cout << r.specter << ", ";
-            std::cout << r.model << ", ";
-            std::cout << r.modus << ", ";
-            std::cout << r.result << ", ";
-            std::cout << r.result_std << ", ";
-            std::cout << r.nEvents << ", ";
-            std::cout << r.nMilliseconds << ", ";
-            std::cout << r.precision << std::endl;
+            std::cout << "VOI: " << r.volume;
+            std::cout << " ev/hist: " << r.result;
+            std::cout << " TG195: " << r.TG195Result;
+            std::cout << " difference[%]: " << (r.result / r.TG195Result - 1) * 100 << std::endl;
         }
     }
 };
@@ -418,15 +414,13 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
     }
 
     res.volume = "Total body";
+    res.TG195Result = TG195_value;
     res.result = total_ev / (total_hist / 1000);
     res.result_std = std::sqrt(total_ev_var) / (total_hist / 1000);
     res.nEvents = total_number_events;
     res.nMilliseconds = time_elapsed.count();
     ResultPrint print;
-    print(res, false);
-
-    std::cout << "Whole body: " << res.result << " eV/history, TG195: " << TG195_value << " eV/history";
-    std::cout << ", difference: " << res.result - TG195_value << " ev/history [" << (res.result / TG195_value - 1) * 100 << "]%  \n";
+    print(res, true);
 
     std::map<std::size_t, std::array<T, 3>> vois;
     vois[3] = { 0, 0, 0 };
@@ -466,27 +460,11 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
                 }
             }
         }
+        const auto TG195_sub_value = TG195_voi_values[ind - 1];
+        res.TG195Result = TG195_sub_value;
         res.result /= (total_hist / 1000);
         res.result_std = std::sqrt(res.result_std) / (total_hist / 1000);
-        const auto TG195_sub_value = TG195_voi_values[ind - 1];
-        std::cout << res.volume << ": " << res.result << " eV/history, TG195: " << TG195_sub_value << " eV/history";
-        std::cout << ", difference: " << res.result - TG195_sub_value << " ev/history [" << (res.result / TG195_sub_value - 1) * 100 << "]%  \n";
-        print(res, false);
-    }
-
-    if (LOWENERGYCORRECTION == 0) {
-        res.volume = "Total body";
-        res.model = "TG195";
-        res.result = TG195_value;
-        res.result_std = 0;
-        res.nEvents = 0;
-        res.nMilliseconds = 0;
-        print(res, false);
-        for (std::size_t i = 0; i < TG195_voi_values.size(); ++i) {
-            res.volume = "VOI " + std::to_string(i + 1);
-            res.result = TG195_voi_values[i];
-            print(res, false);
-        }
+        print(res, true);
     }
 
     return true;
@@ -604,39 +582,25 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
         }
     }
 
-    if constexpr (LOWENERGYCORRECTION == 0) {
-        res.model = "TG195";
-        res.result = sim_ev;
-        res.volume = "Total body";
-        res.result_std = 0;
-        res.nEvents = 0;
-        res.nMilliseconds = 0;
-        print(res, false);
-        for (int i = 0; i < sim_subvol.size(); ++i) {
-            res.volume = "VOI " + std::to_string(i + 1);
-            res.result = sim_subvol[i];
-            print(res, false);
-        }
-    }
-
     res.model = model;
 
     constexpr T evNormal = T { 1000 } / (N_HISTORIES * N_EXPOSURES);
 
     res.volume = "Total body";
+    res.TG195Result = sim_ev;
     res.result = breast.energyScored(8).energyImparted() * evNormal;
     res.result_std = breast.energyScored(8).standardDeviation() * evNormal;
     res.nEvents = breast.energyScored(8).numberOfEvents();
     res.nMilliseconds = time_elapsed.count();
-    print(res, false);
-    std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_ev << ", difference: [" << (res.result / sim_ev - 1) * 100 << "%]\n";
+    print(res, true);
+
     for (int i = 0; i < 7; ++i) {
         res.volume = "VOI " + std::to_string(i + 1);
+        res.TG195Result = sim_subvol[i];
         res.result = breast.energyScored(i).energyImparted() * evNormal;
         res.result_std = breast.energyScored(i).standardDeviation() * evNormal;
         res.nEvents = breast.energyScored(i).numberOfEvents();
-        print(res, false);
-        std::cout << "VOI: " << res.volume << ", eV/hist: " << res.result << ", TG195: " << sim_subvol[i] << ", difference: [" << (res.result / sim_subvol[i] - 1) * 100 << "%]\n";
+        print(res, true);
     }
 
     return true;
@@ -727,35 +691,25 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 
     std::cout << res.rCase << " specter: " << res.specter << " collimation: " << res.modus << " " << res.model << std::endl;
 
+    std::array<double, 4> tg195;
+    if (specter && large_collimation)
+        tg195 = { 3586.59, 3537.84, 3378.99, 2672.21 };
+    if (specter && !large_collimation)
+        tg195 = { 13137.02, 2585.47, 1706.86, 1250.61 };
+    if (!specter && large_collimation)
+        tg195 = { 3380.39, 3332.64, 3176.44, 2559.58 };
+    if (!specter && !large_collimation)
+        tg195 = { 11592.27, 2576.72, 1766.85, 1330.53 };
+
     for (std::size_t i = 0; i < voi_locations.size(); ++i) {
         res.volume = "VOI " + std::to_string(i + 1);
+        res.TG195Result = tg195[i];
         res.result = ev_history[i];
         res.result_std = ev_history_var[i];
         res.nEvents = ev_events[i];
-        print(res, false);
-        std::cout << res.volume << ": " << res.result << " eV/history\n";
+        print(res, true);
     }
-    if (LOWENERGYCORRECTION == 0) {
 
-        std::array<double, 4> tg195;
-        if (specter && large_collimation)
-            tg195 = { 3586.59, 3537.84, 3378.99, 2672.21 };
-        if (specter && !large_collimation)
-            tg195 = { 13137.02, 2585.47, 1706.86, 1250.61 };
-        if (!specter && large_collimation)
-            tg195 = { 3380.39, 3332.64, 3176.44, 2559.58 };
-        if (!specter && !large_collimation)
-            tg195 = { 11592.27, 2576.72, 1766.85, 1330.53 };
-        res.model = "TG195";
-        for (std::size_t i = 0; i < tg195.size(); ++i) {
-            res.volume = "VOI " + std::to_string(i + 1);
-            res.result = tg195[i];
-            res.result_std = 0;
-            res.nEvents = 0;
-            res.nMilliseconds = 0;
-            print(res, false);
-        }
-    }
     return true;
 }
 
@@ -844,6 +798,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         std::cout << "Angle " << angInt;
         res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
         res.volume = std::to_string(angInt);
+        res.TG195Result = sim_ev_pher[i];
         res.result = cylinder.energyScoredPeriferyCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES) / 1000);
         res.result_std = cylinder.energyScoredPeriferyCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES) / 1000);
         res.nEvents = cylinder.energyScoredPeriferyCylinder().numberOfEvents();
@@ -851,6 +806,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         print(res, false);
         res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
         res.volume = std::to_string(angInt);
+        res.TG195Result = sim_ev_center[i];
         res.result = cylinder.energyScoredCenterCylinder().energyImparted() / ((N_HISTORIES * N_EXPOSURES) / 1000);
         res.result_std = cylinder.energyScoredCenterCylinder().standardDeviation() / ((N_HISTORIES * N_EXPOSURES) / 1000);
         res.nEvents = cylinder.energyScoredCenterCylinder().numberOfEvents();
@@ -858,32 +814,6 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         print(res, false);
     }
 
-    if (LOWENERGYCORRECTION == 0) {
-
-        res.model = "TG195";
-        std::size_t angInd = 0;
-        res.modus = large_collimation ? "Center 80mm collimation" : "Center 10mm collimation";
-        for (auto d : sim_ev_center) {
-            res.volume = std::to_string(angInd);
-            angInd = angInd + 10;
-            res.result = d;
-            res.result_std = 0;
-            res.nEvents = 0;
-            res.nMilliseconds = 0;
-            print(res, false);
-        }
-        angInd = 0;
-        res.modus = large_collimation ? "Pherifery 80mm collimation" : "Pherifery 10mm collimation";
-        for (auto d : sim_ev_pher) {
-            res.volume = std::to_string(angInd);
-            angInd = angInd + 10;
-            res.result = d;
-            res.result_std = 0;
-            res.nEvents = 0;
-            res.nMilliseconds = 0;
-            print(res, false);
-        }
-    }
     return true;
 }
 
@@ -997,7 +927,7 @@ template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
 bool TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 480;
-    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
+    const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     using World = World<T, AAVoxelGrid<T, 5, LOWENERGYCORRECTION, 255>>;
     auto [grid_object, matInf] = generateTG195World5<T, 5, LOWENERGYCORRECTION, 255>();
@@ -1025,7 +955,28 @@ bool TG195Case5AbsorbedEnergy()
         beam.setEnergy(T { 56.4 });
         res.specter = "56.4keV";
     }
-    std::cout << "Case 5 specter: " << res.specter << " model: " << res.model << std::endl;
+
+    const std::array<std::uint8_t, 17> tg195_organ_idx = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+    std::array<std::array<T, 17>, 8> tg195_doses;
+    if constexpr (std::same_as<B, IsotropicBeam<T>>) {
+        tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };
+        tg195_doses[1] = { 12594.50, 1801.82, 1007.28, 612.42, 5.74, 9.97, 76.98, 8.73, 5.86, 0.13, 1.39, 33.38, 7.12, 30.52, 538.17, 17.76, 6631.55 };
+        tg195_doses[2] = { 10648.03, 737.54, 640.75, 447.05, 3.70, 6.58, 36.07, 3.29, 3.19, 0.10, 1.03, 15.51, 3.38, 21.38, 348.68, 6.82, 4814.57 };
+        tg195_doses[3] = { 10137.70, 730.79, 716.21, 389.11, 2.62, 17.39, 56.73, 5.20, 4.38, 0.14, 1.24, 11.31, 3.72, 24.87, 223.37, 2.19, 7437.66 };
+        tg195_doses[4] = { 10250.38, 1211.35, 1043.24, 385.78, 2.57, 31.09, 102.26, 9.74, 6.91, 0.18, 1.51, 10.66, 5.45, 30.25, 143.22, 2.96, 9718.55 };
+        tg195_doses[5] = { 10069.33, 1121.22, 687.39, 243.21, 1.62, 33.91, 107.84, 11.19, 6.92, 0.15, 1.33, 8.57, 5.34, 29.45, 232.17, 2.14, 7265.83 };
+        tg195_doses[6] = { 10666.10, 1503.58, 601.06, 164.33, 1.32, 30.15, 122.86, 16.10, 7.16, 0.12, 1.20, 10.51, 6.82, 22.47, 365.63, 7.18, 5072.79 };
+        tg195_doses[7] = { 12488.68, 2558.90, 877.00, 375.60, 3.76, 24.31, 138.64, 18.52, 8.43, 0.13, 1.49, 26.49, 9.60, 27.68, 562.67, 18.29, 6436.26 };
+    } else {
+        tg195_doses[0] = { 11574.28, 3086.42, 1301.17, 679.47, 6.37, 17.57, 134.40, 16.73, 8.79, 0.15, 1.74, 44.22, 10.72, 36.90, 456.36, 21.68, 8761.23 };
+        tg195_doses[1] = { 11761.25, 1932.04, 1045.65, 683.63, 6.33, 9.91, 82.98, 9.22, 6.18, 0.13, 1.47, 36.39, 7.64, 33.46, 437.27, 17.97, 7669.28 };
+        tg195_doses[2] = { 9975.20, 786.73, 679.42, 495.34, 3.94, 6.27, 36.21, 3.15, 3.15, 0.10, 1.06, 16.90, 3.38, 23.03, 285.87, 6.80, 5611.52 };
+        tg195_doses[3] = { 9581.67, 765.35, 755.19, 421.94, 2.62, 18.05, 58.05, 5.07, 4.38, 0.15, 1.27, 12.03, 3.61, 26.36, 189.37, 2.07, 8510.07 };
+        tg195_doses[4] = { 9704.91, 1265.14, 1085.65, 411.34, 2.52, 33.79, 109.31, 10.18, 7.15, 0.18, 1.57, 11.22, 5.51, 32.11, 129.81, 2.82, 11003.75 };
+        tg195_doses[5] = { 9487.98, 1202.94, 721.26, 251.05, 1.52, 37.44, 117.36, 12.02, 7.31, 0.16, 1.38, 8.95, 5.48, 31.53, 195.79, 2.00, 8367.44 };
+        tg195_doses[6] = { 9970.40, 1625.79, 636.47, 168.17, 1.25, 33.40, 136.69, 17.88, 7.68, 0.12, 1.26, 11.26, 7.29, 24.39, 298.96, 7.18, 5876.97 };
+        tg195_doses[7] = { 11649.90, 2725.15, 916.40, 409.55, 3.99, 26.54, 155.30, 20.68, 9.13, 0.13, 1.55, 28.93, 10.49, 30.43, 455.47, 18.39, 7391.31 };
+    }
 
     const auto collangle_y = std::atan(T { 25 } / T { 60 });
     const auto collangle_z = std::atan(T { 0.5 } / T { 60 });
@@ -1036,17 +987,16 @@ bool TG195Case5AbsorbedEnergy()
     const std::array<T, 3> co_x = { -1, 0, 0 };
     const std::array<T, 3> co_y = { 0, 0, 1 };
     const std::array<T, 3> pos = { 0, -60, 0 };
-    for (std::size_t angInt = 0; angInt < 360; angInt = angInt + 45) {
-        const T angle = -static_cast<T>(angInt) * DEG_TO_RAD<T>();
+    for (std::size_t angInt = 0; angInt < 8; angInt = ++angInt) {
+        const T angle = -static_cast<T>(angInt * 45) * DEG_TO_RAD<T>();
         auto x = vectormath::rotate(co_x, { 0, 0, 1 }, angle);
         auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
         beam.setPosition(p_ang);
         beam.setDirectionCosines(x, co_y);
-
+        res.modus = std::to_string(angInt * 45);
+        std::cout << "Case 5 specter: " << res.specter << " angle: " << res.modus << " model: " << res.model << std::endl;
         auto time_elapsed = runDispatcher(transport, world, beam);
-        std::cout << "Angle " << angInt << "...Done" << std::endl;
 
-        res.modus = std::to_string(angInt);
         res.nMilliseconds = time_elapsed.count();
 
         const auto doseScore = grid.getEnergyScores();
@@ -1056,7 +1006,7 @@ bool TG195Case5AbsorbedEnergy()
         for (const auto& [density, material_name] : matInf) {
             if (matIdx > 2) {
                 res.volume = material_name;
-
+                res.TG195Result = tg195_doses[angInt][matIdx - 3];
                 const auto ei_tot = std::transform_reduce(std::execution::par_unseq, doseScore.cbegin(), doseScore.cend(), materialIndex.cbegin(), T { 0 }, std::plus<>(), [matIdx](const auto& energyScored, auto ind) -> T {
                     if (ind == matIdx)
                         return energyScored.energyImparted();
@@ -1079,7 +1029,7 @@ bool TG195Case5AbsorbedEnergy()
                         return T { 0 };
                 });
                 res.nEvents = events;
-                print(res, false);
+                print(res, true);
             }
             matIdx++;
         }
@@ -1087,118 +1037,36 @@ bool TG195Case5AbsorbedEnergy()
         world.clearDoseScored();
     }
 
-    if constexpr (LOWENERGYCORRECTION == 0) {
-        res.model = "TG195";
-        res.nEvents = 0;
-        res.nMilliseconds = 0;
-        std::array<std::array<T, 17>, 8> tg195_doses;
-        if constexpr (std::same_as<B, IsotropicBeam<T>>) {
-            tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };
-            tg195_doses[1] = { 12594.50, 1801.82, 1007.28, 612.42, 5.74, 9.97, 76.98, 8.73, 5.86, 0.13, 1.39, 33.38, 7.12, 30.52, 538.17, 17.76, 6631.55 };
-            tg195_doses[2] = { 10648.03, 737.54, 640.75, 447.05, 3.70, 6.58, 36.07, 3.29, 3.19, 0.10, 1.03, 15.51, 3.38, 21.38, 348.68, 6.82, 4814.57 };
-            tg195_doses[3] = { 10137.70, 730.79, 716.21, 389.11, 2.62, 17.39, 56.73, 5.20, 4.38, 0.14, 1.24, 11.31, 3.72, 24.87, 223.37, 2.19, 7437.66 };
-            tg195_doses[4] = { 10250.38, 1211.35, 1043.24, 385.78, 2.57, 31.09, 102.26, 9.74, 6.91, 0.18, 1.51, 10.66, 5.45, 30.25, 143.22, 2.96, 9718.55 };
-            tg195_doses[5] = { 10069.33, 1121.22, 687.39, 243.21, 1.62, 33.91, 107.84, 11.19, 6.92, 0.15, 1.33, 8.57, 5.34, 29.45, 232.17, 2.14, 7265.83 };
-            tg195_doses[6] = { 10666.10, 1503.58, 601.06, 164.33, 1.32, 30.15, 122.86, 16.10, 7.16, 0.12, 1.20, 10.51, 6.82, 22.47, 365.63, 7.18, 5072.79 };
-            tg195_doses[7] = { 12488.68, 2558.90, 877.00, 375.60, 3.76, 24.31, 138.64, 18.52, 8.43, 0.13, 1.49, 26.49, 9.60, 27.68, 562.67, 18.29, 6436.26 };
-        } else {
-            tg195_doses[0] = { 11574.28, 3086.42, 1301.17, 679.47, 6.37, 17.57, 134.40, 16.73, 8.79, 0.15, 1.74, 44.22, 10.72, 36.90, 456.36, 21.68, 8761.23 };
-            tg195_doses[1] = { 11761.25, 1932.04, 1045.65, 683.63, 6.33, 9.91, 82.98, 9.22, 6.18, 0.13, 1.47, 36.39, 7.64, 33.46, 437.27, 17.97, 7669.28 };
-            tg195_doses[2] = { 9975.20, 786.73, 679.42, 495.34, 3.94, 6.27, 36.21, 3.15, 3.15, 0.10, 1.06, 16.90, 3.38, 23.03, 285.87, 6.80, 5611.52 };
-            tg195_doses[3] = { 9581.67, 765.35, 755.19, 421.94, 2.62, 18.05, 58.05, 5.07, 4.38, 0.15, 1.27, 12.03, 3.61, 26.36, 189.37, 2.07, 8510.07 };
-            tg195_doses[4] = { 9704.91, 1265.14, 1085.65, 411.34, 2.52, 33.79, 109.31, 10.18, 7.15, 0.18, 1.57, 11.22, 5.51, 32.11, 129.81, 2.82, 11003.75 };
-            tg195_doses[5] = { 9487.98, 1202.94, 721.26, 251.05, 1.52, 37.44, 117.36, 12.02, 7.31, 0.16, 1.38, 8.95, 5.48, 31.53, 195.79, 2.00, 8367.44 };
-            tg195_doses[6] = { 9970.40, 1625.79, 636.47, 168.17, 1.25, 33.40, 136.69, 17.88, 7.68, 0.12, 1.26, 11.26, 7.29, 24.39, 298.96, 7.18, 5876.97 };
-            tg195_doses[7] = { 11649.90, 2725.15, 916.40, 409.55, 3.99, 26.54, 155.30, 20.68, 9.13, 0.13, 1.55, 28.93, 10.49, 30.43, 455.47, 18.39, 7391.31 };
-        }
-        const std::array<std::uint8_t, 17> tg195_organ_idx = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
-        for (std::size_t angInt = 0; angInt < 8; ++angInt) {
-            for (std::size_t i = 0; i < tg195_organ_idx.size(); ++i) {
-                const auto mIdx = tg195_organ_idx[i];
-                res.volume = matInf[mIdx].second;
-                res.modus = std::to_string(angInt * 45);
-                res.result = tg195_doses[angInt][i];
-                res.result_std = T { 0 };
-                print(res, false);
-            }
-        }
-    }
-
     return true;
 }
 
-template <typename T>
+template <typename T, int LOWENERGYCORRECTION>
 bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 0>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(true);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(true);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 2>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, 2>(true);
+    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(false, false);
+    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(true, false);
+    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(false, true);
+    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(true, true);
 
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 0>(true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(true);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
-
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(true);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 2>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, 2>(true);
-
-    success = success && TG195Case41AbsorbedEnergy<T, 0>(false, false);
-    success = success && TG195Case41AbsorbedEnergy<T, 1>(false, false);
-    success = success && TG195Case41AbsorbedEnergy<T, 2>(false, false);
-
-    success = success && TG195Case41AbsorbedEnergy<T, 0>(true, false);
-    success = success && TG195Case41AbsorbedEnergy<T, 1>(true, false);
-    success = success && TG195Case41AbsorbedEnergy<T, 2>(true, false);
-
-    success = success && TG195Case41AbsorbedEnergy<T, 0>(false, true);
-    success = success && TG195Case41AbsorbedEnergy<T, 1>(false, true);
-    success = success && TG195Case41AbsorbedEnergy<T, 2>(false, true);
-
-    success = success && TG195Case41AbsorbedEnergy<T, 0>(true, true);
-    success = success && TG195Case41AbsorbedEnergy<T, 1>(true, true);
-    success = success && TG195Case41AbsorbedEnergy<T, 2>(true, true);
-
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>(true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 0>(true);
-
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>(true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 1>(true);
-
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>(true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, 2>(true);
-
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 0>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 0>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 1>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 1>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, 2>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, 2>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>();
+    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>();
 
     return success;
 }
@@ -1215,8 +1083,15 @@ int main(int argc, char* argv[])
 
     auto success = true;
 
-    success = runAll<double>();
-    success = runAll<float>();
+    success = runAll<double, 0>();
+    success = runAll<double, 1>();
+    success = runAll<double, 2>();
+
+    /*
+    success = runAll<float, 0>();
+    success = runAll<float, 1>();
+    success = runAll<float, 2>();
+    */
 
     if (success)
         return EXIT_SUCCESS;

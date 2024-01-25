@@ -13,7 +13,7 @@
 # You should have received a copy of the GNU General Public License
 # along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-# Copyright 2021 Erlend Andersen
+# Copyright 2024 Erlend Andersen
 
 
 import seaborn as sns
@@ -22,6 +22,7 @@ from matplotlib import pylab as plt
 import numpy as np
 import os
 
+
 def readData():    
     converters={"Result":float, "Stddev":float}
     dt = pd.read_csv("validationTable.txt", sep=", ", engine='python', converters=converters)
@@ -29,7 +30,17 @@ def readData():
     if nNaN > 0:
         print("Warning: Found {} NaN values or missing data, dropping rows".format(nNaN))
         return dt.dropna()
-    return dt
+    
+    # Making TG195 results an own model
+    m_series = dt['Model'].value_counts().sort_values(ascending=False)    
+    model = m_series.index[0]
+    dm = dt[dt['Model'] == model].copy()
+    dm["Result"] = dm["TG195Result"]
+    dm["Model"] = ["TG195" for _ in dm["TG195Result"]]
+    for key in ["Stddev", "nEvents", "SimulationTime", "Precision"]:
+        dm[key] = [0 for _ in dm[key]]
+    
+    return pd.concat([dt, dm], ignore_index=True)
 
 def fix_axis(fg, rotate_labels=True, ylabel="Energy [eV/history]"):
     fg.set(ylim=(0, None))
@@ -41,7 +52,9 @@ def fix_axis(fg, rotate_labels=True, ylabel="Energy [eV/history]"):
     fg.tight_layout()
 
 def plotCase2(dt_full, show=False):
-    dt=dt_full[dt_full['Case']=="Case 2"]    
+    dt=dt_full[dt_full['Case']=="Case 2"]  
+    if dt.size == 0:
+        return  
     dt_vol=dt[dt['Volume'] != 'Total body']
    
     g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt_vol )
@@ -61,6 +74,8 @@ def plotCase2(dt_full, show=False):
  
 def plotCase3(dt_full, show=False):
     dt=dt_full[dt_full['Case']=="Case 3"]    
+    if dt.size == 0:
+        return
     dt_vol=dt[dt['Volume'] != 'Total body']
    
     g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt_vol )
@@ -79,7 +94,9 @@ def plotCase3(dt_full, show=False):
     plt.clf()
 
 def plotCase41(dt_full, show=False):
-    dt=dt_full[dt_full['Case']=="Case 4.1"]        
+    dt=dt_full[dt_full['Case']=="Case 4.1"]  
+    if dt.size == 0:
+        return      
     g = sns.catplot(x="Volume", y="Result",hue='Model', row='Specter', col='Mode', data=dt )
     fix_axis(g, False)
     plt.savefig("plots/Case41.png", dpi=900)
@@ -88,7 +105,8 @@ def plotCase41(dt_full, show=False):
     
 def plotCase42(dt_full, show=False):
     dt=dt_full[dt_full['Case']=="Case 4.2"]
-    
+    if dt.size == 0:
+        return
     dt['Volume [angle]'] = [float(d) for d in dt['Volume']]
     dtp_ind=['Cent' in e for e in dt['Mode']]
     dtp = dt[dtp_ind]
@@ -107,7 +125,9 @@ def plotCase42(dt_full, show=False):
         plt.show()
     
 def plotCase5(dt_full, show=False):
-    dt=dt_full[dt_full['Case']=="Case 5"]        
+    dt=dt_full[dt_full['Case']=="Case 5"]   
+    if dt.size == 0:
+        return     
     vols = set([m for m in dt['Volume']])
     for m in vols:
         dtm = dt[dt['Volume']==m]
@@ -129,7 +149,12 @@ def plotRuntimes(dt, show=False):
         plt.clf()
 
 if __name__=='__main__':
+    # Setting current path to this file folder
+    os.chdir(os.path.dirname(os.path.abspath(__file__)))
+
     dt = readData()
+    
+   
     try:
         os.mkdir("plots")
     except Exception:

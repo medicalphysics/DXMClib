@@ -195,13 +195,6 @@ public:
             normalVector<false>(m_vertices[3], m_vertices[2], m_vertices[1])
         };
 
-        /*const std::array<std::array<T, 3>, 4> normals = {
-            normalVector<true>(m_vertices[0], m_vertices[1], m_vertices[2]),
-            normalVector<true>(m_vertices[1], m_vertices[0], m_vertices[3]),
-            normalVector<true>(m_vertices[2], m_vertices[3], m_vertices[0]),
-            normalVector<true>(m_vertices[3], m_vertices[2], m_vertices[1])
-        };*/
-
         bool inside = true;
         for (int i = 0; i < 4; ++i) {
             inside = inside && vectormath::dot(vectormath::subtract(m_vertices[i], point), normals[i]) >= 0;
