@@ -1087,11 +1087,9 @@ int main(int argc, char* argv[])
     success = runAll<double, 1>();
     success = runAll<double, 2>();
 
-    /*
     success = runAll<float, 0>();
     success = runAll<float, 1>();
     success = runAll<float, 2>();
-    */
 
     if (success)
         return EXIT_SUCCESS;

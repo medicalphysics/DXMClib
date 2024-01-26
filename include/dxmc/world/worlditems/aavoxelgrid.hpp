@@ -197,12 +197,11 @@ public:
     inline std::array<std::size_t, 3> index(const std::array<T, 3>& pos) const
     {
         if constexpr (BOUNDSCHECK) {
-            std::array<std::size_t, 3> idx;
-            for (std::size_t i = 0; i < 3; ++i) {
-                const T dt = m_spacing[i] * T { 0.5 };
-                const T bpos = std::clamp(pos[i], m_aabb[i] + dt, m_aabb[i + 3] - dt);
-                idx[i] = static_cast<std::size_t>((bpos - m_aabb[i]) * m_invSpacing[i]);
-            }
+            const std::array<std::size_t, 3> idx = {
+                static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) * m_invSpacing[0], T { 0 }, static_cast<T>(m_dim[0] - 1))),
+                static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) * m_invSpacing[1], T { 0 }, static_cast<T>(m_dim[1] - 1))),
+                static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) * m_invSpacing[2], T { 0 }, static_cast<T>(m_dim[2] - 1)))
+            };
             return idx;
         } else {
             const std::array<std::size_t, 3> idx = {
@@ -414,9 +413,7 @@ protected:
     template <std::uint_fast8_t IGNOREIDX = 255>
     void voxelTransport(Particle<T>& p, RandomState& state)
     {
-
         bool still_inside;
-
         do {
             std::array<std::size_t, 3> xyz = index<false>(p.pos);
 
@@ -577,7 +574,7 @@ protected:
 
             if (steplen < intersection.intersection) {
                 p.translate(steplen);
-                const auto flat_index = flatIndex<false>(p.pos);
+                const auto flat_index = flatIndex<true>(p.pos);
                 const auto matIdx = m_data[flat_index].materialIndex;
                 const auto& dens = m_data[flat_index].density;
                 const auto att = m_materials[matIdx].attenuationValues(p.energy);
