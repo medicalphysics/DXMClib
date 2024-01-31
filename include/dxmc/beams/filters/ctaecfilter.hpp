@@ -41,6 +41,15 @@ public:
         setData(start, stop, values);
     }
 
+    void normalizeBetween(const std::array<T, 3>& start, const std::array<T, 3>& stop) const
+    {
+        const auto dist_start = vectormath::subtract(start, m_start);
+        const auto proj_start = vectormath::dot(dist_start, m_dir);
+        const auto dist_stop = vectormath::subtract(stop, m_start);
+        const auto proj_stop = vectormath::dot(dist_stop, m_dir);
+        normalize(proj_start, proj_stop);
+    }
+
     std::size_t size() const
     {
         return m_data.size();
