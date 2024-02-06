@@ -53,7 +53,16 @@ public:
         m_material = material;
     }
 
-    void setMaterialDensity(T density) { m_materialDensity = density; }
+    void setMaterial(const Material<T, NMaterialShells>& material, T density)
+    {
+        m_material = material;
+        setMaterialDensity(density);
+    }
+
+    void setMaterialDensity(T density)
+    {
+        m_materialDensity = std::abs(density);
+    }
 
     bool setNistMaterial(const std::string& nist_name)
     {
@@ -98,7 +107,7 @@ public:
 
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
-        auto inter= basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        auto inter = basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
         if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
