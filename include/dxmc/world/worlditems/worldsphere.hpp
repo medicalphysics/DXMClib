@@ -40,9 +40,9 @@ public:
         : WorldItemBase<T>()
         , m_radius(std::abs(radius))
         , m_center(pos)
-        , m_material(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+        m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
 
     void setRadius(T r)
@@ -101,7 +101,7 @@ public:
     VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
     {
         auto inter = basicshape::sphere::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius);
-        if(inter.valid())
+        if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
     }
