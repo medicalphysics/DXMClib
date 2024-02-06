@@ -69,6 +69,7 @@ protected:
         static NISTMaterials instance;
         return instance;
     }
+
     NISTMaterials()
     {
         nistdata["A-150 Tissue-Equivalent Plastic"] = { .density = 1.127f, .massFractions = { { 1, 0.101327f }, { 6, 0.775501f }, { 7, 0.035057f }, { 8, 0.052316f }, { 9, 0.017422f }, { 20, 0.018378f } } };
@@ -117,6 +118,7 @@ protected:
         nistdata["Chlorobenzene"] = { .density = 1.1058f, .massFractions = { { 1, 0.044772f }, { 6, 0.640254f }, { 17, 0.314974f } } };
         nistdata["Chloroform"] = { .density = 1.4832f, .massFractions = { { 1, 0.008443f }, { 6, 0.100613f }, { 17, 0.890944f } } };
         nistdata["Concrete, Portland"] = { .density = 2.3f, .massFractions = { { 1, 0.01f }, { 6, 0.001f }, { 8, 0.529107f }, { 11, 0.016f }, { 12, 0.002f }, { 13, 0.033872f }, { 14, 0.337021f }, { 19, 0.013f }, { 20, 0.044f }, { 26, 0.014f } } };
+        nistdata["Concrete, Ordinary"] = { .density = 2.3f, .massFractions = { { 1, 0.022100f }, { 6, 0.002484f }, { 8, 0.574930f }, { 11, 0.01520f }, { 12, 0.00126f }, { 13, 0.01995f }, { 14, 0.30462f }, { 19, 0.01004f }, { 20, 0.04295f }, { 26, 0.00643f } } };
         nistdata["Cyclohexane"] = { .density = 0.779f, .massFractions = { { 1, 0.143711f }, { 6, 0.856289f } } };
         nistdata["1,2-Ddihlorobenzene"] = { .density = 1.3048f, .massFractions = { { 1, 0.027425f }, { 6, 0.490233f }, { 17, 0.482342f } } };
         nistdata["Dichlorodiethyl Ether"] = { .density = 1.2199f, .massFractions = { { 1, 0.056381f }, { 6, 0.335942f }, { 8, 0.111874f }, { 17, 0.495802f } } };
