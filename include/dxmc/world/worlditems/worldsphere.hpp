@@ -33,7 +33,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEINTERACTIONS = false>
 class WorldSphere final : public WorldItemBase<T> {
 public:
     WorldSphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
@@ -108,32 +108,10 @@ public:
 
     void transport(Particle<T>& p, RandomState& state) noexcept override
     {
-        bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
-        bool updateAtt = false;
-        auto att = m_material.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_materialDensity);
-        while (cont) {
-            if (updateAtt) {
-                att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_materialDensity);
-                updateAtt = false;
-            }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
-            const auto intLen = intersect(p).intersection; // this must be valid
-
-            if (stepLen < intLen) {
-                // interaction happends
-                p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                m_energyScored.scoreEnergy(intRes.energyImparted);
-                cont = intRes.particleAlive;
-                updateAtt = intRes.particleEnergyChanged;
-            } else {
-                // transport to border
-                p.border_translate(intLen);
-                cont = false;
-            }
-        }
+        if constexpr (FORCEINTERACTIONS)
+            transportForced(p, state);
+        else
+            transportRandom(p, state);
     }
 
     const EnergyScore<T>& energyScored(std::size_t index = 0) const override
@@ -163,6 +141,71 @@ public:
     }
 
 protected:
+    void transportRandom(Particle<T>& p, RandomState& state) noexcept
+    {
+        bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
+        bool updateAtt = false;
+        auto att = m_material.attenuationValues(p.energy);
+        auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        while (cont) {
+            if (updateAtt) {
+                att = m_material.attenuationValues(p.energy);
+                attSumInv = 1 / (att.sum() * m_materialDensity);
+                updateAtt = false;
+            }
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto intLen = intersect(p).intersection; // this must be valid
+
+            if (stepLen < intLen) {
+                // interaction happends
+                p.translate(stepLen);
+                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                m_energyScored.scoreEnergy(intRes.energyImparted);
+                cont = intRes.particleAlive;
+                updateAtt = intRes.particleEnergyChanged;
+            } else {
+                // transport to border
+                p.border_translate(intLen);
+                cont = false;
+            }
+        }
+    }
+
+    void transportForced(Particle<T>& p, RandomState& state) noexcept
+    {
+        bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
+        bool updateAtt = false;
+        auto att = m_material.attenuationValues(p.energy);
+        auto attSum = att.sum() * m_materialDensity;
+        auto attSumInv = 1 / attSum;
+        while (cont) {
+            if (updateAtt) {
+                att = m_material.attenuationValues(p.energy);
+                attSum = att.sum() * m_materialDensity;
+                attSumInv = 1 / attSum;
+                updateAtt = false;
+            }
+
+            const auto intLen = intersect(p).intersection; // this must be valid
+            const auto interactionProb = 1 - std::exp(-intLen * attSum);
+            const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_material, state);
+            m_energyScored.scoreEnergy(intRes.energyImparted);
+            if (intRes.particleDirectionChanged) {
+                // we have a proper random scattering event
+                // calculating step lenght
+                const auto stepLen = -std::log(1 - state.randomUniform<T>(interactionProb)) * attSumInv; // cm
+                p.translate(stepLen);
+                updateAtt = intRes.particleEnergyChanged;
+                // This could be false in case of russian rulette
+                cont = intRes.particleAlive;
+            } else {
+                // we passed the sphere
+                p.border_translate(intLen);
+                cont = false;
+            }
+        }
+    }
+
 private:
     T m_radius = 0;
     std::array<T, 3> m_center;
@@ -171,5 +214,4 @@ private:
     EnergyScore<T> m_energyScored;
     DoseScore<T> m_dose;
 };
-
 }

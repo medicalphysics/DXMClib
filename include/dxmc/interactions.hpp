@@ -281,6 +281,7 @@ namespace interactions {
         T energyImparted = 0;
         bool particleAlive = true;
         bool particleEnergyChanged = false;
+        bool particleDirectionChanged = false;
     };
 
     template <Floating T, std::size_t Nshells, int Lowenergycorrection = 2>
@@ -296,14 +297,15 @@ namespace interactions {
             const auto Ei = interactions::comptonScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
             res.energyImparted = Ei;
             res.particleEnergyChanged = true;
+            res.particleDirectionChanged = true;
         } else {
             interactions::rayleightScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
+            res.particleDirectionChanged = true;
         }
         if (particle.energy < MIN_ENERGY<T>()) {
             res.particleAlive = false;
             res.energyImparted += particle.energy;
         } else {
-
             if (particle.weight < interactions::russianRuletteWeightThreshold<T>() && res.particleAlive) {
                 if (state.randomUniform<T>() < interactions::russianRuletteProbability<T>()) {
                     res.particleAlive = false;
@@ -337,10 +339,12 @@ namespace interactions {
                 const auto Ei = interactions::comptonScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
                 res.energyImparted += Ei;
                 res.particleEnergyChanged = true;
+                res.particleDirectionChanged = true;
             } else {
                 // coherent
                 interactions::rayleightScatter<T, Nshells, Lowenergycorrection>(particle, material, state);
-            }
+                res.particleDirectionChanged = true;
+            }            
         }
         particle.weight *= (1 - weightCorrection);
 

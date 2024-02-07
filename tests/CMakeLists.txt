@@ -24,6 +24,7 @@ set(TEST_SOURCES
 #    "testattenuationlut.cpp"
 #    "testitemcollection.cpp"
     "testvectormath.cpp"
+    "testworldsphere.cpp"
 #    "testexposure.cpp"
 #    "testinterpolation.cpp"
 )
