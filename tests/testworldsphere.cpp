@@ -46,7 +46,7 @@ bool testForcedinteractions()
     w.build();
     wf.build();
 
-    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
+    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 30);
     beam.setNumberOfExposures(124);
     beam.setNumberOfParticlesPerExposure(1e4);
 
@@ -62,8 +62,8 @@ bool testForcedinteractions()
     auto sttd = sphere.doseScored().standardDeviation();
     auto sttdf = spheref.doseScored().standardDeviation();
 
-    std::cout << sphere.doseScored().dose() << std::endl;
-    std::cout << spheref.doseScored().dose() << std::endl;
+    std::cout << "Random " << sphere.doseScored().dose() << std::endl;
+    std::cout << "Forced " << spheref.doseScored().dose() << std::endl;
     std::cout << "Diff: " << diff << ", sttdev: ";
     std::cout << sttd << ", " << sttdf << std::endl;
 

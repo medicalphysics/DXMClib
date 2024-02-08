@@ -182,30 +182,31 @@ protected:
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         bool updateAtt = false;
         auto att = m_material.attenuationValues(p.energy);
-        auto attSum = att.sum() * m_materialDensity;
-        auto attSumInv = 1 / attSum;
+        auto attSumInv = 1 / (att.sum() * m_materialDensity);
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
-                attSum = att.sum() * m_materialDensity;
-                attSumInv = 1 / attSum;
+                attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
-
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this must be valid
-            const auto interactionProb = 1 - std::exp(-intLen * attSum);
-            const auto scatterProb = 1 - att.photoelectric / att.sum();
-            if (interactionProb * scatterProb < state.randomUniform<T>()) {
-                const auto stepLen = -std::log(state.randomUniform<T>(1 - scatterProb, T { 1 })) * attSumInv;
+
+            if (stepLen < intLen) {
+                // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interactScatter<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                m_energyScored.scoreEnergy(intRes.energyImparted);
-                cont = intRes.particleAlive;
-                updateAtt = intRes.particleEnergyChanged;
+                const auto photoProb = att.photoelectric / att.sum();
+                if (state.randomUniform<T>() < photoProb) {
+                    m_energyScored.scoreEnergy(p.energy * p.weight);
+                    cont = false;
+                } else {
+                    const auto intRes = interactions::template interactScatter<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                    m_energyScored.scoreEnergy(intRes.energyImparted);
+                    cont = intRes.particleAlive;
+                    updateAtt = intRes.particleEnergyChanged;
+                }
             } else {
-                const auto remainderProb = interactionProb * (1 - scatterProb);
-                m_energyScored.scoreEnergy(p.energy * p.weight * remainderProb);
-                p.weight *= (1 - remainderProb);
+                // transport to border
                 p.border_translate(intLen);
                 cont = false;
             }
