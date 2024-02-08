@@ -39,12 +39,16 @@ bool testForcedinteractions()
     auto& sphere = w.addItem<Sphere>({ radii });
     auto& spheref = wf.addItem<SphereF>({ radii });
 
+    auto material_water = dxmc::Material<T, 5>::byNistName("Water, Liquid").value();
+    sphere.setMaterial(material_water, 1);
+    spheref.setMaterial(material_water, 1);
+
     w.build();
     wf.build();
 
-    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 60);
+    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
     beam.setNumberOfExposures(124);
-    beam.setNumberOfParticlesPerExposure(1e6);
+    beam.setNumberOfParticlesPerExposure(1e4);
 
     dxmc::Transport transport;
     transport(wf, beam);

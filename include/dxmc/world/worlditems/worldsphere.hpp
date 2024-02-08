@@ -57,7 +57,13 @@ public:
         m_material = material;
     }
 
-    void setMaterialDensity(T density) { m_materialDensity = density; }
+    void setMaterial(const Material<T, NMaterialShells>& material, T density)
+    {
+        m_material = material;
+        setMaterialDensity(density);
+    }
+
+    void setMaterialDensity(T density) { m_materialDensity = std::abs(density); }
 
     bool setNistMaterial(const std::string& nist_name)
     {
@@ -188,18 +194,18 @@ protected:
 
             const auto intLen = intersect(p).intersection; // this must be valid
             const auto interactionProb = 1 - std::exp(-intLen * attSum);
-            const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_material, state);
-            m_energyScored.scoreEnergy(intRes.energyImparted);
-            if (intRes.particleDirectionChanged) {
-                // we have a proper random scattering event
-                // calculating step lenght
-                const auto stepLen = -std::log(1 - state.randomUniform<T>(interactionProb)) * attSumInv; // cm
+            const auto scatterProb = 1 - att.photoelectric / att.sum();
+            if (interactionProb * scatterProb < state.randomUniform<T>()) {
+                const auto stepLen = -std::log(state.randomUniform<T>(1 - scatterProb, T { 1 })) * attSumInv;
                 p.translate(stepLen);
-                updateAtt = intRes.particleEnergyChanged;
-                // This could be false in case of russian rulette
+                const auto intRes = interactions::template interactScatter<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                m_energyScored.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
+                updateAtt = intRes.particleEnergyChanged;
             } else {
-                // we passed the sphere
+                const auto remainderProb = interactionProb * (1 - scatterProb);
+                m_energyScored.scoreEnergy(p.energy * p.weight * remainderProb);
+                p.weight *= (1 - remainderProb);
                 p.border_translate(intLen);
                 cont = false;
             }
