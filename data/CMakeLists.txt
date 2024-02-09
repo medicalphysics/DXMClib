@@ -3,25 +3,25 @@
 # EPICS data parser
 SET(DXMCLIB_EPICS_PHYSICSLISTS "${CMAKE_CURRENT_BINARY_DIR}/physicslists.bin" CACHE INTERNAL "Path to EPICS physicslists")
 
-SET(DXMCLIB_EPICS_DATA_DIRPATH ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "Path to directory holding EPDL2017.ALL and EADL2017.ALL in ENDL format")
+SET(DXMCLIB_EPICS_DATA_DIRPATH ${CMAKE_CURRENT_BINARY_DIR} CACHE PATH "Path to directory holding EPDL2023.ALL and EADL2023.ALL in ENDL format")
 if(DXMCLIB_EPICS_DATA_DIRPATH)
-    SET(DXMCLIB_EPICS_DATA_EPDLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EPDL2017.ALL" CACHE FILEPATH "Path to EPDL2017.ALL" FORCE)
-    SET(DXMCLIB_EPICS_DATA_EADLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EADL2017.ALL" CACHE FILEPATH "Path to EADL2017.ALL" FORCE)
+    SET(DXMCLIB_EPICS_DATA_EPDLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EPDL2023.ALL" CACHE FILEPATH "Path to EPDL2023.ALL" FORCE)
+    SET(DXMCLIB_EPICS_DATA_EADLPATH "${DXMCLIB_EPICS_DATA_DIRPATH}/EADL2023.ALL" CACHE FILEPATH "Path to EADL2023.ALL" FORCE)
 
     SET(DXMCLIB_EPICS_DOWNLOAD OFF CACHE BOOL "Download EPICS data from https://www-nds.iaea.org/epics/ if necessary.")
 
     #CHECK IF EPICS DATAFILES EXISTS
     if(NOT EXISTS "${DXMCLIB_EPICS_DATA_EPDLPATH}" AND "${DXMCLIB_EPICS_DOWNLOAD}" )
         MESSAGE("Downloading EPDL")
-        FILE(DOWNLOAD "https://www-nds.iaea.org/epics/ENDL2017/EPDL2017.ALL" "${DXMCLIB_EPICS_DATA_EPDLPATH}" SHOW_PROGRESS)
+        FILE(DOWNLOAD "https://www-nds.iaea.org/epics/ENDL2023/EPDL2023.ALL" "${DXMCLIB_EPICS_DATA_EPDLPATH}" SHOW_PROGRESS)
     endif()
     if(NOT EXISTS "${DXMCLIB_EPICS_DATA_EADLPATH}" AND "${DXMCLIB_EPICS_DOWNLOAD}" )
         MESSAGE("Downloading EADL")
-        FILE(DOWNLOAD "https://www-nds.iaea.org/epics/ENDL2017/EADL2017.ALL" "${DXMCLIB_EPICS_DATA_EADLPATH}" SHOW_PROGRESS)
+        FILE(DOWNLOAD "https://www-nds.iaea.org/epics/ENDL2023/EADL2023.ALL" "${DXMCLIB_EPICS_DATA_EADLPATH}" SHOW_PROGRESS)
     endif()
 
     if(NOT EXISTS "${DXMCLIB_EPICS_DATA_EADLPATH}" OR NOT EXISTS "${DXMCLIB_EPICS_DATA_EPDLPATH}")
-        message(FATAL_ERROR "Could not find data files EPDL2017.ALL or EPDL2017.ALL in ${DXMCLIB_EPICS_DATA_DIRPATH}")
+        message(FATAL_ERROR "Could not find data files EPDL2023.ALL or EPDL2023.ALL in ${DXMCLIB_EPICS_DATA_DIRPATH}")
     endif()
 
     message(STATUS "Using EPDL file: ${DXMCLIB_EPICS_DATA_EPDLPATH}")
@@ -36,7 +36,7 @@ set(DXMCLIB_MIN_TABLE_ENERGY_KEV "1.0")
 add_executable(EPICSparser         
     EPICSParser/atomicelementhandler.cpp 
     EPICSParser/epicsparser.cpp 
-    EPICSParser/main.cpp        
+    EPICSParser/epicsparcermain.cpp        
 )
 
 target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
@@ -91,6 +91,3 @@ function(dxmclib_add_physics_list func_target)
                 "$<TARGET_FILE_DIR:${func_target}>/physicslist.bin"            
         )        
 endfunction()
-
-
-

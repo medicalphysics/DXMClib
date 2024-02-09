@@ -19,6 +19,7 @@ Copyright 2022 Erlend Andersen
 #include "epicsparser.hpp"
 #include "dxmc/material/atomserializer.hpp"
 
+#include <algorithm>
 #include <charconv>
 #include <fstream>
 #include <iostream>
@@ -84,8 +85,11 @@ EPICSparser::EPICSparser(std::vector<char>& data)
     deserializeElements(data);
 }
 
-std::vector<double> split(const std::string& s)
+std::vector<double> split( std::string& s)
 {
+    // For some reason the exponent indicated is 'D' not 'E' for EPICS 2023 data (sigh).
+    std::replace(s.begin(), s.end(), 'D', 'E');
+
     constexpr std::size_t sublen = 16;
     const auto n_data = s.size() / 16;
     std::vector<double> data(n_data);
@@ -210,7 +214,7 @@ void EPICSparser::read(const std::string& path)
             } else if (headerline == 1) {
                 processFirstHeaderLine(line, segment);
                 headerline++;
-            }            
+            }
         }
     }
     processSegments(segments, m_elements);

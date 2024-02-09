@@ -23,27 +23,6 @@ Copyright 2022 Erlend Andersen
 #include <numbers>
 #include <string>
 
-bool test_serializer(EPICSparser& parser)
-{
-    auto data = parser.serializeElements();
-    EPICSparser parser2(data);
-
-    auto& elements1 = parser.getElements();
-    auto& elements2 = parser2.getElements();
-
-    if (elements1.size() != elements2.size()) {
-        return false;
-    }
-
-    for (auto& [key, el1] : elements1) {
-        auto& el2 = elements2.at(key);
-        auto valid = el1 == el2;
-        if (!valid)
-            return false;
-    }
-    return true;
-}
-
 int main()
 {
     const std::string eadl(DXMCLIB_EADLPATH);
