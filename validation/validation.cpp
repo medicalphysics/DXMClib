@@ -609,6 +609,25 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
 template <Floating T, int LOWENERGYCORRECTION = 2>
 bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = false)
 {
+    std::string model;
+    if (LOWENERGYCORRECTION == 0)
+        model = "NoneLC";
+    if (LOWENERGYCORRECTION == 1)
+        model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        model = "IA";
+
+    std::cout << "TG195 Case 4.1 for ";
+    if (large_collimation)
+        std::cout << "80mm collimation and ";
+    else
+        std::cout << "10mm collimation and ";
+    if (specter)
+        std::cout << "120kVp";
+    else
+        std::cout << "56.4keV";
+    std::cout << " photons with low en model: " << model << std::endl;
+
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 480;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
@@ -673,14 +692,6 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         ev_history_var[i] = std::sqrt(ev_history_var[i]) / ((N_HISTORIES * N_EXPOSURES) / 1000);
     }
 
-    std::string model;
-    if (LOWENERGYCORRECTION == 0)
-        model = "NoneLC";
-    if (LOWENERGYCORRECTION == 1)
-        model = "Livermore";
-    if (LOWENERGYCORRECTION == 2)
-        model = "IA";
-
     ResultPrint print;
     ResultKeys<T> res;
     res.specter = specter ? "120kVp" : "56.4keV";
@@ -688,8 +699,6 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     res.model = model;
     res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
     res.nMilliseconds = time_elapsed.count();
-
-    std::cout << res.rCase << " specter: " << res.specter << " collimation: " << res.modus << " " << res.model << std::endl;
 
     std::array<double, 4> tg195;
     if (specter && large_collimation)
@@ -717,6 +726,25 @@ template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
     requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
 bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
+    std::string model;
+    if (LOWENERGYCORRECTION == 0)
+        model = "NoneLC";
+    if (LOWENERGYCORRECTION == 1)
+        model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        model = "IA";
+
+    std::cout << "TG195 Case 4.2 for ";
+    if (large_collimation)
+        std::cout << "80mm collimation and ";
+    else
+        std::cout << "10mm collimation and ";
+    if constexpr (std::same_as<Beam, IsotropicBeam<T>>)
+        std::cout << "120kVp";
+    else
+        std::cout << "56.4keV";
+    std::cout << " photons with low en model: " << model << std::endl;
+
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 120;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
@@ -744,8 +772,6 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
     res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
     res.rCase = "Case 4.2";
     res.specter = std::same_as<Beam, IsotropicBeam<T>> ? "120kVp" : "56.4keV";
-
-    std::cout << "Case 4.2 specter: " << res.specter << " collimation: " << res.modus << " model: " << res.model << std::endl;
 
     Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } });
     if constexpr (std::same_as<Beam, IsotropicBeam<T>>) {
@@ -1083,13 +1109,13 @@ int main(int argc, char* argv[])
 
     auto success = true;
 
-    success = runAll<double, 0>();
+    // success = runAll<double, 0>();
     success = runAll<double, 1>();
-    success = runAll<double, 2>();
+    // success = runAll<double, 2>();
 
-    success = runAll<float, 0>();
-    success = runAll<float, 1>();
-    success = runAll<float, 2>();
+    // success = runAll<float, 0>();
+    // success = runAll<float, 1>();
+    // success = runAll<float, 2>();
 
     if (success)
         return EXIT_SUCCESS;
