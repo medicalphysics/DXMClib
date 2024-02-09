@@ -182,29 +182,33 @@ protected:
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         bool updateAtt = false;
         auto att = m_material.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        auto attSum = att.sum() * m_materialDensity;
+        auto attSumInv = 1 / attSum;
+        auto relativePeProbability = att.photoelectric / att.sum();
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_materialDensity);
+                attSum = att.sum() * m_materialDensity;
+                attSumInv = 1 / attSum;
+                relativePeProbability = att.photoelectric / att.sum();
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this must be valid
 
-            if (stepLen < intLen) {
+            const auto photoProb = (1 - std::exp(-intLen * attSum)) * relativePeProbability;
+
+            // Forced photoelectric effect
+            m_energyScored.scoreEnergy(p.energy * p.weight * photoProb);
+
+            // Remainder probability
+            if (stepLen < intLen && state.randomUniform<T>() > relativePeProbability) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto photoProb = att.photoelectric / att.sum();
-                if (state.randomUniform<T>() < photoProb) {
-                    m_energyScored.scoreEnergy(p.energy * p.weight);
-                    cont = false;
-                } else {
-                    const auto intRes = interactions::template interactScatter<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                    m_energyScored.scoreEnergy(intRes.energyImparted);
-                    cont = intRes.particleAlive;
-                    updateAtt = intRes.particleEnergyChanged;
-                }
+                const auto intRes = interactions::template interactScatter<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                m_energyScored.scoreEnergy(intRes.energyImparted);
+                cont = intRes.particleAlive;
+                updateAtt = intRes.particleEnergyChanged;
             } else {
                 // transport to border
                 p.border_translate(intLen);

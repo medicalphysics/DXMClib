@@ -46,7 +46,7 @@ bool testForcedinteractions()
     w.build();
     wf.build();
 
-    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 30);
+    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
     beam.setNumberOfExposures(124);
     beam.setNumberOfParticlesPerExposure(1e4);
 
