@@ -140,25 +140,23 @@ public:
                 updateAtt = false;
             }
 
-            constexpr T alpha = T { 0.4 };
-
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv * alpha;
+            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
 
             const auto intLen = intersect(p);
             if (stepLen < intLen.intersection) {
                 // interaction happends
                 p.translate(stepLen);
                 if (insideChild(p, m_centerChild, m_centerChild_aabb)) {
-                    const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                     m_centerChild_energyScored.scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
                 } else if (insideChild(p, m_periferyChild, m_periferyChild_aabb)) {
-                    const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(alpha, att, p, m_material, state);
+                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                     m_periferyChild_energyScored.scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
-                } else if (state.randomUniform<T>() < alpha) {
+                } else {
                     const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                     updateAtt = intRes.particleEnergyChanged;
                     cont = intRes.particleAlive;
