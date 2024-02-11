@@ -311,7 +311,7 @@ template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
 bool TG195Case2AbsorbedEnergy(bool tomo = false)
 {
 
-    constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 128;
+    constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 512;
     constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr std::size_t NShells = 5;
@@ -486,7 +486,7 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
 
     std::cout << "TG195 Case 3 for " << res.modus << " orientation and " << res.specter << " photons with low en model: " << model << std::endl;
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 480;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 512;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr int NShells = 5;
@@ -628,7 +628,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         std::cout << "56.4keV";
     std::cout << " photons with low en model: " << model << std::endl;
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 480;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 512;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 100000 : 1000000;
 
     constexpr int materialShells = 5;
@@ -745,7 +745,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         std::cout << "56.4keV";
     std::cout << " photons with low en model: " << model << std::endl;
 
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 120;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 512;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr int materialShells = 5;
@@ -952,7 +952,7 @@ template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
     requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>)
 bool TG195Case5AbsorbedEnergy()
 {
-    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 480;
+    const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 512;
     const std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     using World = World<T, AAVoxelGrid<T, 5, LOWENERGYCORRECTION, 255>>;
@@ -1109,9 +1109,9 @@ int main(int argc, char* argv[])
 
     auto success = true;
 
-    // success = runAll<double, 0>();
     success = runAll<double, 1>();
-    // success = runAll<double, 2>();
+    success = runAll<double, 2>();
+    success = runAll<double, 0>();
 
     // success = runAll<float, 0>();
     // success = runAll<float, 1>();
