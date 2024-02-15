@@ -32,7 +32,7 @@ namespace dxmc {
 namespace basicshape {
     namespace cylinder {
 
-        template <Floating T>
+        template <Floating T = double>
         struct Cylinder {
             std::array<T, 3> center = { 0, 0, 0 };
             std::array<T, 3> direction = { 0, 0, 1 };
@@ -52,7 +52,7 @@ namespace basicshape {
             }
         };
 
-        template <Floating T>
+        template <Floating T = double>
         constexpr inline std::array<T, 6> cylinderAABB(const Cylinder<T>& cyl)
         {
             // calculating disc extents
@@ -75,13 +75,13 @@ namespace basicshape {
             return aabb;
         }
 
-        template <Floating T>
+        template <Floating T = double>
         constexpr inline bool isOverPlane(const std::array<T, 3>& planepoint, const std::array<T, 3>& planenormal, const std::array<T, 3>& point) noexcept
         {
             return vectormath::dot(vectormath::subtract(point, planepoint), planenormal) >= 0;
         }
 
-        template <Floating T>
+        template <Floating T = double>
         bool pointInside(const std::array<T, 3>& pos, const Cylinder<T>& cylinder)
         {
             const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
@@ -102,7 +102,7 @@ namespace basicshape {
             return false;
         }
 
-        template <Floating T>
+        template <Floating T = double>
         std::optional<std::array<T, 2>> intersectInterval(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
             // return line segment cylinder wall intersection
@@ -183,7 +183,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        template <Floating T>
+        template <Floating T = double>
         std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
             auto t_cand = intersectInterval(p, cylinder);
@@ -196,7 +196,7 @@ namespace basicshape {
             return t_cand;
         }
 
-        template <Floating T>
+        template <Floating T = double>
         WorldIntersectionResult<T> intersect(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
             const auto t_cand = intersectInterval(p, cylinder);
@@ -212,7 +212,7 @@ namespace basicshape {
             return res;
         }
 
-        template <Floating T, typename U>
+        template <Floating T = double, typename U>
         VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const Cylinder<T>& cylinder)
         {
 

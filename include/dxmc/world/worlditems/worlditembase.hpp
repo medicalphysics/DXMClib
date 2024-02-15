@@ -31,19 +31,18 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class WorldItemBase {
 public:
-    virtual void translate(const std::array<T, 3>& dist) = 0;
-    virtual std::array<T, 3> center() const = 0;
-    virtual std::array<T, 6> AABB() const = 0;
-    virtual WorldIntersectionResult<T> intersect(const Particle<T>& p) const = 0;
-    virtual VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const = 0;
-    virtual const EnergyScore<T>& energyScored(std::size_t index = 0) const = 0;
+    virtual void translate(const std::array<double, 3>& dist) = 0;
+    virtual std::array<double, 3> center() const = 0;
+    virtual std::array<double, 6> AABB() const = 0;
+    virtual WorldIntersectionResult intersect(const Particle& p) const = 0;
+    virtual VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const = 0;
+    virtual const EnergyScore& energyScored(std::size_t index = 0) const = 0;
     virtual void clearEnergyScored() = 0;
-    virtual void addEnergyScoredToDoseScore(T calibration_factor = 1) = 0;
-    virtual const DoseScore<T>& doseScored(std::size_t index = 0) const = 0;
+    virtual void addEnergyScoredToDoseScore(double calibration_factor = 1) = 0;
+    virtual const DoseScore& doseScored(std::size_t index = 0) const = 0;
     virtual void clearDoseScored() = 0;
-    virtual void transport(Particle<T>& p, RandomState& state) = 0;
+    virtual void transport(Particle& p, RandomState& state) = 0;
 };
 }

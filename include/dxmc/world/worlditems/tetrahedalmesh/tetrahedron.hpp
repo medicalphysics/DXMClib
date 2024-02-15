@@ -31,10 +31,9 @@ Copyright 2024 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class Tetrahedron {
 public:
-    Tetrahedron(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third, const std::array<T, 3>& fourth, std::uint16_t collectionIdx = 0, std::uint16_t materialIdx = 0)
+    Tetrahedron(const std::array<double, 3>& first, const std::array<double, 3>& second, const std::array<double, 3>& third, const std::array<double, 3>& fourth, std::uint16_t collectionIdx = 0, std::uint16_t materialIdx = 0)
         : m_collectionIdx(collectionIdx)
         , m_materialIdx(materialIdx)
     {
@@ -44,7 +43,7 @@ public:
         m_vertices[3] = fourth;
     }
 
-    Tetrahedron(const std::array<std::array<T, 3>, 4>& vertices, std::uint16_t collectionIdx = 0, std::uint16_t materialIdx = 0)
+    Tetrahedron(const std::array<std::array<double, 3>, 4>& vertices, std::uint16_t collectionIdx = 0, std::uint16_t materialIdx = 0)
         : m_vertices(vertices)
         , m_collectionIdx(collectionIdx)
         , m_materialIdx(materialIdx)
@@ -60,15 +59,15 @@ public:
     std::uint16_t materialIndex() const { return m_materialIdx; }
     void setMaterialIndex(std::uint16_t idx) { m_materialIdx = idx; }
 
-    auto operator<=>(const Tetrahedron<T>& other) const = default;
+    auto operator<=>(const Tetrahedron& other) const = default;
 
-    std::array<T, 3> center() const
+    std::array<double, 3> center() const
     {
         const auto c_sum = vectormath::add(m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);
-        return vectormath::scale(c_sum, T { 0.25 });
+        return vectormath::scale(c_sum, 0.25);
     }
 
-    void translate(const std::array<T, 3>& dist)
+    void translate(const std::array<double, 3>& dist)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
@@ -77,14 +76,14 @@ public:
         });
     }
 
-    void rotate(const std::array<T, 3>& axis, T angle)
+    void rotate(const std::array<double, 3>& axis, double angle)
     {
         std::transform(std::execution::unseq, m_vertices.cbegin(), m_vertices.cend(), m_vertices.begin(), [&axis, angle](const auto& v) {
             return vectormath::rotate(v, axis, angle);
         });
     }
 
-    void scale(T scale)
+    void scale(double scale)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
@@ -93,29 +92,29 @@ public:
         });
     }
 
-    const std::array<std::array<T, 3>, 4>& vertices() const
+    const std::array<std::array<double, 3>, 4>& vertices() const
     {
         return m_vertices;
     }
 
-    T volume() const
+    double volume() const
     {
         const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
         const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
         const auto c = vectormath::subtract(m_vertices[3], m_vertices[0]);
-        static constexpr T scale = 1 / T { 6 };
+        static constexpr double scale = 1.0 / 6.0;
         return scale * std::abs(vectormath::tripleProduct(a, b, c));
     }
 
-    std::array<T, 6> AABB() const
+    std::array<double, 6> AABB() const
     {
-        std::array<T, 6> aabb {
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
+        std::array<double, 6> aabb {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
         };
         for (std::size_t j = 0; j < 4; j++) {
             for (std::size_t i = 0; i < 3; i++) {
@@ -136,17 +135,17 @@ public:
     auto end() const { return m_vertices.end(); }
     auto cend() const { return m_vertices.cend(); }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& particle) const
+    WorldIntersectionResult intersect(const Particle& particle) const
     {
 
-        const std::array<std::optional<T>, 4> hits = {
+        const std::array<std::optional<double>, 4> hits = {
             intersectTriangle(m_vertices[0], m_vertices[1], m_vertices[2], particle),
             intersectTriangle(m_vertices[1], m_vertices[0], m_vertices[3], particle),
             intersectTriangle(m_vertices[2], m_vertices[3], m_vertices[0], particle),
             intersectTriangle(m_vertices[3], m_vertices[2], m_vertices[1], particle)
         };
 
-        T chit = std::numeric_limits<T>::max();
+        auto chit = std::numeric_limits<double>::max();
         for (const auto& h : hits) {
             if (h) {
                 if (*h > 0)
@@ -154,8 +153,8 @@ public:
             }
         }
 
-        WorldIntersectionResult<T> res;
-        if (chit < std::numeric_limits<T>::max()) {
+        WorldIntersectionResult res;
+        if (chit < std::numeric_limits<double>::max()) {
             res.rayOriginIsInsideItem = pointInside(particle.pos);
             res.intersection = chit;
             res.intersectionValid = true;
@@ -163,18 +162,18 @@ public:
         return res;
     }
 
-    std::array<T, 3> normal(const std::array<T, 3>& point) const
+    std::array<double, 3> normal(const std::array<double, 3>& point) const
     {
-        auto distance = [](const std::array<T, 3>& pointf, const std::array<T, 3>& pointinplane, const std::array<T, 3>& normal_arr) {
+        auto distance = [](const std::array<double, 3>& pointf, const std::array<double, 3>& pointinplane, const std::array<double, 3>& normal_arr) {
             return std::abs(vectormath::dot(vectormath::subtract(pointf, pointinplane), normal_arr));
         };
-        const std::array<std::array<T, 3>, 4> normals = {
+        const std::array<std::array<double, 3>, 4> normals = {
             normalVector(m_vertices[0], m_vertices[1], m_vertices[2]),
             normalVector(m_vertices[1], m_vertices[0], m_vertices[3]),
             normalVector(m_vertices[2], m_vertices[3], m_vertices[0]),
             normalVector(m_vertices[3], m_vertices[2], m_vertices[1])
         };
-        const std::array<T, 4> dist = {
+        const std::array<double, 4> dist = {
             distance(point, m_vertices[0], normals[0]),
             distance(point, m_vertices[1], normals[1]),
             distance(point, m_vertices[2], normals[2]),
@@ -185,10 +184,10 @@ public:
         return normals[idx];
     }
 
-    bool pointInside(const std::array<T, 3>& point) const
+    bool pointInside(const std::array<double, 3>& point) const
     {
         // F3 (V0V1V2), F2 (V1V0V3), F1 (V2V3V0), F0 (V3V2V1)
-        const std::array<std::array<T, 3>, 4> normals = {
+        const std::array<std::array<double, 3>, 4> normals = {
             normalVector<false>(m_vertices[0], m_vertices[1], m_vertices[2]),
             normalVector<false>(m_vertices[1], m_vertices[0], m_vertices[3]),
             normalVector<false>(m_vertices[2], m_vertices[3], m_vertices[0]),
@@ -208,12 +207,12 @@ public:
         return pointInside(c);
     }
 
-    const DoseScore<T>& doseScored() const
+    const DoseScore& doseScored() const
     {
         return m_dose;
     }
 
-    const EnergyScore<T>& energyScored() const
+    const EnergyScore& energyScored() const
     {
         return m_energy_imparted;
     }
@@ -227,19 +226,19 @@ public:
         m_dose.clear();
     }
 
-    void scoreEnergy(T energy)
+    void scoreEnergy(double energy)
     {
         m_energy_imparted.scoreEnergy(energy);
     }
 
-    void addEnergyScoredToDoseScore(T density, T calibration_factor = 1)
+    void addEnergyScoredToDoseScore(double density, double calibration_factor = 1)
     {
         m_dose.addScoredEnergy(m_energy_imparted, volume(), density, calibration_factor);
     }
 
 protected:
     template <bool NORMALIZE = true>
-    static std::array<T, 3> normalVector(const std::array<T, 3>& p0, const std::array<T, 3>& p1, const std::array<T, 3>& p2)
+    static std::array<double, 3> normalVector(const std::array<double, 3>& p0, const std::array<double, 3>& p1, const std::array<double, 3>& p2)
     {
         const auto s1 = vectormath::subtract(p1, p0);
         const auto s2 = vectormath::subtract(p2, p0);
@@ -249,7 +248,7 @@ protected:
             return vectormath::cross(s2, s1);
     }
 
-    static std::optional<T> intersectTriangle(const std::array<T, 3>& v0, const std::array<T, 3>& v1, const std::array<T, 3>& v2, const Particle<T>& p)
+    static std::optional<double> intersectTriangle(const std::array<double, 3>& v0, const std::array<double, 3>& v1, const std::array<double, 3>& v2, const Particle& p)
     {
         const auto E1 = vectormath::subtract(v1, v0);
         const auto TT = vectormath::subtract(p.pos, v0);
@@ -268,9 +267,9 @@ protected:
     }
 
 private:
-    std::array<std::array<T, 3>, 4> m_vertices;
-    EnergyScore<T> m_energy_imparted;
-    DoseScore<T> m_dose;
+    std::array<std::array<double, 3>, 4> m_vertices;
+    EnergyScore m_energy_imparted;
+    DoseScore m_dose;
     std::uint16_t m_collectionIdx = 0;
     std::uint16_t m_materialIdx = 0;
 };

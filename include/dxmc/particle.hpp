@@ -26,40 +26,38 @@ namespace dxmc {
 /**
  * @brief Simple struct to describe a photon
  */
-template <Floating T = double>
+
 struct Particle {
     /**
      * @brief Position vector in three dimensions.
      */
-    std::array<T, 3> pos;
+    std::array<double, 3> pos;
     /**
      * @brief Direction vector in three dimension. This vector is threated as a normal vector.
      */
-    std::array<T, 3> dir;
+    std::array<double, 3> dir;
     /**
      * @brief Photon energy in keV.
      */
-    T energy;
+    double energy;
     /**
      * @brief Photon relative weight.
      */
-    T weight;
+    double weight;
 
-    inline void translate(const T dist)
+    inline void translate(const double dist)
     {
         pos[0] += dir[0] * dist;
         pos[1] += dir[1] * dist;
         pos[2] += dir[2] * dist;
     }
 
-    inline static constexpr T border_translate_minimum()
+    inline static constexpr double border_translate_minimum()
     {
-        if constexpr (sizeof(T) == 4)
-            return 1e-4;
-        else
-            return 1e-6;
+        return 1e-6;
     }
-    inline void border_translate(const T dist)
+
+    inline void border_translate(const double dist)
     {
         // Make sure we translate particle beyond any border we want to translate to
         // We simply add 100 nm to the distance, works for float and double

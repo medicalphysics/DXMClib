@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
+/*
 template <Floating T>
 class EnergyScore {
 public:
@@ -111,9 +112,9 @@ private:
     T m_energyImpartedSquared = 0;
     T m_energyImpartedSquared_rest = 0;
 };
+*/
 
-template <>
-class EnergyScore<double> {
+class EnergyScore {
 public:
     EnergyScore() { }
     void scoreEnergy(double energy)

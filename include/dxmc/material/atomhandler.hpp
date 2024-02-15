@@ -32,9 +32,8 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+template <Floating T = double>
 class AtomHandler {
-
 public:
     static const AtomicElement<T>& Atom(std::uint64_t Z)
     {

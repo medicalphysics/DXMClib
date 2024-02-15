@@ -22,9 +22,9 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
+
 struct WorldIntersectionResult {
-    T intersection = 0;
+    double intersection = 0;
     bool rayOriginIsInsideItem = false;
     bool intersectionValid = false;
     inline bool valid() const

@@ -22,12 +22,11 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class DoseScore {
 public:
     DoseScore() { }
 
-    void addScoredEnergy(const EnergyScore<T>& energy, T volume, T density, T calibrationfactor = 1)
+    void addScoredEnergy(const EnergyScore& energy, double volume, double density, double calibrationfactor = 1)
     {
         const auto mass = volume * density; // grams
         const auto factor = calibrationfactor / mass;
@@ -36,24 +35,24 @@ public:
         m_nEvents += energy.numberOfEvents();
     }
 
-    T dose() const
+    auto dose() const
     {
         return m_dose;
     }
 
-    T variance() const
+    auto variance() const
     {
         return m_doseVariance;
     }
 
-    T standardDeviation() const
+    auto standardDeviation() const
     {
         return std::sqrt(variance());
     }
 
-    T relativeUncertainty() const
+    auto relativeUncertainty() const
     {
-        return T { 1.96 } * standardDeviation() / dose();
+        return 1.96 * standardDeviation() / dose();
     }
 
     std::uint64_t numberOfEvents() const
@@ -69,8 +68,8 @@ public:
     }
 
 private:
-    T m_dose = 0;
-    T m_doseVariance = 0;
+    double m_dose = 0;
+    double m_doseVariance = 0;
     std::uint64_t m_nEvents = 0;
 };
 }

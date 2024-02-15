@@ -38,27 +38,27 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FLUENCESCORING = true>
-class TetrahedalMesh final : public WorldItemBase<T> {
+template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FLUENCESCORING = true>
+class TetrahedalMesh final : public WorldItemBase {
 public:
     TetrahedalMesh()
         : WorldItemBase<T>()
     {
     }
 
-    TetrahedalMesh(const std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
+    TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
         : WorldItemBase<T>()
     {
         setData(tets, collectionDensities, materials, collectionNames, depth);
     }
 
-    TetrahedalMesh(const std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, int max_depth = 8)
+    TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, int max_depth = 8)
         : WorldItemBase<T>()
     {
         setData(tets, collectionDensities, materials, collectionNames, { max_depth, max_depth, max_depth });
     }
 
-    bool setData(const std::vector<Tetrahedron<T>>& tets, const std::vector<T>& collectionDensities, const std::vector<Material<T, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
+    bool setData(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
     {
         // finding max collectionIdx and Material index
         const auto maxCollectionIdx = std::transform_reduce(
@@ -74,8 +74,8 @@ public:
         m_materials = materials;
         m_collections.reserve(collectionDensities.size());
 
-        std::vector<std::atomic<T>> volumes(maxCollectionIdx + 1);
-        std::for_each(std::execution::par_unseq, volumes.begin(), volumes.end(), [](auto& v) { v.store(T { 0 }); });
+        std::vector<std::atomic<double>> volumes(maxCollectionIdx + 1);
+        std::for_each(std::execution::par_unseq, volumes.begin(), volumes.end(), [](auto& v) { v.store(double { 0 }); });
         std::for_each(std::execution::par_unseq, tets.cbegin(), tets.cend(), [&volumes](const auto& tet) {
             const auto idx = tet.collection();
             volumes[idx].fetch_add(tet.volume());
@@ -101,27 +101,27 @@ public:
         return true;
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<double, 3>& dist) override
     {
         m_grid.translate(dist);
     }
 
-    std::array<T, 3> center() const override
+    std::array<double, 3> center() const override
     {
         const auto& aabb = m_grid.AABB();
         const auto [low, high] = vectormath::splice(aabb);
         auto c = vectormath::add(low, high);
-        return vectormath::scale(c, T { 0.5 });
+        return vectormath::scale(c, 0.5);
     }
 
-    std::array<T, 6> AABB() const override
+    std::array<double, 6> AABB() const override
     {
         return m_grid.AABB();
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
+    WorldIntersectionResult intersect(const Particle& p) const override
     {
-        WorldIntersectionResult<T> res;
+        WorldIntersectionResult res;
         if (const auto kres = m_grid.intersect(p); kres.valid()) {
             res.intersection = kres.intersection;
             res.rayOriginIsInsideItem = kres.rayOriginIsInsideItem;
@@ -130,9 +130,9 @@ public:
         return res;
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const override
     {
-        VisualizationIntersectionResult<T, WorldItemBase<T>> res;
+        VisualizationIntersectionResult<WorldItemBase> res;
         if (const auto kres = m_grid.intersect(p); kres.valid()) {
             res.intersection = kres.intersection;
             res.rayOriginIsInsideItem = kres.rayOriginIsInsideItem;
@@ -145,7 +145,7 @@ public:
         return res;
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         const auto tets = m_grid.tetrahedrons();
         return tets.at(index).energyScored();
@@ -156,7 +156,7 @@ public:
         m_grid.clearEnergyScored();
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
         auto& tets = m_grid.tetrahedrons();
         std::for_each(std::execution::par_unseq, tets.begin(), tets.end(), [=](auto& tet) {
@@ -166,7 +166,7 @@ public:
         });
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         const auto tets = m_grid.tetrahedrons();
         return tets.at(index).doseScored();
@@ -177,7 +177,7 @@ public:
         m_grid.clearDoseScored();
     }
 
-    void transport(Particle<T>& p, RandomState& state) override
+    void transport(Particle& p, RandomState& state) override
     {
         if constexpr (FLUENCESCORING)
             transportSiddon(p, state);
@@ -188,12 +188,12 @@ public:
     std::size_t numberOfCollections() const { return m_collections.size(); }
     std::size_t numberOfMaterials() const { return m_materials.size(); }
     std::size_t numberOfTetrahedra() const { return m_grid.tetrahedrons().size(); }
-    const std::vector<Tetrahedron<T>>& tetrahedrons() const
+    const std::vector<Tetrahedron>& tetrahedrons() const
     {
         return m_grid.tetrahedrons();
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material, std::size_t index)
+    void setMaterial(const Material<double, NMaterialShells>& material, std::size_t index)
     {
         if (index < m_materials.size())
             m_materials[index] = material;
@@ -202,11 +202,11 @@ public:
 protected:
     void generateWoodcockStepTable()
     {
-        std::vector<T> energy;
+        std::vector<double> energy;
         {
-            T e = std::log(MIN_ENERGY<T>());
-            const T emax = std::log(MAX_ENERGY<T>());
-            const T estep = (emax - e) / 10;
+            auto e = std::log(MIN_ENERGY());
+            const auto emax = std::log(MAX_ENERGY());
+            const auto estep = (emax - e) / 10;
             while (e <= emax) {
                 energy.push_back(e);
                 e += estep;
@@ -216,8 +216,8 @@ protected:
         for (const auto& mat : m_materials) {
             for (std::size_t i = 0; i < mat.numberOfShells(); ++i) {
                 const auto& shell = mat.shell(i);
-                const auto e = shell.bindingEnergy + T { 0.01 };
-                if (e > MIN_ENERGY<T>()) {
+                const auto e = shell.bindingEnergy + 0.01;
+                if (e > MIN_ENERGY()) {
                     energy.push_back(std::log(e));
                 }
             }
@@ -228,7 +228,7 @@ protected:
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), energy.begin(), [](const auto e) { return std::exp(e); });
 
         // finding max density for each material;
-        std::vector<T> dens(m_materials.size(), T { 0 });
+        std::vector<double> dens(m_materials.size(), 0.0);
         for (const auto& tet : m_grid.tetrahedrons()) {
             const auto i = tet.materialIndex();
             const auto c = tet.collection();
@@ -236,7 +236,7 @@ protected:
         }
 
         // finding max attenuation for each energy
-        std::vector<T> att(energy.size(), T { 0 });
+        std::vector<double> att(energy.size(), 0.0);
         for (std::size_t mIdx = 0; mIdx < m_materials.size(); ++mIdx) {
             const auto& mat = m_materials[mIdx];
             const auto d = dens[mIdx];
@@ -245,7 +245,7 @@ protected:
                 att[i] = std::max(aval.sum() * d, att[i]);
             }
         }
-        std::vector<std::pair<T, T>> data(energy.size());
+        std::vector<std::pair<double, double>> data(energy.size());
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.cbegin(), data.begin(), [](const auto e, const auto a) {
             return std::make_pair(e, a);
         });
@@ -253,65 +253,10 @@ protected:
         m_woodcockStepTableLin = data;
     }
 
-    /*
-        void transportSiddon(Particle<T>& p, RandomState& state)
-        {
-            bool still_inside = true;
-            std::uint16_t current_materialIdx = std::numeric_limits<std::uint16_t>::max();
-            AttenuationValues<T> att;
-            T u_tr;
-
-            T interaction_accum = 1;
-            T interaction_thres = state.randomUniform<T>();
-
-            Tetrahedron<T>* tet = m_grid.pointInside(p.pos);
-            while (tet) {
-                const auto inter = tet->intersect(p);
-                if (tet->materialIndex() != current_materialIdx) {
-                    current_materialIdx = tet->materialIndex();
-                    att = m_materials[current_materialIdx].attenuationValues(p.energy);
-                    u_tr = m_materials[current_materialIdx].massEnergyTransferAttenuation(att, p.energy);
-                }
-
-                const auto density = m_collections[tet->collection()].density;
-
-                // do the particle interact?
-                interaction_accum *= std::exp(-inter.intersection * att.sum() * density);
-
-                if (interaction_accum < interaction_thres) {
-                    // an iteraction happends
-                    const auto step_lenght_reverse = -std::log(interaction_thres - interaction_accum) / (att.sum() * density);
-                    const auto track_lenght = inter.intersection - step_lenght_reverse;
-
-                    // Theory: Fluence is equal to total track lenght per volume
-                    // energy imparted is therefore ei = u_tr * fluence * energy * mass
-                    // ei = u_tr * t * energy * mass / volume, where u_tr = mass energy trans coeff and t = total track lenght
-                    // ei = u_tr * t * energy / density
-                    const auto ei = u_tr * track_lenght * p.energy / density;
-                    tet->scoreEnergy(ei);
-                    p.translate(track_lenght);
-                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[current_materialIdx], state);
-                    if (intRes.particleAlive) {
-                        // we need to update att due to energy change
-                        current_materialIdx = std::numeric_limits<std::uint16_t>::max();
-                        interaction_accum = 1;
-                        interaction_thres = state.randomUniform<T>();
-                    } else {
-                        tet = nullptr;
-                    }
-                } else {
-                    const auto ei = u_tr * inter.intersection * p.energy / density;
-                    tet->scoreEnergy(ei);
-                    p.border_translate(inter.intersection);
-                    tet = m_grid.pointInside(p.pos);
-                }
-            }
-        }*/
-
-    void transportWoodcock(Particle<T>& p, RandomState& state)
+    void transportWoodcock(Particle& p, RandomState& state)
     {
         bool still_inside = true;
-        T attMaxInv;
+        double attMaxInv;
         bool updateAtt = true;
         while (still_inside) {
             if (updateAtt) {
@@ -320,7 +265,7 @@ protected:
             }
 
             // making interaction step
-            const auto steplen = -std::log(state.randomUniform<T>()) * attMaxInv;
+            const auto steplen = -std::log(state.randomUniform()) * attMaxInv;
             p.translate(steplen);
 
             // finding current tet
@@ -333,14 +278,14 @@ protected:
                 const auto attSum = attenuation.sum() * m_collections[collectionIdx].density;
                 if (state.randomUniform<T>() < attSum * attMaxInv) {
                     // we have a real interaction
-                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(attenuation, p, m_materials[materialIdx], state);
+                    const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(attenuation, p, m_materials[materialIdx], state);
                     currentTet->scoreEnergy(intRes.energyImparted);
                     still_inside = intRes.particleAlive;
                     updateAtt = intRes.particleEnergyChanged;
                 }
             } else {
                 // we are outside item, backtrack and return
-                const Particle<T> pback = { .pos = p.pos, .dir = vectormath::scale(p.dir, T { -1 }) };
+                const Particle pback = { .pos = p.pos, .dir = vectormath::scale(p.dir, -1.0) };
                 const auto inter_back = intersect(pback);
                 if (inter_back.valid()) {
                     p.border_translate(-inter_back.intersection);
@@ -350,12 +295,12 @@ protected:
         }
     }
 
-    void transportSiddon(Particle<T>& p, RandomState& state)
+    void transportSiddon(Particle& p, RandomState& state)
     {
-        Tetrahedron<T>* tet = m_grid.pointInside(p.pos);
+        Tetrahedron* tet = m_grid.pointInside(p.pos);
         bool updateAtt = true;
-        AttenuationValues<T> att;
-        T attSumInv;
+        AttenuationValues<double> att;
+        double attSumInv;
         while (tet) {
             if (updateAtt) {
                 const auto materialIdx = tet->materialIndex();
@@ -364,13 +309,13 @@ protected:
                 attSumInv = 1 / (att.sum() * m_collections[collectionIdx].density);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = tet->intersect(p).intersection;
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
                 const auto& material = m_materials[tet->materialIndex()];
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, material, state);
                 tet->scoreEnergy(intRes.energyImparted);
                 if (intRes.particleAlive)
                     updateAtt = intRes.particleEnergyChanged;
@@ -386,19 +331,19 @@ protected:
 
 private:
     struct Collection {
-        const T density = 0;
-        const T volume = 0;
-        Collection(T dens, T volume)
+        const double density = 0;
+        const double volume = 0;
+        Collection(double dens, double volume)
             : density(dens)
             , volume(volume)
         {
         }
     };
 
-    TetrahedalMeshGrid<T> m_grid;
-    std::vector<std::pair<T, T>> m_woodcockStepTableLin;
+    TetrahedalMeshGrid m_grid;
+    std::vector<std::pair<double, double>> m_woodcockStepTableLin;
     std::vector<Collection> m_collections;
-    std::vector<Material<T, NMaterialShells>> m_materials;
+    std::vector<Material<double, NMaterialShells>> m_materials;
     std::vector<std::string> m_collectionNames;
 };
 }

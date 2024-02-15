@@ -29,22 +29,21 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class Triangle {
 public:
-    Triangle(const std::array<T, 3>& first, const std::array<T, 3>& second, const std::array<T, 3>& third)
+    Triangle(const std::array<double, 3>& first, const std::array<double, 3>& second, const std::array<double, 3>& third)
     {
         m_vertices[0] = first;
         m_vertices[1] = second;
         m_vertices[2] = third;
     }
 
-    Triangle(const std::array<std::array<T, 3>, 3>& vertices)
+    Triangle(const std::array<std::array<double, 3>, 3>& vertices)
         : m_vertices(vertices)
     {
     }
 
-    Triangle(const T* first_element)
+    Triangle(const double* first_element)
     {
         for (std::size_t i = 0; i < 3; ++i)
             for (std::size_t j = 0; j < 3; ++j) {
@@ -53,9 +52,9 @@ public:
             }
     }
 
-    auto operator<=>(const Triangle<T>& other) const = default;
+    auto operator<=>(const Triangle& other) const = default;
 
-    void translate(const std::array<T, 3>& dist)
+    void translate(const std::array<double, 3>& dist)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
@@ -64,7 +63,7 @@ public:
         });
     }
 
-    void scale(T scale)
+    void scale(double scale)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
             for (std::size_t i = 0; i < 3; ++i) {
@@ -73,14 +72,14 @@ public:
         });
     }
 
-    void rotate(T radians, const std::array<T, 3>& axis)
+    void rotate(double radians, const std::array<double, 3>& axis)
     {
         std::transform(std::execution::unseq, m_vertices.cbegin(), m_vertices.cend(), m_vertices.begin(), [&](auto& vert) {
             return vectormath::rotate(vert, axis, radians);
         });
     }
 
-    std::array<T, 3> planeVector() const noexcept
+    std::array<double, 3> planeVector() const noexcept
     {
         const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
         const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
@@ -88,33 +87,33 @@ public:
         return vectormath::normalized(n);
     }
 
-    const std::array<std::array<T, 3>, 3>& vertices() const
+    const std::array<std::array<double, 3>, 3>& vertices() const
     {
         return m_vertices;
     }
 
-    std::array<T, 3> center() const
+    std::array<double, 3> center() const
     {
-        std::array<T, 3> cent { 0, 0, 0 };
+        std::array<double, 3> cent { 0, 0, 0 };
         for (const auto& vert : m_vertices) {
             for (std::size_t i = 0; i < 3; i++)
                 cent[i] += vert[i];
         }
-        constexpr T factor { 1 / 3.0 };
+        constexpr double factor { 1 / 3.0 };
         for (std::size_t i = 0; i < 3; i++)
             cent[i] *= factor;
         return cent;
     }
 
-    std::array<T, 6> AABB() const
+    std::array<double, 6> AABB() const
     {
-        std::array<T, 6> aabb {
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
+        std::array<double, 6> aabb {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
         };
         for (std::size_t j = 0; j < 3; j++) {
             for (std::size_t i = 0; i < 3; i++) {
@@ -128,14 +127,14 @@ public:
         return aabb;
     }
 
-    T area() const
+    double area() const
     { // Triangle of ABC, area = |AB x AC|/2
         const auto AB = vectormath::subtract(m_vertices[1], m_vertices[0]);
         const auto AC = vectormath::subtract(m_vertices[2], m_vertices[0]);
         return vectormath::length(vectormath::cross(AB, AC)) / 2;
     }
 
-    std::optional<T> intersect(const Particle<T>& p) const
+    std::optional<double> intersect(const Particle& p) const
     {
         // from moller trombore paper
         const auto& v0 = m_vertices[0];
@@ -148,7 +147,7 @@ public:
 
         const auto E2 = vectormath::subtract(v2, v0);
         const auto P = vectormath::cross(p.dir, E2);
-       
+
         const auto det_inv = 1 / vectormath::dot(P, E1);
 
         const auto v = vectormath::dot(Q, p.dir) * det_inv;
@@ -159,6 +158,6 @@ public:
     }
 
 private:
-    std::array<std::array<T, 3>, 3> m_vertices;
+    std::array<std::array<double, 3>, 3> m_vertices;
 };
 }

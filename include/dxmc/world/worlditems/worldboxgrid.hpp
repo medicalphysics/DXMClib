@@ -33,34 +33,35 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class WorldBoxGrid final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
+class WorldBoxGrid final : public WorldItemBase {
 public:
-    WorldBoxGrid(const std::array<T, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
-        : WorldItemBase<T>()
+    WorldBoxGrid(const std::array<double, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
+        : WorldItemBase()
         , m_aabb(aabb)
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
         setVoxelDimensions({ 1, 1, 1 });
     }
 
-    WorldBoxGrid(T aabb_size, std::array<T, 3> pos = { 0, 0, 0 })
-        : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+    WorldBoxGrid(double aabb_size, std::array<double, 3> pos = { 0, 0, 0 })
+        : WorldItemBase()
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
             m_aabb[i + 3] = std::abs(aabb_size) + pos[i];
         }
-        m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
         setVoxelDimensions({ 1, 1, 1 });
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material)
+    void setMaterial(const Material<double, NMaterialShells>& material)
     {
         m_material = material;
     }
+
     void setVoxelDimensions(const std::array<std::size_t, 3>& dim)
     {
         m_voxelDim = dim;
@@ -71,25 +72,26 @@ public:
         m_energyScored.resize(ndim);
         m_dose.resize(ndim);
     }
+
     std::size_t totalNumberOfVoxels() const { return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2]; }
 
     const std::array<std::size_t, 3>& voxelDimensions() const { return m_voxelDim; }
 
-    const std::array<T, 3>& voxelSpacing() const { return m_voxelSize; }
+    const std::array<double, 3>& voxelSpacing() const { return m_voxelSize; }
 
-    std::size_t gridIndex(const std::array<T, 3>& pos) const noexcept
+    std::size_t gridIndex(const std::array<double, 3>& pos) const noexcept
     {
-        const auto x = static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) / m_voxelSize[0], T { 0 }, static_cast<T>(m_voxelDim[0] - 1)));
-        const auto y = static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) / m_voxelSize[0], T { 0 }, static_cast<T>(m_voxelDim[1] - 1)));
-        const auto z = static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) / m_voxelSize[0], T { 0 }, static_cast<T>(m_voxelDim[2] - 1)));
+        const auto x = static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[0] - 1)));
+        const auto y = static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[1] - 1)));
+        const auto z = static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[2] - 1)));
         return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
     }
 
-    void setMaterialDensity(T density) { m_materialDensity = density; }
+    void setMaterialDensity(double density) { m_materialDensity = std::abs(density); }
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
             m_materialDensity = NISTMaterials<T>::density(nist_name);
@@ -98,7 +100,7 @@ public:
         return false;
     }
 
-    void translate(const std::array<T, 3>& dist) noexcept override
+    void translate(const std::array<double, 3>& dist) noexcept override
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -106,29 +108,29 @@ public:
         }
     }
 
-    std::array<T, 3> center() const noexcept override
+    std::array<double, 3> center() const noexcept override
     {
-        std::array<T, 3> c {
-            (m_aabb[0] + m_aabb[3]) * T { 0.5 },
-            (m_aabb[1] + m_aabb[4]) * T { 0.5 },
-            (m_aabb[2] + m_aabb[5]) * T { 0.5 },
+        std::array<double, 3> c {
+            (m_aabb[0] + m_aabb[3]) * 0.5,
+            (m_aabb[1] + m_aabb[4]) * 0.5,
+            (m_aabb[2] + m_aabb[5]) * 0.5,
         };
         return c;
     }
 
-    std::array<T, 6> AABB() const noexcept override
+    std::array<double, 6> AABB() const noexcept override
     {
         return m_aabb;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return basicshape::AABB::intersect(p, m_aabb);
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
     {
-        auto inter = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
+        auto inter = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_aabb);
         if (inter.valid()) {
             auto p_int = p;
             p_int.translate(inter.intersection);
@@ -138,30 +140,29 @@ public:
         return inter;
     }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;
-        AttenuationValues<T> att;
-        T attSumInv;
+        AttenuationValues<double> att;
+        double attSumInv;
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
                 attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this can not be nullopt
 
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
                 const auto scoreIdx = gridIndex(p.pos);
                 m_energyScored[scoreIdx].scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
-
             } else {
                 // transport to border
                 p.border_translate(intLen);
@@ -170,7 +171,7 @@ public:
         }
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         return m_energyScored.at(index);
     }
@@ -182,7 +183,7 @@ public:
         }
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
         const auto volume = m_voxelSize[0] * m_voxelSize[1] * m_voxelSize[2];
         for (std::size_t i = 0; i < m_energyScored.size(); ++i) {
@@ -190,7 +191,7 @@ public:
         }
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         return m_dose.at(index);
     }
@@ -204,12 +205,12 @@ public:
 
 protected:
 private:
-    std::array<T, 6> m_aabb;
-    T m_materialDensity = 1;
-    std::array<T, 3> m_voxelSize = { 1, 1, 1 };
+    std::array<double, 6> m_aabb;
+    double m_materialDensity = 1;
+    std::array<double, 3> m_voxelSize = { 1, 1, 1 };
     std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };
-    Material<T, NMaterialShells> m_material;
-    std::vector<EnergyScore<T>> m_energyScored;
-    std::vector<DoseScore<T>> m_dose;
+    Material<double, NMaterialShells> m_material;
+    std::vector<EnergyScore> m_energyScored;
+    std::vector<DoseScore> m_dose;
 };
 }

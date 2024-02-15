@@ -64,7 +64,7 @@ public:
      * @tparam T Must satisfy std::is_floating_point<T>::value == True
      * @return Random floating point in range [0, 1)
      */
-    template <typename T>
+    template <typename T = double>
     inline T randomUniform() noexcept
     {
         static_assert(std::is_floating_point<T>::value, "Uniform random number requires floating point precision");

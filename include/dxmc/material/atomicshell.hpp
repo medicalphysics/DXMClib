@@ -19,14 +19,14 @@ Copyright 2022 Erlend Andersen
 #pragma once
 
 #include <concepts>
+#include <cstdint>
 #include <utility>
 #include <vector>
-#include <cstdint>
 
 namespace dxmc {
-template <std::floating_point T>
+template <std::floating_point T = double>
 struct AtomicShell {
-    AtomicShell(std::uint64_t shell=0)
+    AtomicShell(std::uint64_t shell = 0)
         : shell(shell)
     {
     }

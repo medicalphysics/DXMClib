@@ -34,11 +34,11 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class WorldCylinder final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+class WorldCylinder final : public WorldItemBase {
 public:
-    WorldCylinder(T radius = T { 16 }, T height = T { 10 }, const std::array<T, 3>& center = { 0, 0, 0 }, const std::array<T, 3>& dir = { 0, 0, 1 })
-        : WorldItemBase<T>()
+    WorldCylinder(double radius = 16, double height = 10, const std::array<double, 3>& center = { 0, 0, 0 }, const std::array<double, 3>& dir = { 0, 0, 1 })
+        : WorldItemBase()
         , m_material(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_cylinder.radius = std::abs(radius);
@@ -48,76 +48,76 @@ public:
         m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material)
+    void setMaterial(const Material<double, NMaterialShells>& material)
     {
         m_material = material;
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material, T density)
+    void setMaterial(const Material<double, NMaterialShells>& material, double density)
     {
         m_material = material;
         setMaterialDensity(density);
     }
 
-    void setMaterialDensity(T density)
+    void setMaterialDensity(double density)
     {
         m_materialDensity = std::abs(density);
     }
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            m_materialDensity = NISTMaterials<double>::density(nist_name);
             return true;
         }
         return false;
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<double, 3>& dist) override
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
     }
 
-    std::array<T, 3> center() const override
+    std::array<double, 3> center() const override
     {
         return m_cylinder.center;
     }
 
-    std::array<T, 6> AABB() const override
+    std::array<double, 6> AABB() const override
     {
         return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
 
-    void setRadius(const T r)
+    void setRadius(double r)
     {
         m_cylinder.radius = std::abs(r);
     }
 
-    void setHeight(T h)
+    void setHeight(double h)
     {
         m_cylinder.half_height = std::abs(h / 2);
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
     {
-        auto inter = basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        auto inter = basicshape::cylinder::template intersectVisualization<WorldItemBase>(p, m_cylinder);
         if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
     }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;
-        AttenuationValues<T> att;
+        AttenuationValues<double> att;
         T attSumInv;
         while (cont) {
             if (updateAtt) {
@@ -131,7 +131,7 @@ public:
             if (stepLen < intLen.intersection) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 m_energyScored.scoreEnergy(intRes.energyImparted);
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
@@ -143,7 +143,7 @@ public:
         }
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         return m_energyScored;
     }
@@ -153,12 +153,12 @@ public:
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
         m_dose.addScoredEnergy(m_energyScored, m_cylinder.volume(), m_materialDensity, calibration_factor);
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         return m_dose;
     }
@@ -170,11 +170,11 @@ public:
 
 protected:
 private:
-    basicshape::cylinder::Cylinder<T> m_cylinder;
-    T m_materialDensity = 1;
-    Material<T, NMaterialShells> m_material;
-    EnergyScore<T> m_energyScored;
-    DoseScore<T> m_dose;
+    basicshape::cylinder::Cylinder<double> m_cylinder;
+    double m_materialDensity = 1;
+    Material<double, NMaterialShells> m_material;
+    EnergyScore m_energyScored;
+    DoseScore m_dose;
 };
 
 }

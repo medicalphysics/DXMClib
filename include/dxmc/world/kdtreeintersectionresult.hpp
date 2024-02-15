@@ -22,10 +22,10 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, typename U>
+template <typename U>
 struct KDTreeIntersectionResult {
     U* item = nullptr;
-    T intersection = 0;
+    double intersection = 0;
     bool rayOriginIsInsideItem = false;
 
     bool valid() const

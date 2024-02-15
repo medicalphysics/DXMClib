@@ -28,7 +28,7 @@ Copyright 2022 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-template <Floating T>
+template <Floating T = double>
 class NISTMaterials {
 
 public:

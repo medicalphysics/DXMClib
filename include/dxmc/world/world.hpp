@@ -34,36 +34,36 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <typename U, typename T>
-concept WorldItemType = (std::derived_from<U, WorldItemBase<T>>);
+template <typename U>
+concept WorldItemType = (std::derived_from<U, WorldItemBase>);
 
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
-template <Floating T, WorldItemType<T>... Us>
+template <WorldItemType... Us>
 class World {
 public:
     World()
-        : m_fillMaterial(Material<T>::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(Material<double>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
     World(std::size_t reserveNumberOfWorldItems)
-        : m_fillMaterial(Material<T>::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(Material<double>::byNistName("Air, Dry (near sea level)").value())
     {
         m_items.reserve(reserveNumberOfWorldItems);
     }
 
-    void setMaterial(const Material<T>& mat)
+    void setMaterial(const Material<double>& mat)
     {
         m_fillMaterial = mat;
     }
-    void setMaterial(const Material<T>& mat, T dens)
+    void setMaterial(const Material<double>& mat, double dens)
     {
         m_fillMaterial = mat;
         m_fillMaterialDensity = std::abs(dens);
     }
-    void setMaterialDensity(T dens)
+    void setMaterialDensity(double dens)
     {
         m_fillMaterialDensity = std::abs(dens);
     }
@@ -105,20 +105,20 @@ public:
         return m_items;
     }
 
-    std::vector<WorldItemBase<T>*> getItemPointers()
+    std::vector<WorldItemBase*> getItemPointers()
     {
-        std::vector<WorldItemBase<T>*> ptrs(m_items.size());
+        std::vector<WorldItemBase*> ptrs(m_items.size());
         std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
-            return std::visit([](auto&& arg) -> WorldItemBase<T>* { return &arg; }, v);
+            return std::visit([](auto&& arg) -> WorldItemBase* { return &arg; }, v);
         });
         return ptrs;
     }
 
-    std::vector<const WorldItemBase<T>*> getItemPointers() const
+    std::vector<const WorldItemBase*> getItemPointers() const
     {
-        std::vector<const WorldItemBase<T>*> ptrs(m_items.size());
+        std::vector<const WorldItemBase*> ptrs(m_items.size());
         std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
-            return std::visit([](auto&& arg) -> const WorldItemBase<T>* { return &arg; }, v);
+            return std::visit([](auto&& arg) -> const WorldItemBase* { return &arg; }, v);
         });
         return ptrs;
     }
@@ -138,39 +138,39 @@ public:
         }
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1)
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         for (auto& v : m_items) {
             std::visit([calibration_factor](auto&& arg) { arg.addEnergyScoredToDoseScore(calibration_factor); }, v);
         }
     }
 
-    void build(T AABB_padding = 10)
+    void build(double AABB_padding = 10)
     {
         auto ptrs = getItemPointers();
         m_kdtree = KDTree(ptrs);
         m_aabb = m_kdtree.AABB();
 
         // adding padding
-        const auto padding = std::max(AABB_padding, T { 0.1 }); // always at least 1 mm padding
+        const auto padding = std::max(AABB_padding, 0.1); // always at least 1 mm padding
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = m_aabb[i] - padding;
             m_aabb[i + 3] = m_aabb[i + 3] + padding;
         }
     }
 
-    const std::array<T, 6>& AABB() const
+    const std::array<double, 6>& AABB() const
     {
         return m_aabb;
     }
 
-    std::array<T, 3> center() const
+    std::array<double, 3> center() const
     {
         const auto [l, r] = vectormath::splice(m_aabb);
-        return vectormath::scale(T { 0.5 }, vectormath::add(l, r));
+        return vectormath::scale(0.5, vectormath::add(l, r));
     }
 
-    void translate(const std::array<T, 3> dist)
+    void translate(const std::array<double, 3> dist)
     {
         for (auto& v : m_items)
             std::visit([&dist](auto&& arg) { arg.translate(dist); }, v);
@@ -181,17 +181,17 @@ public:
         }
     }
 
-    inline auto intersect(const Particle<T>& p)
+    inline auto intersect(const Particle& p)
     {
         return m_kdtree.intersect(p, m_aabb);
     }
 
-    inline auto intersectVisualization(const Particle<T>& p)
+    inline auto intersectVisualization(const Particle& p)
     {
         return m_kdtree.intersectVisualization(p, m_aabb);
     }
 
-    inline bool transportParticleToWorld(Particle<T>& p) const
+    inline bool transportParticleToWorld(Particle& p) const
     {
         if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
             const auto t = basicshape::AABB::intersect(p, m_aabb);
@@ -205,25 +205,25 @@ public:
         return true;
     }
 
-    void transport(Particle<T>& p, RandomState& state)
+    void transport(Particle& p, RandomState& state)
     {
         bool continueSampling = transportParticleToWorld(p);
         bool updateAttenuation = true;
 
-        T attenuationTotalInv;
-        AttenuationValues<T> att;
+        double attenuationTotalInv;
+        AttenuationValues<double> att;
         while (continueSampling) {
             if (updateAttenuation) {
                 att = m_fillMaterial.attenuationValues(p.energy);
-                attenuationTotalInv = T { 1 } / (att.sum() * m_fillMaterialDensity);
+                attenuationTotalInv = 1 / (att.sum() * m_fillMaterialDensity);
                 updateAttenuation = false;
             }
 
-            const auto r1 = state.randomUniform<T>();
+            const auto r1 = state.randomUniform();
             const auto stepLength = -std::log(r1) * attenuationTotalInv; // cm
 
             // where do we hit an object
-            const KDTreeIntersectionResult<T, WorldItemBase<T>> intersection = m_kdtree.intersect(p, m_aabb);
+            const auto intersection = m_kdtree.intersect(p, m_aabb);
 
             if (intersection.valid()) { // Do we intersect anything?
                 if (intersection.intersection < stepLength) {
@@ -235,7 +235,7 @@ public:
                     continueSampling = p.energy > 0;
                 } else { // Free path is closer than object, we interact in the world empty space
                     p.translate(stepLength);
-                    const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
+                    const auto interactionResult = interactions::template interact<5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
                     m_energyScored.scoreEnergy(interactionResult.energyImparted);
@@ -243,7 +243,7 @@ public:
             } else { // We do not intersect any object
                 p.translate(stepLength);
                 if (basicshape::AABB::pointInside(p.pos, m_aabb)) { // Are we still inside world?
-                    const auto interactionResult = interactions::template interact<T, 5, 1>(att, p, m_fillMaterial, state);
+                    const auto interactionResult = interactions::template interact<5, 1>(att, p, m_fillMaterial, state);
                     updateAttenuation = interactionResult.particleEnergyChanged;
                     continueSampling = interactionResult.particleAlive;
                     m_energyScored.scoreEnergy(interactionResult.energyImparted);
@@ -255,11 +255,11 @@ public:
     }
 
 private:
-    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_items;
-    KDTree<T> m_kdtree;
-    Material<T> m_fillMaterial;
-    T m_fillMaterialDensity = T { 0.001225 };
-    EnergyScore<T> m_energyScored;
+    KDTree m_kdtree;
+    Material m_fillMaterial;
+    double m_fillMaterialDensity = 0.001225;
+    EnergyScore m_energyScored;
 };
 }

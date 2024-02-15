@@ -33,10 +33,10 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEINTERACTIONS = false>
-class WorldSphere final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEINTERACTIONS = false>
+class WorldSphere final : public WorldItemBase {
 public:
-    WorldSphere(T radius = T { 16 }, const std::array<T, 3>& pos = { 0, 0, 0 })
+    WorldSphere(double radius = 16, const std::array<double, 3>& pos = { 0, 0, 0 })
         : WorldItemBase<T>()
         , m_radius(std::abs(radius))
         , m_center(pos)
@@ -45,50 +45,50 @@ public:
         m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
     }
 
-    void setRadius(T r)
+    void setRadius(double r)
     {
         m_radius = std::abs(r);
     }
 
-    T radius() const { return m_radius; }
+    auto radius() const { return m_radius; }
 
-    void setMaterial(const Material<T, NMaterialShells>& material)
+    void setMaterial(const Material<double, NMaterialShells>& material)
     {
         m_material = material;
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material, T density)
+    void setMaterial(const Material<double, NMaterialShells>& material, double density)
     {
         m_material = material;
         setMaterialDensity(density);
     }
 
-    void setMaterialDensity(T density) { m_materialDensity = std::abs(density); }
+    void setMaterialDensity(double density) { m_materialDensity = std::abs(density); }
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            m_materialDensity = NISTMaterials<double>::density(nist_name);
             return true;
         }
         return false;
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<double, 3>& dist) override
     {
         m_center = vectormath::add(m_center, dist);
     }
 
-    std::array<T, 3> center() const override
+    std::array<double, 3> center() const override
     {
         return m_center;
     }
 
-    std::array<T, 6> AABB() const override
+    std::array<double, 6> AABB() const override
     {
-        std::array<T, 6> aabb {
+        std::array<double, 6> aabb {
             m_center[0] - m_radius,
             m_center[1] - m_radius,
             m_center[2] - m_radius,
@@ -99,20 +99,20 @@ public:
         return aabb;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return basicshape::sphere::intersect(p, m_center, m_radius);
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
     {
-        auto inter = basicshape::sphere::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius);
+        auto inter = basicshape::sphere::template intersectVisualization<WorldItemBase>(p, m_center, m_radius);
         if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
     }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept override
     {
         if constexpr (FORCEINTERACTIONS)
             transportForced(p, state);
@@ -120,7 +120,7 @@ public:
             transportRandom(p, state);
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         return m_energyScored;
     }
@@ -130,13 +130,13 @@ public:
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
-        const auto volume = (4 * std::numbers::pi_v<T> * m_radius * m_radius * m_radius) / 3;
+        const auto volume = (4 * std::numbers::pi_v<double> * m_radius * m_radius * m_radius) / 3;
         m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         return m_dose;
     }
@@ -147,7 +147,7 @@ public:
     }
 
 protected:
-    void transportRandom(Particle<T>& p, RandomState& state) noexcept
+    void transportRandom(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         bool updateAtt = false;
@@ -177,7 +177,7 @@ protected:
         }
     }
 
-    void transportForced(Particle<T>& p, RandomState& state) noexcept
+    void transportForced(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         bool updateAtt = false;
@@ -187,7 +187,7 @@ protected:
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
-                attSum = att.sum() * m_materialDensity;                
+                attSum = att.sum() * m_materialDensity;
                 relativePeProbability = att.photoelectric / att.sum();
                 updateAtt = false;
             }
@@ -195,7 +195,7 @@ protected:
             const auto intLen = intersect(p).intersection; // this must be valid
             const auto probNotInteraction = std::exp(-attSum * intLen);
 
-            //Forced photoelectric effect
+            // Forced photoelectric effect
             m_energyScored.scoreEnergy(p.energy * p.weight * (1 - probNotInteraction) * relativePeProbability);
 
             // Remainder probability
@@ -224,12 +224,11 @@ protected:
     }
 
 private:
-    T m_radius
-        = 0;
-    std::array<T, 3> m_center;
-    Material<T, NMaterialShells> m_material;
-    T m_materialDensity = 1;
-    EnergyScore<T> m_energyScored;
-    DoseScore<T> m_dose;
+    double m_radius = 0;
+    std::array<double, 3> m_center;
+    Material<double, NMaterialShells> m_material;
+    double m_materialDensity = 1;
+    EnergyScore m_energyScored;
+    DoseScore m_dose;
 };
 }

@@ -31,14 +31,13 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 namespace basicshape {
     namespace AABB {
-
-        template <Floating T>
+        template <Floating T=double>
         inline constexpr bool pointInside(const std::array<T, 3>& p, const std::array<T, 6>& aabb)
         {
             return aabb[0] <= p[0] && p[0] <= aabb[3] && aabb[1] <= p[1] && p[1] <= aabb[4] && aabb[2] <= p[2] && p[2] <= aabb[5];
         }
 
-        template <Floating T>
+        template <Floating T=double>
         inline constexpr bool overlap(const std::array<T, 6>& a, const std::array<T, 6>& b)
         {
             const bool x = a[0] <= b[3] && a[3] >= b[0];
@@ -47,7 +46,7 @@ namespace basicshape {
             return x && y && z;
         }
 
-        template <Floating T, bool FORWARD = true>
+        template <Floating T = double, bool FORWARD = true>
         std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             const std::array<T, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
@@ -68,7 +67,7 @@ namespace basicshape {
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
 
-        template <Floating T>
+        template <Floating T = double>
         WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             WorldIntersectionResult<T> res;
@@ -81,7 +80,7 @@ namespace basicshape {
             return res;
         }
 
-        template <Floating T, typename U>
+        template <Floating T = double, typename U>
         VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 6>& aabb)
         {
             VisualizationIntersectionResult<T, U> res;

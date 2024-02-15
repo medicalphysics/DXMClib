@@ -21,13 +21,14 @@ Copyright 2022 Erlend Andersen
 #include "atomicshell.hpp"
 
 #include <concepts>
+#include <cstdint>
 #include <map>
 #include <vector>
-#include <cstdint>
+
 
 namespace dxmc {
 
-template <std::floating_point T>
+template <std::floating_point T = double>
 struct AtomicElement {
     std::uint64_t Z = 0;
     T atomicWeight = 0;

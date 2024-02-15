@@ -41,14 +41,14 @@ struct MaterialShell {
     T numberOfPhotonsPerInitVacancy = 0;
     T energyOfPhotonsPerInitVacancy = 0;
 };
-template <Floating T>
+template <Floating T = double>
 struct AttenuationValues {
     T photoelectric;
     T incoherent;
     T coherent;
     T sum() const noexcept { return photoelectric + incoherent + coherent; }
 };
-template <Floating T, std::size_t N = 5>
+template <Floating T = double, std::size_t N = 5>
 class Material {
 public:
     static std::optional<Material<T, N>> byZ(std::size_t Z)

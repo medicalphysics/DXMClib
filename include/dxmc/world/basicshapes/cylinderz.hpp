@@ -31,7 +31,7 @@ namespace dxmc {
 namespace basicshape {
     namespace cylinderZ {
 
-        template <Floating T>
+        template <Floating T = double>
         bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii, const T half_height)
         {
             const std::array<T, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
@@ -39,7 +39,7 @@ namespace basicshape {
                 && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
         }
 
-        template <Floating T>
+        template <Floating T = double>
         std::optional<T> intersectCylinderWall(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
         {
             // nummeric stable ray sphere intersection in 2D
