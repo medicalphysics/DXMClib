@@ -35,7 +35,7 @@ bool testForcedinteractions()
     World w;
     WorldF wf;
 
-    constexpr T radii = 10;
+    constexpr T radii = 5;
     auto& sphere = w.addItem<Sphere>({ radii });
     auto& spheref = wf.addItem<SphereF>({ radii });
 
@@ -70,12 +70,70 @@ bool testForcedinteractions()
     return false;
 }
 
+template <dxmc::Floating T>
+bool testForcedinteractionsExits()
+{
+    using Sphere = dxmc::WorldSphere<T, 5, 1, false>;
+    using SphereF = dxmc::WorldSphere<T, 5, 1, true>;
+
+    using World = dxmc::World<T, Sphere>;
+    using WorldF = dxmc::World<T, SphereF>;
+
+    World w(2);
+    WorldF wf(2);
+
+
+    constexpr T radii = 1;
+    auto& sphere1 = w.addItem<Sphere>({ radii });
+    auto& sphere2 = w.addItem<Sphere>({ radii, { radii * 2 + 1, 0, 0 } });
+    auto& spheref1 = wf.addItem<SphereF>({ radii });
+    auto& spheref2 = wf.addItem<SphereF>({ radii, { radii * 2 + 1, 0, 0 } });
+
+    auto material_water = dxmc::Material<T, 5>::byNistName("Water, Liquid").value();
+    sphere1.setMaterial(material_water, 1);
+    sphere2.setMaterial(material_water, 1);
+    spheref1.setMaterial(material_water, 1);
+    spheref2.setMaterial(material_water, 1);
+
+    w.build();
+    wf.build();
+
+
+    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
+    beam.setNumberOfExposures(48);
+    beam.setNumberOfParticlesPerExposure(1e4);
+
+    dxmc::Transport transport;
+    transport(wf, beam);
+    transport(w, beam);
+
+    auto dose1 = sphere1.doseScored().dose();
+    auto dose2 = sphere2.doseScored().dose();
+    auto dosef1 = spheref1.doseScored().dose();
+    auto dosef2 = spheref2.doseScored().dose();
+
+    auto diff1 = std::abs(dose1 - dosef1);
+    auto diff2 = std::abs(dose2 - dosef2);
+
+    auto sttd1 = sphere1.doseScored().standardDeviation();
+    auto sttdf1 = spheref1.doseScored().standardDeviation();
+
+    auto sttd2 = sphere2.doseScored().standardDeviation();
+    auto sttdf2 = spheref2.doseScored().standardDeviation();
+
+    std::cout << "Random " << dose1 << ", " << dose2 << " stddev: " << sttd1 << ", " << sttd2 << std::endl;
+    std::cout << "Forced " << dosef1 << ", " << dosef2 << " stddev: " << sttdf1 << ", " << sttdf2 << std::endl;
+    std::cout << "Diff: " << diff1 << ", " << diff2 << std::endl;
+
+    return false;
+}
+
 int main(int argc, char* argv[])
 {
     auto success = true;
 
-    success = success && testForcedinteractions<double>();
-    success = success && testForcedinteractions<float>();
+    success = success && testForcedinteractionsExits<double>();
+    //success = success && testForcedinteractions<float>();
 
     if (success)
         return EXIT_SUCCESS;

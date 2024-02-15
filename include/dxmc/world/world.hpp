@@ -48,6 +48,12 @@ public:
     {
     }
 
+    World(std::size_t reserveNumberOfWorldItems)
+        : m_fillMaterial(Material<T>::byNistName("Air, Dry (near sea level)").value())
+    {
+        m_items.reserve(reserveNumberOfWorldItems);
+    }
+
     void setMaterial(const Material<T>& mat)
     {
         m_fillMaterial = mat;
