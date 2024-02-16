@@ -18,7 +18,6 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
 #include "dxmc/interactions.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/material/nistmaterials.hpp"

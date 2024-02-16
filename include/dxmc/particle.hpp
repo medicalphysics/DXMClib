@@ -18,8 +18,6 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
-
 #include <array>
 
 namespace dxmc {

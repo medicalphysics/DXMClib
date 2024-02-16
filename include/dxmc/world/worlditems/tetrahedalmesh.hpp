@@ -20,7 +20,6 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/interactions.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/material/material.hpp"

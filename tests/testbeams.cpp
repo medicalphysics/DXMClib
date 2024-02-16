@@ -28,7 +28,7 @@ Copyright 2022 Erlend Andersen
 
 #include <iostream>
 
-template <typename T, dxmc::BeamType<T> B>
+template <dxmc::BeamType B>
 bool initiateBeam(B& beam)
 {
     auto e = beam.exposure(0);
@@ -37,37 +37,32 @@ bool initiateBeam(B& beam)
     return true;
 }
 
-template <typename T>
 bool testDXBeam()
 {
-    dxmc::DXBeam<T> beam;
+    dxmc::DXBeam beam;
     auto& tube = beam.tube();
-    return initiateBeam<T>(beam);
+    return initiateBeam(beam);
 }
 
-template <typename T>
 bool testpencilbeam()
 {
-    dxmc::PencilBeam<T> beam;
+    dxmc::PencilBeam beam;
     auto e = beam.exposure(0);
     dxmc::RandomState state;
     auto p = e.sampleParticle(state);
-    return initiateBeam<T, dxmc::PencilBeam<T>>(beam);
+    return initiateBeam(beam);
 }
 
-template <typename T>
 bool testIsotropicMonoEnergyBeam()
 {
-    using Beam = dxmc::IsotropicMonoEnergyBeam<T>;
-
+    using Beam = dxmc::IsotropicMonoEnergyBeam;
     Beam beam;
-    return initiateBeam<T, Beam>(beam);
+    return initiateBeam(beam);
 }
 
-template <typename T>
 bool testCTSpiralBeam()
 {
-    using Beam = dxmc::CTSpiralBeam<T>;
+    using Beam = dxmc::CTSpiralBeam;
     Beam beam;
     beam.setStartStopPosition({ 0, 0, 0 }, { 0, 0, 1 });
     beam.setNumberOfParticlesPerExposure(1E2);
@@ -76,18 +71,17 @@ bool testCTSpiralBeam()
     dxmc::TransportProgress progress;
     auto f = beam.calibrationFactor(&progress);
 
-    return initiateBeam<T, Beam>(beam);
+    return initiateBeam(beam);
 }
 
-template <typename T>
 bool testCTSpiralDEBeam()
 {
-    using Beam = dxmc::CTSpiralDualEnergyBeam<T>;
+    using Beam = dxmc::CTSpiralDualEnergyBeam;
     Beam beam;
     beam.setTubeAVoltage(140);
     beam.setTubeBVoltage(80);
 
-    return initiateBeam<T, Beam>(beam);
+    return initiateBeam(beam);
 }
 
 int main()
@@ -95,16 +89,13 @@ int main()
     std::cout << "Testing beams\n";
 
     bool success = true;
-    success = success && testDXBeam<float>();
-    success = success && testDXBeam<double>();
-    success = success && testIsotropicMonoEnergyBeam<double>();
-    success = success && testIsotropicMonoEnergyBeam<float>();
-    success = success && testpencilbeam<float>();
-    success = success && testpencilbeam<double>();
-    success = success && testCTSpiralBeam<float>();
-    success = success && testCTSpiralBeam<double>();
-    success = success && testCTSpiralDEBeam<double>();
-    success = success && testCTSpiralDEBeam<float>();
+    success = success && testDXBeam();
+
+    success = success && testIsotropicMonoEnergyBeam();
+    success = success && testpencilbeam();
+    success = success && testCTSpiralBeam();
+
+    success = success && testCTSpiralDEBeam();
 
     if (success)
         return EXIT_SUCCESS;

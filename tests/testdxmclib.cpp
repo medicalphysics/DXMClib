@@ -11,14 +11,14 @@
 #include <string>
 
 
-template<dxmc::Floating T>
+
 void testInit()
 {
-    dxmc::PencilSource<T> ps;
-    dxmc::IsotropicSource<T> is;
-    dxmc::IsotropicCTSource<T> isc;
-    dxmc::DXSource<T> dx;
-    dxmc::CBCTSource<T> cb;
+    dxmc::PencilSource ps;
+    dxmc::IsotropicSource is;
+    dxmc::IsotropicCTSource isc;
+    dxmc::DXSource dx;
+    dxmc::CBCTSource cb;
     dxmc::CTAxialSource<T> ca;
     dxmc::CTSpiralSource<T> cs;
     dxmc::CTAxialDualSource<T> cad;

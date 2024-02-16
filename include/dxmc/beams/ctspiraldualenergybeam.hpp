@@ -79,7 +79,7 @@ public:
     void setCollimation(double coll_cm)
     {
         // collimation must be larger than 1 mm (0.1 cm)
-        m_collimation = std::max(std::abs(coll_cm), T { 0.1 });
+        m_collimation = std::max(std::abs(coll_cm), 0.1);
     }
 
     double sourceDetectorDistance() const { return m_SDD; }
@@ -249,14 +249,14 @@ public:
         const bool isTubeB = dualExposureIndex % 2 == 1;
 
         constexpr auto pi2 = PI_VAL() * 2;
-        const T angle = i * m_stepAngle;
+        const auto angle = i * m_stepAngle;
         const auto dz = m_pitch * m_collimation * angle / pi2;
         const auto directionZ = vectormath::subtract(m_stop, m_start);
         const auto direction = vectormath::normalized(directionZ);
 
         // finding normal vector to direction
         const auto normal_ind = vectormath::argmin3(direction);
-        std::array<T, 3> normal = { 0, 0, 0 };
+        std::array<double, 3> normal = { 0, 0, 0 };
         normal[normal_ind] = 1;
         normal = vectormath::normalized(vectormath::cross(normal, direction));
         const auto rot_angle = isTubeB ? m_startAngle + angle + m_tubeBoffsetAngle : m_startAngle + angle;

@@ -18,7 +18,6 @@ Copyright 2024 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/dosescore.hpp"

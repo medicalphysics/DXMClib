@@ -18,7 +18,6 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"

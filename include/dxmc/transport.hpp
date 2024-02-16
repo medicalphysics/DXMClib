@@ -20,7 +20,6 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/beams/beamtype.hpp"
 #include "dxmc/dxmcrandom.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/transportprogress.hpp"
 #include "dxmc/world/world.hpp"
 

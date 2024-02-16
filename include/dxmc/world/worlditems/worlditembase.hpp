@@ -18,7 +18,6 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 #include "dxmc/dxmcrandom.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/dosescore.hpp"

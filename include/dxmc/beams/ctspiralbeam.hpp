@@ -175,7 +175,7 @@ public:
         m_bowtieFilter = filter;
     }
 
-    pitch() const { return m_pitch; }
+    double pitch() const { return m_pitch; }
     void setPitch(double p)
     {
         m_pitch = std::max(std::abs(p), 0.1);
@@ -306,7 +306,7 @@ public:
 
         transport(world, beam, progress);
 
-        const auto ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
+        const auto ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * 10.0 / (3 * m_collimation);
 
         const auto ctdiw_beam = m_CTDIvol * m_pitch;
         return ctdiw_beam / ctdiw_calc;

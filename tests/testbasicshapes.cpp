@@ -24,14 +24,13 @@ Copyright 2022 Erlend Andersen
 
 #include <iostream>
 
-template <typename T>
 bool testSphereIntersection()
 {
     bool success = true;
-    dxmc::Particle<T> p;
+    dxmc::Particle p;
 
-    T radii = 2;
-    std::array<T, 3> center = { 0, 0, 0 };
+    double radii = 2;
+    std::array<double, 3> center = { 0, 0, 0 };
 
     // Large value (triggers catastrophic cancelations for floats for naive solution)
     p.pos = { 0, 0, -8000 };
@@ -73,18 +72,17 @@ bool testSphereIntersection()
         std::cout << "SUCCESS";
     else
         std::cout << "FAILURE";
-    std::cout << " Test for ray sphere intersections with sizeof(T): " << sizeof(T) << std::endl;
+    std::cout << " Test for ray sphere intersections." << std::endl;
 
     return success;
 }
 
-template <typename T>
 bool testAABBIntersection()
 {
     bool success = true;
-    dxmc::Particle<T> p;
+    dxmc::Particle p;
 
-    std::array<T, 6> aabb = { -2, -2, -2, 2, 2, 2 };
+    std::array<double, 6> aabb = { -2, -2, -2, 2, 2, 2 };
 
     p.pos = { 0, 0, -8000 };
     p.dir = { 0, 0, 1 };
@@ -125,18 +123,17 @@ bool testAABBIntersection()
         std::cout << "SUCCESS";
     else
         std::cout << "FAILURE";
-    std::cout << " Test for ray AABB intersections with sizeof(T): " << sizeof(T) << std::endl;
+    std::cout << " Test for ray AABB intersections. " << std::endl;
 
     return success;
 }
 
-template <typename T>
 bool testCylindarIntersection()
 {
     bool success = true;
-    dxmc::Particle<T> p;
+    dxmc::Particle p;
 
-    auto cylinder = dxmc::basicshape::cylinder::Cylinder<T>({ 0, 0, 0 }, { 0, 0, 1 }, 2, 2);
+    auto cylinder = dxmc::basicshape::cylinder::Cylinder({ 0, 0, 0 }, { 0, 0, 1 }, 2, 2);
 
     // Large value (triggers catastrophic cancelations for floats for naive solution)
     p.pos = { 0, 0, -8000 };
@@ -158,13 +155,13 @@ bool testCylindarIntersection()
     p.dir = { 1, 0, 1 };
     dxmc::vectormath::normalize(p.dir);
     t = dxmc::basicshape::cylinder::intersect(p, cylinder);
-    success = success && t.valid() && std::abs(t.intersection - std::sqrt(T { 2 })) <= std::numeric_limits<T>::epsilon() * 10;
+    success = success && t.valid() && std::abs(t.intersection - std::sqrt(2.0)) <= std::numeric_limits<double>::epsilon() * 10;
 
     p.pos = { -1, 0, cylinder.center[0] - cylinder.half_height + 1 };
     p.dir = { 1, 0, 1 };
     dxmc::vectormath::normalize(p.dir);
     t = dxmc::basicshape::cylinder::intersect(p, cylinder);
-    success = success && t.valid() && std::abs(t.intersection - 3 * std::sqrt(T { 2 })) <= std::numeric_limits<T>::epsilon() * 10;
+    success = success && t.valid() && std::abs(t.intersection - 3 * std::sqrt(2.0)) <= std::numeric_limits<double>::epsilon() * 10;
 
     p.pos = { -1, 0, cylinder.center[0] - cylinder.half_height - 1 };
     p.dir = { -1, 0, -1 };
@@ -186,15 +183,17 @@ bool testCylindarIntersection()
 
     dxmc::RandomState state;
     for (std::size_t i = 0; i < 1E6; ++i) {
-        std::array<T, 3> pos_init = {
-            state.randomUniform<T>(-cylinder.radius, cylinder.radius),
-            state.randomUniform<T>(-cylinder.radius, cylinder.radius),
-            state.randomUniform<T>(-cylinder.half_height - 1, cylinder.half_height + 1),
+        std::array<double, 3> pos_init = {
+            state.randomUniform(-cylinder.radius, cylinder.radius),
+            state.randomUniform(-cylinder.radius, cylinder.radius),
+            state.randomUniform(-cylinder.half_height - 1, cylinder.half_height + 1),
         };
 
-        pos_init = { -0.216281652,
+        pos_init = {
+            -0.216281652,
             1.74022770,
-            -1.04047060 };
+            -1.04047060
+        };
 
         const auto pos = dxmc::vectormath::add(pos_init, cylinder.center);
         const bool inside = dxmc::basicshape::cylinder::pointInside(pos, cylinder);
@@ -211,29 +210,28 @@ bool testCylindarIntersection()
         std::cout << "SUCCESS";
     else
         std::cout << "FAILURE";
-    std::cout << " Test for ray cylinder intersections with sizeof(T): " << sizeof(T) << std::endl;
+    std::cout << " Test for ray cylinder intersections." << std::endl;
 
     return success;
 }
 
-template <typename T>
 bool testCylinderForwardIntersection()
 {
 
     bool success = true;
 
-    const T radii = 4;
-    const std::array<T, 3> center = { 8, 0, 0 };
-    const T half_height = 6;
+    const double radii = 4;
+    const std::array<double, 3> center = { 8, 0, 0 };
+    const double half_height = 6;
 
-    const auto cylinder = dxmc::basicshape::cylinder::Cylinder<T>(center, { 0, 0, 1 }, radii, half_height);
+    const auto cylinder = dxmc::basicshape::cylinder::Cylinder(center, { 0, 0, 1 }, radii, half_height);
 
-    dxmc::Particle<T> p;
+    dxmc::Particle p;
 
-    std::optional<std::array<T, 2>> res;
+    std::optional<std::array<double, 2>> res;
 
-    std::array dummy = { std::numeric_limits<T>::max(), std::numeric_limits<T>::max() };
-    std::array<T, 2> t;
+    std::array dummy = { std::numeric_limits<double>::max(), std::numeric_limits<double>::max() };
+    std::array<double, 2> t;
 
     p.pos = { -10, 0, 0 };
     p.dir = { 1, 0, 0 };
@@ -260,13 +258,13 @@ bool testCylinderForwardIntersection()
     for (std::size_t i = 0; i < 1e6; ++i) {
         for (std::size_t i = 0; i < 3; ++i) {
             p.pos[i] = state.randomUniform(center[i] - radii * 2, center[i] + radii * 2);
-            p.dir[i] = state.randomUniform(T { -1 }, T { 1 });
+            p.dir[i] = state.randomUniform(-1.0, 1.0);
         }
         dxmc::vectormath::normalize(p.dir);
         auto r = dxmc::basicshape::cylinder::intersectForwardInterval(p, cylinder);
         if (r) {
             auto t2 = r.value();
-            if (t2[0] < T { 0 } || t2[1] < T { 0 } || t2[1] <= t2[0])
+            if (t2[0] < 0 || t2[1] < 0 || t2[1] <= t2[0])
                 return false;
         }
     }
@@ -280,17 +278,13 @@ int main()
 
     bool success = true;
 
-    success = success && testSphereIntersection<float>();
-    success = success && testSphereIntersection<double>();
+    success = success && testSphereIntersection();
 
-    success = success && testAABBIntersection<float>();
-    success = success && testAABBIntersection<double>();
+    success = success && testAABBIntersection();
 
-    success = success && testCylindarIntersection<float>();
-    success = success && testCylindarIntersection<double>();
+    success = success && testCylindarIntersection();
 
-    success = success && testCylinderForwardIntersection<double>();
-    success = success && testCylinderForwardIntersection<float>();
+    success = success && testCylinderForwardIntersection();
 
     if (success)
         return EXIT_SUCCESS;

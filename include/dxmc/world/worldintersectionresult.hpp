@@ -18,10 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
-
 namespace dxmc {
-
 
 struct WorldIntersectionResult {
     double intersection = 0;

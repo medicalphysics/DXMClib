@@ -25,17 +25,17 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <bool ONESIDED = true>
 class BowtieFilter {
 public:
+    template <bool ONESIDED = true>
     BowtieFilter(const std::vector<double>& angles_r, const std::vector<double>& intensity_r)
     {
-        setData(angles_r, intensity_r);
+        setData<ONESIDED>(angles_r, intensity_r);
     }
-
+    template <bool ONESIDED = true>
     BowtieFilter(const std::vector<std::pair<double, double>>& data)
     {
-        setData(data);
+        setData<ONESIDED>(data);
     }
 
     BowtieFilter()
@@ -50,9 +50,10 @@ public:
             { 0.324269441, 1.27605 },
             { 0.390607044, 0.947716 }
         };
-        setData(data);
+        setData<true>(data);
     }
 
+    template <bool ONESIDED = true>
     double operator()(double angle) const
     {
         if constexpr (ONESIDED)
@@ -61,6 +62,7 @@ public:
             return m_inter(angle);
     }
 
+    template <bool ONESIDED = true>
     void setData(std::vector<std::pair<double, double>> data)
     {
         for (auto& d : data) {
@@ -80,20 +82,18 @@ public:
         m_inter.scale((stop - start) / area);
     }
 
+    template <bool ONESIDED = true>
     void setData(const std::vector<double>& angles_r, const std::vector<double>& intensity_r)
     {
         const auto N = std::min(angles_r.size(), intensity_r.size());
         std::vector<std::pair<double, double>> data(N);
 
         for (std::size_t i = 0; i < N; ++i) {
-            if constexpr (ONESIDED)
-                data[i].first = std::abs(angles_r[i]);
-            else
-                data[i].first = angles_r[i];
+            data[i].first = angles_r[i];
             data[i].second = std::abs(intensity_r[i]);
         }
 
-        setData(data);
+        setData<ONESIDED>(data);
     }
 
 private:

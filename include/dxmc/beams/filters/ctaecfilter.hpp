@@ -40,7 +40,7 @@ public:
         setData(start, stop, values);
     }
 
-    void normalizeBetween(const std::array<double, 3>& start, const std::array<double, 3>& stop) const
+    void normalizeBetween(const std::array<double, 3>& start, const std::array<double, 3>& stop)
     {
         const auto dist_start = vectormath::subtract(start, m_start);
         const auto proj_start = vectormath::dot(dist_start, m_dir);
@@ -120,7 +120,7 @@ public:
         for (std::size_t i = 0; i < m_data.size() - 1; ++i) {
             const auto d0 = m_data[i];
             const auto d1 = m_data[i + 1];
-            s += (d0 + d1) * m_step * T { 0.5 };
+            s += (d0 + d1) * m_step * 0.5;
         }
         return s;
     }
@@ -164,7 +164,7 @@ protected:
             d *= k;
     }
 
-    void normalize(T start, T stop)
+    void normalize(double start, double stop)
     {
         const auto area = integrate(start, stop);
         // we want the total area equal to m_length * 1 for an expected value of 1.0;

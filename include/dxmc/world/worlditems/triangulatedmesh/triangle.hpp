@@ -18,7 +18,6 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 

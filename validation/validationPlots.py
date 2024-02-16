@@ -37,7 +37,7 @@ def readData():
     dm = dt[dt['Model'] == model].copy()
     dm["Result"] = dm["TG195Result"]
     dm["Model"] = ["TG195" for _ in dm["TG195Result"]]
-    for key in ["Stddev", "nEvents", "SimulationTime", "Precision"]:
+    for key in ["Stddev", "nEvents", "SimulationTime"]:
         dm[key] = [0 for _ in dm[key]]
     
     return pd.concat([dt, dm], ignore_index=True)
@@ -141,7 +141,7 @@ def plotRuntimes(dt, show=False):
     df = dt[dt['Model'] != 'TG195']    
     for cas in set(df['Case']):        
         dff = df[df['Case'] == cas]        
-        g = sns.catplot(x="Mode", y="SimulationTime",col='Model', row='Specter', hue='Precision', data=dff, kind='bar')
+        g = sns.catplot(x="Mode", y="SimulationTime", row='Specter', hue='Model', data=dff, kind='bar')
         fix_axis(g, ylabel='Simulation time [ms]')
         plt.savefig("plots/Runtimes_{}.png".format(cas), dpi=900)
         if show:
@@ -154,7 +154,6 @@ if __name__=='__main__':
 
     dt = readData()
     
-   
     try:
         os.mkdir("plots")
     except Exception:

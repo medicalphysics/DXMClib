@@ -18,7 +18,6 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 #include "dxmc/beams/beamtype.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
