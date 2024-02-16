@@ -21,12 +21,12 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/floating.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
 
+#include <cstring>
 #include <fstream>
 #include <string>
-#include <cstring>
 
 namespace dxmc {
-template <Floating T>
+
 class STLReader {
 public:
     STLReader(const std::string& path)
@@ -37,14 +37,14 @@ public:
 
     const std::string& message() const { return m_error; }
 
-    std::vector<Triangle<T>> operator()()
+    std::vector<Triangle> operator()()
     {
         return operator()(m_filePath);
     }
-    std::vector<Triangle<T>> operator()(const std::string& path)
+    std::vector<Triangle> operator()(const std::string& path)
     {
         m_filePath = path;
-        std::vector<Triangle<T>> data;
+        std::vector<Triangle> data;
         // First we chech for binary or ascii file
         std::ifstream f(path);
         if (f.is_open()) {
@@ -87,11 +87,11 @@ protected:
         return vec;
     }
 
-    std::vector<Triangle<T>> readSTLfileBinary(const std::string& path)
+    std::vector<Triangle> readSTLfileBinary(const std::string& path)
     {
         constexpr auto MIN_STL_SIZE = 80 + 4 + 50;
 
-        std::vector<Triangle<T>> data;
+        std::vector<Triangle> data;
         std::vector<std::uint8_t> buffer;
 
         std::ifstream f(path, std::ios::binary | std::ios::in | std::ios::ate);
@@ -118,8 +118,8 @@ protected:
         } else {
             const std::vector<float> data_buffer = readTrianglesFromBytes(buffer);
 
-            std::vector<T> vertices;
-            std::vector<T> normals;
+            std::vector<double> vertices;
+            std::vector<double> normals;
             vertices.reserve(data_buffer.size() * 9);
             normals.reserve(data_buffer.size() * 3);
             for (std::size_t i = 0; i < data_buffer.size(); i = i + 12) {
@@ -164,33 +164,22 @@ protected:
         return tokens;
     }
 
-    std::vector<Triangle<T>> readSTLfileASCII(const std::string& path)
+    std::vector<Triangle> readSTLfileASCII(const std::string& path)
     {
-        auto processLine = [](const std::string& line) -> std::optional<std::array<T, 3>> {
+        auto processLine = [](const std::string& line) -> std::optional<std::array<double, 3>> {
             auto words = stringSplit(line, ' ');
             if (words.size() < 4)
                 return std::nullopt;
             const std::string cmp("vertex");
             std::transform(words[0].begin(), words[0].end(), words[0].begin(), [](unsigned char u) { return std::tolower(u); });
             if (cmp.compare(words[0]) == 0) {
-
                 try {
-                    if constexpr (sizeof(T) == 4) {
-                        std::array<T, 3> res {
-                            std::stof(words[1]),
-                            std::stof(words[2]),
-                            std::stof(words[3])
-                        };
-                        return std::optional(res);
-                    } else {
-                        std::array<T, 3> res {
-                            std::stod(words[1]),
-                            std::stod(words[2]),
-                            std::stod(words[3])
-                        };
-                        return std::optional(res);
-                    }
-
+                    std::array<double, 3> res {
+                        std::stod(words[1]),
+                        std::stod(words[2]),
+                        std::stod(words[3])
+                    };
+                    return std::optional(res);
                 } catch (std::invalid_argument) {
                     return std::nullopt;
                 }
@@ -198,7 +187,7 @@ protected:
             return std::nullopt;
         };
 
-        std::vector<T> vertices;
+        std::vector<double> vertices;
 
         std::ifstream f(path, std::ios::in);
         if (f.is_open()) {
@@ -215,7 +204,7 @@ protected:
         }
         f.close();
 
-        std::vector<Triangle<T>> mesh;
+        std::vector<Triangle> mesh;
         if (vertices.size() < 9) {
             m_error = "File do not contains any triangles";
             return mesh;

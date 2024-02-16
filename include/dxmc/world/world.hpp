@@ -258,7 +258,7 @@ private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_items;
     KDTree m_kdtree;
-    Material m_fillMaterial;
+    Material<double, 5> m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;
 };

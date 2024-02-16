@@ -34,7 +34,7 @@ Copyright 2023 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-template <Floating T, std::size_t Nshells = 5, int LOWENERGYCORRECTION = 2>
+template <std::size_t Nshells = 5, int LOWENERGYCORRECTION = 2>
 class TetrahedalmeshReader {
 public:
     TetrahedalmeshReader() { }
@@ -97,26 +97,26 @@ public:
             m_materials.emplace_back(m.material);
     }
 
-    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(int depth = 8)
+    TetrahedalMesh<Nshells, LOWENERGYCORRECTION> getMesh(int depth = 8)
     {
-        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
+        TetrahedalMesh<Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
         return mesh;
     }
 
-    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(int x, int y, int z)
+    TetrahedalMesh<Nshells, LOWENERGYCORRECTION> getMesh(int x, int y, int z)
     {
         std::array<int, 3> d = { x, y, z };
-        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, d);
+        TetrahedalMesh<Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, d);
         return mesh;
     }
 
-    TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> getMesh(const std::array<int, 3>& depth)
+    TetrahedalMesh<Nshells, LOWENERGYCORRECTION> getMesh(const std::array<int, 3>& depth)
     {
-        TetrahedalMesh<T, Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
+        TetrahedalMesh<Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
         return mesh;
     }
 
-    void rotate(const std::array<T, 3>& axis, T angle)
+    void rotate(const std::array<double, 3>& axis, double angle)
     {
         std::for_each(std::execution::par_unseq, m_tets.begin(), m_tets.end(), [&axis, angle](auto& v) {
             v.rotate(axis, angle);
@@ -125,8 +125,7 @@ public:
 
 protected:
     template <typename U>
-    static const char*
-    parseLine(const char* start, const char* end, char sep, U& val)
+    static const char* parseLine(const char* start, const char* end, char sep, U& val)
     {
         while ((std::isspace(*start) || *start == sep) && start != end)
             ++start;
@@ -172,11 +171,11 @@ protected:
 
     struct ICRP145Materials {
         std::uint16_t index = 0;
-        Material<T, Nshells> material;
-        T density = 1;
+        Material<double, Nshells> material;
+        double density = 1;
         std::string name;
 
-        ICRP145Materials(Material<T, Nshells>& mat)
+        ICRP145Materials(Material<double, Nshells>& mat)
             : material(mat)
         {
         }
@@ -238,9 +237,9 @@ protected:
 
             std::array<std::size_t, 13> Z = { 1, 6, 7, 8, 11, 12, 15, 16, 17, 19, 20, 26, 53 };
             std::size_t zIdx = 0;
-            std::map<std::size_t, T> frac;
+            std::map<std::size_t, double> frac;
             while (start < end) {
-                T w = -1;
+                double w = -1;
                 auto [ptr, ec] = std::from_chars(d + start, d + end, w);
                 if (ec == std::errc())
                     start = std::distance(d, ptr);
@@ -261,12 +260,12 @@ protected:
                 }
             }
 
-            T organDensity = 1;
+            double organDensity = 1;
             if (frac.contains(0)) {
                 organDensity = frac.at(0);
                 frac.erase(0);
             }
-            auto mat = Material<T, Nshells>::byWeight(frac);
+            auto mat = Material<double, Nshells>::byWeight(frac);
             if (mat) {
                 ICRP145Materials organ(mat.value());
                 organ.density = organDensity;
@@ -314,7 +313,7 @@ protected:
         return res;
     }
 
-    static std::vector<Tetrahedron<T>> readICRP145PhantomGeometry(const std::string& nodeFile, const std::string& elementFile)
+    static std::vector<Tetrahedron> readICRP145PhantomGeometry(const std::string& nodeFile, const std::string& elementFile)
     {
         auto vertices = readVertices(nodeFile, 1, 80);
         auto nodes = readTetrahedalIndices(elementFile, 1, 80);
@@ -325,7 +324,7 @@ protected:
                 const auto& v = std::get<1>(node);
                 return std::max(v[0], std::max(v[1], v[2])); });
 
-        std::vector<Tetrahedron<T>> tets;
+        std::vector<Tetrahedron> tets;
         if (max_ind < vertices.size()) {
             tets.resize(nodes.size());
             std::transform(std::execution::par_unseq, nodes.cbegin(), nodes.cend(), tets.begin(), [&vertices](const auto& n) {
@@ -337,7 +336,7 @@ protected:
                 const auto& v2 = vertices[vIdx[2]].second;
                 const auto& v3 = vertices[vIdx[3]].second;
 
-                return Tetrahedron<T> { v0, v1, v2, v3, collection };
+                return Tetrahedron { v0, v1, v2, v3, collection };
             });
         }
 
@@ -405,12 +404,12 @@ protected:
         return nodes;
     }
 
-    static std::vector<std::pair<std::size_t, std::array<T, 3>>> readVertices(const std::string& path, int nHeaderLines = 1, std::size_t collength = 80)
+    static std::vector<std::pair<std::size_t, std::array<double, 3>>> readVertices(const std::string& path, int nHeaderLines = 1, std::size_t collength = 80)
     {
         // reads a file formatted as <index v0 v1 v2>, i.e "512 0.2 0.4523 -0.974"
         // # is treated as comment start
 
-        std::vector<std::pair<std::size_t, std::array<T, 3>>> vertices;
+        std::vector<std::pair<std::size_t, std::array<double, 3>>> vertices;
 
         const auto data = readBufferFromFile(path);
         if (data.size() == 0)
@@ -437,10 +436,10 @@ protected:
             auto start = data.data() + idx.first;
             auto stop = data.data() + idx.second;
             std::size_t index = std::numeric_limits<std::size_t>::max();
-            std::array<T, 3> v = {
-                std::numeric_limits<T>::quiet_NaN(),
-                std::numeric_limits<T>::quiet_NaN(),
-                std::numeric_limits<T>::quiet_NaN()
+            std::array<double, 3> v = {
+                std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN(),
+                std::numeric_limits<double>::quiet_NaN()
             };
             parseLine(start, stop, ' ', index, v[0], v[1], v[2]);
             return std::make_pair(index, v);
@@ -479,9 +478,9 @@ protected:
     }
 
 private:
-    std::vector<Tetrahedron<T>> m_tets;
-    std::vector<T> m_densities;
-    std::vector<Material<T, Nshells>> m_materials;
+    std::vector<Tetrahedron> m_tets;
+    std::vector<double> m_densities;
+    std::vector<Material<double, Nshells>> m_materials;
     std::vector<std::string> m_organNames;
 };
 }

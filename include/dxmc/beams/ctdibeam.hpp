@@ -29,11 +29,10 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class CTDIBeamExposure {
 public:
-    CTDIBeamExposure(T angle, T SDD, std::uint64_t historiesPerExposure,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter, const BowtieFilter<T>* bowtie, T weight = 1)
+    CTDIBeamExposure(double angle, double SDD, std::uint64_t historiesPerExposure,
+        const std::array<double, 2>& collimationAngles, const SpecterDistribution<double>* specter, const BowtieFilter* bowtie, double weight = 1)
         : m_Nparticles(historiesPerExposure)
         , m_collimationAngles(collimationAngles)
         , m_specter(specter)
@@ -48,14 +47,14 @@ public:
 
     CTDIBeamExposure() = delete;
 
-    const std::array<T, 3>& position() const { return m_pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
 
     std::uint64_t numberOfParticles() const
     {
         return m_Nparticles;
     }
 
-    Particle<T> sampleParticle(RandomState& state) const noexcept
+    Particle sampleParticle(RandomState& state) const noexcept
     {
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
@@ -71,7 +70,7 @@ public:
 
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
 
-        Particle<T> p = {
+        Particle p = {
             .pos = m_pos,
             .dir = pdir,
             .energy = m_specter->sampleValue(state),
@@ -82,20 +81,19 @@ public:
 
 private:
     std::uint64_t m_Nparticles = 1;
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 1, 0 };
-    std::array<T, 3> m_dirCosineX = { 1, 0, 0 };
-    std::array<T, 3> m_dirCosineY = { 0, 0, 1 };
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
-    T m_weight = 1;
-    const SpecterDistribution<T>* m_specter = nullptr;
-    const BowtieFilter<T>* m_bowtieFilter = nullptr;
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 1, 0 };
+    std::array<double, 3> m_dirCosineX = { 1, 0, 0 };
+    std::array<double, 3> m_dirCosineY = { 0, 0, 1 };
+    std::array<double, 2> m_collimationAngles = { 0, 0 };
+    double m_weight = 1;
+    const SpecterDistribution<double>* m_specter = nullptr;
+    const BowtieFilter* m_bowtieFilter = nullptr;
 };
 
-template <Floating T>
 class CTDIBeam {
 public:
-    CTDIBeam(T angleStep, T SDD, const std::array<T, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<T>& specter, const BowtieFilter<T>& bowtie, T weight = 1)
+    CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, double weight = 1)
         : m_angleStep(angleStep)
         , m_sdd(SDD)
         , m_collimationAngles(collimationAngles)
@@ -108,30 +106,30 @@ public:
 
     std::uint64_t numberOfExposures() const
     {
-        constexpr auto pi2 = PI_VAL<T>() * 2;
+        constexpr auto pi2 = PI_VAL() * 2;
         return static_cast<std::uint64_t>(pi2 / m_angleStep);
     }
 
     std::uint64_t numberOfParticles() const { return numberOfExposures() * m_particlesPerExposure; }
 
-    CTDIBeamExposure<T> exposure(std::size_t i) const noexcept
+    CTDIBeamExposure exposure(std::size_t i) const noexcept
     {
         const auto angle = i * m_angleStep;
         return CTDIBeamExposure(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter, &m_bowtieFilter, m_weight);
     }
 
-    T calibrationFactor(TransportProgress* progress = nullptr) const
+    double calibrationFactor(TransportProgress* progress = nullptr) const
     {
         return 1;
     }
 
 private:
-    T m_angleStep = 0;
-    T m_sdd = 1;
-    T m_weight = 1;
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    double m_angleStep = 0;
+    double m_sdd = 1;
+    double m_weight = 1;
+    std::array<double, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_particlesPerExposure = 1;
-    SpecterDistribution<T> m_specter;
-    BowtieFilter<T> m_bowtieFilter;
+    SpecterDistribution<double> m_specter;
+    BowtieFilter m_bowtieFilter;
 };
 }

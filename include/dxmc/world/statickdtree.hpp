@@ -33,21 +33,21 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <typename U, typename T>
-concept StaticKDTreeType = requires(U u, Particle<T> p, std::array<T, 3> vec) {
-                               u.translate(vec);
-                               {
-                                   u.intersect(p)
-                                   } -> std::same_as<WorldIntersectionResult<T>>;
-                               {
-                                   u.center()
-                                   } -> std::convertible_to<std::array<T, 3>>;
-                               {
-                                   u.AABB()
-                                   } -> std::convertible_to<std::array<T, 6>>;
-                           };
+template <typename U>
+concept StaticKDTreeType = requires(U u, Particle p, std::array<double, 3> vec) {
+    u.translate(vec);
+    {
+        u.intersect(p)
+    } -> std::same_as<WorldIntersectionResult>;
+    {
+        u.center()
+    } -> std::convertible_to<std::array<double, 3>>;
+    {
+        u.AABB()
+    } -> std::convertible_to<std::array<double, 6>>;
+};
 
-template <int Depth, Floating T, StaticKDTreeType<T> U>
+template <int Depth, StaticKDTreeType U>
 class StaticKDTree {
 public:
     StaticKDTree() { }
@@ -75,18 +75,19 @@ public:
             }
         }
 
-        m_left = StaticKDTree<Depth - 1, T, U>(left);
-        m_right = StaticKDTree<Depth - 1, T, U>(right);
+        m_left = StaticKDTree<Depth - 1, U>(left);
+        m_right = StaticKDTree<Depth - 1, U>(right);
     }
-    void translate(const std::array<T, 3>& dir)
+
+    void translate(const std::array<double, 3>& dir)
     {
         m_plane += dir[m_D];
         m_left.translate(dir);
         m_right.translate(dir);
     }
-    std::array<T, 6> AABB() const
-    {
 
+    std::array<double, 6> AABB() const
+    {
         auto left = m_left.AABB();
         const auto right = m_right.AABB();
         for (std::size_t i = 0; i < 3; ++i) {
@@ -97,15 +98,15 @@ public:
         }
         return left;
     }
-    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 6>& aabb) const
+    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 6>& aabb) const
     {
         const auto tbox = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return tbox ? intersect(particle, *tbox) : KDTreeIntersectionResult<T, const U> {};
+        return tbox ? intersect(particle, *tbox) : KDTreeIntersectionResult<const U> {};
     }
-    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const
+    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 2>& tbox) const
     {
         // test for parallell beam, if parallell we must test both sides.
-        if (std::abs(particle.dir[m_D]) <= std::numeric_limits<T>::epsilon()) {
+        if (std::abs(particle.dir[m_D]) <= std::numeric_limits<double>::epsilon()) {
             const auto hit_left = m_left.intersect(particle, tbox);
             const auto hit_right = m_right.intersect(particle, tbox);
             if (hit_left.valid() && hit_right.valid())
@@ -113,7 +114,7 @@ public:
             return hit_left.valid() ? hit_left : hit_right;
         }
 
-        const auto [front, back] = particle.dir[m_D] > T { 0 } ? std::make_pair(&m_left, &m_right) : std::make_pair(&m_right, &m_left);
+        const auto [front, back] = particle.dir[m_D] > 0 ? std::make_pair(&m_left, &m_right) : std::make_pair(&m_right, &m_left);
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -126,23 +127,23 @@ public:
         }
 
         // both directions (start with front)
-        const std::array<T, 2> t_front { tbox[0], t };
+        const std::array<double, 2> t_front { tbox[0], t };
         const auto hit = front->intersect(particle, t_front);
         if (hit.valid()) {
             if (hit.intersection <= t) {
                 return hit;
             }
         }
-        const std::array<T, 2> t_back { t, tbox[1] };
+        const std::array<double, 2> t_back { t, tbox[1] };
         return back->intersect(particle, t_back);
     }
 
 protected:
-    static std::pair<std::uint_fast32_t, T> planeSplit(const std::vector<U>& data)
+    static std::pair<std::uint_fast32_t, double> planeSplit(const std::vector<U>& data)
     {
         // split where we find best separation between objects
 
-        std::array<std::vector<std::pair<T, T>>, 3> segs;
+        std::array<std::vector<std::pair<double, double>>, 3> segs;
         for (const auto& u : data) {
             const auto aabb = u.AABB();
             for (std::size_t i = 0; i < 3; ++i) {
@@ -169,16 +170,16 @@ protected:
 
         if (n_splits_max == 1) {
             const std::uint_fast32_t D = 0;
-            const auto plane = std::nextafter(segs[D][0].second, std::numeric_limits<T>::max());
+            const auto plane = std::nextafter(segs[D][0].second, std::numeric_limits<double>::max());
             return std::make_pair(D, plane);
         } else {
             // finding dim with min 2 splits and max extent
             std::uint_fast32_t D = 0;
-            T extent = 0;
+            double extent = 0;
             for (std::uint_fast32_t i = 0; i < 3; ++i) {
                 if (n_splits[i] == n_splits_max) {
-                    T min = std::numeric_limits<T>::max();
-                    T max = std::numeric_limits<T>::lowest();
+                    auto min = std::numeric_limits<double>::max();
+                    auto max = std::numeric_limits<double>::lowest();
                     for (const auto& [fi, se] : segs[i]) {
                         min = std::min(min, fi);
                         max = std::max(max, se);
@@ -192,12 +193,12 @@ protected:
             }
 
             const auto ind_split = n_splits_max / 2;
-            const auto plane = (segs[D][ind_split - 1].second + segs[D][ind_split].first) * T { 0.5 };
+            const auto plane = (segs[D][ind_split - 1].second + segs[D][ind_split].first) * 0.5;
             return std::make_pair(D, plane);
         }
     }
 
-    static int planeSide(const U& obj, std::uint_fast32_t D, const T planesep)
+    static int planeSide(const U& obj, std::uint_fast32_t D, const double planesep)
     {
         const auto& aabb = obj.AABB();
         const auto min = aabb[D];
@@ -212,34 +213,34 @@ protected:
 
 private:
     std::uint_fast32_t m_D = 0;
-    T m_plane = 0;
-    StaticKDTree<Depth - 1, T, U> m_left;
-    StaticKDTree<Depth - 1, T, U> m_right;
+    double m_plane = 0;
+    StaticKDTree<Depth - 1, U> m_left;
+    StaticKDTree<Depth - 1, U> m_right;
 };
 
-template <Floating T, StaticKDTreeType<T> U>
-class StaticKDTree<0, T, U> {
+template <StaticKDTreeType U>
+class StaticKDTree<0, U> {
 public:
     StaticKDTree() { }
     StaticKDTree(std::vector<U>& data)
         : m_data(data)
     {
     }
-    void translate(const std::array<T, 3>& dir)
+    void translate(const std::array<double, 3>& dir)
     {
         for (auto& u : m_data)
             u.translate(dir);
     }
-    std::array<T, 6> AABB() const noexcept
+    std::array<double, 6> AABB() const noexcept
     {
 
-        std::array<T, 6> aabb {
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
+        std::array<double, 6> aabb {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
         };
         for (const auto& u : m_data) {
             const auto& aabb_obj = u.AABB();
@@ -258,9 +259,10 @@ public:
     {
         return 0;
     }
-    KDTreeIntersectionResult<T, const U> intersect(const Particle<T>& particle, const std::array<T, 2>& tbox) const noexcept
+
+    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 2>& tbox) const noexcept
     {
-        KDTreeIntersectionResult<T, const U> res { .item = nullptr, .intersection = std::numeric_limits<T>::max() };
+        KDTreeIntersectionResult<const U> res { .item = nullptr, .intersection = std::numeric_limits<double>::max() };
 
         for (const auto& u : m_data) {
             const auto t_cand = u.intersect(particle);

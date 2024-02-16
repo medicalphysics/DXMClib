@@ -31,11 +31,10 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class DXBeamExposure {
 public:
-    DXBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T> specter)
+    DXBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N, double weight,
+        const std::array<double, 2>& collimationAngles, const SpecterDistribution<double> specter)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_collimationAngles(collimationAngles)
@@ -45,11 +44,11 @@ public:
     {
     }
 
-    const std::array<T, 3>& position() const { return m_pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle<T> sampleParticle(RandomState& state) const noexcept
+    Particle sampleParticle(RandomState& state) const noexcept
     {
         auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
 
@@ -65,7 +64,7 @@ public:
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
         };
 
-        Particle<T> p = {
+        Particle p = {
             .pos = m_pos,
             .dir = pdir,
             .energy = m_specter.sampleValue(state),
@@ -75,21 +74,20 @@ public:
     }
 
 private:
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<double, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
-    T m_weight = 1;
-    SpecterDistribution<T> m_specter;
+    double m_weight = 1;
+    SpecterDistribution<double> m_specter;
 };
 
-template <Floating T>
 class DXBeam {
 public:
     DXBeam(
-        const std::array<T, 3>& pos = { 0, 0, 0 },
-        const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } },
-        const std::map<std::size_t, T>& filtrationMaterials = {})
+        const std::array<double, 3>& pos = { 0, 0, 0 },
+        const std::array<std::array<double, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } },
+        const std::map<std::size_t, double>& filtrationMaterials = {})
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
@@ -106,22 +104,22 @@ public:
     std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    const std::array<T, 3>& position() const { return m_pos; }
-    void setPosition(const std::array<T, 3>& pos) { m_pos = pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
+    void setPosition(const std::array<double, 3>& pos) { m_pos = pos; }
 
-    const std::array<std::array<T, 3>, 2>& directionCosines() const
+    const std::array<std::array<double, 3>, 2>& directionCosines() const
     {
         return m_dirCosines;
     }
 
-    void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
+    void setDirectionCosines(const std::array<std::array<double, 3>, 2>& dir)
     {
         m_dirCosines = dir;
         vectormath::normalize(m_dirCosines[0]);
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    void setDirectionCosines(const std::array<T, 3>& xdir, const std::array<T, 3>& ydir)
+    void setDirectionCosines(const std::array<double, 3>& xdir, const std::array<double, 3>& ydir)
     {
         m_dirCosines[0] = xdir;
         m_dirCosines[1] = ydir;
@@ -129,36 +127,36 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    T DAPvalue() const { return m_measuredDAP; }
-    void setDAPvalue(T dap) { m_measuredDAP = std::abs(dap); }
+    double DAPvalue() const { return m_measuredDAP; }
+    void setDAPvalue(double dap) { m_measuredDAP = std::abs(dap); }
 
-    const Tube<T>& tube() const { return m_tube; }
-    void setTube(const Tube<T>&& tube)
+    const Tube& tube() const { return m_tube; }
+    void setTube(const Tube&& tube)
     {
         m_tube = tube;
         tubeChanged();
     }
-    void setTubeVoltage(T voltage)
+    void setTubeVoltage(double voltage)
     {
         m_tube.setVoltage(voltage);
         tubeChanged();
     }
-    void setTubeAnodeAngle(T ang)
+    void setTubeAnodeAngle(double ang)
     {
         m_tube.setAnodeAngle(ang);
         tubeChanged();
     }
-    void setTubeAnodeAngleDeg(T ang)
+    void setTubeAnodeAngleDeg(double ang)
     {
         m_tube.setAnodeAngleDeg(ang);
         tubeChanged();
     }
-    void addTubeFiltrationMaterial(std::size_t Z, T mm)
+    void addTubeFiltrationMaterial(std::size_t Z, double mm)
     {
         m_tube.addFiltrationMaterial(Z, mm);
         tubeChanged();
     }
-    T tubeFiltration(std::size_t Z) const
+    double tubeFiltration(std::size_t Z) const
     {
         return m_tube.filtration(Z);
     }
@@ -167,47 +165,47 @@ public:
         m_tube.clearFiltrationMaterials();
         tubeChanged();
     }
-    void setTubeEnergyResolution(T energyResolution)
+    void setTubeEnergyResolution(double energyResolution)
     {
         m_tube.setEnergyResolution(energyResolution);
         tubeChanged();
     }
 
-    T tubeAlHalfValueLayer()
+    double tubeAlHalfValueLayer()
     {
         return m_tube.mmAlHalfValueLayer();
     }
 
-    const std::array<T, 2>& collimationAngles() const
+    const std::array<double, 2>& collimationAngles() const
     {
         return m_collimationAngles;
     }
-    void setCollimationAngles(const std::array<T, 2>& angles)
+    void setCollimationAngles(const std::array<double, 2>& angles)
     {
         setCollimationAngles(angles[0], angles[1]);
     }
-    void setCollimationAngles(T X, T Y)
+    void setCollimationAngles(double X, double Y)
     {
-        m_collimationAngles[0] = std::clamp(X, T { 0 }, PI_VAL<T>() / 2);
-        m_collimationAngles[1] = std::clamp(Y, T { 0 }, PI_VAL<T>() / 2);
+        m_collimationAngles[0] = std::clamp(X, 0.0, PI_VAL() / 2);
+        m_collimationAngles[1] = std::clamp(Y, 0.0, PI_VAL() / 2);
     }
-    std::array<T, 2> collimationAnglesDeg() const
+    std::array<double, 2> collimationAnglesDeg() const
     {
         auto d = m_collimationAngles;
-        d[0] *= RAD_TO_DEG<T>();
-        d[1] *= RAD_TO_DEG<T>();
+        d[0] *= RAD_TO_DEG();
+        d[1] *= RAD_TO_DEG();
         return d;
     }
-    void setCollimationAnglesDeg(const std::array<T, 2>& angles)
+    void setCollimationAnglesDeg(const std::array<double, 2>& angles)
     {
         setCollimationAnglesDeg(angles[0], angles[1]);
     }
-    void setCollimationAnglesDeg(T X, T Y)
+    void setCollimationAnglesDeg(double X, double Y)
     {
-        setCollimationAngles(DEG_TO_RAD<T>() * X, DEG_TO_RAD<T>() * Y);
+        setCollimationAngles(DEG_TO_RAD() * X, DEG_TO_RAD() * Y);
     }
 
-    void setBeamSize(T beamSizeX, T beamSizeY, T sourceDetectorDistance)
+    void setBeamSize(double beamSizeX, double beamSizeY, double sourceDetectorDistance)
     {
         if (sourceDetectorDistance > 0) {
             m_collimationAngles[0] = std::atan(std::abs(beamSizeX) / (2 * sourceDetectorDistance));
@@ -215,22 +213,22 @@ public:
         }
     }
 
-    DXBeamExposure<T> exposure(std::size_t i) const noexcept
+    DXBeamExposure exposure(std::size_t i) const noexcept
     {
-        DXBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
+        DXBeamExposure exp(m_pos, m_dirCosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
         return exp;
     }
 
-    T calibrationFactor(TransportProgress* progress = nullptr) const
+    double calibrationFactor(TransportProgress* progress = nullptr) const
     {
         const auto energies = m_tube.getEnergy();
         const auto weights = m_tube.getSpecter(energies, true);
-        auto air_cand = Material<T, 5>::byNistName("Air, Dry (near sea level)");
+        auto air_cand = Material<double, 5>::byNistName("Air, Dry (near sea level)");
         if (!air_cand)
             return 0;
         const auto& air = air_cand.value();
 
-        const auto kerma_per_history = std::transform_reduce(std::execution::par_unseq, energies.cbegin(), energies.cend(), weights.cbegin(), T { 0 }, std::plus<>(), [&](const auto e, const auto w) -> T {
+        const auto kerma_per_history = std::transform_reduce(std::execution::par_unseq, energies.cbegin(), energies.cend(), weights.cbegin(), 0.0, std::plus<>(), [&](const auto e, const auto w) -> double {
             const auto uen = air.massEnergyTransferAttenuation(e);
             return w * e * uen;
         });
@@ -248,15 +246,15 @@ protected:
     }
 
 private:
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
+    std::array<double, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
-    T m_weight = 1;
-    T m_measuredDAP = 1;
-    Tube<T> m_tube;
-    SpecterDistribution<T> m_specter;
+    double m_weight = 1;
+    double m_measuredDAP = 1;
+    Tube m_tube;
+    SpecterDistribution<double> m_specter;
 };
 
 }

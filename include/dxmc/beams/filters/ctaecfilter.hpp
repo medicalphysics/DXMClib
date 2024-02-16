@@ -27,21 +27,20 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class CTAECFilter {
 public:
     CTAECFilter()
     {
         m_data.resize(2);
-        std::fill(m_data.begin(), m_data.end(), T { 1 });
+        std::fill(m_data.begin(), m_data.end(), 1.0);
     }
 
-    CTAECFilter(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& values)
+    CTAECFilter(const std::array<double, 3>& start, const std::array<double, 3>& stop, const std::vector<double>& values)
     {
         setData(start, stop, values);
     }
 
-    void normalizeBetween(const std::array<T, 3>& start, const std::array<T, 3>& stop) const
+    void normalizeBetween(const std::array<double, 3>& start, const std::array<double, 3>& stop) const
     {
         const auto dist_start = vectormath::subtract(start, m_start);
         const auto proj_start = vectormath::dot(dist_start, m_dir);
@@ -60,27 +59,27 @@ public:
         return m_data.size() == 2;
     }
 
-    const std::vector<T>& weights() const
+    const std::vector<double>& weights() const
     {
         return m_data;
     }
 
-    const std::array<T, 3>& start() const
+    const std::array<double, 3>& start() const
     {
         return m_start;
     }
 
-    std::array<T, 3> stop() const
+    std::array<double, 3> stop() const
     {
         return dxmc::vectormath::add(m_start, vectormath::scale(m_dir, m_length));
     }
 
-    T length() const
+    double length() const
     {
         return m_length;
     }
 
-    void setData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
+    void setData(const std::array<double, 3>& start, const std::array<double, 3>& stop, const std::vector<double>& data)
     {
         m_start = start;
         const auto dir = vectormath::subtract(stop, start);
@@ -89,7 +88,7 @@ public:
 
         if (data.size() < 2) {
             m_data.resize(2);
-            std::fill(m_data.begin(), m_data.end(), T { 1 });
+            std::fill(m_data.begin(), m_data.end(), 1.0);
             m_step = m_length;
             return;
         }
@@ -100,24 +99,24 @@ public:
         normalize();
     }
 
-    T operator()(const std::array<T, 3>& pos) const
+    double operator()(const std::array<double, 3>& pos) const
     {
         const auto dist = vectormath::subtract(pos, m_start);
         const auto proj = vectormath::dot(dist, m_dir);
         return this->operator()(proj);
     }
 
-    T operator()(T d) const
+    double operator()(double d) const
     {
-        const auto dc = std::clamp(d, T { 0 }, m_length);
+        const auto dc = std::clamp(d, 0.0, m_length);
         const auto idx0 = std::clamp(static_cast<std::size_t>(dc / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx1 = idx0 + 1;
         return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
     }
 
-    T integrate() const
+    double integrate() const
     {
-        T s = 0;
+        double s = 0;
         for (std::size_t i = 0; i < m_data.size() - 1; ++i) {
             const auto d0 = m_data[i];
             const auto d1 = m_data[i + 1];
@@ -126,18 +125,18 @@ public:
         return s;
     }
 
-    T integrate(T start_r, T stop_r) const
+    double integrate(double start_r, double stop_r) const
     {
-        const auto start = std::clamp(std::min(start_r, stop_r), T { 0 }, m_length);
-        const auto stop = std::clamp(std::max(start_r, stop_r), T { 0 }, m_length);
+        const auto start = std::clamp(std::min(start_r, stop_r), 0.0, m_length);
+        const auto stop = std::clamp(std::max(start_r, stop_r), 0.0, m_length);
         const auto idx_start = std::clamp(static_cast<std::size_t>(start / m_step), std::size_t { 0 }, m_data.size() - 2);
         const auto idx_stop = std::clamp(static_cast<std::size_t>(stop / m_step) + 1, std::size_t { 0 }, m_data.size() - 2);
 
-        T s = 0;
+        double s = 0;
         for (std::size_t i = idx_start; i < idx_stop; ++i) {
             const auto d0 = m_data[i];
             const auto d1 = m_data[i + 1];
-            s += (d0 + d1) * m_step * T { 0.5 };
+            s += (d0 + d1) * m_step * 0.5;
         }
 
         const auto begin_part = (m_step * idx_start - start) * (this->operator()(start) + m_data[idx_start + 1]) / 2;
@@ -146,7 +145,7 @@ public:
         return s - begin_part - end_part;
     }
 
-    T integrate(const std::array<T, 3>& start, const std::array<T, 3>& stop) const
+    double integrate(const std::array<double, 3>& start, const std::array<double, 3>& stop) const
     {
         const auto dist_start = vectormath::subtract(start, m_start);
         const auto proj_start = vectormath::dot(dist_start, m_dir);
@@ -175,10 +174,10 @@ protected:
     }
 
 private:
-    std::array<T, 3> m_start = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 0, 1 };
-    T m_length = 1;
-    T m_step = 1;
-    std::vector<T> m_data;
+    std::array<double, 3> m_start = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 0, 1 };
+    double m_length = 1;
+    double m_step = 1;
+    std::vector<double> m_data;
 };
 }

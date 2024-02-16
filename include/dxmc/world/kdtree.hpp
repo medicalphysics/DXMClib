@@ -69,7 +69,7 @@ public:
         }
         const std::array<double, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
 
-        m_D = vectormath::argmax3<std::uint_fast32_t, T>(extent);
+        m_D = vectormath::argmax3<std::uint_fast32_t>(extent);
 
         const auto split = planeSplit(items);
 
@@ -111,6 +111,7 @@ public:
         depth_iterator(teller);
         return teller;
     }
+
     std::vector<WorldItemBase*> items()
     {
         std::vector<WorldItemBase*> all;
@@ -120,6 +121,7 @@ public:
         all.erase(last, all.end());
         return all;
     }
+
     void translate(const std::array<double, 3>& dist)
     {
         m_plane += dist[m_D];
@@ -210,7 +212,7 @@ public:
             // intersect triangles between tbox and return;
 
             VisualizationIntersectionResult<WorldItemBase> res;
-            res.intersection = std::numeric_limits<T>::max();
+            res.intersection = std::numeric_limits<double>::max();
             for (auto& item : m_items) {
                 const auto t_cand = item->intersectVisualization(particle);
                 if (t_cand.valid()) {
@@ -236,8 +238,8 @@ public:
             return hit_left;
         }
 
-        KDTree* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        KDTree* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        KDTree* const front = particle.dir[m_D] > 0 ? m_left.get() : m_right.get();
+        KDTree* const back = particle.dir[m_D] > 0 ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -262,7 +264,7 @@ public:
     }
 
 protected:
-    T planeSplit(const std::vector<WorldItemBase*>& items) const
+    double planeSplit(const std::vector<WorldItemBase*>& items) const
     {
         const auto N = items.size();
         std::vector<double> vals;
@@ -278,7 +280,7 @@ protected:
         if (N % 2 == 1) {
             return vals[N / 2];
         } else {
-            return (vals[N / 2] + vals[N / 2 - 1]) * T { 0.5 };
+            return (vals[N / 2] + vals[N / 2 - 1]) * 0.5;
         }
     }
 
@@ -322,6 +324,16 @@ protected:
     }
 
     void item_iterator(std::vector<const WorldItemBase*>& all) const
+    {
+        if (m_left) {
+            m_left->item_iterator(all);
+            m_right->item_iterator(all);
+        } else {
+            std::copy(m_items.cbegin(), m_items.cend(), std::back_inserter(all));
+        }
+    }
+
+    void item_iterator(std::vector<WorldItemBase*>& all)
     {
         if (m_left) {
             m_left->item_iterator(all);

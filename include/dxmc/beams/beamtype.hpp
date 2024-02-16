@@ -26,11 +26,11 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <typename B, typename T>
-concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomState state, std::uint64_t index, TransportProgress* progress) {
+template <typename B>
+concept BeamType = requires(B beam, Particle p, std::array<double, 3> vec, RandomState state, std::uint64_t index, TransportProgress* progress) {
     {
         beam.exposure(index).sampleParticle(state)
-    } -> std::same_as<Particle<T>>;
+    } -> std::same_as<Particle>;
 
     {
         beam.exposure(index).numberOfParticles()
@@ -38,7 +38,7 @@ concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomS
 
     {
         beam.exposure(index).position()
-    } -> std::convertible_to<std::array<T, 3>>;
+    } -> std::convertible_to<std::array<double, 3>>;
 
     {
         beam.numberOfExposures()
@@ -50,6 +50,6 @@ concept BeamType = requires(B beam, Particle<T> p, std::array<T, 3> vec, RandomS
 
     {
         beam.calibrationFactor(progress)
-    } -> std::convertible_to<T>;
+    } -> std::convertible_to<double>;
 };
 }

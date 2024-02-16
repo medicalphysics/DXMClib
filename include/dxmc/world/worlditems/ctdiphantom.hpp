@@ -36,13 +36,13 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class CTDIPhantom final : public WorldItemBase<T> {
+template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+class CTDIPhantom final : public WorldItemBase {
 public:
-    CTDIPhantom(T radius = T { 16 }, T height = T { 15 }, const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& direction = { 0, 0, 1 })
-        : WorldItemBase<T>()
-        , m_pmma(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
-        , m_air(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+    CTDIPhantom(double radius = 16, double height = 15, const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<double, 3>& direction = { 0, 0, 1 })
+        : WorldItemBase()
+        , m_pmma(Material<double, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_air(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         radius = std::abs(radius);
         height = std::max(std::abs(height), holeHeight());
@@ -51,12 +51,12 @@ public:
         m_cylinder.radius = radius;
         m_cylinder.half_height = height / 2;
 
-        m_pmma_density = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
-        m_air_density = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_pmma_density = NISTMaterials<double>::density("Polymethyl Methacralate (Lucite, Perspex)");
+        m_air_density = NISTMaterials<double>::density("Air, Dry (near sea level)");
 
         std::vector<CTDIAirHole> holes;
         holes.reserve(5);
-        std::array<T, 10> positions = { 0, 0, 0, 1, 1, 0, 0, -1, -1, 0 };
+        std::array<double, 10> positions = { 0, 0, 0, 1, 1, 0, 0, -1, -1, 0 };
         std::uint8_t index = 0;
         for (std::size_t i = 0; i < 10; i = i + 2) {
             const auto x = positions[i];
@@ -71,29 +71,30 @@ public:
             hole.cylinder.center[1] += y * (radius - holeEdgeDistance());
             holes.push_back(hole);
         }
-        m_kdtree = StaticKDTree<3, T, CTDIAirHole>(holes);
+        m_kdtree = StaticKDTree<3, CTDIAirHole>(holes);
     }
 
-    void translate(const std::array<T, 3>& dist) noexcept override
+    void translate(const std::array<double, 3>& dist) noexcept override
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
         m_kdtree.translate(dist);
     }
-    std::array<T, 3> center() const noexcept override
+
+    std::array<double, 3> center() const noexcept override
     {
         return m_cylinder.center;
     }
 
-    void setHoleMaterial(const std::string& nistName, T density)
+    void setHoleMaterial(const std::string& nistName, double density)
     {
-        auto m = Material<T, NMaterialShells>::byNistName(nistName);
+        auto m = Material<double, NMaterialShells>::byNistName(nistName);
         if (m) {
             m_air = m.value();
             m_air_density = density;
         }
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         return m_energyScore[index];
     }
@@ -105,30 +106,30 @@ public:
         }
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
-        const T holeVolume = holeHeight() * std::numbers::pi_v<T> * holeRadii() * holeRadii();
+        const auto holeVolume = holeHeight() * std::numbers::pi_v<double> * holeRadii() * holeRadii();
 
         for (std::size_t i = 1; i < m_energyScore.size(); ++i) {
             m_dose[i].addScoredEnergy(m_energyScore[i], holeVolume, m_air_density, calibration_factor);
         }
 
-        const T totalVolume = m_cylinder.radius * m_cylinder.radius * 2 * m_cylinder.half_height * std::numbers::pi_v<T>;
-        const T pmmaVolume = totalVolume - 5 * holeVolume;
+        const auto totalVolume = m_cylinder.radius * m_cylinder.radius * 2 * m_cylinder.half_height * std::numbers::pi_v<double>;
+        const auto pmmaVolume = totalVolume - 5 * holeVolume;
         m_dose[0].addScoredEnergy(m_energyScore[0], pmmaVolume, m_pmma_density, calibration_factor);
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         return m_dose[index];
     }
 
-    const T centerDoseScored() const
+    const double centerDoseScored() const
     {
         return m_dose[1].dose();
     }
 
-    const T pheriferyDoseScored() const
+    const double pheriferyDoseScored() const
     {
         return (m_dose[2].dose() + m_dose[3].dose() + m_dose[4].dose() + m_dose[5].dose()) / 4;
     }
@@ -140,21 +141,21 @@ public:
         }
     }
 
-    std::array<T, 6> AABB() const noexcept override
+    std::array<double, 6> AABB() const noexcept override
     {
         return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
     {
-        auto res = basicshape::cylinder::intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        auto res = basicshape::cylinder::intersectVisualization<WorldItemBase>(p, m_cylinder);
         if (res.valid()) {
-            const std::array<T, 2> tbox = { res.intersection, res.intersection + m_cylinder.radius };
+            const std::array tbox = { res.intersection, res.intersection + m_cylinder.radius };
             auto holes = m_kdtree.intersect(p, tbox);
             if (holes.valid()) {
                 res.value = m_dose[holes.item->index].dose();
@@ -165,12 +166,11 @@ public:
         return res;
     }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept override
     {
         bool updateAtt = true;
-        AttenuationValues<T> att;
-        T attSumInv;
-
+        AttenuationValues<double> att;
+        double attSumInv;
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         while (cont) {
             if (updateAtt) {
@@ -178,10 +178,10 @@ public:
                 attSumInv = 1 / (att.sum() * m_pmma_density);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intCTDI = intersect(p); // this can not be nullopt
             const auto intLen = intCTDI.intersection;
-            const std::array<T, 2> tbox { T { 0 }, intLen };
+            const std::array<double, 2> tbox { 0.0, intLen };
             const auto intHoles = m_kdtree.intersect(p, tbox);
 
             if (intHoles.valid()) {
@@ -198,7 +198,7 @@ public:
                     if (stepLen < intHoles.intersection) {
                         // interaction happends
                         p.translate(stepLen);
-                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_pmma, state);
+                        const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_pmma, state);
                         m_energyScore[0].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         cont = intRes.particleAlive;
@@ -209,7 +209,7 @@ public:
                         const auto dist = intHoles.item->intersect(p).intersection;
                         const auto holeAtt = m_air.attenuationValues(p.energy);
                         const auto interactionProb = 1 - std::exp(-dist * holeAtt.sum() * m_air_density);
-                        const auto intRes = interactions::template interactForced<T, NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_air, state);
+                        const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_air, state);
                         m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         // transport particle across hole (particle is most likely alive)
@@ -234,50 +234,50 @@ public:
         }
     }
 
-    static constexpr T holeRadii() noexcept
+    static constexpr double holeRadii() noexcept
     {
-        return T { 0.5 };
+        return 0.5;
     }
-    static constexpr T holeHeight() noexcept
+    static constexpr double holeHeight() noexcept
     {
-        return T { 10 };
+        return 10.0;
     }
 
 protected:
     struct CTDIAirHole {
-        basicshape::cylinder::Cylinder<T> cylinder;
+        basicshape::cylinder::Cylinder cylinder;
         std::uint8_t index = 0;
 
-        void translate(const std::array<T, 3>& d) noexcept
+        void translate(const std::array<double, 3>& d) noexcept
         {
             for (std::size_t i = 0; i < 3; ++i)
                 cylinder.center[i] += d[i];
         }
-        const std::array<T, 3>& center() const noexcept { return cylinder.center; }
-        std::array<T, 6> AABB() const noexcept
+        const std::array<double, 3>& center() const noexcept { return cylinder.center; }
+        std::array<double, 6> AABB() const noexcept
         {
             return basicshape::cylinder::cylinderAABB(cylinder);
         }
-        auto intersect(const Particle<T>& p) const noexcept
+        auto intersect(const Particle& p) const noexcept
         {
             return basicshape::cylinder::intersect(p, cylinder);
         }
     };
 
-    static constexpr T holeEdgeDistance() noexcept
+    static constexpr double holeEdgeDistance() noexcept
     {
-        return T { 1 };
+        return 1.0;
     }
 
 private:
-    basicshape::cylinder::Cylinder<T> m_cylinder;
-    T m_pmma_density = 0;
-    T m_air_density = 0;
-    std::array<EnergyScore<T>, 6> m_energyScore;
-    std::array<DoseScore<T>, 6> m_dose;
-    StaticKDTree<3, T, CTDIAirHole> m_kdtree;
-    Material<T, NMaterialShells> m_pmma;
-    Material<T, NMaterialShells> m_air;
+    basicshape::cylinder::Cylinder m_cylinder;
+    double m_pmma_density = 0;
+    double m_air_density = 0;
+    std::array<EnergyScore, 6> m_energyScore;
+    std::array<DoseScore, 6> m_dose;
+    StaticKDTree<3, CTDIAirHole> m_kdtree;
+    Material<double, NMaterialShells> m_pmma;
+    Material<double, NMaterialShells> m_air;
 };
 
 }

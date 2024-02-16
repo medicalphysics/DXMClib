@@ -33,37 +33,37 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class TG195World3Breast final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+class TG195World3Breast final : public WorldItemBase {
 
 public:
     TG195World3Breast()
-        : WorldItemBase<T>()
-        , m_skin_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-        , m_tissue_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : WorldItemBase()
+        , m_skin_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_tissue_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        translateBox(m_dose_boxes[0], { T { 5 }, T { 5 }, T { 0 } });
-        translateBox(m_dose_boxes[1], { T { 2 }, T { 0 }, T { 0 } });
-        translateBox(m_dose_boxes[2], { T { 5 }, T { 0 }, T { 0 } });
-        translateBox(m_dose_boxes[3], { T { 8 }, T { 0 }, T { 0 } });
-        translateBox(m_dose_boxes[4], { T { 5 }, T { -5 }, T { 0 } });
-        translateBox(m_dose_boxes[5], { T { 5 }, T { 0 }, T { -1.5f } });
-        translateBox(m_dose_boxes[6], { T { 5 }, T { 0 }, T { 1.5f } });
+        translateBox(m_dose_boxes[0], { double { 5 }, double { 5 }, double { 0 } });
+        translateBox(m_dose_boxes[1], { double { 2 }, double { 0 }, double { 0 } });
+        translateBox(m_dose_boxes[2], { double { 5 }, double { 0 }, double { 0 } });
+        translateBox(m_dose_boxes[3], { double { 8 }, double { 0 }, double { 0 } });
+        translateBox(m_dose_boxes[4], { double { 5 }, double { -5 }, double { 0 } });
+        translateBox(m_dose_boxes[5], { double { 5 }, double { 0 }, double { -1.5f } });
+        translateBox(m_dose_boxes[6], { double { 5 }, double { 0 }, double { 1.5f } });
     }
 
-    void setTissueMaterial(const Material<T, NMaterialShells>& material, T dens)
+    void setTissueMaterial(const Material<double, NMaterialShells>& material, double dens)
     {
         m_tissue_material = material;
         m_tissue_density = std::abs(dens);
     }
 
-    void setSkinMaterial(const Material<T, NMaterialShells>& material, T dens)
+    void setSkinMaterial(const Material<double, NMaterialShells>& material, double dens)
     {
         m_skin_material = material;
         m_skin_density = std::abs(dens);
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<double, 3>& dist) override
     {
         m_center = vectormath::add(m_center, dist);
         for (auto& b : m_dose_boxes) {
@@ -74,14 +74,14 @@ public:
         }
     }
 
-    std::array<T, 3> center() const override
+    std::array<double, 3> center() const override
     {
         return m_center;
     }
 
-    std::array<T, 6> AABB() const override
+    std::array<double, 6> AABB() const override
     {
-        std::array<T, 6> aabb {
+        std::array aabb {
             m_center[0],
             m_center[1] - m_radius,
             m_center[2] - m_halfHeight,
@@ -100,7 +100,7 @@ public:
             b.energyScored.clear();
         }
     }
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         if (index < m_dose_boxes.size())
             return m_dose_boxes[index].energyScored;
@@ -109,24 +109,24 @@ public:
         return m_energyScored;
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
-        T skin_volume = std::numbers::pi_v<T> * (m_halfHeight - m_skin_thick) * 2 * (m_radius * m_radius - (m_radius - m_skin_thick) * (m_radius - m_skin_thick));
-        skin_volume += std::numbers::pi_v<T> * 2 * m_skin_thick * m_radius * m_radius;
+        auto skin_volume = std::numbers::pi_v<double> * (m_halfHeight - m_skin_thick) * 2 * (m_radius * m_radius - (m_radius - m_skin_thick) * (m_radius - m_skin_thick));
+        skin_volume += std::numbers::pi_v<double> * 2 * m_skin_thick * m_radius * m_radius;
         // only half cylinder
         skin_volume /= 2;
 
-        std::vector<T> box_volumes(m_dose_boxes.size());
+        std::vector<double> box_volumes(m_dose_boxes.size());
         std::transform(m_dose_boxes.cbegin(), m_dose_boxes.cend(), box_volumes.begin(), [](const auto& box) {
-            T vol = 1;
+            double vol = 1;
             for (std::size_t i = 0; i < 3; ++i) {
                 vol *= box.aabb[i + 3] - box.aabb[i];
             }
             return vol;
         });
 
-        const T box_volume_total = std::reduce(box_volumes.cbegin(), box_volumes.cend());
-        const T total_volume = std::numbers::pi_v<T> * 2 * m_halfHeight * m_radius * m_radius / 2 - skin_volume - box_volume_total;
+        const auto box_volume_total = std::reduce(box_volumes.cbegin(), box_volumes.cend());
+        const auto total_volume = std::numbers::pi_v<double> * 2 * m_halfHeight * m_radius * m_radius / 2 - skin_volume - box_volume_total;
 
         m_doseScored.addScoredEnergy(m_energyScored, total_volume, m_tissue_density, calibration_factor);
         m_skin_dose.addScoredEnergy(m_skin_energy, skin_volume, m_skin_density, calibration_factor);
@@ -137,7 +137,7 @@ public:
         }
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         if (index < m_dose_boxes.size())
             return m_dose_boxes[index].doseScored;
@@ -155,16 +155,16 @@ public:
         }
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return intersectHalfCylindar(p, m_center, m_radius, m_halfHeight);
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
     {
         const auto aabb = AABB();
-        auto cyl = basicshape::cylinderZ::template intersectVisualization<T, WorldItemBase<T>>(p, m_center, m_radius, m_halfHeight);
-        const auto box = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, aabb);
+        auto cyl = basicshape::cylinderZ::template intersectVisualization<WorldItemBase>(p, m_center, m_radius, m_halfHeight);
+        const auto box = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, aabb);
         if (cyl.valid() && box.valid()) {
             if (basicshape::AABB::pointInside(p.pos, aabb)) {
                 cyl.intersection = std::min(cyl.intersection, box.intersection);
@@ -183,7 +183,7 @@ public:
         return cyl;
     }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
         while (cont) {
@@ -195,10 +195,10 @@ public:
                         // only inside tissue
                         const auto att = m_tissue_material.attenuationValues(p.energy);
                         const auto attSumInv = 1 / (att.sum() * m_tissue_density);
-                        const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+                        const auto stepLen = -std::log(state.randomUniform()) * attSumInv;
                         if (stepLen < intTissue.intersection) {
                             p.translate(stepLen);
-                            const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_tissue_material, state);
+                            const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_tissue_material, state);
                             cont = intRes.particleAlive;
                             scoreEnergyImparted(p, intRes.energyImparted);
                         } else {
@@ -209,10 +209,10 @@ public:
                         // starts in skin and goes to tissue
                         const auto att = m_skin_material.attenuationValues(p.energy);
                         const auto attSumInv = 1 / (att.sum() * m_skin_density);
-                        const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+                        const auto stepLen = -std::log(state.randomUniform()) * attSumInv;
                         if (stepLen < intTissue.intersection) {
                             p.translate(stepLen);
-                            const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
+                            const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                             cont = intRes.particleAlive;
                             m_skin_energy.scoreEnergy(intRes.energyImparted);
                         } else {
@@ -224,10 +224,10 @@ public:
                     // only intersects skin
                     const auto att = m_skin_material.attenuationValues(p.energy);
                     const auto attSumInv = 1 / (att.sum() * m_skin_density);
-                    const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv;
+                    const auto stepLen = -std::log(state.randomUniform()) * attSumInv;
                     if (stepLen < intBreast.intersection) {
                         p.translate(stepLen);
-                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
+                        const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_skin_material, state);
                         cont = intRes.particleAlive;
                         m_skin_energy.scoreEnergy(intRes.energyImparted);
                     } else {
@@ -243,11 +243,11 @@ public:
 
 protected:
     struct ScoreBoxChild {
-        std::array<T, 6> aabb = { -1, -1, -.5f, 1, 1, .5f };
-        EnergyScore<T> energyScored;
-        DoseScore<T> doseScored;
+        std::array<double, 6> aabb = { -1, -1, -.5f, 1, 1, .5f };
+        EnergyScore energyScored;
+        DoseScore doseScored;
     };
-    static void translateBox(ScoreBoxChild& box, const std::array<T, 3>& vec)
+    static void translateBox(ScoreBoxChild& box, const std::array<double, 3>& vec)
     {
         for (std::size_t i = 0; i < 3; ++i) {
             box.aabb[i] += vec[i];
@@ -255,7 +255,7 @@ protected:
         }
     }
 
-    void scoreEnergyImparted(const Particle<T>& p, T energy)
+    void scoreEnergyImparted(const Particle& p, double energy)
     {
         bool hit = false;
         for (auto& b : m_dose_boxes) {
@@ -267,9 +267,9 @@ protected:
         m_energyScored.scoreEnergy(energy);
     }
 
-    static WorldIntersectionResult<T> intersectHalfCylindar(const Particle<T>& p, const std::array<T, 3>& center, const T radius, const T halfHeight)
+    static WorldIntersectionResult intersectHalfCylindar(const Particle& p, const std::array<double, 3>& center, const double radius, const double halfHeight)
     {
-        const std::array<T, 6> aabb = {
+        const std::array aabb = {
             center[0],
             center[1] - radius,
             center[2] - halfHeight,
@@ -297,18 +297,18 @@ protected:
     }
 
 private:
-    T m_radius = 10;
-    T m_skin_thick = 0.2f;
-    T m_halfHeight = 2.5f;
-    std::array<T, 3> m_center = { 0, 0, 0 };
-    T m_skin_density = 1;
-    T m_tissue_density = 1;
-    Material<T, NMaterialShells> m_skin_material;
-    Material<T, NMaterialShells> m_tissue_material;
-    EnergyScore<T> m_energyScored;
-    DoseScore<T> m_doseScored;
-    EnergyScore<T> m_skin_energy;
-    DoseScore<T> m_skin_dose;
+    double m_radius = 10;
+    double m_skin_thick = 0.2f;
+    double m_halfHeight = 2.5f;
+    std::array<double, 3> m_center = { 0, 0, 0 };
+    double m_skin_density = 1;
+    double m_tissue_density = 1;
+    Material<double, NMaterialShells> m_skin_material;
+    Material<double, NMaterialShells> m_tissue_material;
+    EnergyScore m_energyScored;
+    DoseScore m_doseScored;
+    EnergyScore m_skin_energy;
+    DoseScore m_skin_dose;
     std::array<ScoreBoxChild, 7> m_dose_boxes;
 };
 }

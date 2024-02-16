@@ -30,30 +30,27 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 namespace visualizationprops {
-
-    template <Floating T>
     class VisualizationProp {
     public:
-        virtual std::optional<std::pair<T, std::array<T, 3>>> intersect(const Particle<T>& p) const noexcept = 0;
+        virtual std::optional<std::pair<double, std::array<double, 3>>> intersect(const Particle& p) const noexcept = 0;
     };
 
-    template <Floating T>
-    class Line : public VisualizationProp<T> {
+    class Line : public VisualizationProp {
     public:
-        Line(const std::array<T, 3> start, const std::array<T, 3> dir, T length = -1, T radii = 1)
-            : VisualizationProp<T>()
+        Line(const std::array<double, 3> start, const std::array<double, 3> dir, double length = -1, double radii = 1)
+            : VisualizationProp()
             , m_pos(start)
             , m_dir(dir)
             , m_radii(std::abs(radii))
         {
             vectormath::normalize(m_dir);
             if (length <= 0)
-                m_length = std::numeric_limits<T>::max();
+                m_length = std::numeric_limits<double>::max();
             else
                 m_length = length;
         }
 
-        std::optional<std::pair<T, std::array<T, 3>>> intersect(const Particle<T>& p) const noexcept override
+        std::optional<std::pair<double, std::array<double, 3>>> intersect(const Particle& p) const noexcept override
         {
             const auto aabb = AABB();
             const auto inter = basicshape::AABB::intersect(p, aabb);
@@ -62,7 +59,7 @@ namespace visualizationprops {
 
             const auto n = vectormath::cross(p.dir, m_dir);
             const auto n_length = vectormath::length(n);
-            if (std::abs(n_length) < GEOMETRIC_ERROR<T>()) { // lines are parallell
+            if (std::abs(n_length) < GEOMETRIC_ERROR()) { // lines are parallell
                 return std::nullopt;
             }
             const auto n_invlength = 1 / n_length;
@@ -82,7 +79,7 @@ namespace visualizationprops {
             const auto p_int = vectormath::add(p.pos, vectormath::scale(p.dir, t1));
             // distance from intpos to start
             const auto int_distance = vectormath::dot(vectormath::subtract(p_int, m_pos), m_dir);
-            if (int_distance < T { 0 } || int_distance > m_length)
+            if (int_distance < 0 || int_distance > m_length)
                 return std::nullopt;
 
             auto d = vectormath::subtract(p_int, p.pos);
@@ -91,10 +88,10 @@ namespace visualizationprops {
             return std::make_optional(std::make_pair(t1, d));
         }
 
-        std::array<T, 6> AABB() const
+        std::array<double, 6> AABB() const
         {
             const auto end = vectormath::add(m_pos, vectormath::scale(m_dir, m_length));
-            std::array<T, 6> aabb;
+            std::array<double, 6> aabb;
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(m_pos[i], end[i]);
                 aabb[i + 3] = std::max(m_pos[i], end[i]);
@@ -103,10 +100,10 @@ namespace visualizationprops {
         }
 
     private:
-        std::array<T, 3> m_pos = { 0, 0, 0 };
-        std::array<T, 3> m_dir = { 0, 0, 1 };
-        T m_radii = 1;
-        T m_length = 1;
+        std::array<double, 3> m_pos = { 0, 0, 0 };
+        std::array<double, 3> m_dir = { 0, 0, 1 };
+        double m_radii = 1;
+        double m_length = 1;
     };
 
 }

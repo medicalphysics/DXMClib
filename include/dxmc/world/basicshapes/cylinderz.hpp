@@ -31,20 +31,18 @@ namespace dxmc {
 namespace basicshape {
     namespace cylinderZ {
 
-        template <Floating T = double>
-        bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii, const T half_height)
+        bool pointInside(const std::array<double, 3>& pos, const std::array<double, 3>& center, const double radii, const double half_height)
         {
-            const std::array<T, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
+            const std::array<double, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
             return center[0] - radii <= pos[0] && pos[0] <= center[0] + radii && center[1] - radii <= pos[1] && pos[1] <= center[1] + radii
                 && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
         }
 
-        template <Floating T = double>
-        std::optional<T> intersectCylinderWall(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<double> intersectCylinderWall(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection in 2D
             const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
-            if (a < std::numeric_limits<T>::epsilon())
+            if (a < std::numeric_limits<double>::epsilon())
                 return std::nullopt;
 
             const auto r2 = radii * radii;
@@ -82,12 +80,11 @@ namespace basicshape {
             }
         }
 
-        template <Floating T>
-        std::optional<std::array<T, 2>> intersectCylinderWallInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<std::array<double, 2>> intersectCylinderWallInterval(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection in 2D
             const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
-            if (a < std::numeric_limits<T>::epsilon())
+            if (a < std::numeric_limits<double>::epsilon())
                 return std::nullopt;
 
             const auto r2 = radii * radii;
@@ -126,10 +123,10 @@ namespace basicshape {
                 return std::make_optional(t);
             }
         }
-        template <Floating T>
-        std::optional<T> intersectCylinderDiscIntervalZ(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+
+        std::optional<double> intersectCylinderDiscIntervalZ(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
-            if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
+            if (std::abs(p.dir[2]) <= std::numeric_limits<double>::epsilon())
                 return std::nullopt;
 
             const auto tz = (center[2] - p.pos[2]) / p.dir[2];
@@ -140,10 +137,9 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        template <Floating T>
-        std::optional<T> intersectCylinderDiscZ(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<double> intersectCylinderDiscZ(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
-            if (std::abs(p.dir[2]) <= std::numeric_limits<T>::epsilon())
+            if (std::abs(p.dir[2]) <= std::numeric_limits<double>::epsilon())
                 return std::nullopt;
 
             if (p.pos[2] > center[2] && p.dir[2] >= 0)
@@ -159,13 +155,12 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        template <Floating T>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
+        WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             auto t_cand = intersectCylinderWall(p, center, radii);
             if (t_cand) {
                 // we need to be conservative else we will miss intersections on plane cylinder intersection
-                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, T { 0 });
+                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, 0.0);
                 if (!(center[2] - half_height <= tz && tz <= center[2] + half_height))
                     t_cand.reset();
             }
@@ -176,8 +171,8 @@ namespace basicshape {
             centerDisc[2] = center[2] + half_height;
             auto tdisc2_cand = intersectCylinderDiscZ(p, centerDisc, radii);
 
-            const auto t_cand_min = std::min({ t_cand, tdisc1_cand, tdisc2_cand }, [](const auto& lh, const auto& rh) -> bool { return lh.value_or(std::numeric_limits<T>::max()) < rh.value_or(std::numeric_limits<T>::max()); });
-            WorldIntersectionResult<T> res;
+            const auto t_cand_min = std::min({ t_cand, tdisc1_cand, tdisc2_cand }, [](const auto& lh, const auto& rh) -> bool { return lh.value_or(std::numeric_limits<double>::max()) < rh.value_or(std::numeric_limits<double>::max()); });
+            WorldIntersectionResult res;
             if (t_cand_min) {
                 res.intersection = *t_cand_min;
                 res.intersectionValid = true;
@@ -187,8 +182,7 @@ namespace basicshape {
             return res;
         }
 
-        template <Floating T>
-        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             auto t_cand = intersectCylinderWallInterval(p, center, radii);
             if (!t_cand) {
@@ -196,9 +190,9 @@ namespace basicshape {
                     const auto dx = p.pos[0] - center[0];
                     const auto dy = p.pos[1] - center[1];
                     if (dx * dx + dy * dy < radii * radii) {
-                        const auto t1 = std::max(center[2] + half_height - p.pos[2], T { 0 });
-                        const auto t2 = std::max(center[2] - half_height - p.pos[2], T { 0 });
-                        std::array<T, 2> tz;
+                        const auto t1 = std::max(center[2] + half_height - p.pos[2], 0.0);
+                        const auto t2 = std::max(center[2] - half_height - p.pos[2], 0.0);
+                        std::array<double, 2> tz;
                         if (t1 < t2) {
                             tz = { t1, t2 };
                         } else {
@@ -228,13 +222,13 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        template <Floating T, typename U>
-        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii, const T half_height)
+        template <typename U>
+        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             auto t_cand = intersectCylinderWall(p, center, radii);
             if (t_cand) {
                 // we need to be conservative else we will miss intersections on plane cylinder intersection
-                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, T { 0 });
+                const auto tz = std::nextafter(p.pos[2] + p.dir[2] * *t_cand, 0.0);
                 if (!(center[2] - half_height <= tz && tz <= center[2] + half_height))
                     t_cand.reset();
             }
@@ -245,9 +239,9 @@ namespace basicshape {
             centerDisc[2] = center[2] + half_height;
             auto tdisc2_cand = intersectCylinderDiscZ(p, centerDisc, radii);
 
-            constexpr auto m = std::numeric_limits<T>::max();
+            constexpr auto m = std::numeric_limits<double>::max();
 
-            VisualizationIntersectionResult<T, U> res;
+            VisualizationIntersectionResult<U> res;
 
             if (t_cand.value_or(m) < tdisc1_cand.value_or(m)) {
                 if (t_cand.value_or(m) < tdisc2_cand.value_or(m)) {
@@ -287,7 +281,7 @@ namespace basicshape {
                 res.rayOriginIsInsideItem = pointInside(p.pos, center, radii, half_height);
             }
             if (res.rayOriginIsInsideItem) {
-                res.normal = vectormath::scale(res.normal, T { -1 });
+                res.normal = vectormath::scale(res.normal, -1.0);
             }
             return res;
         }

@@ -130,7 +130,7 @@ public:
 
     std::array<double, 6> AABB() const
     {
-        std::array<T, 6> aabb {
+        std::array aabb {
             std::numeric_limits<double>::max(),
             std::numeric_limits<double>::max(),
             std::numeric_limits<double>::max(),
@@ -237,8 +237,8 @@ protected:
             return hit_left;
         }
 
-        const MeshKDTree<U>* const front = particle.dir[m_D] > T { 0 } ? m_left.get() : m_right.get();
-        const MeshKDTree<U>* const back = particle.dir[m_D] > T { 0 } ? m_right.get() : m_left.get();
+        const MeshKDTree<U>* const front = particle.dir[m_D] > 0 ? m_left.get() : m_right.get();
+        const MeshKDTree<U>* const back = particle.dir[m_D] > 0 ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -277,7 +277,7 @@ protected:
         if (N % 2 == 1) {
             return vals[N / 2];
         } else {
-            return (vals[N / 2] + vals[N / 2 - 1]) * T { 0.5 };
+            return (vals[N / 2] + vals[N / 2 - 1]) * 0.5;
         }
     }
 
@@ -351,7 +351,7 @@ protected:
     constexpr static double epsilon()
     {
         // Huristic epsilon for triangle intersections
-        return T { 11 } * std::numeric_limits<T>::epsilon();
+        return 11 * std::numeric_limits<double>::epsilon();
     }
 
     constexpr static bool lessOrEqual(double a, double b)

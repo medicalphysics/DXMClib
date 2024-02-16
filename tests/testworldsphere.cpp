@@ -23,25 +23,24 @@ Copyright 2023 Erlend Andersen
 
 #include <iostream>
 
-template <dxmc::Floating T>
 bool testForcedinteractions()
 {
-    using Sphere = dxmc::WorldSphere<T, 5, 1, false>;
-    using SphereF = dxmc::WorldSphere<T, 5, 1, true>;
+    using Sphere = dxmc::WorldSphere<5, 1, false>;
+    using SphereF = dxmc::WorldSphere<5, 1, true>;
 
-    using World = dxmc::World<T, Sphere>;
-    using WorldF = dxmc::World<T, SphereF>;
+    using World = dxmc::World<Sphere>;
+    using WorldF = dxmc::World<SphereF>;
 
     World w(2);
     WorldF wf(2);
 
-    constexpr T radii = 0.3;
+    constexpr double radii = 0.3;
     auto& sphere1 = w.addItem<Sphere>({ radii });
     auto& sphere2 = w.addItem<Sphere>({ radii, { radii * 2 + radii * 100, 0, 0 } });
     auto& spheref1 = wf.addItem<SphereF>({ radii });
     auto& spheref2 = wf.addItem<SphereF>({ radii, { radii * 2 + radii * 100, 0, 0 } });
 
-    auto material_water = dxmc::Material<T, 5>::byNistName("Water, Liquid").value();
+    auto material_water = dxmc::Material<double, 5>::byNistName("Water, Liquid").value();
     sphere1.setMaterial(material_water, 1);
     sphere2.setMaterial(material_water, 1);
     spheref1.setMaterial(material_water, 1);
@@ -50,7 +49,7 @@ bool testForcedinteractions()
     w.build();
     wf.build();
 
-    dxmc::PencilBeam<T> beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
+    dxmc::PencilBeam beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
     beam.setNumberOfExposures(48);
     beam.setNumberOfParticlesPerExposure(1e5);
 
@@ -72,12 +71,12 @@ bool testForcedinteractions()
     auto sttd2 = sphere2.doseScored().standardDeviation();
     auto sttdf2 = spheref2.doseScored().standardDeviation();
 
-    std::cout << "Testing forced interactions in worldsphere for precision " << sizeof(T) << std::endl;
+    std::cout << "Testing forced interactions in worldsphere for precision " << sizeof(double) << std::endl;
     std::cout << "Random " << dose1 << ", " << dose2 << " stddev: " << sttd1 << ", " << sttd2 << std::endl;
     std::cout << "Forced " << dosef1 << ", " << dosef2 << " stddev: " << sttdf1 << ", " << sttdf2 << std::endl;
     std::cout << "Diff: " << diff1 << ", " << diff2 << std::endl;
 
-    constexpr T test_coeff = T { 2.57 };
+    constexpr auto test_coeff = 2.57;
 
     const auto test1 = diff1 / std::sqrt(sttd1 * sttd1 + sttdf1 * sttdf1);
     const auto test2 = diff2 / std::sqrt(sttd2 * sttd2 + sttdf2 * sttdf2);
@@ -95,7 +94,7 @@ int main(int argc, char* argv[])
 {
     auto success = true;
 
-    success = success && testForcedinteractions<double>();
+    success = success && testForcedinteractions();
 
     if (success)
         return EXIT_SUCCESS;

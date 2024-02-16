@@ -36,11 +36,10 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class CTSpiralBeamExposure {
 public:
-    CTSpiralBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N, T weight,
-        const std::array<T, 2>& collimationAngles, const SpecterDistribution<T>* specter, const BowtieFilter<T>* bowtie)
+    CTSpiralBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N, double weight,
+        const std::array<double, 2>& collimationAngles, const SpecterDistribution<double>* specter, const BowtieFilter* bowtie)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_collimationAngles(collimationAngles)
@@ -54,18 +53,18 @@ public:
 
     CTSpiralBeamExposure() = delete;
 
-    const std::array<T, 3>& position() const { return m_pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
 
-    const std::array<std::array<T, 3>, 2>& directionCosines() const { return m_dirCosines; }
+    const std::array<std::array<double, 3>, 2>& directionCosines() const { return m_dirCosines; }
 
-    const std::array<T, 2> collimationAngles() const { return m_collimationAngles; }
+    const std::array<double, 2> collimationAngles() const { return m_collimationAngles; }
 
     std::uint64_t numberOfParticles() const
     {
         return m_NParticles;
     }
 
-    Particle<T> sampleParticle(RandomState& state) const noexcept
+    Particle sampleParticle(RandomState& state) const noexcept
     {
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
@@ -79,7 +78,7 @@ public:
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + m_dir[2] * sinz
         };
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
-        Particle<T> p = {
+        Particle p = {
             .pos = m_pos,
             .dir = pdir,
             .energy = m_specter->sampleValue(state),
@@ -89,23 +88,22 @@ public:
     }
 
 private:
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 0, 1 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 2> m_collimationAngles = { 0, 0 };
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 0, 1 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<double, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
-    T m_weight = 1;
-    const SpecterDistribution<T>* m_specter = nullptr;
-    const BowtieFilter<T>* m_bowtieFilter = nullptr;
+    double m_weight = 1;
+    const SpecterDistribution<double>* m_specter = nullptr;
+    const BowtieFilter* m_bowtieFilter = nullptr;
 };
 
-template <Floating T>
 class CTSpiralBeam {
 public:
     CTSpiralBeam(
-        const std::array<T, 3>& start_pos = { 0, 0, 0 },
-        const std::array<T, 3>& stop_pos = { 0, 0, 0 },
-        const std::map<std::size_t, T>& filtrationMaterials = {})
+        const std::array<double, 3>& start_pos = { 0, 0, 0 },
+        const std::array<double, 3>& stop_pos = { 0, 0, 0 },
+        const std::map<std::size_t, double>& filtrationMaterials = {})
         : m_start(start_pos)
         , m_stop(stop_pos)
     {
@@ -118,7 +116,7 @@ public:
     {
         const auto direction = vectormath::subtract(m_stop, m_start);
         const auto dz = m_pitch * m_collimation;
-        const auto total_rot_angle = vectormath::length(direction) * (PI_VAL<T>() * 2) / dz;
+        const auto total_rot_angle = vectormath::length(direction) * (PI_VAL() * 2) / dz;
         auto N_angles = static_cast<std::uint64_t>(total_rot_angle / m_stepAngle);
         return N_angles;
     }
@@ -127,102 +125,102 @@ public:
     std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    const std::array<T, 3>& startPosition() const { return m_start; }
-    const std::array<T, 3>& stopPosition() const { return m_stop; }
-    void setStartPosition(const std::array<T, 3>& start) { m_start = start; }
-    void setStopPosition(const std::array<T, 3>& stop) { m_stop = stop; }
-    void setStartStopPosition(const std::array<T, 3>& start, const std::array<T, 3>& stop)
+    const std::array<double, 3>& startPosition() const { return m_start; }
+    const std::array<double, 3>& stopPosition() const { return m_stop; }
+    void setStartPosition(const std::array<double, 3>& start) { m_start = start; }
+    void setStopPosition(const std::array<double, 3>& stop) { m_stop = stop; }
+    void setStartStopPosition(const std::array<double, 3>& start, const std::array<double, 3>& stop)
     {
         m_start = start;
         m_stop = stop;
     }
 
-    T collimation() const { return m_collimation; }
-    void setCollimation(T coll_cm)
+    double collimation() const { return m_collimation; }
+    void setCollimation(double coll_cm)
     {
         // collimation must be larger than 1 mm (0.1 cm)
-        m_collimation = std::max(std::abs(coll_cm), T { 0.1 });
+        m_collimation = std::max(std::abs(coll_cm), 0.1);
     }
 
-    std::array<T, 2> collimationAngles() const
+    std::array<double, 2> collimationAngles() const
     {
-        std::array<T, 2> r = {
+        std::array<double, 2> r = {
             2 * std::atan(m_FOV / m_SDD),
             2 * std::atan(2 * m_collimation / m_SDD)
         };
         return r;
     }
 
-    T sourceDetectorDistance() const
+    double sourceDetectorDistance() const
     {
         return m_SDD;
     }
-    void setSourceDetectorDistance(T SDD_cm)
+    void setSourceDetectorDistance(double SDD_cm)
     {
-        m_SDD = std::max(std::abs(SDD_cm), T { 1 });
+        m_SDD = std::max(std::abs(SDD_cm), 1.0);
     }
 
-    T scanFieldOfView() const { return m_FOV; }
-    void setScanFieldOfView(T fov_cm)
+    double scanFieldOfView() const { return m_FOV; }
+    void setScanFieldOfView(double fov_cm)
     {
-        m_FOV = std::max(std::abs(fov_cm), T { 1 });
+        m_FOV = std::max(std::abs(fov_cm), 1.0);
     }
 
-    const BowtieFilter<T>& bowtieFilter() const
+    const BowtieFilter& bowtieFilter() const
     {
         return m_bowtieFilter;
     }
-    void setBowtieFilter(const BowtieFilter<T>& filter)
+    void setBowtieFilter(const BowtieFilter& filter)
     {
         m_bowtieFilter = filter;
     }
 
-    T pitch() const { return m_pitch; }
-    void setPitch(T p)
+    pitch() const { return m_pitch; }
+    void setPitch(double p)
     {
-        m_pitch = std::max(std::abs(p), T { 0.1 });
+        m_pitch = std::max(std::abs(p), 0.1);
     }
 
-    void setCTDIvol(T ctdi) { m_CTDIvol = ctdi; }
-    T CTDIvol() const { return m_CTDIvol; }
-    void setCTDIdiameter(T d) { m_CTDIdiameter = d; }
-    T CTDIdiameter() const { return m_CTDIdiameter; }
+    void setCTDIvol(double ctdi) { m_CTDIvol = ctdi; }
+    double CTDIvol() const { return m_CTDIvol; }
+    void setCTDIdiameter(double d) { m_CTDIdiameter = d; }
+    double CTDIdiameter() const { return m_CTDIdiameter; }
 
-    T startAngle() const { return m_startAngle; }
-    void setStartAngle(T angle) { m_startAngle = angle; }
-    T startAngleDeg() const { return m_startAngle * RAD_TO_DEG<T>(); }
-    void setStartAngleDeg(T angle) { m_startAngle = angle * DEG_TO_RAD<T>(); }
+    double startAngle() const { return m_startAngle; }
+    void setStartAngle(double angle) { m_startAngle = angle; }
+    double startAngleDeg() const { return m_startAngle * RAD_TO_DEG(); }
+    void setStartAngleDeg(double angle) { m_startAngle = angle * DEG_TO_RAD(); }
 
-    T stepAngle() const { return m_stepAngle; }
-    void setStepAngle(T angle)
+    double stepAngle() const { return m_stepAngle; }
+    void setStepAngle(double angle)
     {
-        m_stepAngle = std::max(std::abs(angle), DEG_TO_RAD<T>() / 10);
+        m_stepAngle = std::max(std::abs(angle), DEG_TO_RAD() / 10);
     }
-    T stepAngleDeg() const { return m_stepAngle * RAD_TO_DEG<T>(); }
-    void setStepAngleDeg(T angle) { setStepAngle(angle * DEG_TO_RAD<T>()); }
+    double stepAngleDeg() const { return m_stepAngle * RAD_TO_DEG(); }
+    void setStepAngleDeg(double angle) { setStepAngle(angle * DEG_TO_RAD()); }
 
-    const Tube<T>& tube() const { return m_tube; }
-    void setTube(const Tube<T>&& tube)
+    const Tube& tube() const { return m_tube; }
+    void setTube(const Tube&& tube)
     {
         m_tube = tube;
         tubeChanged();
     }
-    void setTubeVoltage(T voltage)
+    void setTubeVoltage(double voltage)
     {
         m_tube.setVoltage(voltage);
         tubeChanged();
     }
-    void setTubeAnodeAngle(T ang)
+    void setTubeAnodeAngle(double ang)
     {
         m_tube.setAnodeAngle(ang);
         tubeChanged();
     }
-    void setTubeAnodeAngleDeg(T ang)
+    void setTubeAnodeAngleDeg(double ang)
     {
         m_tube.setAnodeAngleDeg(ang);
         tubeChanged();
     }
-    void addTubeFiltrationMaterial(std::size_t Z, T mm)
+    void addTubeFiltrationMaterial(std::size_t Z, double mm)
     {
         auto success = m_tube.addFiltrationMaterial(Z, mm);
         if (success)
@@ -233,84 +231,84 @@ public:
         m_tube.clearFiltrationMaterials();
         tubeChanged();
     }
-    T tubeAlHalfValueLayer()
+    double tubeAlHalfValueLayer()
     {
         return m_tube.mmAlHalfValueLayer();
     }
-    void setTubeEnergyResolution(T energyResolution)
+    void setTubeEnergyResolution(double energyResolution)
     {
         m_tube.setEnergyResolution(energyResolution);
         tubeChanged();
     }
 
-    void setAECFilter(const CTAECFilter<T>& filter)
+    void setAECFilter(const CTAECFilter& filter)
     {
         m_aecFilter = filter;
     }
-    void setAECFilterData(const std::array<T, 3>& start, const std::array<T, 3>& stop, const std::vector<T>& data)
+    void setAECFilterData(const std::array<double, 3>& start, const std::array<double, 3>& stop, const std::vector<double>& data)
     {
         m_aecFilter.setData(start, stop, data);
     }
-    const CTAECFilter<T>& AECFilter() const
+    const CTAECFilter& AECFilter() const
     {
         return m_aecFilter;
     }
 
-    CTSpiralBeamExposure<T> exposure(std::size_t i) const noexcept
+    CTSpiralBeamExposure exposure(std::size_t i) const noexcept
     {
-        constexpr auto pi2 = PI_VAL<T>() * 2;
-        const T angle = i * m_stepAngle;
+        constexpr auto pi2 = PI_VAL() * 2;
+        const auto angle = i * m_stepAngle;
         const auto dz = m_pitch * m_collimation * angle / pi2;
         const auto directionZ = vectormath::subtract(m_stop, m_start);
         const auto direction = vectormath::normalized(directionZ);
 
         // finding normal vector to direction
         const auto normal_ind = vectormath::argmin3(direction);
-        std::array<T, 3> normal = { 0, 0, 0 };
+        std::array<double, 3> normal = { 0, 0, 0 };
         normal[normal_ind] = 1;
         normal = vectormath::normalized(vectormath::cross(normal, direction));
         normal = vectormath::rotate(normal, direction, m_startAngle + angle);
 
         const auto beamdir = vectormath::cross(normal, direction);
 
-        const std::array<std::array<T, 3>, 2> cosines = { normal, direction };
+        const std::array<std::array<double, 3>, 2> cosines = { normal, direction };
 
         auto pos = vectormath::add(vectormath::add(m_start, vectormath::scale(direction, dz)), vectormath::scale(beamdir, -m_SDD / 2));
 
         // position along cylinder axis
         const auto angx = std::atan(m_FOV / m_SDD);
-        const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
+        const auto angy = std::atan(0.5 * m_collimation / m_SDD);
 
-        std::array<T, 2> angles = { angx, angy };
+        std::array<double, 2> angles = { angx, angy };
 
-        const T weight = m_weight * m_aecFilter(pos);
+        const auto weight = m_weight * m_aecFilter(pos);
 
-        CTSpiralBeamExposure<T> exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter, &m_bowtieFilter);
+        CTSpiralBeamExposure exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter, &m_bowtieFilter);
         return exp;
     }
 
-    T calibrationFactor(TransportProgress* progress = nullptr) const
+    double calibrationFactor(TransportProgress* progress = nullptr) const
     {
         // generating scoring world
-        using Phantom = CTDIPhantom<T, 5, 1>;
-        World<T, Phantom> world;
+        using Phantom = CTDIPhantom<5, 1>;
+        World<Phantom> world;
         world.reserveNumberOfItems(1);
         const auto& ctdi = world.template addItem<Phantom>({ m_CTDIdiameter });
         world.build();
 
         // generating CTDIbeam
         const auto angx = std::atan(m_FOV / m_SDD);
-        const auto angy = std::atan(T { 0.5 } * m_collimation / m_SDD);
-        const std::array<T, 2> collimationAngles = { angx, angy };
-        CTDIBeam<T> beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter);
+        const auto angy = std::atan(0.5 * m_collimation / m_SDD);
+        const std::array<double, 2> collimationAngles = { angx, angy };
+        CTDIBeam beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter);
 
         Transport transport;
 
         transport(world, beam, progress);
 
-        const T ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
+        const auto ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * T { 10 } / (3 * m_collimation);
 
-        const T ctdiw_beam = m_CTDIvol * m_pitch;
+        const auto ctdiw_beam = m_CTDIvol * m_pitch;
         return ctdiw_beam / ctdiw_calc;
     }
 
@@ -323,21 +321,21 @@ protected:
     }
 
 private:
-    std::array<T, 3> m_start = { 0, 0, 0 };
-    std::array<T, 3> m_stop = { 0, 0, 0 };
-    T m_FOV = 50;
-    T m_SDD = 100;
-    T m_collimation = 1; // cm
-    T m_pitch = 1;
-    T m_startAngle = 0;
-    T m_stepAngle = T { 0.018 }; // about a degree;
-    T m_weight = 1;
-    T m_CTDIvol = 1;
-    T m_CTDIdiameter = 32;
+    std::array<double, 3> m_start = { 0, 0, 0 };
+    std::array<double, 3> m_stop = { 0, 0, 0 };
+    double m_FOV = 50;
+    double m_SDD = 100;
+    double m_collimation = 1; // cm
+    double m_pitch = 1;
+    double m_startAngle = 0;
+    double m_stepAngle = 0.018; // about a degree;
+    double m_weight = 1;
+    double m_CTDIvol = 1;
+    double m_CTDIdiameter = 32;
     std::uint64_t m_particlesPerExposure = 100;
-    Tube<T> m_tube;
-    SpecterDistribution<T> m_specter;
-    CTAECFilter<T> m_aecFilter;
-    BowtieFilter<T> m_bowtieFilter;
+    Tube m_tube;
+    SpecterDistribution<double> m_specter;
+    CTAECFilter m_aecFilter;
+    BowtieFilter m_bowtieFilter;
 };
 }

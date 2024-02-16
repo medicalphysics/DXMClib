@@ -205,7 +205,7 @@ public:
                 cont = false;
             } else {
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
                 if (intRes.particleEnergyChanged) {

@@ -35,11 +35,11 @@ Copyright 2023 Erlend Andersen
 #include <iostream>
 #include <vector>
 
-dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
+dxmc::AAVoxelGrid<5, 1, 0> testPhantom()
 {
     auto d = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
 
-    dxmc::AAVoxelGrid<double, 5, 1, 0> phantom;
+    dxmc::AAVoxelGrid<5, 1, 0> phantom;
     using Material = dxmc::Material<double, 5>;
     std::vector<Material> materials;
     for (auto& w : d.mediaComposition()) {
@@ -54,7 +54,7 @@ dxmc::AAVoxelGrid<double, 5, 1, 0> testPhantom()
     return phantom;
 }
 
-dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
+dxmc::TetrahedalMesh<5, 1> readICRP145Phantom(std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
 {
 
     const std::string name = female ? "MRCP_AF" : "MRCP_AM";
@@ -64,12 +64,12 @@ dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(std::array<int, 3> depth =
     const std::string mediafile = name + "_media.dat";
     const std::string organfile = "icrp145organs.csv";
 
-    dxmc::TetrahedalmeshReader<double, 5, 1> reader(nodefile, elefile, mediafile, organfile);
+    dxmc::TetrahedalmeshReader<5, 1> reader(nodefile, elefile, mediafile, organfile);
     reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
     return reader.getMesh(depth);
 }
 
-dxmc::TetrahedalMesh<double, 5, 1> readICRP145Phantom(int depth = 8, bool female = true)
+dxmc::TetrahedalMesh<5, 1> readICRP145Phantom(int depth = 8, bool female = true)
 {
     return readICRP145Phantom({ depth, depth, depth }, female);
 }
@@ -98,15 +98,15 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 
 int main()
 {
-    using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
-    using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
-    using Surface = dxmc::TriangulatedOpenSurface<double, 5, 1>;
-    using Sphere = dxmc::WorldSphere<double, 5, 1>;
-    using VGrid = dxmc::AAVoxelGrid<double, 5, 1, 0>;
-    using Room = dxmc::EnclosedRoom<double, 5, 1>;
-    using TetMesh = dxmc::TetrahedalMesh<double, 5, 1>;
-    using World = dxmc::World<double, Mesh, Sphere, VGrid, Room, Surface, TetMesh>;
-    using Viz = dxmc::VisualizeWorld<double>;
+    using CTDIPhantom = dxmc::CTDIPhantom<5, 1>;
+    using Mesh = dxmc::TriangulatedMesh<5, 1>;
+    using Surface = dxmc::TriangulatedOpenSurface<5, 1>;
+    using Sphere = dxmc::WorldSphere<5, 1>;
+    using VGrid = dxmc::AAVoxelGrid<5, 1, 0>;
+    using Room = dxmc::EnclosedRoom<5, 1>;
+    using TetMesh = dxmc::TetrahedalMesh<5, 1>;
+    using World = dxmc::World<Mesh, Sphere, VGrid, Room, Surface, TetMesh>;
+    using Viz = dxmc::VisualizeWorld;
 
     World world {};
     world.reserveNumberOfItems(6);
@@ -143,7 +143,7 @@ int main()
     world.build();
 
     // adding beam
-    using Beam = dxmc::DXBeam<double>;
+    using Beam = dxmc::DXBeam;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);

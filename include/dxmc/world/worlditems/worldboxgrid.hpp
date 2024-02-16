@@ -94,7 +94,7 @@ public:
         const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            m_materialDensity = NISTMaterials<double>::density(nist_name);
             return true;
         }
         return false;

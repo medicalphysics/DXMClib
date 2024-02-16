@@ -31,14 +31,13 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 namespace basicshape {
     namespace AABB {
-        template <Floating T=double>
-        inline constexpr bool pointInside(const std::array<T, 3>& p, const std::array<T, 6>& aabb)
+
+        inline constexpr bool pointInside(const std::array<double, 3>& p, const std::array<double, 6>& aabb)
         {
             return aabb[0] <= p[0] && p[0] <= aabb[3] && aabb[1] <= p[1] && p[1] <= aabb[4] && aabb[2] <= p[2] && p[2] <= aabb[5];
         }
 
-        template <Floating T=double>
-        inline constexpr bool overlap(const std::array<T, 6>& a, const std::array<T, 6>& b)
+        inline constexpr bool overlap(const std::array<double, 6>& a, const std::array<double, 6>& b)
         {
             const bool x = a[0] <= b[3] && a[3] >= b[0];
             const bool y = a[1] <= b[4] && a[4] >= b[1];
@@ -46,14 +45,14 @@ namespace basicshape {
             return x && y && z;
         }
 
-        template <Floating T = double, bool FORWARD = true>
-        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 6>& aabb)
+        template <bool FORWARD = true>
+        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 6>& aabb)
         {
-            const std::array<T, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
-            T t1 = (aabb[0] - p.pos[0]) * pdir_inv[0];
-            T t2 = (aabb[3] - p.pos[0]) * pdir_inv[0];
+            const std::array<double, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
+            double t1 = (aabb[0] - p.pos[0]) * pdir_inv[0];
+            double t2 = (aabb[3] - p.pos[0]) * pdir_inv[0];
 
-            std::array<T, 2> tm = { std::min(t1, t2), std::max(t1, t2) };
+            std::array<double, 2> tm = { std::min(t1, t2), std::max(t1, t2) };
 
             for (int i = 1; i < 3; ++i) {
                 t1 = (aabb[i] - p.pos[i]) * pdir_inv[i];
@@ -63,15 +62,14 @@ namespace basicshape {
                 tm[1] = std::min(tm[1], std::max(std::max(t1, t2), tm[0]));
             }
             if constexpr (FORWARD)
-                tm[0] = std::max(tm[0], T { 0 });
+                tm[0] = std::max(tm[0], 0.0);
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
 
-        template <Floating T = double>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 6>& aabb)
+        WorldIntersectionResult intersect(const Particle& p, const std::array<double, 6>& aabb)
         {
-            WorldIntersectionResult<T> res;
-            if (const auto t_cand = intersectForwardInterval<T, true>(p, aabb); t_cand) {
+            WorldIntersectionResult res;
+            if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {
                 const auto& t = *t_cand;
                 res.rayOriginIsInsideItem = t[0] <= 0;
                 res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
@@ -80,16 +78,16 @@ namespace basicshape {
             return res;
         }
 
-        template <Floating T = double, typename U>
-        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 6>& aabb)
+        template <typename U>
+        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const std::array<double, 6>& aabb)
         {
-            VisualizationIntersectionResult<T, U> res;
-            if (const auto t_cand = intersectForwardInterval<T, true>(p, aabb); t_cand) {
+            VisualizationIntersectionResult<U> res;
+            if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {
                 const auto& t = *t_cand;
                 res.rayOriginIsInsideItem = t[0] <= 0;
                 res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];
                 res.intersectionValid = true;
-                std::array<T, 6> hit_merit;
+                std::array<double, 6> hit_merit;
                 for (int i = 0; i < 3; ++i) {
                     const auto hit = p.pos[i] + res.intersection * p.dir[i];
                     hit_merit[i] = std::abs(aabb[i] - hit);

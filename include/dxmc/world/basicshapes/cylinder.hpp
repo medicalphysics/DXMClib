@@ -19,7 +19,6 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/constants.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/visualizationintersectionresult.hpp"
@@ -32,31 +31,29 @@ namespace dxmc {
 namespace basicshape {
     namespace cylinder {
 
-        template <Floating T = double>
         struct Cylinder {
-            std::array<T, 3> center = { 0, 0, 0 };
-            std::array<T, 3> direction = { 0, 0, 1 };
-            T radius = 1;
-            T half_height = 1;
+            std::array<double, 3> center = { 0, 0, 0 };
+            std::array<double, 3> direction = { 0, 0, 1 };
+            double radius = 1;
+            double half_height = 1;
             Cylinder() = default;
-            Cylinder(const std::array<T, 3>& center_arr, const std::array<T, 3>& direction_arr, T radii, T half_height_wall)
+            Cylinder(const std::array<double, 3>& center_arr, const std::array<double, 3>& direction_arr, double radii, double half_height_wall)
                 : radius(radii)
                 , half_height(half_height_wall)
                 , center(center_arr)
             {
                 direction = vectormath::normalized(direction_arr);
             }
-            T volume() const
+            double volume() const
             {
-                return std::numbers::pi_v<T> * radius * radius * half_height * 2;
+                return std::numbers::pi_v<double> * radius * radius * half_height * 2;
             }
         };
 
-        template <Floating T = double>
-        constexpr inline std::array<T, 6> cylinderAABB(const Cylinder<T>& cyl)
+        inline std::array<double, 6> cylinderAABB(const Cylinder& cyl)
         {
             // calculating disc extents
-            const std::array<T, 3> e = {
+            const std::array<double, 3> e = {
                 cyl.radius * std::sqrt(1 - cyl.direction[0] * cyl.direction[0]),
                 cyl.radius * std::sqrt(1 - cyl.direction[1] * cyl.direction[1]),
                 cyl.radius * std::sqrt(1 - cyl.direction[2] * cyl.direction[2])
@@ -64,7 +61,7 @@ namespace basicshape {
             const auto l = vectormath::scale(cyl.direction, cyl.half_height);
             const auto p0 = vectormath::subtract(cyl.center, l);
             const auto p1 = vectormath::add(cyl.center, l);
-            std::array<T, 6> aabb = {
+            std::array<double, 6> aabb = {
                 std::min(p0[0], p1[0]) - e[0],
                 std::min(p0[1], p1[1]) - e[1],
                 std::min(p0[2], p1[2]) - e[2],
@@ -75,14 +72,12 @@ namespace basicshape {
             return aabb;
         }
 
-        template <Floating T = double>
-        constexpr inline bool isOverPlane(const std::array<T, 3>& planepoint, const std::array<T, 3>& planenormal, const std::array<T, 3>& point) noexcept
+        constexpr inline bool isOverPlane(const std::array<double, 3>& planepoint, const std::array<double, 3>& planenormal, const std::array<double, 3>& point) noexcept
         {
             return vectormath::dot(vectormath::subtract(point, planepoint), planenormal) >= 0;
         }
 
-        template <Floating T = double>
-        bool pointInside(const std::array<T, 3>& pos, const Cylinder<T>& cylinder)
+        bool pointInside(const std::array<double, 3>& pos, const Cylinder& cylinder)
         {
             const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
             // test if point inside infinite cylinder
@@ -102,8 +97,7 @@ namespace basicshape {
             return false;
         }
 
-        template <Floating T = double>
-        std::optional<std::array<T, 2>> intersectInterval(const Particle<T>& p, const Cylinder<T>& cylinder)
+        std::optional<std::array<double, 2>> intersectInterval(const Particle& p, const Cylinder& cylinder)
         {
             // return line segment cylinder wall intersection
             // intersection may be behind line start
@@ -111,12 +105,12 @@ namespace basicshape {
             const auto p0 = vectormath::subtract(cylinder.center, e);
             const auto p1 = vectormath::add(cylinder.center, e);
 
-            std::optional<T> tplane0;
+            std::optional<double> tplane0;
             { // testing cylindar planes
-                std::optional<T> tplane1;
+                std::optional<double> tplane1;
                 const auto planar = vectormath::dot(cylinder.direction, p.dir);
-                if (std::abs(planar) > GEOMETRIC_ERROR<T>()) {
-                    const auto den_inv = T { 1 } / planar;
+                if (std::abs(planar) > GEOMETRIC_ERROR()) {
+                    const auto den_inv = 1 / planar;
                     const auto t0 = vectormath::dot(vectormath::subtract(p0, p.pos), cylinder.direction) * den_inv;
                     const auto tp0 = vectormath::add(p.pos, vectormath::scale(p.dir, t0));
 
@@ -133,7 +127,7 @@ namespace basicshape {
                         if (tplane0 > tplane1) {
                             tplane0.swap(tplane1);
                         }
-                        std::array<T, 2> t_planes = { tplane0.value(), tplane1.value() };
+                        std::array<double, 2> t_planes = { tplane0.value(), tplane1.value() };
                         return std::make_optional(t_planes);
                     } else if (tplane1) {
                         // if not exit and one intersection, intersection is on tplane 0
@@ -147,7 +141,7 @@ namespace basicshape {
                 const auto v1 = vectormath::cross(p.dir, cylinder.direction);
 
                 const auto a = vectormath::dot(v1, v1);
-                if (a > GEOMETRIC_ERROR<T>()) {
+                if (a > GEOMETRIC_ERROR()) {
                     const auto b = 2 * vectormath::dot(v0, v1);
                     const auto c = vectormath::dot(v0, v0) - cylinder.radius * cylinder.radius;
                     const auto den = b * b - 4 * a * c;
@@ -183,28 +177,26 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        template <Floating T = double>
-        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const Cylinder<T>& cylinder)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const Cylinder& cylinder)
         {
             auto t_cand = intersectInterval(p, cylinder);
             if (t_cand) {
                 auto& v = t_cand.value();
-                if (v[1] <= T { 0 })
+                if (v[1] <= 0)
                     return std::nullopt;
-                v[0] = std::max(v[0], T { 0 });
+                v[0] = std::max(v[0], 0.0);
             }
             return t_cand;
         }
 
-        template <Floating T = double>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const Cylinder<T>& cylinder)
+        WorldIntersectionResult intersect(const Particle& p, const Cylinder& cylinder)
         {
             const auto t_cand = intersectInterval(p, cylinder);
-            WorldIntersectionResult<T> res;
+            WorldIntersectionResult res;
             if (t_cand) {
                 const auto& v = t_cand.value();
-                if (v[1] > T { 0 }) {
-                    res.rayOriginIsInsideItem = v[0] <= T { 0 };
+                if (v[1] > 0) {
+                    res.rayOriginIsInsideItem = v[0] <= 0;
                     res.intersection = res.rayOriginIsInsideItem ? v[1] : v[0];
                     res.intersectionValid = true;
                 }
@@ -212,16 +204,15 @@ namespace basicshape {
             return res;
         }
 
-        template <Floating T = double, typename U>
-        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const Cylinder<T>& cylinder)
+        template <typename U>
+        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const Cylinder& cylinder)
         {
-
             const auto t_cand = intersectInterval(p, cylinder);
-            VisualizationIntersectionResult<T, U> res;
+            VisualizationIntersectionResult<U> res;
             if (t_cand) {
                 const auto& v = t_cand.value();
-                if (v[1] > T { 0 }) {
-                    res.rayOriginIsInsideItem = v[0] <= T { 0 };
+                if (v[1] > 0) {
+                    res.rayOriginIsInsideItem = v[0] <= 0;
                     res.intersection = res.rayOriginIsInsideItem ? v[1] : v[0];
                     res.intersectionValid = true;
 
@@ -230,11 +221,11 @@ namespace basicshape {
                     const auto pa = vectormath::subtract(p0, cylinder.center);
                     const auto ns = vectormath::dot(pa, cylinder.direction);
                     const auto d = vectormath::subtract(pa, vectormath::scale(cylinder.direction, ns));
-                    const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR<T>());
+                    const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR());
                     if (vectormath::length_sqr(d) < r * r) {
                         // we hit plane
                         if (vectormath::dot(pa, cylinder.direction) < 0) {
-                            res.normal = vectormath::scale(cylinder.direction, T { -1 });
+                            res.normal = vectormath::scale(cylinder.direction, -1.0);
                         } else {
                             res.normal = cylinder.direction;
                         }
@@ -243,7 +234,7 @@ namespace basicshape {
                         vectormath::normalize(res.normal);
                     }
                     if (res.rayOriginIsInsideItem) {
-                        res.normal = vectormath::scale(res.normal, T { -1 });
+                        res.normal = vectormath::scale(res.normal, -1.0);
                     }
                 }
             }

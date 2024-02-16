@@ -33,60 +33,64 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class DepthDose final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
+class DepthDose final : public WorldItemBase {
 public:
-    DepthDose(T radius = T { 16 }, T height = T { 10 }, std::size_t resolution = 100, const std::array<T, 3>& pos = { 0, 0, 0 })
-        : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+    DepthDose(double radius = 16, double height = 10, std::size_t resolution = 100, const std::array<double, 3>& pos = { 0, 0, 0 })
+        : WorldItemBase()
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_cylinder.center = pos;
         m_cylinder.direction = { 0, 0, 1 };
         m_cylinder.radius = radius;
         m_cylinder.half_height = height / 2;
 
-        m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
         m_energyScored.resize(resolution);
         m_dose.resize(resolution);
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material)
+    void setMaterial(const Material<double, NMaterialShells>& material)
     {
         m_material = material;
     }
 
-    void setMaterialDensity(T density) { m_materialDensity = density; }
+    void setMaterialDensity(double density)
+    {
+        m_materialDensity = std::abs(density);
+    }
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<T, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            m_materialDensity = NISTMaterials<double>::density(nist_name);
             return true;
         }
         return false;
     }
-    const Material<T, NMaterialShells>& material() const
+
+    const Material<double, NMaterialShells>& material() const
     {
         return m_material;
     }
 
-    T density() const { return m_materialDensity; }
+    double density() const { return m_materialDensity; }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<double, 3>& dist) override
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
     }
 
-    std::array<T, 3> center() const override
+    std::array<double, 3> center() const override
     {
         return m_cylinder.center;
     }
 
-    std::array<T, 6> AABB() const override
+    std::array<double, 6> AABB() const override
     {
-        std::array<T, 6> aabb {
+        std::array aabb {
             m_cylinder.center[0] - m_cylinder.radius,
             m_cylinder.center[1] - m_cylinder.radius,
             m_cylinder.center[2] - m_cylinder.half_height,
@@ -97,14 +101,14 @@ public:
         return aabb;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
     {
-        auto inter = basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        auto inter = basicshape::cylinder::template intersectVisualization<WorldItemBase>(p, m_cylinder);
         if (inter.valid()) {
             auto p_int = p;
             p_int.translate(inter.intersection);
@@ -112,10 +116,10 @@ public:
             const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_energyScored.size() - 1);
             inter.value = m_dose[ind].dose();
         }
-        return basicshape::cylinder::template intersectVisualization<T, WorldItemBase<T>>(p, m_cylinder);
+        return basicshape::cylinder::template intersectVisualization<WorldItemBase>(p, m_cylinder);
     }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept override
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = false;
@@ -127,13 +131,13 @@ public:
                 attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this can not be nullopt
 
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
                 updateAtt = intRes.particleEnergyChanged;
                 cont = intRes.particleAlive;
 
@@ -148,9 +152,9 @@ public:
         }
     }
 
-    const std::vector<std::pair<T, EnergyScore<T>>> depthEnergyScored() const
+    const std::vector<std::pair<double, EnergyScore>> depthEnergyScored() const
     {
-        std::vector<std::pair<T, EnergyScore<T>>> depth;
+        std::vector<std::pair<double, EnergyScore>> depth;
         depth.reserve(m_energyScored.size());
 
         const auto step = (2 * m_cylinder.half_height) / m_energyScored.size();
@@ -161,7 +165,7 @@ public:
         return depth;
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         return m_energyScored[index];
     }
@@ -173,7 +177,7 @@ public:
         }
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
         const auto totalVolume = m_cylinder.volume();
         const auto partVolume = totalVolume / m_dose.size();
@@ -182,7 +186,7 @@ public:
         }
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         return m_dose[index];
     }
@@ -194,13 +198,12 @@ public:
         }
     }
 
-protected:
 private:
-    dxmc::basicshape::cylinder::Cylinder<T> m_cylinder;
-    T m_materialDensity = 1;
-    Material<T, NMaterialShells> m_material;
-    std::vector<EnergyScore<T>> m_energyScored;
-    std::vector<DoseScore<T>> m_dose;
+    dxmc::basicshape::cylinder::Cylinder m_cylinder;
+    double m_materialDensity = 1;
+    Material<double, NMaterialShells> m_material;
+    std::vector<EnergyScore> m_energyScored;
+    std::vector<DoseScore> m_dose;
 };
 
 }

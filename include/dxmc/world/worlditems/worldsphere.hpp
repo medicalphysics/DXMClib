@@ -37,12 +37,12 @@ template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FOR
 class WorldSphere final : public WorldItemBase {
 public:
     WorldSphere(double radius = 16, const std::array<double, 3>& pos = { 0, 0, 0 })
-        : WorldItemBase<T>()
+        : WorldItemBase()
         , m_radius(std::abs(radius))
         , m_center(pos)
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_materialDensity = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
     }
 
     void setRadius(double r)
@@ -159,13 +159,13 @@ protected:
                 attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this must be valid
 
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 m_energyScored.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
@@ -199,13 +199,13 @@ protected:
             m_energyScored.scoreEnergy(p.energy * p.weight * (1 - probNotInteraction) * relativePeProbability);
 
             // Remainder probability
-            const auto p1 = state.randomUniform<T>();
+            const auto p1 = state.randomUniform();
             if (p1 > probNotInteraction) {
-                if (state.randomUniform<T>() > relativePeProbability) {
+                if (state.randomUniform() > relativePeProbability) {
                     // scatter interaction happends
                     const auto stepLen = -std::log(p1) / attSum;
                     p.translate(stepLen);
-                    const auto intRes = interactions::template interactScatter<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                    const auto intRes = interactions::template interactScatter<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                     m_energyScored.scoreEnergy(intRes.energyImparted);
                     cont = intRes.particleAlive;
                     updateAtt = intRes.particleEnergyChanged;

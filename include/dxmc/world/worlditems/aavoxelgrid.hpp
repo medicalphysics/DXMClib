@@ -33,30 +33,30 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, std::uint_fast8_t TRANSPARENTVOXELS = 255>
-class AAVoxelGrid final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, std::uint_fast8_t TRANSPARENTVOXELS = 255>
+class AAVoxelGrid final : public WorldItemBase {
 public:
     AAVoxelGrid()
     {
         // setting default constructor up with dummy data
         std::array<std::size_t, 3> dim = { 1, 1, 1 };
-        std::vector<T> densities(1, 1);
+        std::vector<double> densities(1, 1);
         std::vector<std::uint8_t> mIdx(1, 0);
-        std::vector<Material<T, NMaterialShells>> materials;
+        std::vector<Material<double, NMaterialShells>> materials;
 
-        auto air_cand = Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)");
+        auto air_cand = Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)");
         materials.push_back(air_cand.value());
         setData(dim, densities, mIdx, materials);
         setSpacing({ 1, 1, 1 });
     }
 
-    AAVoxelGrid(const std::array<std::size_t, 3>& dim, const std::array<T, 3>& spacing, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<T, NMaterialShells>>& materials)
+    AAVoxelGrid(const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing, const std::vector<double>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<double, NMaterialShells>>& materials)
     {
         setData(dim, density, materialIdx, materials);
         setSpacing(spacing);
     }
 
-    bool setData(const std::array<std::size_t, 3>& dim, const std::vector<T>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<T, NMaterialShells>>& materials)
+    bool setData(const std::array<std::size_t, 3>& dim, const std::vector<double>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<double, NMaterialShells>>& materials)
     {
         const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
         if (density.size() != size || materialIdx.size() != size) {
@@ -70,7 +70,7 @@ public:
         m_dim = dim;
         m_data.resize(size);
         m_dose.resize(size);
-        EnergyScore<T> dummy_dose;
+        EnergyScore dummy_dose;
         std::transform(std::execution::par_unseq, density.cbegin(), density.cend(), materialIdx.cbegin(), m_data.begin(), [=](const auto d, const auto mIdx) -> DataElement {
             return { .energyScored = dummy_dose, .density = d, .materialIndex = mIdx };
         });
@@ -141,7 +141,7 @@ public:
         return m_dim[0] * m_dim[1] * m_dim[2];
     }
 
-    void setSpacing(const std::array<T, 3>& spacing)
+    void setSpacing(const std::array<double, 3>& spacing)
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_spacing[i] = std::abs(spacing[i]);
@@ -150,12 +150,12 @@ public:
         updateAABB();
     }
 
-    const std::array<T, 3>& spacing() const
+    const std::array<double, 3>& spacing() const
     {
         return m_spacing;
     }
 
-    void translate(const std::array<T, 3>& dist) final
+    void translate(const std::array<double, 3>& dist) final
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -163,16 +163,16 @@ public:
         }
     }
 
-    std::array<T, 3> center() const final
+    std::array<double, 3> center() const final
     {
-        std::array<T, 3> center;
+        std::array<double, 3> center;
         for (std::size_t i = 0; i < 3; ++i) {
             center[i] = (m_aabb[i] + m_aabb[i + 3]) / 2;
         }
         return center;
     }
 
-    std::array<T, 6> AABB() const final
+    std::array<double, 6> AABB() const final
     {
         return m_aabb;
     }
@@ -188,19 +188,19 @@ public:
     }
 
     template <bool BOUNDSCHECK = true>
-    inline std::size_t flatIndex(const std::array<T, 3>& pos) const
+    inline std::size_t flatIndex(const std::array<double, 3>& pos) const
     {
         return flatIndex(index<BOUNDSCHECK>(pos));
     }
 
     template <bool BOUNDSCHECK = true>
-    inline std::array<std::size_t, 3> index(const std::array<T, 3>& pos) const
+    inline std::array<std::size_t, 3> index(const std::array<double, 3>& pos) const
     {
         if constexpr (BOUNDSCHECK) {
             const std::array<std::size_t, 3> idx = {
-                static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) * m_invSpacing[0], T { 0 }, static_cast<T>(m_dim[0] - 1))),
-                static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) * m_invSpacing[1], T { 0 }, static_cast<T>(m_dim[1] - 1))),
-                static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) * m_invSpacing[2], T { 0 }, static_cast<T>(m_dim[2] - 1)))
+                static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) * m_invSpacing[0], 0.0, static_cast<double>(m_dim[0] - 1))),
+                static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) * m_invSpacing[1], 0.0, static_cast<double>(m_dim[1] - 1))),
+                static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) * m_invSpacing[2], 0.0, static_cast<double>(m_dim[2] - 1)))
             };
             return idx;
         } else {
@@ -222,24 +222,24 @@ public:
         return arr;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const final
+    WorldIntersectionResult intersect(const Particle& p) const final
     {
         auto inter = basicshape::AABB::intersect(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
             if (inter.valid()) {
-                voxelIntersect<WorldIntersectionResult<T>, TRANSPARENTVOXELS>(p, inter);
+                voxelIntersect<WorldIntersectionResult, TRANSPARENTVOXELS>(p, inter);
             }
         }
         return inter;
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const final
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const final
     {
-        auto res = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_aabb);
+        auto res = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
             if (res.valid()) {
                 res.normal = { 0, 0, 0 };
-                voxelIntersect<VisualizationIntersectionResult<T, WorldItemBase<T>>, TRANSPARENTVOXELS>(p, res);
+                voxelIntersect<VisualizationIntersectionResult<WorldItemBase>, TRANSPARENTVOXELS>(p, res);
             }
         }
         return res;
@@ -253,36 +253,35 @@ public:
         return i;
     }
 
-    std::vector<T> getDensity() const
+    std::vector<double> getDensity() const
     {
         const auto size = m_dim[0] * m_dim[1] * m_dim[2];
-        std::vector<T> i(size);
+        std::vector<double> i(size);
         std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.density; });
         return i;
     }
 
-    std::vector<EnergyScore<T>> getEnergyScores() const
+    std::vector<EnergyScore> getEnergyScores() const
     {
         const auto size = m_dim[0] * m_dim[1] * m_dim[2];
-        std::vector<EnergyScore<T>> i(size);
+        std::vector<EnergyScore> i(size);
         std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), i.begin(), [](const auto& d) { return d.energyScored; });
         return i;
     }
 
-    const std::vector<DoseScore<T>>& getDoseScores() const
+    const std::vector<DoseScore>& getDoseScores() const
     {
         return m_dose;
     }
 
-    const EnergyScore<T>& energyScored(std::size_t flatIndex = 0) const final
+    const EnergyScore& energyScored(std::size_t flatIndex = 0) const final
     {
         return m_data.at(flatIndex).energyScored;
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) final
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) final
     {
         const auto size = m_dim[0] * m_dim[1] * m_dim[2];
-
         const auto voxel_volume = m_spacing[0] * m_spacing[1] * m_spacing[2];
 
         for (std::size_t i = 0; i < size; ++i) {
@@ -291,7 +290,7 @@ public:
         }
     }
 
-    const DoseScore<T>& doseScored(std::size_t flatIndex = 0) const final
+    const DoseScore& doseScored(std::size_t flatIndex = 0) const final
     {
         return m_dose.at(flatIndex);
     }
@@ -306,7 +305,7 @@ public:
         std::for_each(std::execution::par_unseq, m_dose.begin(), m_dose.end(), [](auto& d) { d.clear(); });
     }
 
-    void transport(Particle<T>& p, RandomState& state) final
+    void transport(Particle& p, RandomState& state) final
     {
         if constexpr (TRANSPARENTVOXELS != 255) {
             voxelTransport<TRANSPARENTVOXELS>(p, state);
@@ -315,7 +314,7 @@ public:
         }
     }
 
-    T maxAttenuationValue(const T energy) const
+    double maxAttenuationValue(const double energy) const
     {
         return interpolate(m_woodcockStepTableLin, energy);
     }
@@ -325,31 +324,31 @@ protected:
     {
         const auto c = center();
         for (std::size_t i = 0; i < 3; ++i) {
-            const T half_dist = (m_dim[i] * T { 0.5 }) * m_spacing[i];
+            const auto half_dist = (m_dim[i] * 0.5) * m_spacing[i];
             m_aabb[i] = -half_dist;
             m_aabb[i + 3] = half_dist;
         }
         translate(c);
     }
 
-    static inline std::uint_fast8_t argmin3(const std::array<T, 3>& a)
+    static inline std::uint_fast8_t argmin3(const std::array<double, 3>& a)
     {
         return a[0] < a[1] ? a[0] < a[2] ? 0 : 2 : a[1] < a[2] ? 1
                                                                : 2;
     }
 
-    template <typename Intersection = WorldIntersectionResult<T>, std::uint_fast8_t IGNOREIDX = 255>
-    void voxelIntersect(const Particle<T>& p, Intersection& intersection) const
+    template <typename Intersection = WorldIntersectionResult, std::uint_fast8_t IGNOREIDX = 255>
+    void voxelIntersect(const Particle& p, Intersection& intersection) const
     {
-        static_assert(std::is_same<Intersection, WorldIntersectionResult<T>>::value || std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value);
+        static_assert(std::is_same<Intersection, WorldIntersectionResult>::value || std::is_same<Intersection, VisualizationIntersectionResult<WorldItemBase>>::value);
         std::array<std::size_t, 3> xyz;
 
         if (intersection.rayOriginIsInsideItem) {
             xyz = index<false>(p.pos);
         } else {
             // make sure we are well inside a voxel
-            const auto t = intersection.intersection + T { 1E-5 };
-            const std::array<T, 3> pos = {
+            const auto t = intersection.intersection + GEOMETRIC_ERROR();
+            const std::array<double, 3> pos = {
                 p.pos[0] + p.dir[0] * t,
                 p.pos[1] + p.dir[1] * t,
                 p.pos[2] + p.dir[2] * t
@@ -375,13 +374,13 @@ protected:
             p.dir[2] < 0 ? -static_cast<int>(m_dim[0] * m_dim[1]) : static_cast<int>(m_dim[0] * m_dim[1])
         };
 
-        const std::array<T, 3> delta = {
+        const std::array<double, 3> delta = {
             m_spacing[0] / std::abs(p.dir[0]),
             m_spacing[1] / std::abs(p.dir[1]),
             m_spacing[2] / std::abs(p.dir[2])
         };
 
-        std::array<T, 3> tMax;
+        std::array<double, 3> tMax;
         for (std::size_t i = 0; i < 3; ++i) {
             const auto plane = p.dir[i] < 0 ? m_aabb[i] + xyz[i] * m_spacing[i] : m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
             tMax[i] = (plane - (p.pos[i] + p.dir[i] * intersection.intersection)) / p.dir[i];
@@ -400,7 +399,7 @@ protected:
         if (still_inside) {
             intersection.intersection += tMax[dIdx] - delta[dIdx];
             intersection.rayOriginIsInsideItem = false;
-            if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<T, WorldItemBase<T>>>::value) {
+            if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<WorldItemBase>>::value) {
                 intersection.normal[dIdx] = p.dir[dIdx] < 0 ? -1 : 1;
                 intersection.value = m_dose[index_flat].dose();
             }
@@ -411,7 +410,7 @@ protected:
     }
 
     template <std::uint_fast8_t IGNOREIDX = 255>
-    void voxelTransport(Particle<T>& p, RandomState& state)
+    void voxelTransport(Particle& p, RandomState& state)
     {
         bool still_inside;
         do {
@@ -431,22 +430,22 @@ protected:
                 p.dir[2] < 0 ? -static_cast<int>(m_dim[0] * m_dim[1]) : static_cast<int>(m_dim[0] * m_dim[1])
             };
 
-            const std::array<T, 3> delta = {
+            const std::array<double, 3> delta = {
                 m_spacing[0] / std::abs(p.dir[0]),
                 m_spacing[1] / std::abs(p.dir[1]),
                 m_spacing[2] / std::abs(p.dir[2])
             };
 
-            std::array<T, 3> tMax;
+            std::array<double, 3> tMax;
             for (std::size_t i = 0; i < 3; ++i) {
                 const auto plane = p.dir[i] < 0 ? m_aabb[i] + xyz[i] * m_spacing[i] : m_aabb[i] + (xyz[i] + 1) * m_spacing[i];
                 tMax[i] = (plane - p.pos[i]) / p.dir[i];
             }
             // Endre denne??? sjekk voxel intersect
-            T tCurrent = 0;
+            double tCurrent = 0;
 
-            T interaction_accum = 1;
-            const T interaction_thres = state.randomUniform<T>();
+            double interaction_accum = 1;
+            const auto interaction_thres = state.randomUniform();
 
             const auto tLimit = (*basicshape::AABB::intersectForwardInterval(p, m_aabb))[1];
 
@@ -481,7 +480,7 @@ protected:
                         // translate particle before interaction
                         p.translate(tMax[dIdx]);
 
-                        const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
+                        const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matInd], state);
                         energyScored.scoreEnergy(intRes.energyImparted);
                         still_inside = intRes.particleAlive;
                         // particle energy or direction has changed, we restart stepping
@@ -507,11 +506,11 @@ protected:
 
     void generateWoodcockStepTable()
     {
-        std::vector<T> energy;
+        std::vector<double> energy;
         {
-            T e = std::log(MIN_ENERGY<T>());
-            const T emax = std::log(MAX_ENERGY<T>());
-            const T estep = (emax - e) / 10;
+            auto e = std::log(MIN_ENERGY());
+            const auto emax = std::log(MAX_ENERGY());
+            const auto estep = (emax - e) / 10;
             while (e <= emax) {
                 energy.push_back(e);
                 e += estep;
@@ -521,8 +520,8 @@ protected:
         for (const auto& mat : m_materials) {
             for (std::size_t i = 0; i < mat.numberOfShells(); ++i) {
                 const auto& shell = mat.shell(i);
-                const auto e = shell.bindingEnergy + T { 0.01 };
-                if (e > MIN_ENERGY<T>()) {
+                const auto e = shell.bindingEnergy + 0.01;
+                if (e > MIN_ENERGY()) {
                     energy.push_back(std::log(e));
                 }
             }
@@ -533,14 +532,14 @@ protected:
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), energy.begin(), [](const auto e) { return std::exp(e); });
 
         // finding max density for each material;
-        std::vector<T> dens(m_materials.size(), T { 0 });
+        std::vector<double> dens(m_materials.size(), 0.0);
         for (const auto& d : m_data) {
             const auto i = d.materialIndex;
             dens[i] = std::max(d.density, dens[i]);
         }
 
         // finding max attenuation for each energy
-        std::vector<T> att(energy.size(), T { 0 });
+        std::vector<double> att(energy.size(), 0.0);
         for (std::size_t mIdx = 0; mIdx < m_materials.size(); ++mIdx) {
             const auto& mat = m_materials[mIdx];
             const auto d = dens[mIdx];
@@ -549,7 +548,7 @@ protected:
                 att[i] = std::max(aval.sum() * d, att[i]);
             }
         }
-        std::vector<std::pair<T, T>> data(energy.size());
+        std::vector<std::pair<double, double>> data(energy.size());
         std::transform(std::execution::par_unseq, energy.cbegin(), energy.cend(), att.cbegin(), data.begin(), [](const auto e, const auto a) {
             return std::make_pair(e, a);
         });
@@ -557,18 +556,18 @@ protected:
         m_woodcockStepTableLin = data;
     }
 
-    void woodcockTransport(Particle<T>& p, RandomState& state)
+    void woodcockTransport(Particle& p, RandomState& state)
     {
         bool valid = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;
 
-        T attMaxInv;
+        double attMaxInv;
         while (valid) {
             if (updateAtt) {
                 attMaxInv = 1 / maxAttenuationValue(p.energy);
                 updateAtt = false;
             }
-            const auto steplen = -std::log(state.randomUniform<T>()) * attMaxInv;
+            const auto steplen = -std::log(state.randomUniform()) * attMaxInv;
 
             const auto intersection = basicshape::AABB::intersect(p, m_aabb);
 
@@ -580,8 +579,8 @@ protected:
                 const auto att = m_materials[matIdx].attenuationValues(p.energy);
                 const auto attTot = att.sum() * dens;
                 // check if real or virtual interaction
-                if (state.randomUniform<T>() < attTot * attMaxInv) {
-                    const auto intRes = interactions::template interact<T, NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matIdx], state);
+                if (state.randomUniform() < attTot * attMaxInv) {
+                    const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_materials[matIdx], state);
                     m_data[flat_index].energyScored.scoreEnergy(intRes.energyImparted);
                     valid = intRes.particleAlive;
                     updateAtt = intRes.particleEnergyChanged;
@@ -594,19 +593,19 @@ protected:
     }
 
     struct DataElement {
-        EnergyScore<T> energyScored;
-        T density = 0;
+        EnergyScore energyScored;
+        double density = 0;
         std::uint8_t materialIndex = 0;
     };
 
 private:
     std::array<std::size_t, 3> m_dim = { 1, 1, 1 };
-    std::array<T, 3> m_invSpacing = { 1, 1, 1 };
-    std::array<T, 3> m_spacing = { 1, 1, 1 };
-    std::array<T, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    std::vector<std::pair<T, T>> m_woodcockStepTableLin;
+    std::array<double, 3> m_invSpacing = { 1, 1, 1 };
+    std::array<double, 3> m_spacing = { 1, 1, 1 };
+    std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    std::vector<std::pair<double, double>> m_woodcockStepTableLin;
     std::vector<DataElement> m_data;
-    std::vector<DoseScore<T>> m_dose;
-    std::vector<Material<T, NMaterialShells>> m_materials;
+    std::vector<DoseScore> m_dose;
+    std::vector<Material<double, NMaterialShells>> m_materials;
 };
 }

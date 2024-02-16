@@ -27,7 +27,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
 
-
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
 {
@@ -52,14 +51,14 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 
 void carmScatter()
 {
-    using CTDIPhantom = dxmc::CTDIPhantom<double, 5, 1>;
-    using Mesh = dxmc::TriangulatedMesh<double, 5, 1>;
-    using Sphere = dxmc::WorldSphere<double, 5, 1>;
-    using Room = dxmc::EnclosedRoom<double, 5, 1>;
-    using Box = dxmc::WorldBox<double, 5, 1>;
-    using Sphere = dxmc::WorldSphere<double, 5, 1>;
-    using World = dxmc::World<double, Mesh, Sphere, CTDIPhantom, Room, Box, Sphere>;
-    using Viz = dxmc::VisualizeWorld<double>;
+    using CTDIPhantom = dxmc::CTDIPhantom<5, 1>;
+    using Mesh = dxmc::TriangulatedMesh<5, 1>;
+    using Sphere = dxmc::WorldSphere<5, 1>;
+    using Room = dxmc::EnclosedRoom<5, 1>;
+    using Box = dxmc::WorldBox<5, 1>;
+    using Sphere = dxmc::WorldSphere<5, 1>;
+    using World = dxmc::World<Mesh, Sphere, CTDIPhantom, Room, Box, Sphere>;
+    using Viz = dxmc::VisualizeWorld;
 
     World world {};
     world.reserveNumberOfItems(6);
@@ -91,7 +90,7 @@ void carmScatter()
     world.build();
 
     // adding beam
-    using Beam = dxmc::DXBeam<double>;
+    using Beam = dxmc::DXBeam;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);

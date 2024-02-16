@@ -28,10 +28,9 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class PencilBeamExposure {
 public:
-    PencilBeamExposure(const std::array<T, 3>& pos, const std::array<T, 3>& dir, T energy, T weight, std::uint64_t N)
+    PencilBeamExposure(const std::array<double, 3>& pos, const std::array<double, 3>& dir, double energy, double weight, std::uint64_t N)
         : m_energy(energy)
         , m_weight(weight)
         , m_pos(pos)
@@ -40,13 +39,13 @@ public:
     {
     }
 
-    const std::array<T, 3>& position() const { return m_pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle<T> sampleParticle(RandomState& state) const noexcept
+    Particle sampleParticle(RandomState& state) const noexcept
     {
-        Particle<T> p = { .pos = m_pos,
+        Particle p = { .pos = m_pos,
             .dir = m_dir,
             .energy = m_energy,
             .weight = m_weight };
@@ -54,17 +53,16 @@ public:
     }
 
 private:
-    T m_energy = 60;
-    T m_weight = 1;
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 0, 1 };
+    double m_energy = 60;
+    double m_weight = 1;
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 0, 1 };
     std::uint64_t m_NParticles = 100;
 };
 
-template <Floating T>
 class PencilBeam {
 public:
-    PencilBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<T, 3>& dir = { 0, 0, 1 }, T energy = 60)
+    PencilBeam(const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<double, 3>& dir = { 0, 0, 1 }, double energy = 60)
         : m_energy(energy)
         , m_pos(pos)
         , m_dir(dir)
@@ -72,12 +70,12 @@ public:
         vectormath::normalize(m_dir);
     }
 
-    void setEnergy(T energy)
+    void setEnergy(double energy)
     {
         m_energy = std::abs(energy);
     }
 
-    T energy() const { return m_energy; }
+    double energy() const { return m_energy; }
 
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
     void setNumberOfExposures(std::uint64_t n) { m_Nexposures = std::max(n, std::uint64_t { 1 }); }
@@ -85,67 +83,67 @@ public:
     std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    void setPosition(const std::array<T, 3>& pos)
+    void setPosition(const std::array<double, 3>& pos)
     {
         m_pos = pos;
     }
 
-    void setDirection(const std::array<T, 3>& dir)
+    void setDirection(const std::array<double, 3>& dir)
     {
         m_dir = dir;
         vectormath::normalize(m_dir);
     }
 
-    std::array<std::array<T, 3>, 2> directionCosines() const
+    std::array<std::array<double, 3>, 2> directionCosines() const
     {
-        std::array<T, 3> cand = { 0, 0, 0 };
+        std::array<double, 3> cand = { 0, 0, 0 };
         const auto minIdx = vectormath::argmin3(m_dir);
         cand[minIdx] = 1;
 
-        std::array<std::array<T, 3>, 2> cos;
+        std::array<std::array<double, 3>, 2> cos;
         cos[0] = vectormath::cross(m_dir, cand);
         vectormath::normalize(cos[0]);
         cos[1] = vectormath::cross(m_dir, cos[0]);
         return cos;
     }
 
-    void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
+    void setDirectionCosines(const std::array<std::array<double, 3>, 2>& dir)
     {
         m_dir = vectormath::cross(dir[0], dir[1]);
         vectormath::normalize(m_dir);
     }
-    void setDirectionCosines(const std::array<T, 3>& xdir, const std::array<T, 3>& ydir)
+    void setDirectionCosines(const std::array<double, 3>& xdir, const std::array<double, 3>& ydir)
     {
         m_dir = vectormath::cross(xdir, ydir);
         vectormath::normalize(m_dir);
     }
 
-    const std::array<T, 4> collimationAngles() const
+    const std::array<double, 4> collimationAngles() const
     {
-        return std::array { T { 0 }, T { 0 }, T { 0 }, T { 0 } };
+        return std::array { 0.0, 0.0, 0.0, 0.0 };
     }
 
-    void setParticleWeight(T weight = 1)
+    void setParticleWeight(double weight = 1)
     {
         m_weight = weight;
     }
 
-    PencilBeamExposure<T> exposure(std::size_t i) const noexcept
+    PencilBeamExposure exposure(std::size_t i) const noexcept
     {
-        PencilBeamExposure<T> exp(m_pos, m_dir, m_energy, m_weight, m_particlesPerExposure);
+        PencilBeamExposure exp(m_pos, m_dir, m_energy, m_weight, m_particlesPerExposure);
         return exp;
     }
 
-    T calibrationFactor(TransportProgress* progress = nullptr) const noexcept
+    double calibrationFactor(TransportProgress* progress = nullptr) const noexcept
     {
         return 1;
     }
 
 private:
-    T m_energy = 60;
-    T m_weight = 1;
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<T, 3> m_dir = { 0, 0, 1 };
+    double m_energy = 60;
+    double m_weight = 1;
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 0, 1 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
 };

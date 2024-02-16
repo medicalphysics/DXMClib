@@ -25,15 +25,15 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, bool ONESIDED = true>
+template <bool ONESIDED = true>
 class BowtieFilter {
 public:
-    BowtieFilter(const std::vector<T>& angles_r, const std::vector<T>& intensity_r)
+    BowtieFilter(const std::vector<double>& angles_r, const std::vector<double>& intensity_r)
     {
         setData(angles_r, intensity_r);
     }
 
-    BowtieFilter(const std::vector<std::pair<T, T>>& data)
+    BowtieFilter(const std::vector<std::pair<double, double>>& data)
     {
         setData(data);
     }
@@ -41,19 +41,19 @@ public:
     BowtieFilter()
     {
         // generic filter from a Siemens Definition Flash
-        static std::vector<std::pair<T, T>> data = {
-            { 0.166511074f, 3.53208f },
-            { 0.000000000f, 13.9167f },
-            { 0.041992107f, 12.5868f },
-            { 0.083836642f, 9.41943f },
-            { 0.246954945f, 1.96665f },
-            { 0.324269441f, 1.27605f },
-            { 0.390607044f, 0.947716f }
+        static std::vector<std::pair<double, double>> data = {
+            { 0.166511074, 3.53208 },
+            { 0.000000000, 13.9167 },
+            { 0.041992107, 12.5868 },
+            { 0.083836642, 9.41943 },
+            { 0.246954945, 1.96665 },
+            { 0.324269441, 1.27605 },
+            { 0.390607044, 0.947716 }
         };
         setData(data);
     }
 
-    T operator()(T angle) const
+    double operator()(double angle) const
     {
         if constexpr (ONESIDED)
             return m_inter(std::abs(angle));
@@ -61,7 +61,7 @@ public:
             return m_inter(angle);
     }
 
-    void setData(std::vector<std::pair<T, T>> data)
+    void setData(std::vector<std::pair<double, double>> data)
     {
         for (auto& d : data) {
             if constexpr (ONESIDED)
@@ -80,10 +80,10 @@ public:
         m_inter.scale((stop - start) / area);
     }
 
-    void setData(const std::vector<T>& angles_r, const std::vector<T>& intensity_r)
+    void setData(const std::vector<double>& angles_r, const std::vector<double>& intensity_r)
     {
         const auto N = std::min(angles_r.size(), intensity_r.size());
-        std::vector<std::pair<T, T>> data(N);
+        std::vector<std::pair<double, double>> data(N);
 
         for (std::size_t i = 0; i < N; ++i) {
             if constexpr (ONESIDED)
@@ -97,6 +97,6 @@ public:
     }
 
 private:
-    AkimaSplineStatic<T, 6> m_inter;
+    AkimaSplineStatic<double, 6> m_inter;
 };
 }

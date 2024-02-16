@@ -28,32 +28,31 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
 class IsotropicBeamExposure {
 public:
-    IsotropicBeamExposure(const std::array<T, 3>& pos, const std::array<std::array<T, 3>, 2>& dircosines, std::uint64_t N = 1E6)
+    IsotropicBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N = 1E6)
         : m_pos(pos)
         , m_dirCosines(dircosines)
         , m_NParticles(N)
     {
     }
 
-    const std::array<T, 3>& position() const { return m_pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
 
-    void setCollimationAngles(const std::array<T, 4>& angles)
+    void setCollimationAngles(const std::array<double, 4>& angles)
     {
         for (std::size_t i = 0; i < angles.size(); ++i)
             m_collimationAngles[i] = angles[i];
     }
 
-    void setSpecterDistribution(const SpecterDistribution<T>& s)
+    void setSpecterDistribution(const SpecterDistribution<double>& s)
     {
         m_specterDist = s;
     }
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle<T> sampleParticle(RandomState& state) const noexcept
+    Particle sampleParticle(RandomState& state) const noexcept
     {
         auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
 
@@ -69,27 +68,24 @@ public:
             m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
         };
 
-        // auto pdir = vectormath::rotate(vectormath::rotate(dir, m_dirCosines[1], angx), m_dirCosines[0], angy);
-
-        Particle<T> p = { .pos = m_pos,
+        Particle p = { .pos = m_pos,
             .dir = pdir,
             .energy = m_specterDist.sampleValue(state),
-            .weight = T { 1 } };
+            .weight = 1 };
         return p;
     }
 
 private:
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
-    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<double, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_NParticles = 100;
-    SpecterDistribution<T> m_specterDist;
+    SpecterDistribution<double> m_specterDist;
 };
 
-template <Floating T>
 class IsotropicBeam {
 public:
-    IsotropicBeam(const std::array<T, 3>& pos = { 0, 0, 0 }, const std::array<std::array<T, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } })
+    IsotropicBeam(const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<std::array<double, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } })
         : m_pos(pos)
     {
         setDirectionCosines(dircosines);
@@ -101,21 +97,21 @@ public:
     std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
-    void setPosition(const std::array<T, 3>& pos) { m_pos = pos; }
+    void setPosition(const std::array<double, 3>& pos) { m_pos = pos; }
 
-    const std::array<std::array<T, 3>, 2>& directionCosines() const
+    const std::array<std::array<double, 3>, 2>& directionCosines() const
     {
         return m_dirCosines;
     }
 
-    void setDirectionCosines(const std::array<std::array<T, 3>, 2>& dir)
+    void setDirectionCosines(const std::array<std::array<double, 3>, 2>& dir)
     {
         m_dirCosines = dir;
         vectormath::normalize(m_dirCosines[0]);
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    void setDirectionCosines(const std::array<T, 3>& xdir, const std::array<T, 3>& ydir)
+    void setDirectionCosines(const std::array<double, 3>& xdir, const std::array<double, 3>& ydir)
     {
         m_dirCosines[0] = xdir;
         m_dirCosines[1] = ydir;
@@ -123,15 +119,15 @@ public:
         vectormath::normalize(m_dirCosines[1]);
     }
 
-    void setEnergySpecter(const std::vector<std::pair<T, T>>& specter)
+    void setEnergySpecter(const std::vector<std::pair<double, double>>& specter)
     {
         m_specter = SpecterDistribution(specter);
     }
 
-    const std::array<T, 4>& collimationAngles() const { return m_collimationAngles; }
+    const std::array<double, 4>& collimationAngles() const { return m_collimationAngles; }
 
-    void setCollimationAngles(const std::array<T, 4>& angles) { m_collimationAngles = angles; }
-    void setCollimationAngles(T minX, T minY, T maxX, T maxY)
+    void setCollimationAngles(const std::array<double, 4>& angles) { m_collimationAngles = angles; }
+    void setCollimationAngles(double minX, double minY, double maxX, double maxY)
     {
         m_collimationAngles[0] = minX;
         m_collimationAngles[1] = minY;
@@ -139,27 +135,26 @@ public:
         m_collimationAngles[3] = maxY;
     }
 
-    IsotropicBeamExposure<T> exposure(std::size_t i) const noexcept
+    IsotropicBeamExposure exposure(std::size_t i) const noexcept
     {
-
-        IsotropicBeamExposure<T> exp(m_pos, m_dirCosines, m_particlesPerExposure);
+        IsotropicBeamExposure exp(m_pos, m_dirCosines, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
         exp.setSpecterDistribution(m_specter);
         return exp;
     }
 
-    T calibrationFactor(TransportProgress* progress = nullptr) const noexcept
+    double calibrationFactor(TransportProgress* progress = nullptr) const noexcept
     {
         return 1;
     }
 
 private:
-    std::array<T, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<T, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
-    std::array<T, 4> m_collimationAngles = { 0, 0, 0, 0 };
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
+    std::array<double, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
-    SpecterDistribution<T> m_specter;
+    SpecterDistribution<double> m_specter;
 };
 
 }

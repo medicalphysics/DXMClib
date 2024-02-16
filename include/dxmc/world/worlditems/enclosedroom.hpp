@@ -32,39 +32,44 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T, std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class EnclosedRoom final : public WorldItemBase<T> {
+template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
+class EnclosedRoom final : public WorldItemBase {
 public:
-    EnclosedRoom(T wallthickness = 10, const std::array<T, 6>& inner_aabb = { -1, -1, -1, 1, 1, 1 })
-        : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+    EnclosedRoom(double wallthickness = 10, const std::array<double, 6>& inner_aabb = { -1, -1, -1, 1, 1, 1 })
+        : WorldItemBase()
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_wallThickness = std::max(std::abs(wallthickness), T { 0.001 });
+        m_wallThickness = std::max(std::abs(wallthickness), 0.001);
         setInnerRoomAABB(inner_aabb);
-        m_density = NISTMaterials<T>::density("Air, Dry (near sea level)");
+        m_density = NISTMaterials<double>::density("Air, Dry (near sea level)");
     }
 
-    void setWallThickness(T cm)
+    void setWallThickness(double cm)
     {
-        m_wallThickness = std::max(std::abs(cm), T { 0.001 });
+        m_wallThickness = std::max(std::abs(cm), 0.001);
         m_outerAABB = outerAABfromInner(m_innerAABB, m_wallThickness);
     }
 
-    void setMaterial(const Material<T, NMaterialShells>& material) { m_material = material; }
+    void setMaterial(const Material<double, NMaterialShells>& material) { m_material = material; }
 
-    void setMaterial(const Material<T, NMaterialShells>& material, T density)
+    void setMaterial(const Material<double, NMaterialShells>& material, double density)
     {
         m_material = material;
-        m_density = density;
+        setDensity(density);
     }
 
-    void setInnerRoomAABB(const std::array<T, 6>& aabb)
+    void setDensity(double dens)
+    {
+        m_density = std::abs(dens);
+    }
+
+    void setInnerRoomAABB(const std::array<double, 6>& aabb)
     {
         m_innerAABB = aabb;
         m_outerAABB = outerAABfromInner(m_innerAABB, m_wallThickness);
     }
 
-    void translate(const std::array<T, 3>& dist) final
+    void translate(const std::array<double, 3>& dist) final
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_innerAABB[i] += dist[i];
@@ -72,9 +77,9 @@ public:
         }
     }
 
-    std::array<T, 3> center() const final
+    std::array<double, 3> center() const final
     {
-        std::array<T, 3> center = {
+        std::array center = {
             (m_innerAABB[0] + m_innerAABB[3]) / 2,
             (m_innerAABB[1] + m_innerAABB[4]) / 2,
             (m_innerAABB[2] + m_innerAABB[5]) / 2
@@ -82,15 +87,15 @@ public:
         return center;
     }
 
-    std::array<T, 6> AABB() const noexcept final
+    std::array<double, 6> AABB() const noexcept final
     {
         return m_outerAABB;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const noexcept final
+    WorldIntersectionResult intersect(const Particle& p) const noexcept final
     {
         const bool is_inside_inner = basicshape::AABB::pointInside(p.pos, m_innerAABB);
-        WorldIntersectionResult<T> intersect;
+        WorldIntersectionResult intersect;
         if (is_inside_inner) {
             intersect = basicshape::AABB::intersect(p, m_innerAABB);
             intersect.rayOriginIsInsideItem = false;
@@ -107,9 +112,9 @@ public:
         return intersect;
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const noexcept final
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept final
     {
-        VisualizationIntersectionResult<T, WorldItemBase<T>> intersection = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_innerAABB);
+        VisualizationIntersectionResult<WorldItemBase> intersection = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_innerAABB);
         if (intersection.valid()) {
             if (intersection.rayOriginIsInsideItem) {
                 intersection.rayOriginIsInsideItem = false;
@@ -117,60 +122,60 @@ public:
                 // we intersect inner box from outside and want to render closest walls invisible
                 auto p_copy = p;
                 p_copy.border_translate(intersection.intersection);
-                const auto past_wall_intersection = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p_copy, m_innerAABB);
+                const auto past_wall_intersection = basicshape::AABB::template intersectVisualization<WorldItemBase>(p_copy, m_innerAABB);
                 intersection.intersection += past_wall_intersection.intersection;
                 intersection.normal = past_wall_intersection.normal;
             }
         } else {
-            intersection = basicshape::AABB::template intersectVisualization<T, WorldItemBase<T>>(p, m_outerAABB);
+            intersection = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_outerAABB);
         }
         return intersection;
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const final { return m_energyScore; }
+    const EnergyScore& energyScored(std::size_t index = 0) const final { return m_energyScore; }
 
     void clearEnergyScored() final { m_energyScore.clear(); }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) final
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) final
     {
-        std::array<T, 3> inner_sides;
-        std::array<T, 3> outer_sides;
+        std::array<double, 3> inner_sides;
+        std::array<double, 3> outer_sides;
         for (std::size_t i = 0; i < 3; ++i) {
             inner_sides[i] = m_innerAABB[i + 3] - m_innerAABB[i];
             outer_sides[i] = m_outerAABB[i + 3] - m_outerAABB[i];
         }
-        const auto inner_volume = std::reduce(inner_sides.cbegin(), inner_sides.cend(), T { 1 }, std::multiplies<>());
-        const auto outer_volume = std::reduce(outer_sides.cbegin(), outer_sides.cend(), T { 1 }, std::multiplies<>());
+        const auto inner_volume = std::reduce(inner_sides.cbegin(), inner_sides.cend(), 1.0, std::multiplies<>());
+        const auto outer_volume = std::reduce(outer_sides.cbegin(), outer_sides.cend(), 1.0, std::multiplies<>());
 
         m_dose.addScoredEnergy(m_energyScore, outer_volume - inner_volume, m_density, calibration_factor);
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const final
+    const DoseScore& doseScored(std::size_t index = 0) const final
     {
         return m_dose;
     }
 
     void clearDoseScored() final { m_dose.clear(); }
 
-    void transport(Particle<T>& p, RandomState& state) noexcept final
+    void transport(Particle& p, RandomState& state) noexcept final
     {
         bool cont = pointInside(p.pos);
         bool updateAtt = true;
-        AttenuationValues<T> att;
-        T attSumInv;
+        AttenuationValues<double> att;
+        double attSumInv;
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
                 attSumInv = 1 / (att.sum() * m_density);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this can not be nullopt
 
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<T, NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
                 m_energyScore.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
@@ -183,9 +188,9 @@ public:
     }
 
 protected:
-    static std::array<T, 6> outerAABfromInner(const std::array<T, 6>& inner, T wall_thickness)
+    static std::array<double, 6> outerAABfromInner(const std::array<double, 6>& inner, double wall_thickness)
     {
-        std::array<T, 6> aabb = {
+        std::array<double, 6> aabb = {
             inner[0] - wall_thickness,
             inner[1] - wall_thickness,
             inner[2] - wall_thickness,
@@ -196,18 +201,18 @@ protected:
         return aabb;
     }
 
-    bool pointInside(const std::array<T, 3>& p) const noexcept
+    bool pointInside(const std::array<double, 3>& p) const noexcept
     {
         return basicshape::AABB::pointInside(p, m_outerAABB) && !basicshape::AABB::pointInside(p, m_innerAABB);
     }
 
 private:
-    T m_wallThickness = 10;
-    std::array<T, 6> m_innerAABB = { -1, -1, -1, 1, 1, 1 };
-    std::array<T, 6> m_outerAABB = { -1, -1, -1, 1, 1, 1 };
-    T m_density = 1;
-    Material<T, NMaterialShells> m_material;
-    EnergyScore<T> m_energyScore;
-    DoseScore<T> m_dose;
+    double m_wallThickness = 10;
+    std::array<double, 6> m_innerAABB = { -1, -1, -1, 1, 1, 1 };
+    std::array<double, 6> m_outerAABB = { -1, -1, -1, 1, 1, 1 };
+    double m_density = 1;
+    Material<double, NMaterialShells> m_material;
+    EnergyScore m_energyScore;
+    DoseScore m_dose;
 };
 }

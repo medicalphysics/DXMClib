@@ -31,17 +31,15 @@ namespace dxmc {
 namespace basicshape {
     namespace sphere {
 
-        template <Floating T>
-        bool pointInside(const std::array<T, 3>& pos, const std::array<T, 3>& center, const T radii)
+        bool pointInside(const std::array<double, 3>& pos, const std::array<double, 3>& center, const double radii)
         {
-            const std::array<T, 3> dp = { pos[0] - center[0], pos[1] - center[1], pos[2] - center[2] };
+            const std::array<double, 3> dp = { pos[0] - center[0], pos[1] - center[1], pos[2] - center[2] };
             return dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2] < radii * radii;
         }
 
-        template <Floating T>
-        WorldIntersectionResult<T> intersect(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
-            WorldIntersectionResult<T> res;
+            WorldIntersectionResult res;
             // nummeric stable ray sphere intersection
             const auto r2 = radii * radii;
             const auto f = vectormath::subtract(p.pos, center);
@@ -81,8 +79,7 @@ namespace basicshape {
             return res;
         }
 
-        template <Floating T>
-        std::optional<std::array<T, 2>> intersectForwardInterval(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection
             const auto r2 = radii * radii;
@@ -120,10 +117,10 @@ namespace basicshape {
             }
         }
 
-        template <Floating T, typename U>
-        VisualizationIntersectionResult<T, U> intersectVisualization(const Particle<T>& p, const std::array<T, 3>& center, const T radii)
+        template <typename U>
+        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
-            VisualizationIntersectionResult<T, U> res;
+            VisualizationIntersectionResult<U> res;
             const auto t_opt = intersectForwardInterval(p, center, radii);
             if (t_opt) {
                 const auto& t = t_opt.value();
@@ -135,7 +132,7 @@ namespace basicshape {
                 res.normal = vectormath::subtract(center, pos);
                 vectormath::normalize(res.normal);
                 if (res.rayOriginIsInsideItem) {
-                    res.normal = vectormath::scale(res.normal, T { -1 });
+                    res.normal = vectormath::scale(res.normal, -1.0);
                 }
             }
             return res;

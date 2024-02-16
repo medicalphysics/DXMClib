@@ -35,11 +35,10 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <Floating T>
-class FluenceScore final : public WorldItemBase<T> {
+class FluenceScore final : public WorldItemBase {
 public:
-    FluenceScore(T radius = T { 16 }, const std::array<T, 3>& center = { 0, 0, 0 }, const std::array<T, 3>& normal = { 0, 0, 1 })
-        : WorldItemBase<T>()
+    FluenceScore(double radius = 16, const std::array<double, 3>& center = { 0, 0, 0 }, const std::array<double, 3>& normal = { 0, 0, 1 })
+        : WorldItemBase()
         , m_center(center)
         , m_radius(radius)
     {
@@ -47,15 +46,15 @@ public:
         setEnergyStep(1);
     }
 
-    void setEnergyStep(T step)
+    void setEnergyStep(double step)
     {
-        m_energy_step = std::max(step, T { 0.1 });
-        const auto N = static_cast<std::uint64_t>(MAX_ENERGY<T>() / m_energy_step) + 1;
+        m_energy_step = std::max(step, 0.1);
+        const auto N = static_cast<std::uint64_t>(MAX_ENERGY() / m_energy_step) + 1;
         m_intensity.resize(N);
         std::fill(m_intensity.begin(), m_intensity.end(), 0);
     }
 
-    void translate(const std::array<T, 3>& dist) override
+    void translate(const std::array<double, 3>& dist) override
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_center[i] += dist[i];
@@ -64,52 +63,52 @@ public:
         }
     }
 
-    std::array<T, 3> center() const override
+    std::array<double, 3> center() const override
     {
         return m_center;
     }
-    std::array<T, 6> AABB() const override
+    std::array<double, 6> AABB() const override
     {
         return m_aabb;
     }
 
-    void setPlaneNormal(const std::array<T, 3>& normal)
+    void setPlaneNormal(const std::array<double, 3>& normal)
     {
         m_normal = normal;
         vectormath::normalize(m_normal);
         calculateAABB();
     }
 
-    std::vector<std::pair<T, std::uint64_t>> getSpecter() const
+    std::vector<std::pair<double, std::uint64_t>> getSpecter() const
     {
-        std::vector<std::pair<T, std::uint64_t>> spec(m_intensity.size());
+        std::vector<std::pair<double, std::uint64_t>> spec(m_intensity.size());
         for (std::size_t i = 0; i < m_intensity.size(); ++i) {
             spec[i] = std::make_pair(m_energy_step * i, m_intensity[i]);
         }
         return spec;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle<T>& p) const override
+    WorldIntersectionResult intersect(const Particle& p) const override
     {
         const auto aabb_inter = basicshape::AABB::intersectForwardInterval(p, m_aabb);
-        return aabb_inter ? intersectDisc(p) : WorldIntersectionResult<T> {};
+        return aabb_inter ? intersectDisc(p) : WorldIntersectionResult {};
     }
 
-    VisualizationIntersectionResult<T, WorldItemBase<T>> intersectVisualization(const Particle<T>& p) const override
+    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const override
     {
         const auto res = intersect(p);
-        VisualizationIntersectionResult<T, WorldItemBase<T>> w;
+        VisualizationIntersectionResult<WorldItemBase> w;
         if (res.valid()) {
             w.rayOriginIsInsideItem = false;
             w.intersection = res.intersection;
             w.intersectionValid = true;
             w.item = this;
-            w.normal = vectormath::dot(p.dir, m_normal) <= T { 0 } ? m_normal : vectormath::scale(m_normal, T { -1 });
+            w.normal = vectormath::dot(p.dir, m_normal) <= 0 ? m_normal : vectormath::scale(m_normal, -1.0);
         }
         return w;
     }
 
-    const EnergyScore<T>& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const override
     {
         return m_energyScored;
     }
@@ -120,13 +119,13 @@ public:
         std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
     }
 
-    void addEnergyScoredToDoseScore(T calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
     {
-        // not defined for fleunce counter
+        // not defined for fluence counter
         return;
     }
 
-    const DoseScore<T>& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const override
     {
         return m_dummyDose;
     }
@@ -136,18 +135,18 @@ public:
         return;
     }
 
-    void transport(Particle<T>& particle, RandomState& state) override
+    void transport(Particle& particle, RandomState& state) override
     {
         // Assuming particle is on the disc
         const auto eIdx = static_cast<std::size_t>(particle.energy / m_energy_step);
         auto counter = std::atomic_ref(m_intensity[eIdx]);
         counter++;
         m_energyScored.scoreEnergy(particle.energy);
-        particle.border_translate(T { 0 });
+        particle.border_translate(0);
     }
 
 protected:
-    static inline std::pair<T, T> minmax(T v1, T v2)
+    static inline std::pair<double, double> minmax(double v1, double v2)
     {
         // use own minmax instead of std::minamx due to bug or weird feature of MSVC compiler with /O2
         return v1 <= v2 ? std::make_pair(v1, v2) : std::make_pair(v2, v1);
@@ -155,18 +154,18 @@ protected:
 
     void calculateAABB()
     {
-        const std::array<std::array<T, 3>, 3> span = {
+        const std::array<std::array<double, 3>, 3> span = {
             vectormath::scale(vectormath::cross(m_normal, { 1, 0, 0 }), m_radius),
             vectormath::scale(vectormath::cross(m_normal, { 0, 1, 0 }), m_radius),
             vectormath::scale(vectormath::cross(m_normal, { 0, 0, 1 }), m_radius)
         };
         m_aabb = {
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::max(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest(),
-            std::numeric_limits<T>::lowest()
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest()
         };
 
         for (const auto& s : span)
@@ -177,22 +176,22 @@ protected:
             }
         // ensure a min size;
         for (std::size_t i = 0; i < 3; ++i) {
-            if (m_aabb[i + 3] - m_aabb[i] < 2 * GEOMETRIC_ERROR<T>()) {
-                m_aabb[i] -= GEOMETRIC_ERROR<T>();
-                m_aabb[i + 3] += GEOMETRIC_ERROR<T>();
+            if (m_aabb[i + 3] - m_aabb[i] < 2 * GEOMETRIC_ERROR()) {
+                m_aabb[i] -= GEOMETRIC_ERROR();
+                m_aabb[i + 3] += GEOMETRIC_ERROR();
             }
         }
     }
 
-    WorldIntersectionResult<T> intersectDisc(const Particle<T>& p) const
+    WorldIntersectionResult intersectDisc(const Particle& p) const
     {
-        WorldIntersectionResult<T> res;
+        WorldIntersectionResult res;
         const auto D = vectormath::dot(p.dir, m_normal);
-        constexpr T minOrt = 1E-6;
+        constexpr double minOrt = 1E-6;
         if (D < minOrt && D > -minOrt)
             return res; // dir and normal is orthogonal, we exits
         res.intersection = vectormath::dot(vectormath::subtract(m_center, p.pos), m_normal) / D;
-        if (res.intersection <= T { 0 })
+        if (res.intersection <= 0)
             return res;
 
         // intersection point
@@ -208,13 +207,13 @@ protected:
     }
 
 private:
-    std::array<T, 3> m_center = { 0, 0, 0 };
-    std::array<T, 3> m_normal = { 0, 0, 1 };
-    T m_radius = 16;
-    T m_energy_step = 1;
-    std::array<T, 6> m_aabb;
+    std::array<double, 3> m_center = { 0, 0, 0 };
+    std::array<double, 3> m_normal = { 0, 0, 1 };
+    double m_radius = 16;
+    double m_energy_step = 1;
+    std::array<double, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
-    EnergyScore<T> m_energyScored;
-    DoseScore<T> m_dummyDose;
+    EnergyScore m_energyScored;
+    DoseScore m_dummyDose;
 };
 }

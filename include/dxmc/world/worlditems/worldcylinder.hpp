@@ -39,13 +39,13 @@ class WorldCylinder final : public WorldItemBase {
 public:
     WorldCylinder(double radius = 16, double height = 10, const std::array<double, 3>& center = { 0, 0, 0 }, const std::array<double, 3>& dir = { 0, 0, 1 })
         : WorldItemBase()
-        , m_material(Material<T, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_material(Material<double, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_cylinder.radius = std::abs(radius);
         m_cylinder.half_height = std::abs(height) / 2;
         m_cylinder.center = center;
         m_cylinder.direction = vectormath::normalized(dir);
-        m_materialDensity = NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+        m_materialDensity = NISTMaterials<double>::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
 
     void setMaterial(const Material<double, NMaterialShells>& material)
@@ -118,14 +118,14 @@ public:
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;
         AttenuationValues<double> att;
-        T attSumInv;
+        double attSumInv;
         while (cont) {
             if (updateAtt) {
                 att = m_material.attenuationValues(p.energy);
                 attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = intersect(p);
 
             if (stepLen < intLen.intersection) {
@@ -170,7 +170,7 @@ public:
 
 protected:
 private:
-    basicshape::cylinder::Cylinder<double> m_cylinder;
+    basicshape::cylinder::Cylinder m_cylinder;
     double m_materialDensity = 1;
     Material<double, NMaterialShells> m_material;
     EnergyScore m_energyScored;

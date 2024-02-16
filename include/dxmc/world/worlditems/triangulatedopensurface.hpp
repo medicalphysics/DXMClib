@@ -48,18 +48,18 @@ public:
 
     TriangulatedOpenSurface(const std::vector<Triangle>& triangles, double surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
         : WorldItemBase()
-        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials<double>::density("Air, Dry (near sea level)"))
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         setData(triangles, surfaceThickness, max_tree_dept);
     }
 
     TriangulatedOpenSurface(const std::string& path, double surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
         : WorldItemBase()
-        , m_materialDensity(NISTMaterials<T>::density("Air, Dry (near sea level)"))
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials<double>::density("Air, Dry (near sea level)"))
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        STLReader<double> reader;
+        STLReader reader;
         auto triangles = reader(path);
         setData(triangles, surfaceThickness, max_tree_dept);
     }
@@ -90,7 +90,7 @@ public:
         const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<T>::density(nist_name);
+            m_materialDensity = NISTMaterials<double>::density(nist_name);
             return true;
         }
         return false;

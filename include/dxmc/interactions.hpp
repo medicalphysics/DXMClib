@@ -32,7 +32,7 @@ namespace interactions {
         return 0.9;
     }
 
-    constexpr static T russianRuletteWeightThreshold()
+    constexpr static double russianRuletteWeightThreshold()
     {
         return 0.1;
     }
@@ -66,7 +66,7 @@ namespace interactions {
             do {
                 const auto q_squared = material.sampleSquaredMomentumTransferFromFormFactorSquared(qmax_squared, state);
                 cosAngle = 1 - 2 * q_squared / qmax_squared;
-            } while ((1 + cosAngle * cosAngle) * T { 0.5 } < state.randomUniform());
+            } while ((1 + cosAngle * cosAngle) * 0.5 < state.randomUniform());
 
             const auto phi = state.randomUniform(PI_VAL() + PI_VAL());
             const auto theta = std::acos(cosAngle);
@@ -90,7 +90,7 @@ namespace interactions {
             do {
                 const auto r1 = state.randomUniform();
                 e = r1 + (1 - r1) * emin;
-                const auto t = std::min((1 - e) / (k * e), T { 2 }); // to prevent rounding errors with t > 2 (better way?)
+                const auto t = std::min((1 - e) / (k * e), 2.0); // to prevent rounding errors with t > 2 (better way?)
                 cosTheta = 1 - t;
                 const auto sinThetaSqr = 1 - cosTheta * cosTheta;
                 const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
@@ -102,17 +102,17 @@ namespace interactions {
         const auto kc = k * e;
         const auto qc = std::sqrt(k * k + kc * kc - 2 * k * kc * cosTheta);
         // sample shell and pz
-        const auto nia = [](const T pz, const T J0) -> T {
+        const auto nia = [](const auto pz, const auto J0) -> double {
             constexpr auto d1 = 1 / std::numbers::sqrt2_v<double>;
             constexpr auto d2 = std::numbers::sqrt2_v<double>;
-            const T p1 = d1 + d2 * J0 * std::abs(pz);
+            const auto p1 = d1 + d2 * J0 * std::abs(pz);
             const auto p2 = 0.5 * std::exp(std::max(0.5 - p1 * p1, 0.0));
             return pz > 0 ? 1 - p2 : p2;
         };
         std::uint_fast16_t shellIdx;
         double pz;
         {
-            std::array<T, Nshells + 1> shell_nia;
+            std::array<double, Nshells + 1> shell_nia;
             std::transform(std::execution::unseq, material.shells().cbegin(), material.shells().cend(), shell_nia.begin(), [&nia, cosTheta, k](const auto& shell) -> double {
                 const auto U = shell.bindingEnergy / ELECTRON_REST_MASS();
                 if (U > k)
@@ -204,7 +204,7 @@ namespace interactions {
                 } else { // Livermore
                     const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
                     const auto scatterFactor = material.scatterFactor(q);
-                    rejected = state.randomUniform<T>(material.effectiveZ()) > (g * scatterFactor);
+                    rejected = state.randomUniform(material.effectiveZ()) > (g * scatterFactor);
                 }
             } while (rejected);
 
@@ -219,7 +219,7 @@ namespace interactions {
     }
 
     template <std::size_t Nshells>
-    auto photoelectricEffectIA(const T totalPhotoCrossSection, Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
+    auto photoelectricEffectIA(const double totalPhotoCrossSection, Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
     {
         // finding shell based on photoelectric cross section
         const std::uint_fast8_t max_shell = material.numberOfShells();
@@ -299,7 +299,7 @@ namespace interactions {
             res.energyImparted += particle.energy;
         } else {
             if (particle.weight < interactions::russianRuletteWeightThreshold() && res.particleAlive) {
-                if (state.randomUniform<T>() < interactions::russianRuletteProbability()) {
+                if (state.randomUniform() < interactions::russianRuletteProbability()) {
                     res.particleAlive = false;
                 } else {
                     constexpr auto factor = 1 / (1 - interactions::russianRuletteProbability());
@@ -333,12 +333,41 @@ namespace interactions {
                 if (state.randomUniform() < interactions::russianRuletteProbability()) {
                     res.particleAlive = false;
                 } else {
-                    constexpr T factor = 1 / (1 - interactions::russianRuletteProbability());
+                    constexpr auto factor = 1 / (1 - interactions::russianRuletteProbability());
                     particle.weight *= factor;
                     res.particleAlive = true;
                 }
             }
         }
+        return res;
+    }
+
+    template <std::size_t NMaterialShells, int LOWENERGYCORRECTION = 2>
+    InteractionResult interactForced(double interactionProb, const AttenuationValues<double>& att, Particle& particle, const Material<double, NMaterialShells>& material, RandomState& state)
+    {
+
+        const auto relativePeProbability = att.photoelectric / att.sum();
+
+        // Forced photoelectric effect
+        const auto E = particle.energy * particle.weight * interactionProb * relativePeProbability;
+
+        InteractionResult res;
+
+        // Remainder probability
+        const auto p1 = state.randomUniform();
+        if (p1 < interactionProb) {
+            if (state.randomUniform() > relativePeProbability) {
+                // scatter interaction happends
+                res = interactions::template interactScatter<NMaterialShells, LOWENERGYCORRECTION>(att, particle, material, state);
+            } else {
+                res.energyImparted = particle.energy * particle.weight;
+                res.particleEnergyChanged = true;
+                res.particleAlive = false;
+                particle.energy = 0;
+            }
+        }
+
+        res.energyImparted += E;
         return res;
     }
 }

@@ -42,18 +42,18 @@ template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FLUENCESCOR
 class TetrahedalMesh final : public WorldItemBase {
 public:
     TetrahedalMesh()
-        : WorldItemBase<T>()
+        : WorldItemBase()
     {
     }
 
     TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
-        : WorldItemBase<T>()
+        : WorldItemBase()
     {
         setData(tets, collectionDensities, materials, collectionNames, depth);
     }
 
     TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, int max_depth = 8)
-        : WorldItemBase<T>()
+        : WorldItemBase()
     {
         setData(tets, collectionDensities, materials, collectionNames, { max_depth, max_depth, max_depth });
     }
@@ -276,7 +276,7 @@ protected:
                 const auto collectionIdx = currentTet->collection();
                 const auto attenuation = m_materials[materialIdx].attenuationValues(p.energy);
                 const auto attSum = attenuation.sum() * m_collections[collectionIdx].density;
-                if (state.randomUniform<T>() < attSum * attMaxInv) {
+                if (state.randomUniform() < attSum * attMaxInv) {
                     // we have a real interaction
                     const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(attenuation, p, m_materials[materialIdx], state);
                     currentTet->scoreEnergy(intRes.energyImparted);

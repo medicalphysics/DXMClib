@@ -42,15 +42,15 @@ public:
     std::uint64_t numberOfThreads() const { return m_nThreads; }
     void setNumberOfThreads(std::uint64_t n) { m_nThreads = std::max(n, std::uint64_t { 1 }); }
 
-    template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    auto operator()(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
+    template <BeamType B, WorldItemType... Ws>
+    auto operator()(World<Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
     {
         return run(world, beam, progress, useBeamCalibration);
     }
 
 protected:
-    template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    static void runWorker(World<T, Ws...>& world, const B& beam, RandomState& state, std::atomic<std::uint64_t>& exposureStart, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
+    template <BeamType B, WorldItemType... Ws>
+    static void runWorker(World<Ws...>& world, const B& beam, RandomState& state, std::atomic<std::uint64_t>& exposureStart, std::uint64_t exposureEnd, TransportProgress* progress = nullptr)
     {
         auto n = exposureStart.fetch_add(1);
         while (n < exposureEnd) {
@@ -70,8 +70,8 @@ protected:
         }
     }
 
-    template <Floating T, BeamType<T> B, WorldItemType<T>... Ws>
-    void run(World<T, Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
+    template <BeamType B, WorldItemType... Ws>
+    void run(World<Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
     {
         // clearing scored energy before run
         world.clearEnergyScored();
@@ -86,7 +86,7 @@ protected:
             progress->start(beam.numberOfParticles());
 
         for (std::size_t i = 0; i < m_nThreads - 1; ++i) {
-            threads.emplace_back(Transport::template runWorker<T, B, Ws...>, std::ref(world), std::cref(beam), std::ref(states[i]), std::ref(start), nExposures, progress);
+            threads.emplace_back(Transport::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), std::ref(states[i]), std::ref(start), nExposures, progress);
         }
         RandomState state;
         runWorker(world, beam, state, start, nExposures, progress);

@@ -306,27 +306,26 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+template <BeamType Beam, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<Beam, IsotropicBeam> || std::same_as<Beam, IsotropicMonoEnergyBeam>)
 bool TG195Case2AbsorbedEnergy(bool tomo = false)
 {
-
     constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 512;
     constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr std::size_t NShells = 5;
-    using Box = WorldBoxGrid<T, NShells, LOWENERGYCORRECTION>;
-    using Material = Material<T, NShells>;
+    using Box = WorldBoxGrid<NShells, LOWENERGYCORRECTION>;
+    using Material = Material<NShells>;
 
     auto [mat_dens, mat_weights] = TG195_soft_tissue<T>();
 
     auto mat = Material::byWeight(mat_weights).value();
 
-    World<T, Box> world;
+    World<Box> world;
 
-    const T box_halfside = T { 39 } / 2;
-    const T box_height = 20;
-    const T box_zbegin = 155;
+    const auto box_halfside = 39.0 / 2;
+    const double box_height = 20;
+    const double box_zbegin = 155;
     const std::array<T, 6> box_aabb = { -box_halfside, -box_halfside, box_zbegin, box_halfside, box_halfside, box_zbegin + box_height };
     world.reserveNumberOfItems(1);
     auto& box = world.template addItem<Box>({ box_aabb });
@@ -722,8 +721,8 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     return true;
 }
 
-template <Floating T, BeamType<T> Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam<T>> || std::same_as<Beam, IsotropicMonoEnergyBeam<T>>)
+template <BeamType Beam, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<Beam, IsotropicBeam> || std::same_as<Beam, IsotropicMonoEnergyBeam>)
 bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
     std::string model;
@@ -873,8 +872,8 @@ std::vector<T> readBinaryArray(const std::string& path, std::size_t array_size)
     return buffer;
 }
 
-template <Floating T, std::size_t NMATSHELLS = 5, int LOWENERGYCORRECTION = 2, int TRANSPARENTVOXEL = 255>
-std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::vector<std::pair<T, std::string>>> generateTG195World5()
+template <std::size_t NMATSHELLS = 5, int LOWENERGYCORRECTION = 2, int TRANSPARENTVOXEL = 255>
+std::pair<AAVoxelGrid<NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::vector<std::pair<double, std::string>>> generateTG195World5()
 {
     std::vector<std::string> matFormula = {
         "C0.015019N78.443071O21.074800Ar0.467110",
@@ -899,7 +898,7 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
         "H39.229963C15.009010N3.487490O31.621690Na0.050590Mg0.095705P3.867606S0.108832Ca6.529115",
     };
 
-    std::vector<Material<T, NMATSHELLS>> materials;
+    std::vector<Material<double, NMATSHELLS>> materials;
 
     std::transform(matFormula.cbegin(), matFormula.cend(), std::back_inserter(materials), [=](const auto& f) {
         auto mat_cand = Material<T, NMATSHELLS>::byChemicalFormula(f);
@@ -908,13 +907,13 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
 
     const std::array<std::size_t, 3> dim = { 500, 320, 260 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
-    const std::array<T, 3> spacing = { 0.1f, 0.1f, 0.1f };
+    const std::array<double, 3> spacing = { 0.1f, 0.1f, 0.1f };
 
-    AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL> grid;
+    AAVoxelGrid<NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL> grid;
 
     auto matArray = readBinaryArray<std::uint8_t>("case5world.bin", size);
 
-    std::vector<std::pair<T, std::string>> matInfo;
+    std::vector<std::pair<double, std::string>> matInfo;
     matInfo.push_back(std::make_pair(T { .001205 }, "Air"));
     matInfo.push_back(std::make_pair(T { .075 }, "Cushion Foam"));
     matInfo.push_back(std::make_pair(T { 1.20 }, "Carbon fiber"));
@@ -938,7 +937,7 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
 
     auto res = std::make_pair(grid, matInfo);
 
-    std::vector<T> density(size, T { 0 });
+    std::vector<double> density(size, 0.0);
     std::transform(std::execution::par_unseq, matArray.cbegin(), matArray.cend(), density.begin(), [&](const auto ind) {
         return matInfo[ind].first;
     });
@@ -948,8 +947,8 @@ std::pair<AAVoxelGrid<T, NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std
     return res;
 }
 
-template <Floating T, BeamType<T> B, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<B, IsotropicBeam<T>> || std::same_as<B, IsotropicMonoEnergyBeam<T>>)
+template <BeamType B, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<B, IsotropicBeam> || std::same_as<B, IsotropicMonoEnergyBeam>)
 bool TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 512;
@@ -1066,33 +1065,33 @@ bool TG195Case5AbsorbedEnergy()
     return true;
 }
 
-template <typename T, int LOWENERGYCORRECTION>
+template <int LOWENERGYCORRECTION>
 bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case2AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case3AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(false, false);
-    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(true, false);
-    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(false, true);
-    success = success && TG195Case41AbsorbedEnergy<T, LOWENERGYCORRECTION>(true, true);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
 
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case42AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicBeam<T>, LOWENERGYCORRECTION>();
-    success = success && TG195Case5AbsorbedEnergy<T, IsotropicMonoEnergyBeam<T>, LOWENERGYCORRECTION>();
+    success = success && TG195Case5AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>();
+    success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>();
 
     return success;
 }
@@ -1109,13 +1108,9 @@ int main(int argc, char* argv[])
 
     auto success = true;
 
-    success = runAll<double, 1>();
-    success = runAll<double, 2>();
-    success = runAll<double, 0>();
-
-    // success = runAll<float, 0>();
-    // success = runAll<float, 1>();
-    // success = runAll<float, 2>();
+    success = runAll<1>();
+    success = runAll<2>();
+    success = runAll<0>();
 
     if (success)
         return EXIT_SUCCESS;

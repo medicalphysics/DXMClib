@@ -44,8 +44,8 @@ public:
     }
 
     WorldBox(double aabb_size, std::array<double, 3> pos = { 0, 0, 0 })
-        : WorldItemBase<T>()
-        , m_material(Material<T, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : WorldItemBase()
+        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
@@ -100,7 +100,7 @@ public:
         return m_aabb;
     }
 
-    WorldIntersectionResult<T> intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept override
     {
         return basicshape::AABB::intersect(p, m_aabb);
     }
@@ -125,7 +125,7 @@ public:
                 attSumInv = 1 / (att.sum() * m_materialDensity);
                 updateAtt = false;
             }
-            const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this can not be nullopt
 
             if (stepLen < intLen) {
