@@ -765,7 +765,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         const auto specter = TG195_120KV();
         beam.setEnergySpecter(specter);
     } else {
-        beam.setEnergy(56.4f);
+        beam.setEnergy(56.4);
     }
     const auto collangle_y = std::atan(16.0 / 60);
     const auto collangle_z = large_collimation ? std::atan(4.0 / 60) : std::atan(0.5 / 60);
@@ -969,7 +969,7 @@ bool TG195Case5AbsorbedEnergy()
         res.specter = "56.4keV";
     }
 
-    const std::array<std::uint8_t, 17> tg195_organ_idx = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
+    // const std::array<std::uint8_t, 17> tg195_organ_idx = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
     std::array<std::array<double, 17>, 8> tg195_doses;
     if constexpr (std::same_as<B, IsotropicBeam>) {
         tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };

@@ -35,9 +35,9 @@ public:
         const std::array<double, 2>& collimationAngles, const SpecterDistribution<double>* specter, const BowtieFilter* bowtie, double weight = 1)
         : m_Nparticles(historiesPerExposure)
         , m_collimationAngles(collimationAngles)
+        , m_weight(weight)
         , m_specter(specter)
         , m_bowtieFilter(bowtie)
-        , m_weight(weight)
     {
         m_dirCosineX = vectormath::rotate(m_dirCosineX, m_dirCosineY, angle);
         const auto beamdir = vectormath::cross(m_dirCosineX, m_dirCosineY);
@@ -96,11 +96,11 @@ public:
     CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, double weight = 1)
         : m_angleStep(angleStep)
         , m_sdd(SDD)
+        , m_weight(weight)
         , m_collimationAngles(collimationAngles)
         , m_particlesPerExposure(particlesPerExposure)
         , m_specter(specter)
         , m_bowtieFilter(bowtie)
-        , m_weight(weight)
     {
     }
 

@@ -38,9 +38,9 @@ namespace basicshape {
             double half_height = 1;
             Cylinder() = default;
             Cylinder(const std::array<double, 3>& center_arr, const std::array<double, 3>& direction_arr, double radii, double half_height_wall)
-                : radius(radii)
+                : center(center_arr)
+                , radius(radii)
                 , half_height(half_height_wall)
-                , center(center_arr)
             {
                 direction = vectormath::normalized(direction_arr);
             }

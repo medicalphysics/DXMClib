@@ -77,7 +77,6 @@ public:
         const auto start = data.front().first;
         const auto stop = data.back().first;
         const auto area = m_inter.integral(start, stop);
-        const auto scale = (stop - start) / area;
 
         m_inter.scale((stop - start) / area);
     }

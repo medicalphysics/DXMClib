@@ -75,7 +75,7 @@ public:
 
 private:
     std::array<double, 3> m_pos = { 0, 0, 0 };
-    std::array<std::array<double, 3>, 2> m_dirCosines = { 1, 0, 0, 0, 1, 0 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
     std::array<double, 2> m_collimationAngles = { 0, 0 };
     std::uint64_t m_NParticles = 100;
     double m_weight = 1;

@@ -277,9 +277,9 @@ protected:
             center[1] + radius,
             center[2] + halfHeight
         };
-        auto box = basicshape::AABB::template intersect(p, aabb);
+        auto box = basicshape::AABB::intersect(p, aabb);
         if (box.valid()) {
-            const auto cyl = basicshape::cylinderZ::template intersect(p, center, radius, halfHeight);
+            const auto cyl = basicshape::cylinderZ::intersect(p, center, radius, halfHeight);
             if (cyl.valid()) {
                 box.rayOriginIsInsideItem = box.rayOriginIsInsideItem && cyl.rayOriginIsInsideItem;
                 if (box.rayOriginIsInsideItem) {
