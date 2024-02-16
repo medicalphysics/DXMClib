@@ -58,8 +58,6 @@ public:
     std::uint16_t materialIndex() const { return m_materialIdx; }
     void setMaterialIndex(std::uint16_t idx) { m_materialIdx = idx; }
 
-    auto operator<=>(const Tetrahedron& other) const = default;
-
     std::array<double, 3> center() const
     {
         const auto c_sum = vectormath::add(m_vertices[0], m_vertices[1], m_vertices[2], m_vertices[3]);

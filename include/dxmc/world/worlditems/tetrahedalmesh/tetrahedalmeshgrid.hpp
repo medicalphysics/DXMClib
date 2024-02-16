@@ -241,7 +241,7 @@ protected:
                             return res;
                     }
                 } else {
-                    if (tet.collection == COLLECTION) {
+                    if (tet.collection() == COLLECTION) {
                         const auto res_cand = tet.intersect(p);
                         if (res_cand.valid() && res_cand.intersection <= tmax[dimension] && res_cand.intersection < res.intersection) {
                             res.intersection = res_cand.intersection;
@@ -278,7 +278,7 @@ protected:
             std::numeric_limits<double>::lowest(),
             std::numeric_limits<double>::lowest()
         };
-        for (const auto tet : m_tets) {
+        for (const auto& tet : m_tets) {
             for (const auto& v : tet.vertices()) {
                 for (std::size_t i = 0; i < 3; ++i) {
                     m_aabb[i] = std::min(m_aabb[i], v[i]);
