@@ -179,46 +179,11 @@ protected:
     void transportForced(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
-        bool updateAtt = false;
-        auto att = m_material.attenuationValues(p.energy);
-        auto attSum = att.sum() * m_materialDensity;
-        auto relativePeProbability = att.photoelectric / att.sum();
         while (cont) {
-            if (updateAtt) {
-                att = m_material.attenuationValues(p.energy);
-                attSum = att.sum() * m_materialDensity;
-                relativePeProbability = att.photoelectric / att.sum();
-                updateAtt = false;
-            }
-            // const auto stepLen = -std::log(state.randomUniform<T>()) * attSumInv; // cm
             const auto intLen = intersect(p).intersection; // this must be valid
-            const auto probNotInteraction = std::exp(-attSum * intLen);
-
-            // Forced photoelectric effect
-            m_energyScored.scoreEnergy(p.energy * p.weight * (1 - probNotInteraction) * relativePeProbability);
-
-            // Remainder probability
-            const auto p1 = state.randomUniform();
-            if (p1 > probNotInteraction) {
-                if (state.randomUniform() > relativePeProbability) {
-                    // scatter interaction happends
-                    const auto stepLen = -std::log(p1) / attSum;
-                    p.translate(stepLen);
-                    const auto intRes = interactions::template interactScatter<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                    m_energyScored.scoreEnergy(intRes.energyImparted);
-                    cont = intRes.particleAlive;
-                    updateAtt = intRes.particleEnergyChanged;
-                } else {
-                    // photoelectric effect
-                    // we don't score energy since it's done. But terminates particle to prevent bias.
-                    cont = false;
-                    p.energy = 0;
-                }
-            } else {
-                // transport to border
-                p.border_translate(intLen);
-                cont = false;
-            }
+            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, m_materialDensity, p, m_material, state);
+            m_energyScored.scoreEnergy(intRes.energyImparted);
+            cont = intRes.particleAlive && basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         }
     }
 

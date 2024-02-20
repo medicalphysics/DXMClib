@@ -185,9 +185,7 @@ public:
 
             if (intHoles.valid()) {
                 if (intHoles.rayOriginIsInsideItem) {
-                    const auto holeAtt = m_air.attenuationValues(p.energy);
-                    const auto interactionProb = 1 - std::exp(-intHoles.intersection * holeAtt.sum() * m_air_density);
-                    const auto intRes = interactions::interactForced(interactionProb, att, p, m_air, state);
+                    const auto intRes = interactions::interactForced(intHoles.intersection, m_air_density, p, m_air, state);
                     m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
                     // transport particle across hole (particle is most likely alive)
@@ -195,7 +193,7 @@ public:
                     cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
                 } else {
                     if (stepLen < intHoles.intersection) {
-                        // interaction happends
+                        // interaction happends before particle hit hole
                         p.translate(stepLen);
                         const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_pmma, state);
                         m_energyScore[0].scoreEnergy(intRes.energyImparted);
@@ -206,9 +204,7 @@ public:
                         p.border_translate(intHoles.intersection);
                         // find distance of hole crossing
                         const auto dist = intHoles.item->intersect(p).intersection;
-                        const auto holeAtt = m_air.attenuationValues(p.energy);
-                        const auto interactionProb = 1 - std::exp(-dist * holeAtt.sum() * m_air_density);
-                        const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(interactionProb, att, p, m_air, state);
+                        const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(dist, m_air_density, p, m_air, state);
                         m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
                         // transport particle across hole (particle is most likely alive)

@@ -279,8 +279,8 @@ namespace interactions {
     template <std::size_t Nshells, int Lowenergycorrection = 2>
     InteractionResult interact(const AttenuationValues& attenuation, Particle& particle, const Material<Nshells>& material, RandomState& state)
     {
-        const auto r2 = state.randomUniform(attenuation.sum());
         InteractionResult res;
+        const auto r2 = state.randomUniform(attenuation.sum());
         if (r2 < attenuation.photoelectric) {
             const auto Ei = interactions::photoelectricEffect<Nshells, Lowenergycorrection>(attenuation.photoelectric, particle, material, state);
             res.energyImparted = Ei;
@@ -296,42 +296,12 @@ namespace interactions {
         }
         if (particle.energy < MIN_ENERGY()) {
             res.particleAlive = false;
-            res.energyImparted += particle.energy;
+            res.energyImparted += particle.energy * particle.weight;
         } else {
             if (particle.weight < interactions::russianRuletteWeightThreshold() && res.particleAlive) {
                 if (state.randomUniform() < interactions::russianRuletteProbability()) {
                     res.particleAlive = false;
-                } else {
-                    constexpr auto factor = 1 / (1 - interactions::russianRuletteProbability());
-                    particle.weight *= factor;
-                    res.particleAlive = true;
-                }
-            }
-        }
-        return res;
-    }
-
-    template <std::size_t Nshells, int Lowenergycorrection = 2>
-    InteractionResult interactScatter(const AttenuationValues& attenuation, Particle& particle, const Material<Nshells>& material, RandomState& state)
-    {
-        const auto r2 = state.randomUniform(attenuation.incoherent + attenuation.coherent);
-        InteractionResult res;
-        if (r2 < attenuation.incoherent) {
-            const auto Ei = interactions::comptonScatter<Nshells, Lowenergycorrection>(particle, material, state);
-            res.energyImparted = Ei;
-            res.particleEnergyChanged = true;
-            res.particleDirectionChanged = true;
-        } else {
-            interactions::rayleightScatter<Nshells, Lowenergycorrection>(particle, material, state);
-            res.particleDirectionChanged = true;
-        }
-        if (particle.energy < MIN_ENERGY()) {
-            res.particleAlive = false;
-            res.energyImparted += particle.energy;
-        } else {
-            if (particle.weight < interactions::russianRuletteWeightThreshold() && res.particleAlive) {
-                if (state.randomUniform() < interactions::russianRuletteProbability()) {
-                    res.particleAlive = false;
+                    particle.energy = 0;
                 } else {
                     constexpr auto factor = 1 / (1 - interactions::russianRuletteProbability());
                     particle.weight *= factor;
@@ -343,32 +313,70 @@ namespace interactions {
     }
 
     template <std::size_t NMaterialShells, int LOWENERGYCORRECTION = 2>
-    InteractionResult interactForced(double interactionProb, const AttenuationValues& att, Particle& particle, const Material<NMaterialShells>& material, RandomState& state)
+    InteractionResult interactForced(double maxStepLen, double materialDensity, const AttenuationValues& attenuation, Particle& particle, const Material<NMaterialShells>& material, RandomState& state)
     {
 
-        const auto relativePeProbability = att.photoelectric / att.sum();
-
+        InteractionResult intRes;
+        const auto relativePeProbability = attenuation.photoelectric / attenuation.sum();
+        const auto attSum = attenuation.sum() * materialDensity;
+        const auto probNotInteraction = std::exp(-attSum * maxStepLen);
         // Forced photoelectric effect
-        const auto E = particle.energy * particle.weight * interactionProb * relativePeProbability;
-
-        InteractionResult res;
+        intRes.energyImparted = particle.energy * particle.weight * (1 - probNotInteraction) * relativePeProbability;
 
         // Remainder probability
         const auto p1 = state.randomUniform();
-        if (p1 < interactionProb) {
-            if (state.randomUniform() > relativePeProbability) {
-                // scatter interaction happends
-                res = interactions::template interactScatter<NMaterialShells, LOWENERGYCORRECTION>(att, particle, material, state);
+        if (p1 > probNotInteraction) {
+            if (state.randomUniform() > relativePeProbability) { // scatter interaction happens
+                // Translate particle to interaction point
+                const auto stepLen = -std::log(p1) / attSum;
+                particle.translate(stepLen);
+
+                // Decide what scatter interaction
+                const auto r2 = state.randomUniform(attenuation.incoherent + attenuation.coherent);
+                if (r2 < attenuation.incoherent) {
+                    const auto Ei = interactions::comptonScatter<NMaterialShells, LOWENERGYCORRECTION>(particle, material, state);
+                    intRes.energyImparted += Ei;
+                    intRes.particleEnergyChanged = true;
+                    intRes.particleDirectionChanged = true;
+                } else {
+                    interactions::rayleightScatter<NMaterialShells, LOWENERGYCORRECTION>(particle, material, state);
+                    intRes.particleDirectionChanged = true;
+                }
+
+                // Handle cutoff values
+                if (particle.energy < MIN_ENERGY()) {
+                    intRes.particleAlive = false;
+                    intRes.energyImparted += particle.energy;
+                } else {
+                    if (particle.weight < interactions::russianRuletteWeightThreshold() && intRes.particleAlive) {
+                        if (state.randomUniform() < interactions::russianRuletteProbability()) {
+                            intRes.particleAlive = false;
+                        } else {
+                            constexpr auto factor = 1 / (1 - interactions::russianRuletteProbability());
+                            particle.weight *= factor;
+                            intRes.particleAlive = true;
+                        }
+                    }
+                }
             } else {
-                res.energyImparted = particle.energy * particle.weight;
-                res.particleEnergyChanged = true;
-                res.particleAlive = false;
+                // real photoelectric effect event
+                // we don't score energy since it's already done. But terminates particle to prevent bias.
+                intRes.particleAlive = false;
                 particle.energy = 0;
             }
+        } else {
+            // No interaction event, transport particle to border
+            particle.border_translate(maxStepLen);
         }
-
-        res.energyImparted += E;
-        return res;
+        return intRes;
     }
+
+    template <std::size_t Nshells, int Lowenergycorrection = 2>
+    InteractionResult interactForced(double maxStepLenght, double density, Particle& particle, const Material<Nshells>& material, RandomState& state)
+    {
+        const auto attenuation = material.attenuationValues(particle.energy);
+        return interactForced<Nshells, Lowenergycorrection>(maxStepLenght, density, attenuation, particle, material, state);
+    }
+
 }
 }

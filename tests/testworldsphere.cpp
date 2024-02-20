@@ -40,18 +40,18 @@ bool testForcedinteractions()
     auto& spheref1 = wf.addItem<SphereF>({ radii });
     auto& spheref2 = wf.addItem<SphereF>({ radii, { radii * 2 + radii * 100, 0, 0 } });
 
-    auto material_water = dxmc::Material<double, 5>::byNistName("Water, Liquid").value();
-    sphere1.setMaterial(material_water, 1);
-    sphere2.setMaterial(material_water, 1);
-    spheref1.setMaterial(material_water, 1);
-    spheref2.setMaterial(material_water, 1);
+    auto material_water = dxmc::Material< 5>::byNistName("Water, Liquid").value();
+    sphere1.setMaterial(material_water, 1.2);
+    sphere2.setMaterial(material_water, 1.2);
+    spheref1.setMaterial(material_water, 1.2);
+    spheref2.setMaterial(material_water, 1.2);
 
     w.build();
     wf.build();
 
     dxmc::PencilBeam beam({ -100, 0, 0 }, { 1, 0, 0 }, 20);
     beam.setNumberOfExposures(48);
-    beam.setNumberOfParticlesPerExposure(1e5);
+    beam.setNumberOfParticlesPerExposure(1e6);
 
     dxmc::Transport transport;
     transport(wf, beam);
