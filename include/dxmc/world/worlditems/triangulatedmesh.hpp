@@ -40,23 +40,23 @@ class TriangulatedMesh final : public WorldItemBase {
 public:
     TriangulatedMesh()
         : WorldItemBase()
-        , m_materialDensity(NISTMaterials<double>::density("Air, Dry (near sea level)"))
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
     TriangulatedMesh(const std::vector<Triangle>& triangles, const std::size_t max_tree_dept = 8)
         : WorldItemBase()
-        , m_materialDensity(NISTMaterials<double>::density("Air, Dry (near sea level)"))
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         setData(triangles, max_tree_dept);
     }
 
     TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
         : WorldItemBase()
-        , m_materialDensity(NISTMaterials<double>::density("Air, Dry (near sea level)"))
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader reader;
         auto triangles = reader(path);
@@ -65,8 +65,8 @@ public:
 
     TriangulatedMesh(const std::string& path, double scale, const std::size_t max_tree_dept = 8)
         : WorldItemBase()
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-        , m_materialDensity(NISTMaterials<double>::density("Air, Dry (near sea level)"))
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
     {
         STLReader reader;
         auto triangles = reader(path);
@@ -76,7 +76,7 @@ public:
         setData(triangles, max_tree_dept);
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& mat)
+    void setMaterial(const Material<NMaterialShells>& mat)
     {
         m_material = mat;
     }
@@ -86,7 +86,7 @@ public:
         m_materialDensity = std::abs(dens);
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& mat, double dens)
+    void setMaterial(const Material<NMaterialShells>& mat, double dens)
     {
         m_material = mat;
         setMaterialDensity(dens);
@@ -94,10 +94,10 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<double>::density(nist_name);
+            m_materialDensity = NISTMaterials::density(nist_name);
             return true;
         }
         return false;
@@ -187,7 +187,7 @@ public:
     {
         bool cont = true;
         bool updateAtt = true;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         double attSumInv;
         while (cont) {
             if (updateAtt) {
@@ -286,6 +286,6 @@ private:
     EnergyScore m_energyScored;
     DoseScore m_dose;
     MeshKDTree<Triangle> m_kdtree;
-    Material<double, NMaterialShells> m_material;
+    Material<NMaterialShells> m_material;
 };
 }

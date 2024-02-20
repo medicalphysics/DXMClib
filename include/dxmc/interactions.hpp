@@ -38,7 +38,7 @@ namespace interactions {
     }
 
     template <std::size_t Nshells, int Lowenergycorrection = 2>
-    void rayleightScatter(Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
+    void rayleightScatter(Particle& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 0) {
             bool reject;
@@ -75,7 +75,7 @@ namespace interactions {
     }
 
     template <std::size_t Nshells>
-    auto comptonScatterIA(Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
+    auto comptonScatterIA(Particle& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
         // Penelope model for compton scattering. Note spelling error in manual for sampling of pz.
         // In addition we use hartree scatter factors instead of integrating all compton profiles when sampling cosTheta
@@ -178,7 +178,7 @@ namespace interactions {
     }
 
     template <std::size_t Nshells, int Lowenergycorrection = 2>
-    auto comptonScatter(Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
+    auto comptonScatter(Particle& particle, const Material<Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
@@ -219,7 +219,7 @@ namespace interactions {
     }
 
     template <std::size_t Nshells>
-    auto photoelectricEffectIA(const double totalPhotoCrossSection, Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
+    auto photoelectricEffectIA(const double totalPhotoCrossSection, Particle& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
         // finding shell based on photoelectric cross section
         const std::uint_fast8_t max_shell = material.numberOfShells();
@@ -258,7 +258,7 @@ namespace interactions {
     }
 
     template <int Nshells, int Lowenergycorrection = 2>
-    auto photoelectricEffect(const double totalPhotoCrossSection, Particle& particle, const Material<double, Nshells>& material, RandomState& state) noexcept
+    auto photoelectricEffect(const double totalPhotoCrossSection, Particle& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (Lowenergycorrection == 2) {
             return photoelectricEffectIA(totalPhotoCrossSection, particle, material, state);
@@ -277,7 +277,7 @@ namespace interactions {
     };
 
     template <std::size_t Nshells, int Lowenergycorrection = 2>
-    InteractionResult interact(const AttenuationValues<double>& attenuation, Particle& particle, const Material<double, Nshells>& material, RandomState& state)
+    InteractionResult interact(const AttenuationValues& attenuation, Particle& particle, const Material<Nshells>& material, RandomState& state)
     {
         const auto r2 = state.randomUniform(attenuation.sum());
         InteractionResult res;
@@ -312,7 +312,7 @@ namespace interactions {
     }
 
     template <std::size_t Nshells, int Lowenergycorrection = 2>
-    InteractionResult interactScatter(const AttenuationValues<double>& attenuation, Particle& particle, const Material<double, Nshells>& material, RandomState& state)
+    InteractionResult interactScatter(const AttenuationValues& attenuation, Particle& particle, const Material<Nshells>& material, RandomState& state)
     {
         const auto r2 = state.randomUniform(attenuation.incoherent + attenuation.coherent);
         InteractionResult res;
@@ -343,7 +343,7 @@ namespace interactions {
     }
 
     template <std::size_t NMaterialShells, int LOWENERGYCORRECTION = 2>
-    InteractionResult interactForced(double interactionProb, const AttenuationValues<double>& att, Particle& particle, const Material<double, NMaterialShells>& material, RandomState& state)
+    InteractionResult interactForced(double interactionProb, const AttenuationValues& att, Particle& particle, const Material<NMaterialShells>& material, RandomState& state)
     {
 
         const auto relativePeProbability = att.photoelectric / att.sum();

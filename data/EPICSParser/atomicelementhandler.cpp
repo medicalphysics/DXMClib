@@ -156,7 +156,7 @@ void AtomicElementHandler::setShellPhotoelectricData(std::uint64_t shell, const 
 {
     if (!m_atom.shells.contains(shell)) {
 
-        m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+        m_atom.shells[shell] = dxmc::AtomicShell(shell);
     }
     auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
     auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
@@ -178,7 +178,7 @@ void AtomicElementHandler::setShellBindingEnergy(const std::vector<double>& data
         const auto shell = static_cast<std::uint64_t>(data[i]);
         const auto E = data[i + 1] * MeVTokeV();
         if (!m_atom.shells.contains(shell)) {
-            m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+            m_atom.shells[shell] = dxmc::AtomicShell(shell);
         }
         m_atom.shells[shell].bindingEnergy = E;
     }
@@ -190,7 +190,7 @@ void AtomicElementHandler::setShellKineticEnergy(const std::vector<double>& data
         const auto shell = static_cast<std::uint64_t>(data[i]);
         const auto E = data[i + 1] * MeVTokeV();
         if (!m_atom.shells.contains(shell)) {
-            m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+            m_atom.shells[shell] = dxmc::AtomicShell(shell);
         }
         m_atom.shells[shell].kineticEnergy = E;
     }
@@ -202,7 +202,7 @@ void AtomicElementHandler::setShellNumberOfElectrons(const std::vector<double>& 
         const auto shell = static_cast<std::uint64_t>(data[i]);
         const auto N = data[i + 1];
         if (!m_atom.shells.contains(shell)) {
-            m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+            m_atom.shells[shell] = dxmc::AtomicShell(shell);
         }
         m_atom.shells[shell].numberOfElectrons = N;
     }
@@ -214,7 +214,7 @@ void AtomicElementHandler::setShellNumberOfPhotonsPerInitVacancy(const std::vect
         const auto shell = static_cast<std::uint64_t>(data[i]);
         const auto N = data[i + 1];
         if (!m_atom.shells.contains(shell)) {
-            m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+            m_atom.shells[shell] = dxmc::AtomicShell(shell);
         }
         m_atom.shells[shell].numberOfPhotonsPerInitVacancy = N;
     }
@@ -226,7 +226,7 @@ void AtomicElementHandler::setShellEnergyOfPhotonsPerInitVacancy(const std::vect
         const auto shell = static_cast<std::uint64_t>(data[i]);
         const auto E = data[i + 1] * MeVTokeV();
         if (!m_atom.shells.contains(shell)) {
-            m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+            m_atom.shells[shell] = dxmc::AtomicShell(shell);
         }
         m_atom.shells[shell].energyOfPhotonsPerInitVacancy = E;
     }
@@ -283,7 +283,7 @@ constexpr double AtomicElementHandler::minPhotonEnergy()
 void AtomicElementHandler::setShellHartreeFockProfile_0(std::uint64_t shell, double J)
 {
     if (!m_atom.shells.contains(shell)) {
-        m_atom.shells[shell] = dxmc::AtomicShell<double>(shell);
+        m_atom.shells[shell] = dxmc::AtomicShell(shell);
     }
     m_atom.shells[shell].HartreeFockOrbital_0 = J;
 }

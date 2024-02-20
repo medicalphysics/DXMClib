@@ -223,7 +223,7 @@ public:
     {
         const auto energies = m_tube.getEnergy();
         const auto weights = m_tube.getSpecter(energies, true);
-        auto air_cand = Material<double, 5>::byNistName("Air, Dry (near sea level)");
+        auto air_cand = Material<5>::byNistName("Air, Dry (near sea level)");
         if (!air_cand)
             return 0;
         const auto& air = air_cand.value();

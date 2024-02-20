@@ -19,7 +19,6 @@ Copyright 2019 Erlend Andersen
 #pragma once
 
 #include "dxmc/constants.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/material/atomhandler.hpp"
 
@@ -31,46 +30,45 @@ namespace dxmc {
 namespace BetheHeitlerCrossSection {
 
     // ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN
-    template <Floating T>
-    constexpr T SIMULATED_ENERGY()
+    constexpr double SIMULATED_ENERGY()
     {
-        return T { 100.0 }; // Elektron energy [keV] for MonteCarlo simulation of electron penetration in tungsten
+        return 100.0; // Elektron energy [keV] for MonteCarlo simulation of electron penetration in tungsten
     }
-    template <Floating T>
-    constexpr std::array<T, 5> THOMSONWIDDINGTONCONSTANT_T()
+
+    constexpr std::array<double, 5> THOMSONWIDDINGTONCONSTANT_T()
     {
-        std::array<T, 5> res = { 50, 80, 100, 120, 150 };
+        std::array<double, 5> res = { 50, 80, 100, 120, 150 };
         return res;
     }
-    template <Floating T>
-    constexpr std::array<T, 5> THOMSONWIDDINGTONCONSTANT_C()
+
+    constexpr std::array<double, 5> THOMSONWIDDINGTONCONSTANT_C()
     {
-        std::array<T, 5> res = { 565, 710, 792, 865, 964 };
+        std::array<double, 5> res = { 565, 710, 792, 865, 964 };
         return res;
     }
     // Electron density distributions:
-    template <Floating T>
-    constexpr std::array<T, 12> CP100_F_x()
+
+    constexpr std::array<double, 12> CP100_F_x()
     {
-        std::array<T, 12> res = { 0, 0.965, 1.93, 2.895, 3.86, 4.825, 5.79, 7.72, 9.65, 11.58, 13.51, 15.44 }; // [mg/cm2]
+        std::array<double, 12> res = { 0, 0.965, 1.93, 2.895, 3.86, 4.825, 5.79, 7.72, 9.65, 11.58, 13.51, 15.44 }; // [mg/cm2]
         return res;
     }
-    template <Floating T>
-    constexpr std::array<T, 45> CP100_u()
+
+    constexpr std::array<double, 45> CP100_u()
     {
-        std::array<T, 45> res = { 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 0.23, 0.25, 0.27, 0.29, 0.31, 0.33, 0.35, 0.37, 0.39, 0.41, 0.43, 0.45, 0.47, 0.49, 0.51, 0.53, 0.55, 0.57, 0.59, 0.61, 0.63, 0.65, 0.67, 0.69, 0.71, 0.73, 0.75, 0.77, 0.79, 0.81, 0.83, 0.85, 0.87, 0.89, 0.91, 0.93, 0.95, 0.97, 0.99 };
+        std::array<double, 45> res = { 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 0.23, 0.25, 0.27, 0.29, 0.31, 0.33, 0.35, 0.37, 0.39, 0.41, 0.43, 0.45, 0.47, 0.49, 0.51, 0.53, 0.55, 0.57, 0.59, 0.61, 0.63, 0.65, 0.67, 0.69, 0.71, 0.73, 0.75, 0.77, 0.79, 0.81, 0.83, 0.85, 0.87, 0.89, 0.91, 0.93, 0.95, 0.97, 0.99 };
         return res;
     }
-    template <Floating T>
-    constexpr std::array<T, 12> CP100_M_x()
+
+    constexpr std::array<double, 12> CP100_M_x()
     {
-        std::array<T, 12> res = { 0, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8 }; // [mg/cm2]
+        std::array<double, 12> res = { 0, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8 }; // [mg/cm2]
         return res;
     }
-    template <Floating T>
+
     constexpr auto CP100_F()
     {
-        std::array<T, CP100_F_x<T>().size() * CP100_u<T>().size()> res = {
+        std::array<double, CP100_F_x().size() * CP100_u().size()> res = {
             0, 0.029, 0.04, 0.049, 0.06, 0.077, 0.096, 0.137, 0.186, 0.242, 0.381, 0.5,
             0, 0.025, 0.035, 0.046, 0.06, 0.079, 0.102, 0.155, 0.22, 0.31, 0.412, 0.61,
             0, 0.022, 0.034, 0.045, 0.064, 0.086, 0.114, 0.179, 0.248, 0.357, 0.501, 0.725,
@@ -119,10 +117,10 @@ namespace BetheHeitlerCrossSection {
         };
         return res;
     }
-    template <Floating T>
+
     constexpr auto CP100_M()
     {
-        std::array<T, CP100_M_x<T>().size() * CP100_u<T>().size()> res = {
+        std::array<double, CP100_M_x().size() * CP100_u().size()> res = {
             0.109, 0.44, 0.528, 0.617, 0.706, 0.808, 0.9, 1.1, 1.335, 1.595, 1.916, 2.177,
             0.113, 0.425, 0.525, 0.616, 0.718, 0.816, 0.925, 1.152, 1.361, 1.642, 2.046, 2.571,
             0.121, 0.417, 0.521, 0.626, 0.733, 0.843, 0.958, 1.182, 1.44, 1.715, 1.995, 2.503,
@@ -172,17 +170,15 @@ namespace BetheHeitlerCrossSection {
         return res;
     }
 
-    template <Floating T>
-    constexpr T ThomsonWiddingtonRange(const T T0)
+    double ThomsonWiddingtonRange(double T0)
     // T0: electron energy, returns Thomson widdington range [mg/cm2] for a electron with initial energy T0 in tungsten. Valid for range [50, 150] keV
     {
-        return T { 0.0119 } * std::pow(T0, T { 1.513 });
+        return 0.0119 * std::pow(T0, 1.513);
     }
 
-    template <Floating T>
-    T ThomsonWiddingtonLaw(const T x, const T tubeVoltage)
+    double ThomsonWiddingtonLaw(double x, double tubeVoltage)
     {
-        const auto& twct_array = THOMSONWIDDINGTONCONSTANT_T<T>();
+        const auto& twct_array = THOMSONWIDDINGTONCONSTANT_T();
         auto twct_begin = twct_array.cbegin();
         auto twct_end = twct_array.cend();
 
@@ -194,7 +190,7 @@ namespace BetheHeitlerCrossSection {
         auto idx2 = idx1;
         ++idx2;
 
-        const auto& twcc_array = THOMSONWIDDINGTONCONSTANT_C<T>();
+        const auto& twcc_array = THOMSONWIDDINGTONCONSTANT_C();
         auto idy1 = twcc_array.cbegin();
         std::advance(idy1, std::distance(twct_begin, idx1));
         auto idy2 = idy1;
@@ -206,26 +202,24 @@ namespace BetheHeitlerCrossSection {
         return twl < 0 ? 0 : twl;
     }
 
-    template <Floating T>
-    T numberFractionF(const T x, const T tubeVoltage)
+    double numberFractionF(double x, double tubeVoltage)
     {
-        constexpr T L = 1.753;
+        constexpr auto L = 1.753;
         return std::pow(ThomsonWiddingtonLaw(x, tubeVoltage), L);
     }
-    template <Floating T>
-    T numberFractionM(const T x, T tubeVoltage)
+
+    double numberFractionM(double x, double tubeVoltage)
     {
-        constexpr auto K = T { 18.0 };
-        constexpr auto Bd = T { 0.584 };
-        constexpr auto B0 = T { 0.5 };
+        constexpr auto K = 18.0;
+        constexpr auto Bd = 0.584;
+        constexpr auto B0 = 0.5;
         const auto exp = 1 - std::exp(-K * x / ThomsonWiddingtonRange(tubeVoltage));
         const auto F = Bd * exp;
         const auto B = B0 + (Bd - B0) * exp;
         return numberFractionF(x, tubeVoltage) * B * (F + 1) / (1 - B * F);
     }
 
-    template <typename T>
-    inline T bilinearInterpolate(const T q11, const T q12, const T q21, const T q22, const T x1, const T x2, const T y1, const T y2, const T x, const T y)
+    inline double bilinearInterpolate(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y)
     {
         const auto xf1 = ((x2 - x) / (x2 - x1));
         const auto xf2 = ((x - x1) / (x2 - x1));
@@ -238,14 +232,13 @@ namespace BetheHeitlerCrossSection {
         return ((y2 - y) * invdiv) * r1 + ((y - y1) * invdiv) * r2;
     }
 
-    template <Floating T>
-    T electronDensity_F(const T uval, const T xval)
+    double electronDensity_F(double uval, double xval)
     {
-        const auto& cp_f_x = CP100_F_x<T>();
-        const T x = std::clamp(xval, cp_f_x.front(), cp_f_x.back());
+        const auto& cp_f_x = CP100_F_x();
+        const auto x = std::clamp(xval, cp_f_x.front(), cp_f_x.back());
 
-        const auto& cp_u = CP100_u<T>();
-        const T u = std::clamp(uval, cp_u.front(), cp_u.back());
+        const auto& cp_u = CP100_u();
+        const auto u = std::clamp(uval, cp_u.front(), cp_u.back());
 
         auto idx1 = std::lower_bound(cp_f_x.cbegin(), cp_f_x.cend(), x);
         if (auto n = std::distance(idx1, cp_f_x.cend()); n < 2) {
@@ -263,27 +256,26 @@ namespace BetheHeitlerCrossSection {
         auto idu2 = idu1;
         ++idu2;
 
-        const auto& cp_f = CP100_F<T>();
+        const auto& cp_f = CP100_F();
         auto idq = cp_f.cbegin();
         std::advance(idq, std::distance(cp_u.cbegin(), idu1) * cp_f_x.size() + std::distance(cp_f_x.cbegin(), idx1)); // moving iterator to first part of 2d function
-        const T q11 = *idq;
+        const auto q11 = *idq;
         std::advance(idq, 1);
-        const T q21 = *idq;
+        const auto q21 = *idq;
         std::advance(idq, cp_f_x.size());
-        const T q22 = *idq;
+        const auto q22 = *idq;
         std::advance(idq, -1);
-        const T q12 = *idq;
+        const auto q12 = *idq;
         return bilinearInterpolate(q11, q12, q21, q22, *idx1, *idx2, *idu1, *idu2, x, u);
     }
 
-    template <Floating T>
-    T electronDensity_M(const T uval, const T xval)
+    double electronDensity_M(double uval, double xval)
     {
-        const auto& cp_m_x = CP100_M_x<T>();
-        const T x = std::clamp(xval, cp_m_x.front(), cp_m_x.back());
+        const auto& cp_m_x = CP100_M_x();
+        const auto x = std::clamp(xval, cp_m_x.front(), cp_m_x.back());
 
-        const auto& cp_u = CP100_u<T>();
-        const T u = std::clamp(uval, cp_u.front(), cp_u.back());
+        const auto& cp_u = CP100_u();
+        const auto u = std::clamp(uval, cp_u.front(), cp_u.back());
 
         auto idx1 = std::lower_bound(cp_m_x.cbegin(), cp_m_x.cend(), x);
         if (auto n = std::distance(idx1, cp_m_x.cend()); n < 2) {
@@ -301,98 +293,93 @@ namespace BetheHeitlerCrossSection {
         auto idu2 = idu1;
         ++idu2;
 
-        const auto& cp_m = CP100_M<T>();
+        const auto& cp_m = CP100_M();
         auto idq = cp_m.cbegin();
         std::advance(idq, std::distance(cp_u.cbegin(), idu1) * cp_m_x.size() + std::distance(cp_m_x.cbegin(), idx1)); // moving iterator to first part of 2d function
-        const T q11 = *idq;
+        const auto q11 = *idq;
         std::advance(idq, 1);
-        const T q21 = *idq;
+        const auto q21 = *idq;
         std::advance(idq, cp_m_x.size());
-        const T q22 = *idq;
+        const auto q22 = *idq;
         std::advance(idq, -1);
-        const T q12 = *idq;
+        const auto q12 = *idq;
         return bilinearInterpolate(q11, q12, q21, q22, *idx1, *idx2, *idu1, *idu2, x, u);
     }
 
-    template <Floating T>
-    T electronDensity(const T u, const T x, const T tubeVoltage)
+    double electronDensity(double u, double x, double tubeVoltage)
     {
-        const auto f = ThomsonWiddingtonRange(SIMULATED_ENERGY<T>()) / ThomsonWiddingtonRange(tubeVoltage);
+        const auto f = ThomsonWiddingtonRange(SIMULATED_ENERGY()) / ThomsonWiddingtonRange(tubeVoltage);
         return numberFractionF(x, tubeVoltage) * electronDensity_F(u, x * f) + numberFractionM(x, tubeVoltage) * electronDensity_M(u, x * f);
     }
 
     // END ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN END
 
     constexpr std::size_t TUNGSTEN_ATOMIC_NUMBER = 74;
-    template <Floating T>
-    constexpr T FINE_STRUCTURE_CONSTANT()
+
+    constexpr double FINE_STRUCTURE_CONSTANT()
     {
-        return T { 7.29735308E-03 };
+        return 7.29735308E-03;
     }
 
-    template <Floating T>
-    constexpr T CLASSIC_ELECTRON_RADIUS()
+    constexpr double CLASSIC_ELECTRON_RADIUS()
     {
-        return T { 2.81794092E-15 }; // [m]
+        return 2.81794092E-15; // [m]
     }
-    template <Floating T>
-    constexpr T PHI_BAR()
+
+    constexpr double PHI_BAR()
     {
-        return (TUNGSTEN_ATOMIC_NUMBER * TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS<T>() * CLASSIC_ELECTRON_RADIUS<T>() * FINE_STRUCTURE_CONSTANT<T>();
+        return (TUNGSTEN_ATOMIC_NUMBER * TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS() * CLASSIC_ELECTRON_RADIUS() * FINE_STRUCTURE_CONSTANT();
     }
 
     // BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSSECTION CALCULATION
 
-    template <Floating T>
-    T tungstenFiltration(const T tungstenAtt, const T x, const T sintakeoffAngle)
+    double tungstenFiltration(double tungstenAtt, double x, double sintakeoffAngle)
     {
         // filtrates a photon in the tungsten anode. hv :photon energy [keV], x depth in tungsten (density*distance) [mg/cm2], takeoffAngle: scatter angle in radians
-        return std::exp(-tungstenAtt * x * T { 0.001 } / sintakeoffAngle); // 0.001 is for mg/cm2 -> g/cm2
+        return std::exp(-tungstenAtt * x * 0.001 / sintakeoffAngle); // 0.001 is for mg/cm2 -> g/cm2
     }
 
-    template <Floating T>
-    T betheHeitlerCrossSection(const T hv, const T Ti)
+    double betheHeitlerCrossSection(double hv, double Ti)
     {
-        constexpr T phi_bar_const = (PHI_BAR<T>() * 2) / 3;
-        const auto Ei = ELECTRON_REST_MASS<T>() + Ti;
+        constexpr auto phi_bar_const = (PHI_BAR() * 2) / 3;
+        const auto Ei = ELECTRON_REST_MASS() + Ti;
         const auto Ef = Ei - hv;
-        const auto pic_sqr = Ei * Ei - ELECTRON_REST_MASS<T>() * ELECTRON_REST_MASS<T>();
+        const auto pic_sqr = Ei * Ei - ELECTRON_REST_MASS() * ELECTRON_REST_MASS();
         const auto pic = std::sqrt(pic_sqr);
-        const auto pfc_sqr = Ef * Ef - ELECTRON_REST_MASS<T>() * ELECTRON_REST_MASS<T>();
+        const auto pfc_sqr = Ef * Ef - ELECTRON_REST_MASS() * ELECTRON_REST_MASS();
         if (pfc_sqr <= 0)
             return 0;
         const auto pfc = std::sqrt(pfc_sqr);
 
-        const auto L = 2 * std::log((Ei * Ef + pic * pfc - ELECTRON_REST_MASS<T>() * ELECTRON_REST_MASS<T>()) / (ELECTRON_REST_MASS<T>() * hv));
+        const auto L = 2 * std::log((Ei * Ef + pic * pfc - ELECTRON_REST_MASS() * ELECTRON_REST_MASS()) / (ELECTRON_REST_MASS() * hv));
 
         const auto columb_correction = pic / pfc;
         return phi_bar_const * (4 * Ei * Ef * L - 7 * pic * pfc) / (hv * pic * pic) * columb_correction;
     }
 
-    template <Floating T>
-    T betheHeitlerSpectra(const T T0, const T hv, const T takeoffAngle)
+    double betheHeitlerSpectra(double T0, double hv, double takeoffAngle)
     {
 
-        const auto& tungsten = AtomHandler<T>::Atom(TUNGSTEN_ATOMIC_NUMBER);
+        const auto& tungsten = AtomHandler::Atom(TUNGSTEN_ATOMIC_NUMBER);
         const auto photo = interpolate(tungsten.photoel, hv);
         const auto coherent = interpolate(tungsten.coherent, hv);
         const auto incoherent = interpolate(tungsten.incoherent, hv);
 
         const auto tungstenTotAtt = photo + coherent + incoherent;
-        constexpr auto xmax = T { 14.0 };
-        constexpr auto umax = T { 1.0 };
-        constexpr auto xstep = T { 0.1 };
-        constexpr auto ustep = T { 0.005 };
+        constexpr auto xmax = 14.0;
+        constexpr auto umax = 1.0;
+        constexpr auto xstep = 0.1;
+        constexpr auto ustep = 0.005;
 
         const auto sinTakeoffAngle = std::sin(takeoffAngle);
 
-        T x = 0;
-        T I_obs = 0;
+        double x = 0;
+        double I_obs = 0;
         if (hv <= 0)
             return 0;
         while (x <= xmax) {
-            T I_step = 0;
-            T u = ustep;
+            double I_step = 0;
+            double u = ustep;
             while (u <= umax) {
                 I_step = I_step + betheHeitlerCrossSection(hv, T0 * u) * electronDensity(u, x, T0) * ustep;
                 u = u + ustep;
@@ -403,18 +390,17 @@ namespace BetheHeitlerCrossSection {
         return I_obs;
     }
 
-    template <Floating T>
-    std::array<std::pair<T, T>, 5> characteristicTungstenKedge(const T T0, const T takeoffAngle)
+    std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, double takeoffAngle)
     {
-        constexpr std::array<T, 4> k_edge_energies { 59.3, 58.0, 67.2, 69.1 };
-        constexpr std::array<T, 4> k_edge_fractions { 0.505, 0.291, 0.162, 0.042 };
-        constexpr auto P = T { 0.33 };
-        constexpr auto omega_k = T { 0.94 };
-        constexpr auto rk = T { 4.4 };
+        constexpr std::array<double, 4> k_edge_energies { 59.3, 58.0, 67.2, 69.1 };
+        constexpr std::array<double, 4> k_edge_fractions { 0.505, 0.291, 0.162, 0.042 };
+        constexpr auto P = 0.33;
+        constexpr auto omega_k = 0.94;
+        constexpr auto rk = 4.4;
 
-        std::array<std::pair<T, T>, 5> char_rad;
+        std::array<std::pair<double, double>, 5> char_rad;
         std::transform(std::execution::par_unseq, k_edge_energies.cbegin(), k_edge_energies.cend(), k_edge_fractions.cbegin(), char_rad.begin(),
-            [=](const auto energy, const auto fraction) -> std::pair<T, T> { return std::make_pair(energy, (1 + P) * fraction * rk * omega_k * betheHeitlerSpectra(T0, energy, takeoffAngle)); });
+            [=](const auto energy, const auto fraction) -> std::pair<double, double> { return std::make_pair(energy, (1 + P) * fraction * rk * omega_k * betheHeitlerSpectra(T0, energy, takeoffAngle)); });
         return char_rad;
     }
 

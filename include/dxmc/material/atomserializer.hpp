@@ -33,7 +33,7 @@ concept Number = std::is_integral<T>::value || std::is_floating_point<T>::value;
 
 class AtomSerializer {
 public:
-    static std::vector<char> serializeAtoms(const std::map<std::uint64_t, AtomicElement<double>>& elements)
+    static std::vector<char> serializeAtoms(const std::map<std::uint64_t, AtomicElement>& elements)
     {
         std::vector<char> buffer;
         std::uint64_t n_elements = elements.size();
@@ -43,16 +43,16 @@ public:
         }
         return buffer;
     }
-    static std::map<std::uint64_t, AtomicElement<double>> deserializeAtoms(std::vector<char>& buffer)
+    static std::map<std::uint64_t, AtomicElement> deserializeAtoms(std::vector<char>& buffer)
     {
-        std::map<std::uint64_t, AtomicElement<double>> elements;
+        std::map<std::uint64_t, AtomicElement> elements;
         if (buffer.size() == 0)
             return elements;
         std::uint64_t number_elements;
         auto start = deserialize(number_elements, &(buffer[0]));
 
         for (std::uint64_t i = 0; i < number_elements; i++) {
-            AtomicElement<double> atom;
+            AtomicElement atom;
             start = deserializeAtomicElement(atom, start);
             elements[atom.Z] = atom;
         }
@@ -84,7 +84,7 @@ protected:
         std::copy(in_c, in_c + size, dest);
     }
 
-    static void serializeAtomicShell(const AtomicShell<double>& shell, std::vector<char>& buffer)
+    static void serializeAtomicShell(const AtomicShell& shell, std::vector<char>& buffer)
     {
         std::vector<char> data;
         serialize(shell.shell, data);
@@ -101,7 +101,7 @@ protected:
         appendToBuffer(data, buffer); // adding data
     }
 
-    static void serializeAtomicElement(const AtomicElement<double>& atom, std::vector<char>& buffer)
+    static void serializeAtomicElement(const AtomicElement& atom, std::vector<char>& buffer)
     {
         std::vector<char> data;
         serialize(atom.Z, data);
@@ -152,7 +152,7 @@ protected:
         auto start = deserialize(size, begin);
         return deserialize(val, start, size);
     }
-    static char* deserializeAtomicShell(AtomicShell<double>& shell, char* begin)
+    static char* deserializeAtomicShell(AtomicShell& shell, char* begin)
     {
         std::uint64_t size { 0 };
         auto start = deserialize(size, begin);
@@ -166,7 +166,7 @@ protected:
         start = deserialize(shell.photoel, start);
         return start;
     }
-    static char* deserializeAtomicElement(AtomicElement<double>& atom, char* begin)
+    static char* deserializeAtomicElement(AtomicElement& atom, char* begin)
     {
         std::uint64_t size;
         auto start = deserialize(size, begin);
@@ -184,7 +184,7 @@ protected:
         atom.shells.clear();
         start = deserialize(n_shells, start);
         for (std::uint64_t i = 0; i < n_shells; ++i) {
-            AtomicShell<double> shell;
+            AtomicShell shell;
             start = deserializeAtomicShell(shell, start);
             atom.shells[shell.shell] = shell;
         }

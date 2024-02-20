@@ -40,8 +40,8 @@ class CTDIPhantom final : public WorldItemBase {
 public:
     CTDIPhantom(double radius = 16, double height = 15, const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<double, 3>& direction = { 0, 0, 1 })
         : WorldItemBase()
-        , m_pmma(Material<double, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
-        , m_air(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_pmma(Material<NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_air(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         radius = std::abs(radius);
         height = std::max(std::abs(height), holeHeight());
@@ -50,8 +50,8 @@ public:
         m_cylinder.radius = radius;
         m_cylinder.half_height = height / 2;
 
-        m_pmma_density = NISTMaterials<double>::density("Polymethyl Methacralate (Lucite, Perspex)");
-        m_air_density = NISTMaterials<double>::density("Air, Dry (near sea level)");
+        m_pmma_density = NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)");
+        m_air_density = NISTMaterials::density("Air, Dry (near sea level)");
 
         std::vector<CTDIAirHole> holes;
         holes.reserve(5);
@@ -168,7 +168,7 @@ public:
     void transport(Particle& p, RandomState& state) noexcept override
     {
         bool updateAtt = true;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         double attSumInv;
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         while (cont) {
@@ -275,8 +275,8 @@ private:
     std::array<EnergyScore, 6> m_energyScore;
     std::array<DoseScore, 6> m_dose;
     StaticKDTree<3, CTDIAirHole> m_kdtree;
-    Material<double, NMaterialShells> m_pmma;
-    Material<double, NMaterialShells> m_air;
+    Material<NMaterialShells> m_pmma;
+    Material<NMaterialShells> m_air;
 };
 
 }

@@ -303,7 +303,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 
     constexpr std::size_t NShells = 5;
     using Box = WorldBoxGrid<NShells, LOWENERGYCORRECTION>;
-    using Material = Material<double, NShells>;
+    using Material = Material<NShells>;
 
     auto [mat_dens, mat_weights] = TG195_soft_tissue();
 
@@ -480,7 +480,7 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
     using Box = WorldBox<NShells, LOWENERGYCORRECTION>;
     using Breast = TG195World3Breast<NShells, LOWENERGYCORRECTION>;
     using World = World<Box, Breast>;
-    using Material = Material<double, NShells>;
+    using Material = Material<NShells>;
 
     auto [water_d, water_w] = TG195_water();
     auto [pmma_d, pmma_w] = TG195_pmma();
@@ -621,7 +621,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     constexpr int materialShells = 5;
     using Cylindar = DepthDose<materialShells, LOWENERGYCORRECTION>;
     using World = World<Cylindar>;
-    using Material = Material<double, materialShells>;
+    using Material = Material<materialShells>;
 
     auto [mat_dens, mat_weights] = TG195_pmma();
 
@@ -738,7 +738,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
     constexpr int materialShells = 5;
     using Cylindar = TG195World42<materialShells, LOWENERGYCORRECTION>;
     using World = World<Cylindar>;
-    using Material = Material<double, materialShells>;
+    using Material = Material<materialShells>;
     auto [mat_dens, mat_weights] = TG195_pmma();
     auto mat = Material::byWeight(mat_weights).value();
 
@@ -886,10 +886,10 @@ std::pair<AAVoxelGrid<NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::v
         "H39.229963C15.009010N3.487490O31.621690Na0.050590Mg0.095705P3.867606S0.108832Ca6.529115",
     };
 
-    std::vector<Material<double, NMATSHELLS>> materials;
+    std::vector<Material<NMATSHELLS>> materials;
 
     std::transform(matFormula.cbegin(), matFormula.cend(), std::back_inserter(materials), [=](const auto& f) {
-        auto mat_cand = Material<double, NMATSHELLS>::byChemicalFormula(f);
+        auto mat_cand = Material<NMATSHELLS>::byChemicalFormula(f);
         return mat_cand.value();
     });
 

@@ -20,7 +20,6 @@ Copyright 2019 Erlend Andersen
 
 #include "dxmc/beams/tube/betheHeitlerCrossSection.hpp"
 #include "dxmc/constants.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/material/atomhandler.hpp"
 
@@ -70,7 +69,7 @@ public:
 
     bool addFiltrationMaterial(const std::size_t Z, const double mm)
     {
-        if (AtomHandler<double>::atomExists(Z)) {
+        if (AtomHandler::atomExists(Z)) {
             m_filtrationMaterials[Z] = std::abs(mm);
             m_hasCachedHVL = false;
             return true;
@@ -220,7 +219,7 @@ protected:
     {
         std::vector<double> totAtt(energies.size(), 0.0);
         for (auto const& [Z, mm] : m_filtrationMaterials) {
-            const auto& atom = AtomHandler<double>::Atom(Z);
+            const auto& atom = AtomHandler::Atom(Z);
             const auto cm = mm * 0.1; // for mm -> cm
             const auto dist = atom.standardDensity * cm;
             auto p = interpolate(atom.photoel, energies);
@@ -245,7 +244,7 @@ protected:
         const auto energy = getEnergy();
         const auto specter = getSpecter(energy);
 
-        const auto& Al = AtomHandler<double>::Atom(13);
+        const auto& Al = AtomHandler::Atom(13);
 
         const auto photo = interpolate(Al.photoel, energy);
         const auto incoherent = interpolate(Al.incoherent, energy);

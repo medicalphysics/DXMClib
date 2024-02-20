@@ -40,7 +40,7 @@ dxmc::AAVoxelGrid<5, 1, 0> testPhantom()
     auto d = ICRP110PhantomReader::readFemalePhantom("AF.dat", "AF_media.dat", "AF_organs.dat");
 
     dxmc::AAVoxelGrid<5, 1, 0> phantom;
-    using Material = dxmc::Material<double, 5>;
+    using Material = dxmc::Material<5>;
     std::vector<Material> materials;
     for (auto& w : d.mediaComposition()) {
         auto mat_cand = Material::byWeight(w);
@@ -56,9 +56,7 @@ dxmc::AAVoxelGrid<5, 1, 0> testPhantom()
 
 dxmc::TetrahedalMesh<5, 1> readICRP145Phantom(std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
 {
-
     const std::string name = female ? "MRCP_AF" : "MRCP_AM";
-
     const std::string elefile = name + ".ele";
     const std::string nodefile = name + ".node";
     const std::string mediafile = name + "_media.dat";
@@ -123,9 +121,9 @@ int main()
     auto& room = world.addItem<Room>();
     room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
     room.setWallThickness(2);
-    const auto lead = dxmc::Material<double, 5>::byZ(82).value();
-    const auto lead_atom = dxmc::AtomHandler<double>::Atom(82);
-    const auto lead_dens = dxmc::AtomHandler<double>::Atom(82).standardDensity;
+    const auto lead = dxmc::Material<5>::byZ(82).value();
+    const auto lead_atom = dxmc::AtomHandler::Atom(82);
+    const auto lead_dens = dxmc::AtomHandler::Atom(82).standardDensity;
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
 
     auto& phantom = world.addItem(testPhantom());

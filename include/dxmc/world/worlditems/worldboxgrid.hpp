@@ -38,27 +38,45 @@ public:
     WorldBoxGrid(const std::array<double, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase()
         , m_aabb(aabb)
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
         setVoxelDimensions({ 1, 1, 1 });
     }
 
     WorldBoxGrid(double aabb_size, std::array<double, 3> pos = { 0, 0, 0 })
         : WorldItemBase()
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
             m_aabb[i + 3] = std::abs(aabb_size) + pos[i];
         }
-        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
         setVoxelDimensions({ 1, 1, 1 });
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material)
+    void setMaterial(const Material<NMaterialShells>& material)
     {
         m_material = material;
+    }
+    void setMaterial(const Material<NMaterialShells>& material, double density)
+    {
+        m_material = material;
+        setMaterialDensity(density);
+    }
+
+    void setMaterialDensity(double density) { m_materialDensity = std::abs(density); }
+
+    bool setNistMaterial(const std::string& nist_name)
+    {
+        const auto mat = Material<NMaterialShells>::byNistName(nist_name);
+        if (mat) {
+            m_material = mat.value();
+            m_materialDensity = NISTMaterials::density(nist_name);
+            return true;
+        }
+        return false;
     }
 
     void setVoxelDimensions(const std::array<std::size_t, 3>& dim)
@@ -84,19 +102,6 @@ public:
         const auto y = static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[1] - 1)));
         const auto z = static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[2] - 1)));
         return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
-    }
-
-    void setMaterialDensity(double density) { m_materialDensity = std::abs(density); }
-
-    bool setNistMaterial(const std::string& nist_name)
-    {
-        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
-        if (mat) {
-            m_material = mat.value();
-            m_materialDensity = NISTMaterials<double>::density(nist_name);
-            return true;
-        }
-        return false;
     }
 
     void translate(const std::array<double, 3>& dist) noexcept override
@@ -143,7 +148,7 @@ public:
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         double attSumInv;
         while (cont) {
             if (updateAtt) {
@@ -208,7 +213,7 @@ private:
     double m_materialDensity = 1;
     std::array<double, 3> m_voxelSize = { 1, 1, 1 };
     std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };
-    Material<double, NMaterialShells> m_material;
+    Material<NMaterialShells> m_material;
     std::vector<EnergyScore> m_energyScored;
     std::vector<DoseScore> m_dose;
 };

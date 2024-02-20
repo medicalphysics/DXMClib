@@ -18,7 +18,6 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/vectormath.hpp"
 

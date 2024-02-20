@@ -25,21 +25,19 @@ Copyright 2022 Erlend Andersen
 #include <map>
 #include <vector>
 
-
 namespace dxmc {
 
-template <std::floating_point T = double>
 struct AtomicElement {
     std::uint64_t Z = 0;
-    T atomicWeight = 0;
-    T standardDensity = 0;
-    std::vector<std::pair<T, T>> coherent;
-    std::vector<std::pair<T, T>> incoherent;
-    std::vector<std::pair<T, T>> photoel;
-    std::vector<std::pair<T, T>> formFactor;
-    std::vector<std::pair<T, T>> incoherentSF;
-    std::vector<std::pair<T, T>> incoherentMeanScatterEnergy;
-    std::map<std::uint64_t, AtomicShell<T>> shells;
+    double atomicWeight = 0;
+    double standardDensity = 0;
+    std::vector<std::pair<double, double>> coherent;
+    std::vector<std::pair<double, double>> incoherent;
+    std::vector<std::pair<double, double>> photoel;
+    std::vector<std::pair<double, double>> formFactor;
+    std::vector<std::pair<double, double>> incoherentSF;
+    std::vector<std::pair<double, double>> incoherentMeanScatterEnergy;
+    std::map<std::uint64_t, AtomicShell> shells;
 };
 
 }

@@ -170,11 +170,11 @@ protected:
 
     struct ICRP145Materials {
         std::uint16_t index = 0;
-        Material<double, Nshells> material;
+        Material<Nshells> material;
         double density = 1;
         std::string name;
 
-        ICRP145Materials(Material<double, Nshells>& mat)
+        ICRP145Materials(Material<Nshells>& mat)
             : material(mat)
         {
         }
@@ -264,7 +264,7 @@ protected:
                 organDensity = frac.at(0);
                 frac.erase(0);
             }
-            auto mat = Material<double, Nshells>::byWeight(frac);
+            auto mat = Material<Nshells>::byWeight(frac);
             if (mat) {
                 ICRP145Materials organ(mat.value());
                 organ.density = organDensity;
@@ -479,7 +479,7 @@ protected:
 private:
     std::vector<Tetrahedron> m_tets;
     std::vector<double> m_densities;
-    std::vector<Material<double, Nshells>> m_materials;
+    std::vector<Material<Nshells>> m_materials;
     std::vector<std::string> m_organNames;
 };
 }

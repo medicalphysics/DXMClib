@@ -41,23 +41,25 @@ concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
 template <WorldItemType... Us>
 class World {
+    using Material = Material<5>;
+
 public:
     World()
-        : m_fillMaterial(Material<double>::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(Material::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
     World(std::size_t reserveNumberOfWorldItems)
-        : m_fillMaterial(Material<double>::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(Material::byNistName("Air, Dry (near sea level)").value())
     {
         m_items.reserve(reserveNumberOfWorldItems);
     }
 
-    void setMaterial(const Material<double>& mat)
+    void setMaterial(const Material& mat)
     {
         m_fillMaterial = mat;
     }
-    void setMaterial(const Material<double>& mat, double dens)
+    void setMaterial(const Material& mat, double dens)
     {
         m_fillMaterial = mat;
         m_fillMaterialDensity = std::abs(dens);
@@ -210,7 +212,7 @@ public:
         bool updateAttenuation = true;
 
         double attenuationTotalInv;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         while (continueSampling) {
             if (updateAttenuation) {
                 att = m_fillMaterial.attenuationValues(p.energy);
@@ -257,7 +259,7 @@ private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_items;
     KDTree m_kdtree;
-    Material<double, 5> m_fillMaterial;
+    Material m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;
 };

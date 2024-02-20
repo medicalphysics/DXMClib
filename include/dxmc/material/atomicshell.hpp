@@ -24,20 +24,19 @@ Copyright 2022 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-template <std::floating_point T = double>
 struct AtomicShell {
     AtomicShell(std::uint64_t shell = 0)
         : shell(shell)
     {
     }
     std::uint64_t shell = 0;
-    T numberOfElectrons = 0;
-    T bindingEnergy = 0;
-    T kineticEnergy = 0;
-    T HartreeFockOrbital_0 = 0;
-    T numberOfPhotonsPerInitVacancy = 0;
-    T energyOfPhotonsPerInitVacancy = 0;
-    std::vector<std::pair<T, T>> photoel;
+    double numberOfElectrons = 0;
+    double bindingEnergy = 0;
+    double kineticEnergy = 0;
+    double HartreeFockOrbital_0 = 0;
+    double numberOfPhotonsPerInitVacancy = 0;
+    double energyOfPhotonsPerInitVacancy = 0;
+    std::vector<std::pair<double, double>> photoel;
 };
 
 }

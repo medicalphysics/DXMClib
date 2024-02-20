@@ -19,24 +19,25 @@ Copyright 2022 Erlend Andersen
 #pragma once
 #include "dxmc/material/atomicelement.hpp"
 
+#include <cstdint>
 #include <map>
 #include <utility>
 #include <vector>
-#include <cstdint>
+
 
 class AtomicElementHandler {
 public:
     AtomicElementHandler() {};
     AtomicElementHandler(std::uint64_t Z);
-    AtomicElementHandler(const dxmc::AtomicElement<double>& atom)
+    AtomicElementHandler(const dxmc::AtomicElement& atom)
         : m_atom(atom)
     {
     }
 
     bool operator==(const AtomicElementHandler& other) const;
 
-    dxmc::AtomicElement<double> atom() const { return m_atom; }
-    void setAtom(const dxmc::AtomicElement<double>& atom) { m_atom = atom; }
+    dxmc::AtomicElement atom() const { return m_atom; }
+    void setAtom(const dxmc::AtomicElement& atom) { m_atom = atom; }
 
     void setZ(std::uint64_t Z) { m_atom.Z = Z; }
     void setAtomicWeight(double AW) { m_atom.atomicWeight = AW; }
@@ -76,5 +77,5 @@ public:
 
 protected:
 private:
-    dxmc::AtomicElement<double> m_atom;
+    dxmc::AtomicElement m_atom;
 };

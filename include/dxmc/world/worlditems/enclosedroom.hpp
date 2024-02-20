@@ -36,11 +36,11 @@ class EnclosedRoom final : public WorldItemBase {
 public:
     EnclosedRoom(double wallthickness = 10, const std::array<double, 6>& inner_aabb = { -1, -1, -1, 1, 1, 1 })
         : WorldItemBase()
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_wallThickness = std::max(std::abs(wallthickness), 0.001);
         setInnerRoomAABB(inner_aabb);
-        m_density = NISTMaterials<double>::density("Air, Dry (near sea level)");
+        m_density = NISTMaterials::density("Air, Dry (near sea level)");
     }
 
     void setWallThickness(double cm)
@@ -49,9 +49,9 @@ public:
         m_outerAABB = outerAABfromInner(m_innerAABB, m_wallThickness);
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material) { m_material = material; }
+    void setMaterial(const Material<NMaterialShells>& material) { m_material = material; }
 
-    void setMaterial(const Material<double, NMaterialShells>& material, double density)
+    void setMaterial(const Material<NMaterialShells>& material, double density)
     {
         m_material = material;
         setDensity(density);
@@ -160,7 +160,7 @@ public:
     {
         bool cont = pointInside(p.pos);
         bool updateAtt = true;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         double attSumInv;
         while (cont) {
             if (updateAtt) {
@@ -210,7 +210,7 @@ private:
     std::array<double, 6> m_innerAABB = { -1, -1, -1, 1, 1, 1 };
     std::array<double, 6> m_outerAABB = { -1, -1, -1, 1, 1, 1 };
     double m_density = 1;
-    Material<double, NMaterialShells> m_material;
+    Material<NMaterialShells> m_material;
     EnergyScore m_energyScore;
     DoseScore m_dose;
 };

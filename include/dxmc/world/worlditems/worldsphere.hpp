@@ -39,9 +39,9 @@ public:
         : WorldItemBase()
         , m_radius(std::abs(radius))
         , m_center(pos)
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
-        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
     }
 
     void setRadius(double r)
@@ -51,12 +51,12 @@ public:
 
     auto radius() const { return m_radius; }
 
-    void setMaterial(const Material<double, NMaterialShells>& material)
+    void setMaterial(const Material<NMaterialShells>& material)
     {
         m_material = material;
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material, double density)
+    void setMaterial(const Material<NMaterialShells>& material, double density)
     {
         m_material = material;
         setMaterialDensity(density);
@@ -66,10 +66,10 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<double>::density(nist_name);
+            m_materialDensity = NISTMaterials::density(nist_name);
             return true;
         }
         return false;
@@ -225,7 +225,7 @@ protected:
 private:
     double m_radius = 0;
     std::array<double, 3> m_center;
-    Material<double, NMaterialShells> m_material;
+    Material<NMaterialShells> m_material;
     double m_materialDensity = 1;
     EnergyScore m_energyScored;
     DoseScore m_dose;

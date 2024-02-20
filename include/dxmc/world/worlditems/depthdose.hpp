@@ -37,19 +37,19 @@ class DepthDose final : public WorldItemBase {
 public:
     DepthDose(double radius = 16, double height = 10, std::size_t resolution = 100, const std::array<double, 3>& pos = { 0, 0, 0 })
         : WorldItemBase()
-        , m_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_cylinder.center = pos;
         m_cylinder.direction = { 0, 0, 1 };
         m_cylinder.radius = radius;
         m_cylinder.half_height = height / 2;
 
-        m_materialDensity = NISTMaterials<double>::density("Air, Dry (near sea level)");
+        m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
         m_energyScored.resize(resolution);
         m_dose.resize(resolution);
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material)
+    void setMaterial(const Material<NMaterialShells>& material)
     {
         m_material = material;
     }
@@ -61,16 +61,16 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<double>::density(nist_name);
+            m_materialDensity = NISTMaterials::density(nist_name);
             return true;
         }
         return false;
     }
 
-    const Material<double, NMaterialShells>& material() const
+    const Material<NMaterialShells>& material() const
     {
         return m_material;
     }
@@ -200,7 +200,7 @@ public:
 private:
     dxmc::basicshape::cylinder::Cylinder m_cylinder;
     double m_materialDensity = 1;
-    Material<double, NMaterialShells> m_material;
+    Material<NMaterialShells> m_material;
     std::vector<EnergyScore> m_energyScored;
     std::vector<DoseScore> m_dose;
 };

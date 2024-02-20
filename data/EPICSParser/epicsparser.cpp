@@ -280,7 +280,7 @@ void EPICSparser::readStandardDensities(const std::string& path)
 
 std::vector<char> EPICSparser::serializeElements() const
 {
-    std::map<std::uint64_t, dxmc::AtomicElement<double>> map;
+    std::map<std::uint64_t, dxmc::AtomicElement> map;
     for (const auto& [key, element] : m_elements) {
         map[key] = element.atom();
     }

@@ -20,17 +20,14 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/floating.hpp"
-
 #include <algorithm>
 #include <map>
 #include <string>
 #include <vector>
 
 namespace dxmc {
-template <Floating T = double>
-class NISTMaterials {
 
+class NISTMaterials {
 public:
     static const std::vector<std::string> listNames()
     {
@@ -40,20 +37,20 @@ public:
             [](const auto& n) { return n.first; });
         return names;
     }
-    static std::map<std::size_t, T> Composition(const std::string& name)
+    static std::map<std::size_t, double> Composition(const std::string& name)
     {
         const auto& instance = Instance();
         if (instance.nistdata.contains(name))
             return instance.nistdata.at(name).massFractions;
-        std::map<std::size_t, T> empty;
+        std::map<std::size_t, double> empty;
         return empty;
     }
-    static T density(const std::string& name)
+    static double density(const std::string& name)
     {
         const auto& instance = Instance();
         if (instance.nistdata.contains(name))
             return instance.nistdata.at(name).density;
-        return T { 0 };
+        return 0;
     }
 
     NISTMaterials(const NISTMaterials&) = delete;
@@ -61,8 +58,8 @@ public:
 
 protected:
     struct NISTdata {
-        T density = 0;
-        std::map<std::size_t, T> massFractions;
+        double density = 0;
+        std::map<std::size_t, double> massFractions;
     };
     static const NISTMaterials& Instance()
     {

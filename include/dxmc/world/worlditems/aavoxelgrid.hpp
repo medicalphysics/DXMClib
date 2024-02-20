@@ -41,21 +41,21 @@ public:
         std::array<std::size_t, 3> dim = { 1, 1, 1 };
         std::vector<double> densities(1, 1);
         std::vector<std::uint8_t> mIdx(1, 0);
-        std::vector<Material<double, NMaterialShells>> materials;
+        std::vector<Material<NMaterialShells>> materials;
 
-        auto air_cand = Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)");
+        auto air_cand = Material<NMaterialShells>::byNistName("Air, Dry (near sea level)");
         materials.push_back(air_cand.value());
         setData(dim, densities, mIdx, materials);
         setSpacing({ 1, 1, 1 });
     }
 
-    AAVoxelGrid(const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing, const std::vector<double>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<double, NMaterialShells>>& materials)
+    AAVoxelGrid(const std::array<std::size_t, 3>& dim, const std::array<double, 3>& spacing, const std::vector<double>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<NMaterialShells>>& materials)
     {
         setData(dim, density, materialIdx, materials);
         setSpacing(spacing);
     }
 
-    bool setData(const std::array<std::size_t, 3>& dim, const std::vector<double>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<double, NMaterialShells>>& materials)
+    bool setData(const std::array<std::size_t, 3>& dim, const std::vector<double>& density, const std::vector<uint8_t>& materialIdx, const std::vector<Material<NMaterialShells>>& materials)
     {
         const auto size = std::reduce(dim.cbegin(), dim.cend(), std::size_t { 1 }, std::multiplies<>());
         if (density.size() != size || materialIdx.size() != size) {
@@ -605,6 +605,6 @@ private:
     std::vector<std::pair<double, double>> m_woodcockStepTableLin;
     std::vector<DataElement> m_data;
     std::vector<DoseScore> m_dose;
-    std::vector<Material<double, NMaterialShells>> m_materials;
+    std::vector<Material<NMaterialShells>> m_materials;
 };
 }

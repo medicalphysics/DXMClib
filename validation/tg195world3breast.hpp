@@ -39,8 +39,8 @@ class TG195World3Breast final : public WorldItemBase {
 public:
     TG195World3Breast()
         : WorldItemBase()
-        , m_skin_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-        , m_tissue_material(Material<double, NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_skin_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_tissue_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         translateBox(m_dose_boxes[0], { double { 5 }, double { 5 }, double { 0 } });
         translateBox(m_dose_boxes[1], { double { 2 }, double { 0 }, double { 0 } });
@@ -51,13 +51,13 @@ public:
         translateBox(m_dose_boxes[6], { double { 5 }, double { 0 }, double { 1.5f } });
     }
 
-    void setTissueMaterial(const Material<double, NMaterialShells>& material, double dens)
+    void setTissueMaterial(const Material<NMaterialShells>& material, double dens)
     {
         m_tissue_material = material;
         m_tissue_density = std::abs(dens);
     }
 
-    void setSkinMaterial(const Material<double, NMaterialShells>& material, double dens)
+    void setSkinMaterial(const Material<NMaterialShells>& material, double dens)
     {
         m_skin_material = material;
         m_skin_density = std::abs(dens);
@@ -303,8 +303,8 @@ private:
     std::array<double, 3> m_center = { 0, 0, 0 };
     double m_skin_density = 1;
     double m_tissue_density = 1;
-    Material<double, NMaterialShells> m_skin_material;
-    Material<double, NMaterialShells> m_tissue_material;
+    Material<NMaterialShells> m_skin_material;
+    Material<NMaterialShells> m_tissue_material;
     EnergyScore m_energyScored;
     DoseScore m_doseScored;
     EnergyScore m_skin_energy;

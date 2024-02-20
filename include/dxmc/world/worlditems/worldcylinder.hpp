@@ -38,21 +38,21 @@ class WorldCylinder final : public WorldItemBase {
 public:
     WorldCylinder(double radius = 16, double height = 10, const std::array<double, 3>& center = { 0, 0, 0 }, const std::array<double, 3>& dir = { 0, 0, 1 })
         : WorldItemBase()
-        , m_material(Material<double, NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        , m_material(Material<NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_cylinder.radius = std::abs(radius);
         m_cylinder.half_height = std::abs(height) / 2;
         m_cylinder.center = center;
         m_cylinder.direction = vectormath::normalized(dir);
-        m_materialDensity = NISTMaterials<double>::density("Polymethyl Methacralate (Lucite, Perspex)");
+        m_materialDensity = NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)");
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material)
+    void setMaterial(const Material<NMaterialShells>& material)
     {
         m_material = material;
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material, double density)
+    void setMaterial(const Material<NMaterialShells>& material, double density)
     {
         m_material = material;
         setMaterialDensity(density);
@@ -65,10 +65,10 @@ public:
 
     bool setNistMaterial(const std::string& nist_name)
     {
-        const auto mat = Material<double, NMaterialShells>::byNistName(nist_name);
+        const auto mat = Material<NMaterialShells>::byNistName(nist_name);
         if (mat) {
             m_material = mat.value();
-            m_materialDensity = NISTMaterials<double>::density(nist_name);
+            m_materialDensity = NISTMaterials::density(nist_name);
             return true;
         }
         return false;
@@ -116,7 +116,7 @@ public:
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         double attSumInv;
         while (cont) {
             if (updateAtt) {
@@ -171,7 +171,7 @@ protected:
 private:
     basicshape::cylinder::Cylinder m_cylinder;
     double m_materialDensity = 1;
-    Material<double, NMaterialShells> m_material;
+    Material<NMaterialShells> m_material;
     EnergyScore m_energyScored;
     DoseScore m_dose;
 };

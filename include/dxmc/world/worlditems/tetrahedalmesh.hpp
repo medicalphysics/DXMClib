@@ -45,19 +45,19 @@ public:
     {
     }
 
-    TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
+    TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
         : WorldItemBase()
     {
         setData(tets, collectionDensities, materials, collectionNames, depth);
     }
 
-    TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, int max_depth = 8)
+    TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, int max_depth = 8)
         : WorldItemBase()
     {
         setData(tets, collectionDensities, materials, collectionNames, { max_depth, max_depth, max_depth });
     }
 
-    bool setData(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<double, NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
+    bool setData(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
     {
         // finding max collectionIdx and Material index
         const auto maxCollectionIdx = std::transform_reduce(
@@ -192,7 +192,7 @@ public:
         return m_grid.tetrahedrons();
     }
 
-    void setMaterial(const Material<double, NMaterialShells>& material, std::size_t index)
+    void setMaterial(const Material<NMaterialShells>& material, std::size_t index)
     {
         if (index < m_materials.size())
             m_materials[index] = material;
@@ -298,7 +298,7 @@ protected:
     {
         Tetrahedron* tet = m_grid.pointInside(p.pos);
         bool updateAtt = true;
-        AttenuationValues<double> att;
+        AttenuationValues att;
         double attSumInv;
         while (tet) {
             if (updateAtt) {
@@ -342,7 +342,7 @@ private:
     TetrahedalMeshGrid m_grid;
     std::vector<std::pair<double, double>> m_woodcockStepTableLin;
     std::vector<Collection> m_collections;
-    std::vector<Material<double, NMaterialShells>> m_materials;
+    std::vector<Material<NMaterialShells>> m_materials;
     std::vector<std::string> m_collectionNames;
 };
 }
