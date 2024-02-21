@@ -22,7 +22,6 @@ from matplotlib import pylab as plt
 import numpy as np
 import os
 
-
 def readData():    
     converters={"Result":float, "Stddev":float}
     dt = pd.read_csv("validationTable.txt", sep=", ", engine='python', converters=converters)
@@ -40,7 +39,8 @@ def readData():
     for key in ["Stddev", "nEvents", "SimulationTime"]:
         dm[key] = [0 for _ in dm[key]]
     
-    return pd.concat([dt, dm], ignore_index=True)
+    df = pd.concat([dt, dm], ignore_index=True)
+    return df.sort_values(by=['Model']) 
 
 def fix_axis(fg, rotate_labels=True, ylabel="Energy [eV/history]"):
     fg.set(ylim=(0, None))
