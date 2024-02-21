@@ -18,7 +18,6 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
-#include "dxmc/floating.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
@@ -87,7 +86,7 @@ public:
         m_myfile << r.result << ", ";
         m_myfile << r.result_std << ", ";
         m_myfile << r.nEvents << ", ";
-        m_myfile << r.nMilliseconds << ", ";
+        m_myfile << r.nMilliseconds;
         m_myfile << std::endl;
 
         if (terminal) {
