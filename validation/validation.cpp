@@ -67,7 +67,7 @@ public:
     }
     void header()
     {
-        m_myfile << "Case, Volume, Specter, Model, Mode, TG195Result, Result, Stddev, nEvents, SimulationTime, Precision\n";
+        m_myfile << "Case, Volume, Specter, Model, Mode, TG195Result, Result, Stddev, nEvents, SimulationTime\n";
     }
 
     void operator()(const ResultKeys& r, bool terminal = true)
