@@ -18,6 +18,8 @@ Copyright 2019 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
+
 #include <array>
 
 namespace dxmc {
@@ -52,7 +54,7 @@ struct Particle {
 
     inline static constexpr double border_translate_minimum()
     {
-        return 1e-6;
+        return GEOMETRIC_ERROR<double>();
     }
 
     inline void border_translate(const double dist)
