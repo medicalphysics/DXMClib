@@ -100,7 +100,7 @@ public:
 };
 
 template <typename W, typename B>
-void saveImageOfWorld(const std::string& name, W& world, B& beam, double polarAngle = 90, double azimuthAngle = 90, double dist = 100, double zoom = 1)
+void saveImageOfWorld(const std::string& name, W& world, B& beam, double polarAngle = 90, double azimuthAngle = 90, double dist = 100, double zoom = 1, double linelenght = 250)
 {
     dxmc::VisualizeWorld viz(world);
     viz.setAzimuthalAngleDeg(azimuthAngle);
@@ -108,7 +108,7 @@ void saveImageOfWorld(const std::string& name, W& world, B& beam, double polarAn
     viz.setDistance(dist);
     viz.suggestFOV(zoom);
     auto buffer = viz.createBuffer<double>(2048, 2048);
-    viz.addLineProp(beam, 250, 0.02);
+    viz.addLineProp(beam, linelenght, 0.02);
     viz.generate(world, buffer);
     viz.savePNG(name, buffer);
     return;
@@ -329,7 +329,8 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
     box.setMaterial(mat);
     box.setMaterialDensity(mat_dens);
 
-    world.template addItem<SimpleBox>({ { -box_halfside, -box_halfside, 180.1, box_halfside, box_halfside, 180 } });
+    auto& scoring_plane = world.template addItem<SimpleBox>({ { -box_halfside, -box_halfside, 180, box_halfside, box_halfside, 180.1 } });
+    scoring_plane.setMaterial(world.fillMaterial(), world.fillMaterialDensity());
 
     world.build(180);
 
@@ -390,7 +391,13 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
         }
     }
 
-    saveImageOfWorld("Case2world.png", world, beam, 60, 90, 200, 2);
+    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam>) {
+        if (tomo) {
+            saveImageOfWorld("Case2worldTomo.png", world, beam, 60, 45, 200, 4);
+        } else {
+            saveImageOfWorld("Case2world.png", world, beam, 60, 45, 200, 4);
+        }
+    }
 
     Transport transport;
     auto time_elapsed = runDispatcher(transport, world, beam);
@@ -543,11 +550,11 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
         constexpr auto alpha = 15 * DEG_TO_RAD();
         auto beampos = vectormath::rotate<double>({ 0, 0, source_height }, { 1, 0, 0 }, alpha);
         constexpr double plane_sizey = 13.0;
-        const auto height = beampos[2];
+        const auto height = beampos[2] + 2.5 + 1.5;
         const auto angy_max = std::atan((plane_sizey - beampos[1]) / height);
         const auto angy_min = std::atan((-plane_sizey - beampos[1]) / height);
         constexpr double plane_sizex = 14.0;
-        const auto angx_max = std::atan(plane_sizex / source_plane);
+        const auto angx_max = std::atan(plane_sizex / height);
         constexpr double angx_min = 0;
         beam.setCollimationAngles(angx_min, -angy_max, angx_max, -angy_min); // since we have ycosine = {0,-1,0}
 
@@ -563,14 +570,16 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
         beam.setCollimationAngles(0, -collangley, collanglex, collangley);
     }
 
-    for (int i = 0; i < 12; ++i) {
+    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam>) {
         std::string tp;
         if (tomo)
             tp = "Tomo";
         else
-            tp = "Plain";
-        std::string name = "Case3world" + tp + std::to_string(i * 30) + ".png";
-        saveImageOfWorld(name, world, beam, i * 30, 90, 500, 6);
+            tp = "";
+        std::string name = "Case3world" + tp + ".png";
+        saveImageOfWorld(name, world, beam, 240, 60, 500, 6);
+        name = "Case3world2" + tp + ".png";
+        saveImageOfWorld(name, world, beam, 180, 60, 500, 6);
     }
 
     Transport transport;
@@ -683,6 +692,22 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         beam.setCollimationAngles({ -collangle_y, -collangle_z, collangle_y, collangle_z });
         beam.setNumberOfExposures(N_EXPOSURES);
         beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+
+        if constexpr (LOWENERGYCORRECTION == 1) {
+            if (!specter) {
+                std::string tp;
+                if (large_collimation)
+                    tp = "80";
+                else
+                    tp = "10";
+                const auto lenght = std::sqrt(120.0 * 120.0 + 120 * std::tan(collangle_y) * 120 * std::tan(collangle_y));
+                std::string name = "Case41world" + tp + ".png";
+                saveImageOfWorld(name, world, beam, 270, 90, 500, 6, lenght);
+                name = "Case41world2" + tp + ".png";
+                saveImageOfWorld(name, world, beam, 0, 60, 500, 6, lenght);
+            }
+        }
+
         Transport transport;
         time_elapsed = runDispatcher(transport, world, beam);
     }
@@ -834,6 +859,21 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         auto p_ang = vectormath::rotate(pos, { 0, 0, 1 }, angle);
         beam.setPosition(p_ang);
         beam.setDirectionCosines(x, co_y);
+
+        if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam>) {
+            if (i == 0) {
+                std::string tp;
+                if (large_collimation)
+                    tp = "80";
+                else
+                    tp = "10";
+                const auto lenght = std::sqrt(120.0 * 120.0 + 120 * std::tan(collangle_y) * 120 * std::tan(collangle_y));
+                std::string name = "Case42world" + tp + ".png";
+                saveImageOfWorld(name, world, beam, 270, 90, 500, 6, lenght);
+                name = "Case42world2" + tp + ".png";
+                saveImageOfWorld(name, world, beam, 0, 60, 500, 6, lenght);
+            }
+        }
 
         auto time_elepased = runDispatcher(transport, world, beam);
         res.nMilliseconds = time_elepased.count();
@@ -1099,8 +1139,8 @@ bool runAll()
     success = success && TG195Case3AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
 
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
-    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
 
     success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);

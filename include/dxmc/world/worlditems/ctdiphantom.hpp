@@ -185,11 +185,9 @@ public:
 
             if (intHoles.valid()) {
                 if (intHoles.rayOriginIsInsideItem) {
-                    const auto intRes = interactions::interactForced(intHoles.intersection, m_air_density, p, m_air, state);
+                    const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intHoles.intersection, m_air_density, p, m_air, state);
                     m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                     updateAtt = intRes.particleEnergyChanged;
-                    // transport particle across hole (particle is most likely alive)
-                    p.border_translate(intHoles.intersection);
                     cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
                 } else {
                     if (stepLen < intHoles.intersection) {
@@ -207,8 +205,6 @@ public:
                         const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(dist, m_air_density, p, m_air, state);
                         m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                         updateAtt = intRes.particleEnergyChanged;
-                        // transport particle across hole (particle is most likely alive)
-                        p.border_translate(dist);
                         cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
                     }
                 }
@@ -274,5 +270,4 @@ private:
     Material<NMaterialShells> m_pmma;
     Material<NMaterialShells> m_air;
 };
-
 }

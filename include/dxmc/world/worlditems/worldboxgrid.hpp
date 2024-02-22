@@ -41,6 +41,7 @@ public:
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
+        correctAABB();
         setVoxelDimensions({ 1, 1, 1 });
     }
 
@@ -53,6 +54,7 @@ public:
             m_aabb[i + 3] = std::abs(aabb_size) + pos[i];
         }
         m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
+        correctAABB();
         setVoxelDimensions({ 1, 1, 1 });
     }
 
@@ -81,7 +83,10 @@ public:
 
     void setVoxelDimensions(const std::array<std::size_t, 3>& dim)
     {
-        m_voxelDim = dim;
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_voxelDim[i] = std::max(std::size_t { 1 }, dim[i]);
+        }
+
         for (std::size_t i = 0; i < 3; ++i) {
             m_voxelSize[i] = (m_aabb[i + 3] - m_aabb[i]) / m_voxelDim[i];
         }
@@ -208,6 +213,26 @@ public:
     }
 
 protected:
+    void correctAABB()
+    {
+        auto test = [](const auto& aabb) -> bool {
+            bool ok = true;
+            for (std::size_t i = 0; i < 3; ++i)
+                ok = ok && aabb[i] < aabb[i + 3];
+            return ok;
+        };
+        if (!test(m_aabb)) {
+            for (std::size_t i = 0; i < 3; ++i) {
+                if (m_aabb[i] == m_aabb[i + 3]) {
+                    m_aabb[i] -= GEOMETRIC_ERROR();
+                    m_aabb[i + 3] += GEOMETRIC_ERROR();
+                } else if (m_aabb[i] > m_aabb[i + 3]) {
+                    std::swap(m_aabb[i], m_aabb[i + 3]);
+                }
+            }
+        }
+    }
+
 private:
     std::array<double, 6> m_aabb;
     double m_materialDensity = 1;

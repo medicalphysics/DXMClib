@@ -69,6 +69,9 @@ public:
         m_fillMaterialDensity = std::abs(dens);
     }
 
+    const Material& fillMaterial() const { return m_fillMaterial; }
+    double fillMaterialDensity() const { return m_fillMaterialDensity; }
+
     void reserveNumberOfItems(std::size_t size)
     {
         m_items.reserve(size);
