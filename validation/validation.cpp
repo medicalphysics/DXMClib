@@ -329,7 +329,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
     box.setMaterial(mat);
     box.setMaterialDensity(mat_dens);
 
-    world.addItem<SimpleBox>({ -box_halfside, -box_halfside, 180.1, box_halfside, box_halfside, 180 });
+    world.template addItem<SimpleBox>({ { -box_halfside, -box_halfside, 180.1, box_halfside, box_halfside, 180 } });
 
     world.build(180);
 
