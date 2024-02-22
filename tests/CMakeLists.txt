@@ -4,6 +4,7 @@ ENABLE_TESTING()
 set(TEST_SOURCES 
     "testworld.cpp"
     "testbeams.cpp"
+    "testctdiphantom.cpp"
     "testtriangulatedmesh.cpp"
     "testtetrahedalmesh.cpp"
     "testctaecfilter.cpp"

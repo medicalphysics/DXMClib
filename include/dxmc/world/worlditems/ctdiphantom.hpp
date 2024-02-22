@@ -35,7 +35,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEDINTERACTIONS = true>
 class CTDIPhantom final : public WorldItemBase {
 public:
     CTDIPhantom(double radius = 16, double height = 15, const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<double, 3>& direction = { 0, 0, 1 })
@@ -185,10 +185,23 @@ public:
 
             if (intHoles.valid()) {
                 if (intHoles.rayOriginIsInsideItem) {
-                    const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intHoles.intersection, m_air_density, p, m_air, state);
-                    m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
-                    updateAtt = intRes.particleEnergyChanged;
-                    cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
+                    if constexpr (FORCEDINTERACTIONS) {
+                        const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intHoles.intersection, m_air_density, p, m_air, state);
+                        m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
+                        updateAtt = intRes.particleEnergyChanged;
+                        cont = intRes.particleAlive;
+                    } else {
+                        const auto airAtt = m_air.attenuationValues(p.energy);
+                        const auto airStepLen = -std::log(state.randomUniform()) / (airAtt.sum() * m_air_density);
+                        if (airStepLen < intHoles.intersection) {
+                            const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(airAtt, p, m_air, state);
+                            m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
+                            updateAtt = intRes.particleEnergyChanged;
+                            cont = intRes.particleAlive;
+                        } else {
+                            p.border_translate(intHoles.intersection);
+                        }
+                    }
                 } else {
                     if (stepLen < intHoles.intersection) {
                         // interaction happends before particle hit hole
@@ -200,12 +213,14 @@ public:
                     } else {
                         // transport particle to hole
                         p.border_translate(intHoles.intersection);
-                        // find distance of hole crossing
-                        const auto dist = intHoles.item->intersect(p).intersection;
-                        const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(dist, m_air_density, p, m_air, state);
-                        m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
-                        updateAtt = intRes.particleEnergyChanged;
-                        cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
+                        if constexpr (FORCEDINTERACTIONS) {
+                            // find distance of hole crossing
+                            const auto dist = intHoles.item->intersect(p).intersection;
+                            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(dist, m_air_density, p, m_air, state);
+                            m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
+                            updateAtt = intRes.particleEnergyChanged;
+                            cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
+                        }
                     }
                 }
             } else {
