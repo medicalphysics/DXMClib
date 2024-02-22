@@ -315,7 +315,6 @@ namespace interactions {
     template <std::size_t NMaterialShells, int LOWENERGYCORRECTION = 2>
     InteractionResult interactForced(double maxStepLen, double materialDensity, const AttenuationValues& attenuation, Particle& particle, const Material<NMaterialShells>& material, RandomState& state)
     {
-
         InteractionResult intRes;
         const auto relativePeProbability = attenuation.photoelectric / attenuation.sum();
         const auto attSum = attenuation.sum() * materialDensity;

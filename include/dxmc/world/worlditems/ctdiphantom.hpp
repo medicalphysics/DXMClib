@@ -219,7 +219,7 @@ public:
                             const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(dist, m_air_density, p, m_air, state);
                             m_energyScore[intHoles.item->index].scoreEnergy(intRes.energyImparted);
                             updateAtt = intRes.particleEnergyChanged;
-                            cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
+                            cont = intRes.particleAlive;
                         }
                     }
                 }

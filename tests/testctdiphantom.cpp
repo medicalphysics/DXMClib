@@ -39,18 +39,18 @@ bool testForcedinteractions()
     wf.build();
 
     dxmc::PencilBeam beam({ -100, -100, 0 }, { 1, 1, 0 }, 60);
-    beam.setNumberOfExposures(48);
-    beam.setNumberOfParticlesPerExposure(1e5);
+    beam.setNumberOfExposures(480);
+    beam.setNumberOfParticlesPerExposure(1e6);
 
     dxmc::Transport transport;
 
-    transport(w, beam);
     transport(wf, beam);
+    transport(w, beam);
 
-    auto dose_centerf = ctdif.doseScored(0);
-    auto dose_center = ctdi.doseScored(0);
+    auto dose_centerf = ctdif.doseScored(1);
+    auto dose_center = ctdi.doseScored(1);
     auto df = dose_centerf.dose();
-    auto d = dose_centerf.dose();
+    auto d = dose_center.dose();
     auto sd = dose_center.standardDeviation();
     auto sdf = dose_centerf.standardDeviation();
 
@@ -58,8 +58,9 @@ bool testForcedinteractions()
     std::cout << "Random: " << dose_center.dose() << " " << dose_center.standardDeviation() << std::endl;
 
     constexpr auto test_coeff = 2.57;
-
     auto test = std::abs(d - df) / std::sqrt(sd * sd + sdf * sdf);
+
+    std::cout << "Statistic: " << test << ", threshold: " << test_coeff << std::endl;
 
     auto success = test < test_coeff;
     if (success)
