@@ -35,6 +35,7 @@ public:
         , m_dirCosines(dircosines)
         , m_NParticles(N)
     {
+        m_dir = vectormath::cross(m_dirCosines);
     }
 
     const std::array<double, 3>& position() const { return m_pos; }
@@ -54,29 +55,33 @@ public:
 
     Particle sampleParticle(RandomState& state) const noexcept
     {
-        auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
 
         const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
 
-        const auto sinx = std::sin(angx);
-        const auto siny = std::sin(angy);
-        const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
-        std::array pdir = {
-            m_dirCosines[0][0] * sinx + m_dirCosines[1][0] * siny + dir[0] * sinz,
-            m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + dir[1] * sinz,
-            m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + dir[2] * sinz
-        };
-
         Particle p = { .pos = m_pos,
-            .dir = pdir,
+            .dir = particleDirection(angx, angy),
             .energy = m_specterDist.sampleValue(state),
             .weight = 1 };
         return p;
     }
 
+protected:
+    std::array<double, 3> particleDirection(double anglex, double angley) const
+    {
+        const auto dx = std::tan(anglex);
+        const auto dy = std::tan(angley);
+        const std::array pdir = {
+            m_dirCosines[0][0] * dx + m_dirCosines[1][0] * dy + m_dir[0],
+            m_dirCosines[0][1] * dx + m_dirCosines[1][1] * dy + m_dir[1],
+            m_dirCosines[0][2] * dx + m_dirCosines[1][2] * dy + m_dir[2]
+        };
+        return vectormath::normalized(pdir);
+    }
+
 private:
     std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 0, 1 };
     std::array<std::array<double, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
     std::array<double, 4> m_collimationAngles = { 0, 0, 0, 0 };
     std::uint64_t m_NParticles = 100;
@@ -98,6 +103,7 @@ public:
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
 
     void setPosition(const std::array<double, 3>& pos) { m_pos = pos; }
+    const std::array<double, 3>& position() const { return m_pos; }
 
     const std::array<std::array<double, 3>, 2>& directionCosines() const
     {

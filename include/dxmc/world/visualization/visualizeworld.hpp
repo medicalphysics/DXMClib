@@ -239,15 +239,14 @@ public:
         }
 
         auto f = [](const auto& cosines, const auto& dir, double angx, double angy) -> std::array<double, 3> {
-            const auto sinx = std::sin(angx);
-            const auto siny = std::sin(angy);
-            const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
-            std::array pdir = {
-                cosines[0][0] * sinx + cosines[1][0] * siny + dir[0] * sinz,
-                cosines[0][1] * sinx + cosines[1][1] * siny + dir[1] * sinz,
-                cosines[0][2] * sinx + cosines[1][2] * siny + dir[2] * sinz
+            const auto dx = std::tan(angx);
+            const auto dy = std::tan(angy);
+            const std::array pdir = {
+                cosines[0][0] * dx + cosines[1][0] * dy + dir[0],
+                cosines[0][1] * dx + cosines[1][1] * dy + dir[1],
+                cosines[0][2] * dx + cosines[1][2] * dy + dir[2]
             };
-            return pdir;
+            return vectormath::normalized(pdir);
         };
 
         addLineProp(start, f(cos, dir, angs[2], angs[3]), length, radii);

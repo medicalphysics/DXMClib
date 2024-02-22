@@ -48,7 +48,7 @@ public:
         , m_specter(specter)
         , m_bowtieFilter(bowtie)
     {
-        m_dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
+        m_dir = vectormath::cross(m_dirCosines);
     }
 
     CTSpiralBeamExposure() = delete;
@@ -69,22 +69,27 @@ public:
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
-        const auto sinx = std::sin(angx);
-        const auto siny = std::sin(angy);
-        const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
-        std::array pdir = {
-            m_dirCosines[0][0] * sinx + m_dirCosines[1][0] * siny + m_dir[0] * sinz,
-            m_dirCosines[0][1] * sinx + m_dirCosines[1][1] * siny + m_dir[1] * sinz,
-            m_dirCosines[0][2] * sinx + m_dirCosines[1][2] * siny + m_dir[2] * sinz
-        };
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
         Particle p = {
             .pos = m_pos,
-            .dir = pdir,
+            .dir = particleDirection(angx, angy),
             .energy = m_specter->sampleValue(state),
             .weight = m_weight * bowtie_weight
         };
         return p;
+    }
+
+protected:
+    std::array<double, 3> particleDirection(double anglex, double angley) const
+    {
+        const auto dx = std::tan(anglex);
+        const auto dy = std::tan(angley);
+        const std::array pdir = {
+            m_dirCosines[0][0] * dx + m_dirCosines[1][0] * dy + m_dir[0],
+            m_dirCosines[0][1] * dx + m_dirCosines[1][1] * dy + m_dir[1],
+            m_dirCosines[0][2] * dx + m_dirCosines[1][2] * dy + m_dir[2]
+        };
+        return vectormath::normalized(pdir);
     }
 
 private:

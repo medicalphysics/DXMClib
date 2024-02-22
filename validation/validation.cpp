@@ -23,6 +23,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/fluencescore.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
@@ -98,12 +99,19 @@ public:
     }
 };
 
-void saveBinaryArray(const std::vector<double>& data, const std::string& name)
+template <typename W, typename B>
+void saveImageOfWorld(const std::string& name, W& world, B& beam, double polarAngle = 90, double azimuthAngle = 90, double dist = 100, double zoom = 1)
 {
-    auto myfile = std::fstream(name, std::ios::out | std::ios::binary);
-    const auto bytes = data.size() * sizeof(double);
-    myfile.write((char*)&data[0], bytes);
-    myfile.close();
+    dxmc::VisualizeWorld viz(world);
+    viz.setAzimuthalAngleDeg(azimuthAngle);
+    viz.setPolarAngleDeg(polarAngle);
+    viz.setDistance(dist);
+    viz.suggestFOV(zoom);
+    auto buffer = viz.createBuffer<double>(2048, 2048);
+    viz.addLineProp(beam, 250, 0.02);
+    viz.generate(world, buffer);
+    viz.savePNG(name, buffer);
+    return;
 }
 
 // energy weighs pair for spectre
@@ -301,6 +309,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
     constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
 
     constexpr std::size_t NShells = 5;
+    using SimpleBox = dxmc::WorldBox<NShells, LOWENERGYCORRECTION>;
     using Box = WorldBoxGrid<NShells, LOWENERGYCORRECTION>;
     using Material = Material<NShells>;
 
@@ -308,19 +317,21 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 
     auto mat = Material::byWeight(mat_weights).value();
 
-    World<Box> world;
+    World<Box, SimpleBox> world;
 
     const auto box_halfside = 39.0 / 2;
     const double box_height = 20;
     const double box_zbegin = 155;
     const std::array box_aabb = { -box_halfside, -box_halfside, box_zbegin, box_halfside, box_halfside, box_zbegin + box_height };
-    world.reserveNumberOfItems(1);
+    world.reserveNumberOfItems(2);
     auto& box = world.template addItem<Box>({ box_aabb });
     box.setVoxelDimensions({ 78, 78, 40 });
     box.setMaterial(mat);
     box.setMaterialDensity(mat_dens);
 
-    world.build(160);
+    world.addItem<SimpleBox>({ -box_halfside, -box_halfside, 180.1, box_halfside, box_halfside, 180 });
+
+    world.build(180);
 
     Beam beam;
 
@@ -378,6 +389,8 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
             TG195_voi_values = { 27.01, 27.00, 36.67, 27.01, 27.01, 72.86, 53.35, 23.83, 14.60 };
         }
     }
+
+    saveImageOfWorld("Case2world.png", world, beam, 60, 90, 200, 2);
 
     Transport transport;
     auto time_elapsed = runDispatcher(transport, world, beam);
@@ -494,12 +507,13 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
     auto skin = Material::byWeight(skin_w).value();
 
     World world;
+    world.reserveNumberOfItems(5);
 
     auto& body = world.template addItem<Box>({ { -17, -15, -15, 0, 15, 15 } });
     body.setMaterial(water, water_d);
-    auto& uplate = world.template addItem<Box>({ { 0, -13, 2.5, 14, 13, 2.52 } });
+    auto& uplate = world.template addItem<Box>({ { 0, -13, 2.5, 14, 13, 2.7 } });
     uplate.setMaterial(pmma, pmma_d);
-    auto& lplate = world.template addItem<Box>({ { 0, -13, -2.52, 14, 13, -2.5 } });
+    auto& lplate = world.template addItem<Box>({ { 0, -13, -2.7, 14, 13, -2.5 } });
     lplate.setMaterial(pmma, pmma_d);
     auto& breast = world.template addItem<Breast>();
     breast.setSkinMaterial(skin, skin_d);
@@ -507,7 +521,10 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
 
     world.setMaterial(air, air_d);
 
-    world.build(std::sqrt(66.0 * 66.0));
+    auto& scoringplane = world.template addItem<Box>({ { 0, -13, -2.5 - 1.5 - .1, 14, 13, -2.5 - 1.5 } });
+    scoringplane.setMaterial(air, air_d);
+
+    world.build(70);
 
     Beam beam;
     if constexpr (std::same_as<Beam, IsotropicBeam>) {
@@ -516,17 +533,21 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
     } else {
         beam.setEnergy(16.8);
     }
+
+    constexpr double source_plane = 66;
+    constexpr double source_height = source_plane - 2.5 - 1.5;
+
     beam.setNumberOfExposures(N_EXPOSURES);
     beam.setNumberOfParticlesPerExposure(N_HISTORIES);
     if (tomo) {
         constexpr auto alpha = 15 * DEG_TO_RAD();
-        auto beampos = vectormath::rotate<double>({ 0, 0, 66 }, { 1, 0, 0 }, alpha);
-        constexpr auto plane_sizey = 13.0;
+        auto beampos = vectormath::rotate<double>({ 0, 0, source_height }, { 1, 0, 0 }, alpha);
+        constexpr double plane_sizey = 13.0;
         const auto height = beampos[2];
         const auto angy_max = std::atan((plane_sizey - beampos[1]) / height);
         const auto angy_min = std::atan((-plane_sizey - beampos[1]) / height);
-        constexpr auto plane_sizex = 14.0;
-        const auto angx_max = std::atan(plane_sizex / 66.0);
+        constexpr double plane_sizex = 14.0;
+        const auto angx_max = std::atan(plane_sizex / source_plane);
         constexpr double angx_min = 0;
         beam.setCollimationAngles(angx_min, -angy_max, angx_max, -angy_min); // since we have ycosine = {0,-1,0}
 
@@ -535,11 +556,21 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
         const std::array<double, 3> cosiney = { 0, -1, 0 };
         beam.setDirectionCosines(cosinex, cosiney);
     } else {
-        beam.setPosition({ 0, 0, 66.0 });
+        beam.setPosition({ 0, 0, source_height });
         beam.setDirectionCosines({ 1, 0, 0 }, { 0, -1, 0 });
-        const auto collanglex = std::atan(14.0 / 66);
-        const auto collangley = std::atan(13.0 / 66);
+        const auto collanglex = std::atan(14.0 / source_plane);
+        const auto collangley = std::atan(13.0 / source_plane);
         beam.setCollimationAngles(0, -collangley, collanglex, collangley);
+    }
+
+    for (int i = 0; i < 12; ++i) {
+        std::string tp;
+        if (tomo)
+            tp = "Tomo";
+        else
+            tp = "Plain";
+        std::string name = "Case3world" + tp + std::to_string(i * 30) + ".png";
+        saveImageOfWorld(name, world, beam, i * 30, 90, 500, 6);
     }
 
     Transport transport;

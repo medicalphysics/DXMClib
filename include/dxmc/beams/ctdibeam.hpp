@@ -40,9 +40,8 @@ public:
         , m_bowtieFilter(bowtie)
     {
         m_dirCosineX = vectormath::rotate(m_dirCosineX, m_dirCosineY, angle);
-        const auto beamdir = vectormath::cross(m_dirCosineX, m_dirCosineY);
-        m_pos = vectormath::scale(beamdir, -SDD / 2);
         m_dir = vectormath::cross(m_dirCosineX, m_dirCosineY);
+        m_pos = vectormath::scale(m_dir, -SDD / 2);
     }
 
     CTDIBeamExposure() = delete;
@@ -59,24 +58,28 @@ public:
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
-        const auto sinx = std::sin(angx);
-        const auto siny = std::sin(angy);
-        const auto sinz = std::sqrt(1 - sinx * sinx - siny * siny);
-        std::array pdir = {
-            m_dirCosineX[0] * sinx + m_dirCosineY[0] * siny + m_dir[0] * sinz,
-            m_dirCosineX[1] * sinx + m_dirCosineY[1] * siny + m_dir[1] * sinz,
-            m_dirCosineX[2] * sinx + m_dirCosineY[2] * siny + m_dir[2] * sinz
-        };
-
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
 
         Particle p = {
             .pos = m_pos,
-            .dir = pdir,
+            .dir = particleDirection(angx, angy),
             .energy = m_specter->sampleValue(state),
             .weight = m_weight * bowtie_weight
         };
         return p;
+    }
+
+protected:
+    std::array<double, 3> particleDirection(double anglex, double angley) const
+    {
+        const auto dx = std::tan(anglex);
+        const auto dy = std::tan(angley);
+        const std::array pdir = {
+            m_dirCosineX[0] * dx + m_dirCosineY[0] * dy + m_dir[0],
+            m_dirCosineX[1] * dx + m_dirCosineY[1] * dy + m_dir[1],
+            m_dirCosineX[2] * dx + m_dirCosineY[2] * dy + m_dir[2]
+        };
+        return vectormath::normalized(pdir);
     }
 
 private:

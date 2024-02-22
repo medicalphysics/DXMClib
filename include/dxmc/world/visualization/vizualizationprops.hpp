@@ -92,8 +92,8 @@ namespace visualizationprops {
             const auto end = vectormath::add(m_pos, vectormath::scale(m_dir, m_length));
             std::array<double, 6> aabb;
             for (std::size_t i = 0; i < 3; ++i) {
-                aabb[i] = std::min(m_pos[i], end[i]);
-                aabb[i + 3] = std::max(m_pos[i], end[i]);
+                aabb[i] = std::min(m_pos[i], end[i]) - GEOMETRIC_ERROR();
+                aabb[i + 3] = std::max(m_pos[i], end[i]) + GEOMETRIC_ERROR();
             }
             return aabb;
         }
