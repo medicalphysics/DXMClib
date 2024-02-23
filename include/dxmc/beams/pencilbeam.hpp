@@ -88,6 +88,11 @@ public:
         m_pos = pos;
     }
 
+    const std::array<double, 3>& position() const
+    {
+        return m_pos;
+    }
+
     void setDirection(const std::array<double, 3>& dir)
     {
         m_dir = dir;

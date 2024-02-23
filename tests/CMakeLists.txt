@@ -36,6 +36,9 @@ foreach(sourcefile ${TEST_SOURCES})
     target_link_libraries(${filename} libdxmc )
     add_test(NAME ${filename} COMMAND ${filename})    
     
+    #Adding interaction binary data to example 
+    dxmclib_add_physics_list(${filename})
+
     ## Spesific tools for testmaterial 
     if("${filename}" STREQUAL "testmaterial")
         add_custom_command(

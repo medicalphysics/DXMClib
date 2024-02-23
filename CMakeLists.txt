@@ -127,6 +127,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/floating.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/constants.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/particle.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/particletracker.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/interpolation.hpp"        
     )
 

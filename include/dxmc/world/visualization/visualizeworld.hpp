@@ -179,9 +179,17 @@ public:
         m_fov = std::atan(0.5 * plen / clen) / zoom;
     }
 
-    void addLineProp(const std::array<double, 3>& start, const std::array<double, 3>& dir, double length = -1, double radii = 1)
+    void addLineProp(const std::array<double, 3>& start, const std::array<double, 3>& dir, double length, double radii = 1)
     {
         m_lines.push_back({ start, dir, length, radii });
+    }
+
+    void addLineSegment(const std::array<double, 3>& start, const std::array<double, 3>& stop, double radii = 1)
+    {
+        const auto dir = vectormath::subtract(stop, start);
+        const auto length = vectormath::length(dir);
+        const auto ndir = vectormath::normalized(dir);
+        addLineProp(start, ndir, length, radii);
     }
 
     void clearLineProps()
@@ -255,7 +263,7 @@ public:
         addLineProp(start, f(cos, dir, angs[0], angs[1]), length, radii);
     }
 
-    template <typename U = std::uint8_t>
+    template <typename U = double>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
     static auto createBuffer(std::size_t width = 512, std::size_t height = 512)
     {

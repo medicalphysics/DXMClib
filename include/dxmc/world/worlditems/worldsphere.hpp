@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/interactions.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/particletracker.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/sphere.hpp"
@@ -113,6 +114,7 @@ public:
 
     void transport(Particle& p, RandomState& state) noexcept override
     {
+        m_tracker.registerParticle(p);
         if constexpr (FORCEINTERACTIONS)
             transportForced(p, state);
         else
@@ -143,6 +145,11 @@ public:
     void clearDoseScored() override
     {
         m_dose.clear();
+    }
+
+    const ParticleTracker& getTracker() const
+    {
+        return m_tracker;
     }
 
 protected:
@@ -194,5 +201,6 @@ private:
     double m_materialDensity = 1;
     EnergyScore m_energyScored;
     DoseScore m_dose;
+    ParticleTracker m_tracker;
 };
 }

@@ -18,10 +18,61 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
+#include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/ctdiphantom.hpp"
+#include "dxmc/world/worlditems/worldsphere.hpp"
 
 #include <iostream>
+
+bool testTracker()
+{
+
+    using CTDI = dxmc::CTDIPhantom<5, 1, false>;
+    using Sphere = dxmc::WorldSphere<5, 1>;
+    using World = dxmc::World<CTDI, Sphere>;
+
+    World w;
+    w.reserveNumberOfItems(2);
+    auto& ctdi = w.addItem<CTDI>({ 8 });
+    auto& sphere = w.addItem<Sphere>({ 2, { 0, 0, 15 } });
+    w.build();
+
+    dxmc::PencilBeam beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
+    beam.setNumberOfExposures(48);
+    beam.setNumberOfParticlesPerExposure(1e4);
+
+    dxmc::Transport transport;    
+    transport(w, beam);
+
+    dxmc::VisualizeWorld viz(w);
+
+    const auto& tracker = sphere.getTracker();
+    for (std::size_t i = 0; i < tracker.numberOfParticles(); ++i) {
+        const auto track = tracker.track(i);
+        constexpr double radii = 0.02;
+
+        if (track.size() > 0) {
+            int teller = 0;
+            while (teller < track.size() - 1) {
+                const auto first = track[teller];
+                const auto second = track[teller + 1];
+                viz.addLineSegment(first, second, radii);
+                ++teller;
+            }
+        }
+    }
+
+    auto buffer = viz.createBuffer(2048, 2048);
+    viz.setAzimuthalAngleDeg(60);
+    viz.setPolarAngleDeg(0);
+    viz.setDistance(100);
+    viz.suggestFOV(1.0);
+    viz.generate(w, buffer);
+    viz.savePNG("test.png", buffer);
+
+    return false;
+}
 
 bool testForcedinteractions()
 {
@@ -73,7 +124,7 @@ bool testForcedinteractions()
 int main(int argc, char* argv[])
 {
     auto success = true;
-
+    success = success && testTracker();
     success = success && testForcedinteractions();
 
     if (success)

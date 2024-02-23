@@ -23,6 +23,44 @@ Copyright 2019 Erlend Andersen
 #include <array>
 
 namespace dxmc {
+
+template <std::uint_fast32_t N = 5>
+class ParticleTrack {
+public:
+    void registerPosition(const std::array<double, 3>& pos)
+    {
+        // incrementing and circle around
+        m_index++;
+        m_history[m_index % N] = pos;
+    }
+
+    std::array<std::array<double, 3>, N> getHistory() const
+    {
+        std::array<std::array<double, 3>, N> r;
+        if (m_index < N) {
+            for (std::size_t i = 0; i < m_index; ++i)
+                r[i] = m_history[i];            
+        } else {
+            const std::uint_fast32_t first = (m_index + std::uint_fast32_t { 1 }) % N;
+            std::uint_fast32_t teller = 0;            
+            while (teller < N) {
+                r[teller] = m_history[(first + teller) % N];
+                ++teller;
+            }
+        }
+        return r;
+    }
+
+    std::uint_fast32_t getSize() const
+    {
+        return std::min(N, m_index);
+    }
+
+private:
+    std::array<std::array<double, 3>, N> m_history;
+    std::uint_fast32_t m_index = 0;
+};
+
 /**
  * @brief Simple struct to describe a photon
  */
@@ -45,11 +83,15 @@ struct Particle {
      */
     double weight;
 
+    ParticleTrack<> track;
+
     inline void translate(const double dist)
     {
+        track.registerPosition(pos);
         pos[0] += dir[0] * dist;
         pos[1] += dir[1] * dist;
         pos[2] += dir[2] * dist;
+        
     }
 
     inline static constexpr double border_translate_minimum()
