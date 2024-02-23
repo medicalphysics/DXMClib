@@ -97,6 +97,26 @@ namespace basicshape {
             return false;
         }
 
+        std::optional<double> intersectDisc(const Particle& p, const std::array<double, 3>& center, const std::array<double, 3>& normal, double radius)
+        {
+            const auto D = vectormath::dot(p.dir, normal);
+            constexpr double minOrt = GEOMETRIC_ERROR();
+            if (D < minOrt && D > -minOrt)
+                return std::nullopt; // dir and normal is orthogonal, we exits
+            auto t = vectormath::dot(vectormath::subtract(center, p.pos), normal) / D;
+
+            // intersection point
+            const auto p_int = vectormath::add(p.pos, vectormath::scale(p.dir, t));
+
+            // distance from center
+            const auto c_dist = vectormath::subtract(center, p_int);
+            // check if distance from center is less than radius
+            if (vectormath::dot(c_dist, c_dist) <= radius * radius) {
+                return t;
+            }
+            return std::nullopt;
+        }
+
         std::optional<std::array<double, 2>> intersectInterval(const Particle& p, const Cylinder& cylinder)
         {
             // return line segment cylinder wall intersection
@@ -106,32 +126,18 @@ namespace basicshape {
             const auto p1 = vectormath::add(cylinder.center, e);
 
             std::optional<double> tplane0;
-            { // testing cylindar planes
-                std::optional<double> tplane1;
-                const auto planar = vectormath::dot(cylinder.direction, p.dir);
-                if (std::abs(planar) > GEOMETRIC_ERROR()) {
-                    const auto den_inv = 1 / planar;
-                    const auto t0 = vectormath::dot(vectormath::subtract(p0, p.pos), cylinder.direction) * den_inv;
-                    const auto tp0 = vectormath::add(p.pos, vectormath::scale(p.dir, t0));
-
-                    const auto r2 = cylinder.radius * cylinder.radius;
-                    if (vectormath::length_sqr(vectormath::subtract(tp0, p0)) <= r2)
-                        tplane0 = t0;
-                    const auto t1 = vectormath::dot(vectormath::subtract(p1, p.pos), cylinder.direction) * den_inv;
-                    const auto tp1 = vectormath::add(p.pos, vectormath::scale(p.dir, t1));
-                    if (vectormath::length_sqr(vectormath::subtract(tp1, p1)) <= r2)
-                        tplane1 = t1;
-                    // sorting hits
+            {
+                const auto center0 = vectormath::add(cylinder.center, vectormath::scale(cylinder.direction, cylinder.half_height));
+                const auto center1 = vectormath::add(cylinder.center, vectormath::scale(cylinder.direction, -cylinder.half_height));
+                tplane0 = intersectDisc(p, center0, cylinder.direction, cylinder.radius);
+                if (!tplane0) {
+                    tplane0 = intersectDisc(p, center1, cylinder.direction, cylinder.radius);
+                } else {
+                    std::optional<double> tplane1 = intersectDisc(p, center1, cylinder.direction, cylinder.radius);
                     if (tplane0 && tplane1) {
-                        // we hit both planes and early exits
-                        if (tplane0 > tplane1) {
-                            tplane0.swap(tplane1);
-                        }
-                        std::array<double, 2> t_planes = { tplane0.value(), tplane1.value() };
-                        return std::make_optional(t_planes);
-                    } else if (tplane1) {
-                        // if not exit and one intersection, intersection is on tplane 0
-                        tplane0.swap(tplane1);
+                        // early exit
+                        const auto [mi, ma] = std::minmax(*tplane0, *tplane1);
+                        return std::make_optional<std::array<double, 2>>({ mi, ma });
                     }
                 }
             }
