@@ -38,6 +38,8 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
+    //TODO: move from baseclass to stdvariant template
+
 class KDTree {
 public:
     KDTree() {};

@@ -18,7 +18,6 @@ Copyright 2022 Erlend Andersen
 
 #pragma once
 #include "dxmc/dxmcrandom.hpp"
-#include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
 #include "dxmc/world/dosescore.hpp"
 #include "dxmc/world/energyscore.hpp"
@@ -26,11 +25,38 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/worldintersectionresult.hpp"
 
 #include <algorithm>
+#include <array>
+#include <concepts>
 #include <optional>
+
 
 namespace dxmc {
 
-class WorldItemBase {
+template <typename U>
+concept WorldItemType = requires(U u, Particle p, std::array<double, 3> vec, std::size_t index, double factor, RandomState state) {
+    u.translate(vec);
+    {
+        u.center()
+    } -> std::convertible_to<std::array<double, 3>>;
+    {
+        u.AABB()
+    } -> std::convertible_to<std::array<double, 6>>;
+    {
+        u.intersect(p)
+    } -> std::same_as<WorldIntersectionResult>;
+    {
+        u.energyScored(index)
+    } -> std::convertible_to<EnergyScore>;
+    {
+        u.doseScored(index)
+    } -> std::convertible_to<DoseScore>;
+    u.clearDoseScored();
+    u.clearEnergyScored();
+    u.addEnergyScoredToDoseScore(factor);
+    u.transport(p, state);
+};
+
+/*class WorldItemBase {
 public:
     virtual void translate(const std::array<double, 3>& dist) = 0;
     virtual std::array<double, 3> center() const = 0;
@@ -43,5 +69,5 @@ public:
     virtual const DoseScore& doseScored(std::size_t index = 0) const = 0;
     virtual void clearDoseScored() = 0;
     virtual void transport(Particle& p, RandomState& state) = 0;
-};
+};*/
 }

@@ -30,11 +30,15 @@ Copyright 2023 Erlend Andersen
 #include <concepts>
 #include <variant>
 #include <vector>
+#include <array>
 
 namespace dxmc {
 
-template <typename U>
+/*template <typename U>
 concept WorldItemType = (std::derived_from<U, WorldItemBase>);
+*/
+
+
 
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
