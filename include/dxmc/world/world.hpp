@@ -187,17 +187,17 @@ public:
         }
     }
 
-    inline auto intersect(const Particle& p)
+    inline auto intersect(const ParticleType auto& p)
     {
         return m_kdtree.intersect(p, m_aabb);
     }
 
-    inline auto intersectVisualization(const Particle& p) const 
+    inline auto intersectVisualization(const ParticleType auto& p) const
     {
         return m_kdtree.intersectVisualization(p, m_aabb);
     }
 
-    inline bool transportParticleToWorld(Particle& p) const
+    inline bool transportParticleToWorld(ParticleType auto& p) const
     {
         if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
             const auto t = basicshape::AABB::intersect(p, m_aabb);
@@ -211,7 +211,7 @@ public:
         return true;
     }
 
-    void transport(Particle& p, RandomState& state)
+    void transport(ParticleType auto& p, RandomState& state)
     {
         bool continueSampling = transportParticleToWorld(p);
         bool updateAttenuation = true;
@@ -239,7 +239,7 @@ public:
                     }
 
                     // intersection.item->transport(p, state);
-                    std::visit([&p, &state](auto& it) { it.transport(p, state); }, *intersection.item);                    
+                    std::visit([&p, &state](auto& it) { it.transport(p, state); }, *intersection.item);
                     continueSampling = p.energy > 0;
                 } else { // Free path is closer than object, we interact in the world empty space
                     p.translate(stepLength);

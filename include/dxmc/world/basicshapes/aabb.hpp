@@ -45,7 +45,7 @@ namespace basicshape {
         }
 
         template <bool FORWARD = true>
-        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 6>& aabb)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             const std::array<double, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
             double t1 = (aabb[0] - p.pos[0]) * pdir_inv[0];
@@ -65,7 +65,7 @@ namespace basicshape {
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
 
-        WorldIntersectionResult intersect(const Particle& p, const std::array<double, 6>& aabb)
+        WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             WorldIntersectionResult res;
             if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {
@@ -78,7 +78,7 @@ namespace basicshape {
         }
 
         template <typename U>
-        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const std::array<double, 6>& aabb)
+        VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             VisualizationIntersectionResult<U> res;
             if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {

@@ -97,13 +97,13 @@ public:
         return aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept
+    WorldIntersectionResult intersect(const ParticleType auto& p) const noexcept
     {
         return basicshape::sphere::intersect(p, m_center, m_radius);
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
         auto inter = basicshape::sphere::template intersectVisualization<U>(p, m_center, m_radius);
         if (inter.valid())
@@ -111,9 +111,12 @@ public:
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept
+    template <ParticleType P>
+    void transport(P& p, RandomState& state) noexcept
     {
-        m_tracker.registerParticle(p);
+        if constexpr (std::is_same<P, ParticleTrack>::value) {
+            m_tracker.registerParticle(p);
+        }
         if constexpr (FORCEINTERACTIONS)
             transportForced(p, state);
         else
@@ -152,7 +155,7 @@ public:
     }
 
 protected:
-    void transportRandom(Particle& p, RandomState& state) noexcept
+    void transportRandom(ParticleType auto& p, RandomState& state) noexcept
     {
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         bool updateAtt = false;
@@ -182,7 +185,7 @@ protected:
         }
     }
 
-    void transportForced(Particle& p, RandomState& state) noexcept
+    void transportForced(ParticleType auto& p, RandomState& state) noexcept
     {
         bool cont = basicshape::sphere::pointInside(p.pos, m_center, m_radius);
         while (cont) {

@@ -32,10 +32,10 @@ public:
         m_points.resize(size);
     }
 
-    void registerParticle(const Particle& p)
+    void registerParticle(const ParticleTrack& p)
     {
         // Threadsafe particle register
-        const auto tracksize = p.track.getSize() + 1;
+        const auto tracksize = p.getSize() + 1;
 
         auto ain = std::atomic_ref(m_index);
         const auto currentindex = ain.fetch_add(tracksize);
@@ -44,7 +44,7 @@ public:
             // we have space for particle
             auto aid = std::atomic_ref(m_currentId);
             const auto id = aid.fetch_add(std::uint64_t { 1 });
-            const auto track = p.track.getHistory();
+            const auto track = p.getHistory();
             for (std::size_t i = 0; i < tracksize - 1; ++i)
                 m_points[currentindex + i] = { .particleID = id, .position = track[i] };
             // adding current position

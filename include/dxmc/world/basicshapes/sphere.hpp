@@ -36,7 +36,7 @@ namespace basicshape {
             return dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2] < radii * radii;
         }
 
-        WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii)
+        WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
         {
             WorldIntersectionResult res;
             // nummeric stable ray sphere intersection
@@ -78,7 +78,7 @@ namespace basicshape {
             return res;
         }
 
-        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 3>& center, const double radii)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection
             const auto r2 = radii * radii;
@@ -117,7 +117,7 @@ namespace basicshape {
         }
 
         template <typename U>
-        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const std::array<double, 3>& center, const double radii)
+        VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
         {
             VisualizationIntersectionResult<U> res;
             const auto t_opt = intersectForwardInterval(p, center, radii);

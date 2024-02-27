@@ -27,7 +27,7 @@ Copyright 2022 Erlend Andersen
 #include <array>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING = false>
 class PencilBeamExposure {
 public:
     PencilBeamExposure(const std::array<double, 3>& pos, const std::array<double, 3>& dir, double energy, double weight, std::uint64_t N)
@@ -43,13 +43,21 @@ public:
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle sampleParticle(RandomState& state) const noexcept
+    auto sampleParticle(RandomState& state) const noexcept
     {
-        Particle p = { .pos = m_pos,
-            .dir = m_dir,
-            .energy = m_energy,
-            .weight = m_weight };
-        return p;
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = { .pos = m_pos,
+                .dir = m_dir,
+                .energy = m_energy,
+                .weight = m_weight };
+            return p;
+        } else {
+            Particle p = { .pos = m_pos,
+                .dir = m_dir,
+                .energy = m_energy,
+                .weight = m_weight };
+            return p;
+        }
     }
 
 private:
@@ -60,6 +68,7 @@ private:
     std::uint64_t m_NParticles = 100;
 };
 
+template <bool ENABLETRACKING = false>
 class PencilBeam {
 public:
     PencilBeam(const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<double, 3>& dir = { 0, 0, 1 }, double energy = 60)
@@ -133,9 +142,9 @@ public:
         m_weight = weight;
     }
 
-    PencilBeamExposure exposure(std::size_t i) const noexcept
+    PencilBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
-        PencilBeamExposure exp(m_pos, m_dir, m_energy, m_weight, m_particlesPerExposure);
+        PencilBeamExposure<ENABLETRACKING> exp(m_pos, m_dir, m_energy, m_weight, m_particlesPerExposure);
         return exp;
     }
 
@@ -152,5 +161,4 @@ private:
     std::uint64_t m_Nexposures = 100;
     std::uint64_t m_particlesPerExposure = 100;
 };
-
 }

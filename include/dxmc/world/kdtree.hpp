@@ -114,16 +114,7 @@ public:
         return teller;
     }
 
-    /*   std::vector<WorldItemBase*> items()
-       {
-           std::vector<WorldItemBase*> all;
-           item_iterator(all);
-           std::sort(all.begin(), all.end());
-           auto last = std::unique(all.begin(), all.end());
-           all.erase(last, all.end());
-           return all;
-       }
-   */
+    
     void translate(const std::array<double, 3>& dist)
     {
         m_plane += dist[m_D];
@@ -137,13 +128,13 @@ public:
         }
     }
 
-    KDTreeIntersectionResult<std::variant<Us...>> intersect(const Particle& particle, const std::array<double, 6>& aabb)
+    KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb)
     {
         const auto& inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
         return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<std::variant<Us...>> {};
     }
 
-    KDTreeIntersectionResult<std::variant<Us...>> intersect(const Particle& particle, const std::array<double, 2>& tbox)
+    KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox)
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
@@ -202,13 +193,13 @@ public:
         return back->intersect(particle, t_back);
     }
 
-    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const Particle& particle, const std::array<double, 6>& aabb) const
+    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const ParticleType auto& particle, const std::array<double, 6>& aabb) const
     {
         const auto& inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
         return inter ? intersectVisualization(particle, *inter) : VisualizationIntersectionResult<std::variant<Us...>> {};
     }
 
-    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const Particle& particle, const std::array<double, 2>& tbox) const
+    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const ParticleType auto& particle, const std::array<double, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
