@@ -131,7 +131,7 @@ public:
         return (m_dose[2].dose() + m_dose[3].dose() + m_dose[4].dose() + m_dose[5].dose()) / 4;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         for (auto& d : m_dose) {
             d.clear();
