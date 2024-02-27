@@ -51,10 +51,11 @@ void AtomicElementHandler::setCoherentData(const std::vector<double>& data)
     auto end = upperIdx(data, maxPhotonEnergy() * keVToMeV());
     m_atom.coherent.clear();
     m_atom.coherent.reserve((end - start) / 2);
-    for (std::size_t i = start; i <= end; i = i + 2) {        
+    for (std::size_t i = start; i <= end; i = i + 2) {
         const double e = data[i] * MeVTokeV();
         const double a = data[i + 1] * barnToAtt();
-        m_atom.coherent.push_back(std::make_pair(e, a));
+        if (e > 0 && a > 0)
+            m_atom.coherent.push_back(std::make_pair(e, a));
     }
     m_atom.coherent.shrink_to_fit();
 }
@@ -67,7 +68,8 @@ void AtomicElementHandler::setIncoherentData(const std::vector<double>& data)
     for (std::size_t i = start; i <= end; i = i + 2) {
         const double e = data[i] * MeVTokeV();
         const double a = data[i + 1] * barnToAtt();
-        m_atom.incoherent.push_back(std::make_pair(e, a));
+        if (e > 0 && a > 0)
+            m_atom.incoherent.push_back(std::make_pair(e, a));
     }
     m_atom.incoherent.shrink_to_fit();
 }
@@ -81,7 +83,8 @@ void AtomicElementHandler::setIncoherentAvgEnergyScatteredPhoton(const std::vect
     for (std::size_t i = start; i <= end; i = i + 2) {
         const double e = data[i] * MeVTokeV();
         const double a = data[i + 1] * MeVTokeV();
-        m_atom.incoherentMeanScatterEnergy.push_back(std::make_pair(e, a));
+        if (e > 0 && a > 0)
+            m_atom.incoherentMeanScatterEnergy.push_back(std::make_pair(e, a));
     }
     m_atom.incoherentMeanScatterEnergy.shrink_to_fit();
 }
@@ -147,7 +150,8 @@ void AtomicElementHandler::setPhotoelectricData(const std::vector<double>& data)
     for (std::size_t i = start; i <= end; i = i + 2) {
         const double e = data[i] * MeVTokeV();
         const double a = data[i + 1] * barnToAtt();
-        m_atom.photoel.push_back(std::make_pair(e, a));
+        if (e > 0 && a > 0)
+            m_atom.photoel.push_back(std::make_pair(e, a));
     }
     m_atom.photoel.shrink_to_fit();
 }
@@ -155,7 +159,6 @@ void AtomicElementHandler::setPhotoelectricData(const std::vector<double>& data)
 void AtomicElementHandler::setShellPhotoelectricData(std::uint64_t shell, const std::vector<double>& data)
 {
     if (!m_atom.shells.contains(shell)) {
-
         m_atom.shells[shell] = dxmc::AtomicShell(shell);
     }
     auto start = lowerIdx(data, minPhotonEnergy() * keVToMeV());
@@ -166,7 +169,8 @@ void AtomicElementHandler::setShellPhotoelectricData(std::uint64_t shell, const 
     for (std::size_t i = start; i <= end; i = i + 2) {
         const double e = data[i] * MeVTokeV();
         const double a = data[i + 1] * barnToAtt();
-        photoel.push_back(std::make_pair(e, a));
+        if (e > 0 && a > 0)
+            photoel.push_back(std::make_pair(e, a));
     }
     photoel.shrink_to_fit();
     m_atom.shells[shell].photoel = photoel;
