@@ -24,7 +24,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <cmath>
 #include <limits>
@@ -33,11 +32,10 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class WorldBoxGrid final : public WorldItemBase {
+class WorldBoxGrid {
 public:
     WorldBoxGrid(const std::array<double, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
-        : WorldItemBase()
-        , m_aabb(aabb)
+        : m_aabb(aabb)
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
@@ -46,8 +44,7 @@ public:
     }
 
     WorldBoxGrid(double aabb_size, std::array<double, 3> pos = { 0, 0, 0 })
-        : WorldItemBase()
-        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
@@ -95,11 +92,20 @@ public:
         m_dose.resize(ndim);
     }
 
-    std::size_t totalNumberOfVoxels() const { return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2]; }
+    std::size_t totalNumberOfVoxels() const
+    {
+        return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
+    }
 
-    const std::array<std::size_t, 3>& voxelDimensions() const { return m_voxelDim; }
+    const std::array<std::size_t, 3>& voxelDimensions() const
+    {
+        return m_voxelDim;
+    }
 
-    const std::array<double, 3>& voxelSpacing() const { return m_voxelSize; }
+    const std::array<double, 3>& voxelSpacing() const
+    {
+        return m_voxelSize;
+    }
 
     std::size_t gridIndex(const std::array<double, 3>& pos) const noexcept
     {
@@ -109,7 +115,7 @@ public:
         return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
     }
 
-    void translate(const std::array<double, 3>& dist) noexcept override
+    void translate(const std::array<double, 3>& dist) noexcept
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -117,7 +123,7 @@ public:
         }
     }
 
-    std::array<double, 3> center() const noexcept override
+    std::array<double, 3> center() const noexcept
     {
         std::array<double, 3> c {
             (m_aabb[0] + m_aabb[3]) * 0.5,
@@ -127,19 +133,20 @@ public:
         return c;
     }
 
-    std::array<double, 6> AABB() const noexcept override
+    const std::array<double, 6>& AABB() const noexcept
     {
         return m_aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept
     {
         return basicshape::AABB::intersect(p, m_aabb);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
-        auto inter = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_aabb);
+        auto inter = basicshape::AABB::template intersectVisualization<U>(p, m_aabb);
         if (inter.valid()) {
             auto p_int = p;
             p_int.translate(inter.intersection);
@@ -149,7 +156,7 @@ public:
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;
@@ -180,19 +187,19 @@ public:
         }
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored.at(index);
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         for (auto& d : m_energyScored) {
             d.clear();
         }
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto volume = m_voxelSize[0] * m_voxelSize[1] * m_voxelSize[2];
         for (std::size_t i = 0; i < m_energyScored.size(); ++i) {
@@ -200,12 +207,12 @@ public:
         }
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose.at(index);
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         for (auto& d : m_dose) {
             d.clear();

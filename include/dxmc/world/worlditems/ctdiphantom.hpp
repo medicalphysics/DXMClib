@@ -25,7 +25,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/cylinder.hpp"
 #include "dxmc/world/statickdtree.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 #include <limits>
@@ -36,11 +35,10 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEDINTERACTIONS = true>
-class CTDIPhantom final : public WorldItemBase {
+class CTDIPhantom {
 public:
     CTDIPhantom(double radius = 16, double height = 15, const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<double, 3>& direction = { 0, 0, 1 })
-        : WorldItemBase()
-        , m_pmma(Material<NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        : m_pmma(Material<NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
         , m_air(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         radius = std::abs(radius);
@@ -73,13 +71,13 @@ public:
         m_kdtree = StaticKDTree<3, CTDIAirHole>(holes);
     }
 
-    void translate(const std::array<double, 3>& dist) noexcept override
+    void translate(const std::array<double, 3>& dist)
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
         m_kdtree.translate(dist);
     }
 
-    std::array<double, 3> center() const noexcept override
+    const std::array<double, 3>& center() const
     {
         return m_cylinder.center;
     }
@@ -93,19 +91,19 @@ public:
         }
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScore[index];
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         for (auto& d : m_energyScore) {
             d.clear();
         }
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto holeVolume = holeHeight() * std::numbers::pi_v<double> * holeRadii() * holeRadii();
 
@@ -118,7 +116,7 @@ public:
         m_dose[0].addScoredEnergy(m_energyScore[0], pmmaVolume, m_pmma_density, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose[index];
     }
@@ -140,19 +138,20 @@ public:
         }
     }
 
-    std::array<double, 6> AABB() const noexcept override
+    std::array<double, 6> AABB() const
     {
         return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
-        auto res = basicshape::cylinder::intersectVisualization<WorldItemBase>(p, m_cylinder);
+        auto res = basicshape::cylinder::intersectVisualization<U>(p, m_cylinder);
         if (res.valid()) {
             const std::array tbox = { res.intersection, res.intersection + m_cylinder.radius };
             auto holes = m_kdtree.intersect(p, tbox);
@@ -165,7 +164,7 @@ public:
         return res;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state)
     {
         bool updateAtt = true;
         AttenuationValues att;

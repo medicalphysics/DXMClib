@@ -26,7 +26,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/cylinder.hpp"
 #include "dxmc/world/dosescore.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -34,11 +33,10 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class WorldCylinder final : public WorldItemBase {
+class WorldCylinder {
 public:
     WorldCylinder(double radius = 16, double height = 10, const std::array<double, 3>& center = { 0, 0, 0 }, const std::array<double, 3>& dir = { 0, 0, 1 })
-        : WorldItemBase()
-        , m_material(Material<NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
+        : m_material(Material<NMaterialShells>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value())
     {
         m_cylinder.radius = std::abs(radius);
         m_cylinder.half_height = std::abs(height) / 2;
@@ -74,17 +72,17 @@ public:
         return false;
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
     }
 
-    std::array<double, 3> center() const override
+    const std::array<double, 3>& center() const
     {
         return m_cylinder.center;
     }
 
-    std::array<double, 6> AABB() const override
+    const std::array<double, 6>& AABB() const
     {
         return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
@@ -99,20 +97,21 @@ public:
         m_cylinder.half_height = std::abs(h / 2);
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
-        auto inter = basicshape::cylinder::template intersectVisualization<WorldItemBase>(p, m_cylinder);
+        auto inter = basicshape::cylinder::template intersectVisualization<U>(p, m_cylinder);
         if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;
@@ -142,27 +141,27 @@ public:
         }
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         m_dose.addScoredEnergy(m_energyScored, m_cylinder.volume(), m_materialDensity, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_dose.clear();
     }

@@ -23,7 +23,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/kdtreeintersectionresult.hpp"
 #include "dxmc/world/visualization/vizualizationprops.hpp"
 #include "dxmc/world/world.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
+#include "dxmc/world/worlditems/worlditemtype.hpp"
 
 #include <array>
 #include <atomic>
@@ -86,25 +86,21 @@ struct VisualizationBuffer {
 };
 
 template <typename U>
-concept WorldType = requires(U world, Particle p, KDTreeIntersectionResult<WorldItemBase> res) {
-    {
-        world.intersect(p)
-    } -> std::same_as<KDTreeIntersectionResult<WorldItemBase>>;
+concept WorldType = requires(const U world, Particle p) {
+    world.intersect(p);
+    world.getItemPointers();
 };
 
+template <WorldItemType... Us>
 class VisualizeWorld {
 public:
-    template <WorldType W>
-    VisualizeWorld(const W& world)
+    // template <WorldType W>
+    VisualizeWorld(const World<Us...>& world)
     {
-        m_center = world.center();
-        m_world_aabb = world.AABB();
-        suggestFOV();
-        updateColorsFromWorld(world);
+        updateFromWorld(world);
     }
 
-    template <WorldType W>
-    void updateFromWorld(const W& world)
+    void updateFromWorld(const World<Us...>& world)
     {
         m_center = world.center();
         m_world_aabb = world.AABB();
@@ -197,7 +193,7 @@ public:
         m_lines.clear();
     }
 
-    void addColorByValueItem(WorldItemBase* item)
+    void addColorByValueItem(const std::variant<Us...>* item)
     {
         m_colorByValue.insert(item);
     }
@@ -271,9 +267,9 @@ public:
         return buffer;
     }
 
-    template <WorldType W, typename U>
+    template <typename U>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
-    void generate(W& world, VisualizationBuffer<U>& buffer) const
+    void generate(const World<Us...>& world, VisualizationBuffer<U>& buffer) const
     {
         const auto t_start = std::chrono::high_resolution_clock::now();
         generate(world, buffer.buffer, buffer.width, buffer.height);
@@ -281,9 +277,9 @@ public:
         buffer.renderTime = t_end - t_start;
     }
 
-    template <WorldType W, typename U>
+    template <typename U>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
-    void generate(W& world, std::vector<U>& buffer, int width = 512, int height = 512) const
+    void generate(const World<Us...>& world, std::vector<U>& buffer, int width = 512, int height = 512) const
     {
         if constexpr (std::is_same<U, std::uint8_t>::value)
             std::fill(buffer.begin(), buffer.end(), 255);
@@ -295,9 +291,9 @@ public:
         threads.reserve(n_threads - 1);
         std::atomic<int> idx(0);
         for (std::size_t i = 0; i < n_threads - 1; ++i) {
-            threads.emplace_back(&VisualizeWorld::template generateWorker<W, U>, this, std::ref(world), std::ref(buffer), width, height, std::ref(idx));
+            threads.emplace_back(&VisualizeWorld::template generateWorker<U>, this, std::cref(world), std::ref(buffer), width, height, std::ref(idx));
         }
-        generateWorker<W, U>(world, buffer, width, height, idx);
+        generateWorker<U>(world, buffer, width, height, idx);
         for (auto& thread : threads) {
             thread.join();
         }
@@ -335,9 +331,9 @@ public:
     }
 
 protected:
-    template <WorldType W, typename U>
+    template <typename U>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
-    void generateWorker(W& world, std::vector<U>& buffer, int width, int height, std::atomic<int>& idx) const
+    void generateWorker(const World<Us...>& world, std::vector<U>& buffer, int width, int height, std::atomic<int>& idx) const
     {
         const auto xcos = vectormath::rotate<double>({ 0, 1, 0 }, { 0, 0, 1 }, m_camera_pos[1]);
         const auto ycos = vectormath::rotate<double>({ 0, 0, 1 }, xcos, m_camera_pos[2] - std::numbers::pi_v<double> / 2);
@@ -472,10 +468,9 @@ protected:
         return rgb;
     }
 
-    template <WorldType W>
-    void updateColorsFromWorld(const W& world)
+    void updateColorsFromWorld(const World<Us...>& world)
     {
-        const std::vector<const WorldItemBase*> items = world.getItemPointers();
+        const auto items = world.getItemPointers();
         const auto N = items.size();
         m_colors_char.resize(N);
         m_colors_float.resize(N);
@@ -488,7 +483,7 @@ protected:
 
     template <typename U = std::uint8_t>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
-    std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const WorldItemBase* item) const
+    std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const auto* item) const
     {
         if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
             const auto scaling = 0.8 + 0.2 * vectormath::dot(p.dir, normal);
@@ -560,11 +555,11 @@ private:
     double m_fov = -1;
     std::vector<std::array<double, 3>> m_colors_float;
     std::vector<std::array<std::uint8_t, 3>> m_colors_char;
-    std::unordered_map<const WorldItemBase*, std::size_t> m_colorIndex;
+    std::unordered_map<const std::variant<Us...>*, std::size_t> m_colorIndex;
     std::vector<visualizationprops::Line> m_lines;
     std::array<std::uint8_t, 3> m_propColor = { 0, 0, 0 };
     std::array<std::uint8_t, 3> m_backgroundColor = { 255, 255, 255 };
-    std::set<const WorldItemBase*> m_colorByValue;
+    std::set<const std::variant<Us...>*> m_colorByValue;
     std::array<double, 2> m_colorByValueClamp = { 0, 1 };
 };
 }

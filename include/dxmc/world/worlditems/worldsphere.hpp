@@ -26,7 +26,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/sphere.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -34,11 +33,10 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEINTERACTIONS = false>
-class WorldSphere final : public WorldItemBase {
+class WorldSphere {
 public:
     WorldSphere(double radius = 16, const std::array<double, 3>& pos = { 0, 0, 0 })
-        : WorldItemBase()
-        , m_radius(std::abs(radius))
+        : m_radius(std::abs(radius))
         , m_center(pos)
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
@@ -76,17 +74,17 @@ public:
         return false;
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_center = vectormath::add(m_center, dist);
     }
 
-    std::array<double, 3> center() const override
+    std::array<double, 3> center() const
     {
         return m_center;
     }
 
-    std::array<double, 6> AABB() const override
+    std::array<double, 6> AABB() const
     {
         std::array<double, 6> aabb {
             m_center[0] - m_radius,
@@ -99,20 +97,21 @@ public:
         return aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept
     {
         return basicshape::sphere::intersect(p, m_center, m_radius);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
-        auto inter = basicshape::sphere::template intersectVisualization<WorldItemBase>(p, m_center, m_radius);
+        auto inter = basicshape::sphere::template intersectVisualization<U>(p, m_center, m_radius);
         if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept
     {
         m_tracker.registerParticle(p);
         if constexpr (FORCEINTERACTIONS)
@@ -121,28 +120,28 @@ public:
             transportRandom(p, state);
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto volume = (4 * std::numbers::pi_v<double> * m_radius * m_radius * m_radius) / 3;
         m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_dose.clear();
     }

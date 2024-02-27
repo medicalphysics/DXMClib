@@ -24,7 +24,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -32,11 +31,10 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class WorldBox final : public WorldItemBase {
+class WorldBox {
 public:
     WorldBox(const std::array<double, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
-        : WorldItemBase()
-        , m_aabb(aabb)
+        : m_aabb(aabb)
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
@@ -44,8 +42,7 @@ public:
     }
 
     WorldBox(double aabb_size, std::array<double, 3> pos = { 0, 0, 0 })
-        : WorldItemBase()
-        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] = -std::abs(aabb_size) + pos[i];
@@ -59,13 +56,17 @@ public:
     {
         m_material = material;
     }
+
     void setMaterial(const Material<NMaterialShells>& material, double density)
     {
         m_material = material;
         setMaterialDensity(density);
     }
 
-    void setMaterialDensity(double density) { m_materialDensity = std::abs(density); }
+    void setMaterialDensity(double density)
+    {
+        m_materialDensity = std::abs(density);
+    }
 
     bool setNistMaterial(const std::string& nist_name)
     {
@@ -78,7 +79,7 @@ public:
         return false;
     }
 
-    void translate(const std::array<double, 3>& dist) noexcept override
+    void translate(const std::array<double, 3>& dist) noexcept
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -86,7 +87,7 @@ public:
         }
     }
 
-    std::array<double, 3> center() const noexcept override
+    std::array<double, 3> center() const noexcept
     {
         std::array<double, 3> c {
             (m_aabb[0] + m_aabb[3]) * 0.5,
@@ -96,25 +97,26 @@ public:
         return c;
     }
 
-    std::array<double, 6> AABB() const noexcept override
+    const std::array<double, 6>& AABB() const noexcept
     {
         return m_aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept
     {
         return basicshape::AABB::intersect(p, m_aabb);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
-        auto inter = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_aabb);
+        auto inter = basicshape::AABB::template intersectVisualization<U>(p, m_aabb);
         if (inter.valid())
             inter.value = m_dose.dose();
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;
@@ -144,17 +146,17 @@ public:
         }
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto [l, h] = vectormath::splice(m_aabb);
         const auto sides = vectormath::subtract(h, l);
@@ -163,12 +165,12 @@ public:
         m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_dose.clear();
     }

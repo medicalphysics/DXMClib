@@ -22,7 +22,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <algorithm>
 #include <array>
@@ -34,11 +33,10 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-class FluenceScore final : public WorldItemBase {
+class FluenceScore {
 public:
     FluenceScore(double radius = 16, const std::array<double, 3>& center = { 0, 0, 0 }, const std::array<double, 3>& normal = { 0, 0, 1 })
-        : WorldItemBase()
-        , m_center(center)
+        : m_center(center)
         , m_radius(radius)
     {
         setPlaneNormal(normal);
@@ -53,7 +51,7 @@ public:
         std::fill(m_intensity.begin(), m_intensity.end(), 0);
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_center[i] += dist[i];
@@ -62,11 +60,12 @@ public:
         }
     }
 
-    std::array<double, 3> center() const override
+    const std::array<double, 3>& center() const
     {
         return m_center;
     }
-    std::array<double, 6> AABB() const override
+
+    const std::array<double, 6>& AABB() const
     {
         return m_aabb;
     }
@@ -87,16 +86,17 @@ public:
         return spec;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const override
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         const auto aabb_inter = basicshape::AABB::intersectForwardInterval(p, m_aabb);
         return aabb_inter ? intersectDisc(p) : WorldIntersectionResult {};
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
     {
         const auto res = intersect(p);
-        VisualizationIntersectionResult<WorldItemBase> w;
+        VisualizationIntersectionResult<U> w;
         if (res.valid()) {
             w.rayOriginIsInsideItem = false;
             w.intersection = res.intersection;
@@ -107,34 +107,34 @@ public:
         return w;
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
         std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         // not defined for fluence counter
         return;
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dummyDose;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         return;
     }
 
-    void transport(Particle& particle, RandomState& state) override
+    void transport(Particle& particle, RandomState& state)
     {
         // Assuming particle is on the disc
         const auto eIdx = static_cast<std::size_t>(particle.energy / m_energy_step);

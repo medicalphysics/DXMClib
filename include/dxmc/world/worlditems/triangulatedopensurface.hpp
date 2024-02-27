@@ -26,7 +26,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtree.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshstlreader.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 #include <execution>
@@ -36,26 +35,23 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class TriangulatedOpenSurface final : public WorldItemBase {
+class TriangulatedOpenSurface {
 public:
     TriangulatedOpenSurface()
-        : WorldItemBase()
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
     TriangulatedOpenSurface(const std::vector<Triangle>& triangles, double surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
-        : WorldItemBase()
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         setData(triangles, surfaceThickness, max_tree_dept);
     }
 
     TriangulatedOpenSurface(const std::string& path, double surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
-        : WorldItemBase()
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader reader;
@@ -105,7 +101,7 @@ public:
         return m_kdtree.items();
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_kdtree.translate(dist);
         for (std::size_t i = 0; i < 3; ++i) {
@@ -139,7 +135,7 @@ public:
         m_aabb = expandAABB(m_kdtree.AABB());
     }
 
-    std::array<double, 3> center() const override
+    std::array<double, 3> center() const
     {
         std::array<double, 3> center { 0, 0, 0 };
         const auto triangles = getTriangles();
@@ -155,16 +151,17 @@ public:
         return center;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const override
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
         return WorldIntersectionResult { .intersection = res.intersection, .rayOriginIsInsideItem = false, .intersectionValid = res.item != nullptr };
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
-        VisualizationIntersectionResult<WorldItemBase> res_int;
+        VisualizationIntersectionResult<U> res_int;
         if (res.valid()) {
             res_int.normal = vectormath::normalized(res.item->planeVector());
             if (res.rayOriginIsInsideItem) // fix normal vector
@@ -177,7 +174,7 @@ public:
         return res_int;
     }
 
-    void transport(Particle& p, RandomState& state) override
+    void transport(Particle& p, RandomState& state)
     {
         const auto att = m_material.attenuationValues(p.energy);
         const auto attSumInv = 1 / (att.sum() * m_materialDensity);
@@ -197,34 +194,34 @@ public:
         p.border_translate(length * 0.5);
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto triangles = getTriangles();
         const auto volume = calculateVolume(triangles, m_thickness);
         m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_dose.clear();
     }
 
-    std::array<double, 6> AABB() const override
+    const std::array<double, 6>& AABB() const
     {
         return m_aabb;
     }

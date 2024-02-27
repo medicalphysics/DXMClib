@@ -23,7 +23,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
 #include "dxmc/world/visualizationintersectionresult.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
+#include "dxmc/world/worlditems/worlditemtype.hpp"
 
 #include <algorithm>
 #include <array>
@@ -34,16 +34,17 @@ Copyright 2022 Erlend Andersen
 #include <memory>
 #include <numeric>
 #include <optional>
+#include <variant>
 #include <vector>
 
 namespace dxmc {
 
-    //TODO: move from baseclass to stdvariant template
-
+// TODO: move from baseclass to stdvariant template
+template <WorldItemType... Us>
 class KDTree {
 public:
     KDTree() {};
-    KDTree(std::vector<WorldItemBase*>& items, const std::size_t max_depth = 8)
+    KDTree(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
     {
         if (items.size() < 2) {
             for (const auto& item : items)
@@ -59,8 +60,8 @@ public:
             std::numeric_limits<double>::lowest(),
             std::numeric_limits<double>::lowest(),
         };
-        for (const auto& item : items) {
-            const auto aabb_tri = item->AABB();
+        for (auto& item : items) {
+            const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(aabb[i], aabb_tri[i]);
             }
@@ -80,8 +81,8 @@ public:
             m_items = items;
         } else {
             m_plane = split;
-            std::vector<WorldItemBase*> left;
-            std::vector<WorldItemBase*> right;
+            std::vector<std::variant<Us...>*> left;
+            std::vector<std::variant<Us...>*> right;
             for (const auto& item : items) {
                 const auto side = planeSide(item, m_plane, m_D);
                 if (side <= 0)
@@ -113,16 +114,16 @@ public:
         return teller;
     }
 
-    std::vector<WorldItemBase*> items()
-    {
-        std::vector<WorldItemBase*> all;
-        item_iterator(all);
-        std::sort(all.begin(), all.end());
-        auto last = std::unique(all.begin(), all.end());
-        all.erase(last, all.end());
-        return all;
-    }
-
+    /*   std::vector<WorldItemBase*> items()
+       {
+           std::vector<WorldItemBase*> all;
+           item_iterator(all);
+           std::sort(all.begin(), all.end());
+           auto last = std::unique(all.begin(), all.end());
+           all.erase(last, all.end());
+           return all;
+       }
+   */
     void translate(const std::array<double, 3>& dist)
     {
         m_plane += dist[m_D];
@@ -136,21 +137,21 @@ public:
         }
     }
 
-    KDTreeIntersectionResult<WorldItemBase> intersect(const Particle& particle, const std::array<double, 6>& aabb)
+    KDTreeIntersectionResult<std::variant<Us...>> intersect(const Particle& particle, const std::array<double, 6>& aabb)
     {
-
         const auto& inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<WorldItemBase> {};
+        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<std::variant<Us...>> {};
     }
 
-    KDTreeIntersectionResult<WorldItemBase> intersect(const Particle& particle, const std::array<double, 2>& tbox)
+    KDTreeIntersectionResult<std::variant<Us...>> intersect(const Particle& particle, const std::array<double, 2>& tbox)
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
 
-            KDTreeIntersectionResult<WorldItemBase> res = { .item = nullptr, .intersection = std::numeric_limits<double>::max() };
+            KDTreeIntersectionResult<std::variant<Us...>> res = { .item = nullptr, .intersection = std::numeric_limits<double>::max() };
             for (auto& item : m_items) {
-                const auto t_cand = item->intersect(particle);
+                // const auto t_cand = item->intersect(particle);
+                const auto t_cand = std::visit([&particle](const auto& it) { return it.intersect(particle); }, *item);
                 if (t_cand.valid()) {
                     const auto border_delta = t_cand.rayOriginIsInsideItem ? -GEOMETRIC_ERROR() : GEOMETRIC_ERROR();
                     if (t_cand.intersection + border_delta < res.intersection) {
@@ -176,8 +177,8 @@ public:
             return hit_left;
         }
 
-        KDTree* const front = particle.dir[m_D] > 0 ? m_left.get() : m_right.get();
-        KDTree* const back = particle.dir[m_D] > 0 ? m_right.get() : m_left.get();
+        auto front = particle.dir[m_D] > 0 ? m_left.get() : m_right.get();
+        auto back = particle.dir[m_D] > 0 ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -201,21 +202,21 @@ public:
         return back->intersect(particle, t_back);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& particle, const std::array<double, 6>& aabb)
+    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const Particle& particle, const std::array<double, 6>& aabb) const
     {
         const auto& inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersectVisualization(particle, *inter) : VisualizationIntersectionResult<WorldItemBase> {};
+        return inter ? intersectVisualization(particle, *inter) : VisualizationIntersectionResult<std::variant<Us...>> {};
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& particle, const std::array<double, 2>& tbox)
+    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const Particle& particle, const std::array<double, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
 
-            VisualizationIntersectionResult<WorldItemBase> res;
+            VisualizationIntersectionResult<std::variant<Us...>> res;
             res.intersection = std::numeric_limits<double>::max();
             for (auto& item : m_items) {
-                const auto t_cand = item->intersectVisualization(particle);
+                auto t_cand = std::visit([&particle](const auto& it) { return it.template intersectVisualization<std::variant<Us...>>(particle); }, *item);
                 if (t_cand.valid()) {
                     if (t_cand.intersection < res.intersection) {
                         if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
@@ -239,8 +240,8 @@ public:
             return hit_left;
         }
 
-        KDTree* const front = particle.dir[m_D] > 0 ? m_left.get() : m_right.get();
-        KDTree* const back = particle.dir[m_D] > 0 ? m_right.get() : m_left.get();
+        auto front = particle.dir[m_D] > 0 ? m_left.get() : m_right.get();
+        auto back = particle.dir[m_D] > 0 ? m_right.get() : m_left.get();
 
         const auto t = (m_plane - particle.pos[m_D]) / particle.dir[m_D];
 
@@ -265,15 +266,15 @@ public:
     }
 
 protected:
-    double planeSplit(const std::vector<WorldItemBase*>& items) const
+    double planeSplit(const std::vector<std::variant<Us...>*>& items) const
     {
         const auto N = items.size();
         std::vector<double> vals;
         vals.reserve(N);
 
         for (const auto& item : items) {
-            const auto v = item->center()[m_D];
-            vals.push_back(v);
+            const auto v = std::visit([](const auto& it) { return it.center(); }, *item);
+            vals.push_back(v[m_D]);
         }
 
         std::sort(vals.begin(), vals.end());
@@ -285,7 +286,7 @@ protected:
         }
     }
 
-    int figureOfMerit(const std::vector<WorldItemBase*>& items, const double planesep) const
+    int figureOfMerit(const std::vector<std::variant<Us...>*>& items, const double planesep) const
     {
         int fom = 0;
         int shared = 0;
@@ -299,12 +300,13 @@ protected:
         return std::abs(fom) + shared;
     }
 
-    static int planeSide(WorldItemBase* triangle, const double plane, const unsigned int D)
+    static int planeSide(std::variant<Us...>* item, const double plane, const unsigned int D)
     {
         auto max = std::numeric_limits<double>::lowest();
         auto min = std::numeric_limits<double>::max();
 
-        const auto& aabb = triangle->AABB();
+        const auto aabb = std::visit([](const auto& it) { return it.AABB(); }, *item);
+
         min = aabb[D];
         max = aabb[D + 3];
 
@@ -324,7 +326,7 @@ protected:
             m_left->depth_iterator(teller);
     }
 
-    void item_iterator(std::vector<const WorldItemBase*>& all) const
+    void item_iterator(std::vector<const std::variant<Us...>*>& all) const
     {
         if (m_left) {
             m_left->item_iterator(all);
@@ -334,7 +336,7 @@ protected:
         }
     }
 
-    void item_iterator(std::vector<WorldItemBase*>& all)
+    void item_iterator(std::vector<std::variant<Us...>*>& all)
     {
         if (m_left) {
             m_left->item_iterator(all);
@@ -348,7 +350,7 @@ protected:
     {
         if (!m_left) {
             for (const auto& item : m_items) {
-                const auto aabb_tri = item->AABB();
+                const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
                 for (std::size_t i = 0; i < 3; ++i) {
                     aabb[i] = std::min(aabb[i], aabb_tri[i]);
                 }
@@ -379,9 +381,8 @@ protected:
 private:
     std::uint_fast32_t m_D = 0;
     double m_plane = 0;
-    std::vector<WorldItemBase*> m_items;
+    std::vector<std::variant<Us...>*> m_items;
     std::unique_ptr<KDTree> m_left = nullptr;
     std::unique_ptr<KDTree> m_right = nullptr;
 };
-
 }

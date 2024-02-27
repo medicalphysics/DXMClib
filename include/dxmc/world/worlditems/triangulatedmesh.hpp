@@ -26,7 +26,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtree.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshstlreader.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 #include <execution>
@@ -36,26 +35,23 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class TriangulatedMesh final : public WorldItemBase {
+class TriangulatedMesh {
 public:
     TriangulatedMesh()
-        : WorldItemBase()
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
     TriangulatedMesh(const std::vector<Triangle>& triangles, const std::size_t max_tree_dept = 8)
-        : WorldItemBase()
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         setData(triangles, max_tree_dept);
     }
 
     TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
-        : WorldItemBase()
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader reader;
@@ -64,8 +60,7 @@ public:
     }
 
     TriangulatedMesh(const std::string& path, double scale, const std::size_t max_tree_dept = 8)
-        : WorldItemBase()
-        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
     {
         STLReader reader;
@@ -113,7 +108,7 @@ public:
         return m_kdtree.items();
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_kdtree.translate(dist);
         for (std::size_t i = 0; i < 3; ++i) {
@@ -147,7 +142,7 @@ public:
         m_volume = calculateVolume(triangles, m_aabb);
     }
 
-    std::array<double, 3> center() const override
+    std::array<double, 3> center() const
     {
         std::array<double, 3> center { 0, 0, 0 };
         const auto triangles = getTriangles();
@@ -163,16 +158,17 @@ public:
         return center;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const override
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
         return WorldIntersectionResult { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
-        VisualizationIntersectionResult<WorldItemBase> res_int;
+        VisualizationIntersectionResult<U> res_int;
         if (res.valid()) {
             res_int.normal = vectormath::normalized(res.item->planeVector());
             res_int.intersection = res.intersection;
@@ -183,7 +179,7 @@ public:
         return res_int;
     }
 
-    void transport(Particle& p, RandomState& state) override
+    void transport(Particle& p, RandomState& state)
     {
         bool cont = true;
         bool updateAtt = true;
@@ -214,33 +210,33 @@ public:
         }
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         return m_energyScored;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         // not defined for fleunce counter
         m_dose.addScoredEnergy(m_energyScored, m_volume, m_materialDensity, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_dose.clear();
     }
 
-    std::array<double, 6> AABB() const override
+    const std::array<double, 6>& AABB() const
     {
         return m_aabb;
     }

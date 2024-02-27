@@ -22,7 +22,7 @@ namespace dxmc {
 
 template <typename U>
 struct KDTreeIntersectionResult {
-    U* item = nullptr;
+     U* item = nullptr;
     double intersection = 0;
     bool rayOriginIsInsideItem = false;
 

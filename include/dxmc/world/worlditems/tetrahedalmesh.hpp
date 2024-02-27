@@ -28,7 +28,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 #include <string>
@@ -38,21 +37,18 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FLUENCESCORING = true>
-class TetrahedalMesh final : public WorldItemBase {
+class TetrahedalMesh {
 public:
     TetrahedalMesh()
-        : WorldItemBase()
     {
     }
 
     TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, std::array<int, 3> depth = { 8, 8, 8 })
-        : WorldItemBase()
     {
         setData(tets, collectionDensities, materials, collectionNames, depth);
     }
 
     TetrahedalMesh(const std::vector<Tetrahedron>& tets, const std::vector<double>& collectionDensities, const std::vector<Material<NMaterialShells>>& materials, const std::vector<std::string>& collectionNames = {}, int max_depth = 8)
-        : WorldItemBase()
     {
         setData(tets, collectionDensities, materials, collectionNames, { max_depth, max_depth, max_depth });
     }
@@ -100,12 +96,12 @@ public:
         return true;
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_grid.translate(dist);
     }
 
-    std::array<double, 3> center() const override
+    std::array<double, 3> center() const
     {
         const auto& aabb = m_grid.AABB();
         const auto [low, high] = vectormath::splice(aabb);
@@ -113,12 +109,12 @@ public:
         return vectormath::scale(c, 0.5);
     }
 
-    std::array<double, 6> AABB() const override
+    const std::array<double, 6>& AABB() const
     {
         return m_grid.AABB();
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const override
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         WorldIntersectionResult res;
         if (const auto kres = m_grid.intersect(p); kres.valid()) {
@@ -129,9 +125,10 @@ public:
         return res;
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
     {
-        VisualizationIntersectionResult<WorldItemBase> res;
+        VisualizationIntersectionResult<U> res;
         if (const auto kres = m_grid.intersect(p); kres.valid()) {
             res.intersection = kres.intersection;
             res.rayOriginIsInsideItem = kres.rayOriginIsInsideItem;
@@ -144,18 +141,18 @@ public:
         return res;
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         const auto tets = m_grid.tetrahedrons();
         return tets.at(index).energyScored();
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_grid.clearEnergyScored();
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         auto& tets = m_grid.tetrahedrons();
         std::for_each(std::execution::par_unseq, tets.begin(), tets.end(), [=](auto& tet) {
@@ -165,18 +162,18 @@ public:
         });
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         const auto tets = m_grid.tetrahedrons();
         return tets.at(index).doseScored();
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_grid.clearDoseScored();
     }
 
-    void transport(Particle& p, RandomState& state) override
+    void transport(Particle& p, RandomState& state)
     {
         if constexpr (FLUENCESCORING)
             transportSiddon(p, state);

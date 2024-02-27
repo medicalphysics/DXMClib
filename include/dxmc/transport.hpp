@@ -44,7 +44,41 @@ public:
     template <BeamType B, WorldItemType... Ws>
     auto operator()(World<Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
     {
-        return run(world, beam, progress, useBeamCalibration);
+        return run(world, beam, m_nThreads, progress, useBeamCalibration);
+    }
+
+    template <BeamType B, WorldItemType... Ws>
+    static void run(World<Ws...>& world, const B& beam, std::uint64_t nThreads = 1, TransportProgress* progress = nullptr, bool useBeamCalibration = true)
+    {
+        // clearing scored energy before run
+        world.clearEnergyScored();
+
+        nThreads = std::max(nThreads, std::uint64_t { 1 });
+
+        const auto nExposures = beam.numberOfExposures();
+        std::vector<std::jthread> threads;
+        threads.reserve(nThreads - 1);
+        std::vector<RandomState> states(nThreads - 1);
+        std::atomic<std::uint64_t> start(0);
+
+        if (progress)
+            progress->start(beam.numberOfParticles());
+
+        for (std::size_t i = 0; i < nThreads - 1; ++i) {
+            threads.emplace_back(Transport::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), std::ref(states[i]), std::ref(start), nExposures, progress);
+        }
+        RandomState state;
+        runWorker(world, beam, state, start, nExposures, progress);
+
+        for (auto& thread : threads) {
+            thread.join();
+        }
+        if (useBeamCalibration) {
+            const auto beamCalibrationFactor = beam.calibrationFactor(progress);
+            world.addEnergyScoredToDoseScore(beamCalibrationFactor);
+        } else {
+            world.addEnergyScoredToDoseScore();
+        }
     }
 
 protected:
@@ -66,38 +100,6 @@ protected:
                     n = exposureEnd; // we stop simulation
                 }
             }
-        }
-    }
-
-    template <BeamType B, WorldItemType... Ws>
-    void run(World<Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
-    {
-        // clearing scored energy before run
-        world.clearEnergyScored();
-
-        const auto nExposures = beam.numberOfExposures();
-        std::vector<std::jthread> threads;
-        threads.reserve(m_nThreads - 1);
-        std::vector<RandomState> states(m_nThreads - 1);
-        std::atomic<std::uint64_t> start(0);
-
-        if (progress)
-            progress->start(beam.numberOfParticles());
-
-        for (std::size_t i = 0; i < m_nThreads - 1; ++i) {
-            threads.emplace_back(Transport::template runWorker<B, Ws...>, std::ref(world), std::cref(beam), std::ref(states[i]), std::ref(start), nExposures, progress);
-        }
-        RandomState state;
-        runWorker(world, beam, state, start, nExposures, progress);
-
-        for (auto& thread : threads) {
-            thread.join();
-        }
-        if (useBeamCalibration) {
-            const auto beamCalibrationFactor = beam.calibrationFactor(progress);
-            world.addEnergyScoredToDoseScore(beamCalibrationFactor);
-        } else {
-            world.addEnergyScoredToDoseScore();
         }
     }
 

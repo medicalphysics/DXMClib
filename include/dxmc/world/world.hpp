@@ -25,20 +25,18 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtree.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
+#include "dxmc/world/worlditems/worlditemtype.hpp"
 
+#include <array>
 #include <concepts>
 #include <variant>
 #include <vector>
-#include <array>
 
 namespace dxmc {
 
 /*template <typename U>
 concept WorldItemType = (std::derived_from<U, WorldItemBase>);
 */
-
-
 
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
@@ -113,20 +111,20 @@ public:
         return m_items;
     }
 
-    std::vector<WorldItemBase*> getItemPointers()
+    std::vector<std::variant<Us...>*> getItemPointers()
     {
-        std::vector<WorldItemBase*> ptrs(m_items.size());
+        std::vector<std::variant<Us...>*> ptrs(m_items.size());
         std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
-            return std::visit([](auto&& arg) -> WorldItemBase* { return &arg; }, v);
+            return &v;
         });
         return ptrs;
     }
 
-    std::vector<const WorldItemBase*> getItemPointers() const
+    std::vector<const std::variant<Us...>*> getItemPointers() const
     {
-        std::vector<const WorldItemBase*> ptrs(m_items.size());
+        std::vector<const std::variant<Us...>*> ptrs(m_items.size());
         std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
-            return std::visit([](auto&& arg) -> const WorldItemBase* { return &arg; }, v);
+            return &v;
         });
         return ptrs;
     }
@@ -194,7 +192,7 @@ public:
         return m_kdtree.intersect(p, m_aabb);
     }
 
-    inline auto intersectVisualization(const Particle& p)
+    inline auto intersectVisualization(const Particle& p) const 
     {
         return m_kdtree.intersectVisualization(p, m_aabb);
     }
@@ -239,7 +237,9 @@ public:
                     if (!intersection.rayOriginIsInsideItem) { // if we are not already inside the object (we seldom are)
                         p.border_translate(intersection.intersection);
                     }
-                    intersection.item->transport(p, state);
+
+                    // intersection.item->transport(p, state);
+                    std::visit([&p, &state](auto& it) { it.transport(p, state); }, *intersection.item);                    
                     continueSampling = p.energy > 0;
                 } else { // Free path is closer than object, we interact in the world empty space
                     p.translate(stepLength);
@@ -265,7 +265,7 @@ public:
 private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_items;
-    KDTree m_kdtree;
+    KDTree<Us...> m_kdtree;
     Material m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;

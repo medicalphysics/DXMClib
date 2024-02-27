@@ -24,7 +24,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -32,11 +31,10 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
-class EnclosedRoom final : public WorldItemBase {
+class EnclosedRoom {
 public:
     EnclosedRoom(double wallthickness = 10, const std::array<double, 6>& inner_aabb = { -1, -1, -1, 1, 1, 1 })
-        : WorldItemBase()
-        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_wallThickness = std::max(std::abs(wallthickness), 0.001);
         setInnerRoomAABB(inner_aabb);
@@ -68,7 +66,7 @@ public:
         m_outerAABB = outerAABfromInner(m_innerAABB, m_wallThickness);
     }
 
-    void translate(const std::array<double, 3>& dist) final
+    void translate(const std::array<double, 3>& dist)
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_innerAABB[i] += dist[i];
@@ -76,7 +74,7 @@ public:
         }
     }
 
-    std::array<double, 3> center() const final
+    std::array<double, 3> center() const
     {
         std::array center = {
             (m_innerAABB[0] + m_innerAABB[3]) / 2,
@@ -86,12 +84,12 @@ public:
         return center;
     }
 
-    std::array<double, 6> AABB() const noexcept final
+    const std::array<double, 6>& AABB() const
     {
         return m_outerAABB;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept final
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         const bool is_inside_inner = basicshape::AABB::pointInside(p.pos, m_innerAABB);
         WorldIntersectionResult intersect;
@@ -111,9 +109,10 @@ public:
         return intersect;
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept final
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
     {
-        VisualizationIntersectionResult<WorldItemBase> intersection = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_innerAABB);
+        VisualizationIntersectionResult<U> intersection = basicshape::AABB::template intersectVisualization<U>(p, m_innerAABB);
         if (intersection.valid()) {
             if (intersection.rayOriginIsInsideItem) {
                 intersection.rayOriginIsInsideItem = false;
@@ -121,21 +120,27 @@ public:
                 // we intersect inner box from outside and want to render closest walls invisible
                 auto p_copy = p;
                 p_copy.border_translate(intersection.intersection);
-                const auto past_wall_intersection = basicshape::AABB::template intersectVisualization<WorldItemBase>(p_copy, m_innerAABB);
+                const auto past_wall_intersection = basicshape::AABB::template intersectVisualization<U>(p_copy, m_innerAABB);
                 intersection.intersection += past_wall_intersection.intersection;
                 intersection.normal = past_wall_intersection.normal;
             }
         } else {
-            intersection = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_outerAABB);
+            intersection = basicshape::AABB::template intersectVisualization<U>(p, m_outerAABB);
         }
         return intersection;
     }
 
-    const EnergyScore& energyScored(std::size_t index = 0) const final { return m_energyScore; }
+    const EnergyScore& energyScored(std::size_t index = 0) const
+    {
+        return m_energyScore;
+    }
 
-    void clearEnergyScored() final { m_energyScore.clear(); }
+    void clearEnergyScored()
+    {
+        m_energyScore.clear();
+    }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) final
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         std::array<double, 3> inner_sides;
         std::array<double, 3> outer_sides;
@@ -149,14 +154,17 @@ public:
         m_dose.addScoredEnergy(m_energyScore, outer_volume - inner_volume, m_density, calibration_factor);
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const final
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         return m_dose;
     }
 
-    void clearDoseScored() final { m_dose.clear(); }
+    void clearDoseScored()
+    {
+        m_dose.clear();
+    }
 
-    void transport(Particle& p, RandomState& state) noexcept final
+    void transport(Particle& p, RandomState& state) noexcept
     {
         bool cont = pointInside(p.pos);
         bool updateAtt = true;

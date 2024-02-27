@@ -26,14 +26,13 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/worldintersectionresult.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <array>
 
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, std::uint_fast8_t TRANSPARENTVOXELS = 255>
-class AAVoxelGrid final : public WorldItemBase {
+class AAVoxelGrid {
 public:
     AAVoxelGrid()
     {
@@ -154,7 +153,7 @@ public:
         return m_spacing;
     }
 
-    void translate(const std::array<double, 3>& dist) final
+    void translate(const std::array<double, 3>& dist)
     {
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -162,7 +161,7 @@ public:
         }
     }
 
-    std::array<double, 3> center() const final
+    std::array<double, 3> center() const
     {
         std::array<double, 3> center;
         for (std::size_t i = 0; i < 3; ++i) {
@@ -171,7 +170,7 @@ public:
         return center;
     }
 
-    std::array<double, 6> AABB() const final
+    const std::array<double, 6>& AABB() const
     {
         return m_aabb;
     }
@@ -221,7 +220,7 @@ public:
         return arr;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const final
+    WorldIntersectionResult intersect(const Particle& p) const
     {
         auto inter = basicshape::AABB::intersect(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
@@ -232,13 +231,14 @@ public:
         return inter;
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const final
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const final
     {
-        auto res = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, m_aabb);
+        auto res = basicshape::AABB::template intersectVisualization<U>(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
             if (res.valid()) {
                 res.normal = { 0, 0, 0 };
-                voxelIntersect<VisualizationIntersectionResult<WorldItemBase>, TRANSPARENTVOXELS>(p, res);
+                voxelIntersect<VisualizationIntersectionResult<U>, TRANSPARENTVOXELS>(p, res);
             }
         }
         return res;
@@ -273,12 +273,12 @@ public:
         return m_dose;
     }
 
-    const EnergyScore& energyScored(std::size_t flatIndex = 0) const final
+    const EnergyScore& energyScored(std::size_t flatIndex = 0) const
     {
         return m_data.at(flatIndex).energyScored;
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) final
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto size = m_dim[0] * m_dim[1] * m_dim[2];
         const auto voxel_volume = m_spacing[0] * m_spacing[1] * m_spacing[2];
@@ -289,22 +289,22 @@ public:
         }
     }
 
-    const DoseScore& doseScored(std::size_t flatIndex = 0) const final
+    const DoseScore& doseScored(std::size_t flatIndex = 0) const
     {
         return m_dose.at(flatIndex);
     }
 
-    void clearEnergyScored() final
+    void clearEnergyScored()
     {
         std::for_each(std::execution::par_unseq, m_data.begin(), m_data.end(), [](auto& d) { d.energyScored.clear(); });
     }
 
-    void clearDoseScored() final
+    void clearDoseScored()
     {
         std::for_each(std::execution::par_unseq, m_dose.begin(), m_dose.end(), [](auto& d) { d.clear(); });
     }
 
-    void transport(Particle& p, RandomState& state) final
+    void transport(Particle& p, RandomState& state)
     {
         if constexpr (TRANSPARENTVOXELS != 255) {
             voxelTransport<TRANSPARENTVOXELS>(p, state);
@@ -339,7 +339,6 @@ protected:
     template <typename Intersection = WorldIntersectionResult, std::uint_fast8_t IGNOREIDX = 255>
     void voxelIntersect(const Particle& p, Intersection& intersection) const
     {
-        static_assert(std::is_same<Intersection, WorldIntersectionResult>::value || std::is_same<Intersection, VisualizationIntersectionResult<WorldItemBase>>::value);
         std::array<std::size_t, 3> xyz;
 
         if (intersection.rayOriginIsInsideItem) {
@@ -398,7 +397,7 @@ protected:
         if (still_inside) {
             intersection.intersection += tMax[dIdx] - delta[dIdx];
             intersection.rayOriginIsInsideItem = false;
-            if constexpr (std::is_same<Intersection, VisualizationIntersectionResult<WorldItemBase>>::value) {
+            if constexpr (!std::is_same<Intersection, WorldIntersectionResult>::value) {
                 intersection.normal[dIdx] = p.dir[dIdx] < 0 ? -1 : 1;
                 intersection.value = m_dose[index_flat].dose();
             }

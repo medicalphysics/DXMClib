@@ -29,7 +29,6 @@ Copyright 2022 Erlend Andersen
 #include <concepts>
 #include <optional>
 
-
 namespace dxmc {
 
 template <typename U>
@@ -55,19 +54,4 @@ concept WorldItemType = requires(U u, Particle p, std::array<double, 3> vec, std
     u.addEnergyScoredToDoseScore(factor);
     u.transport(p, state);
 };
-
-/*class WorldItemBase {
-public:
-    virtual void translate(const std::array<double, 3>& dist) = 0;
-    virtual std::array<double, 3> center() const = 0;
-    virtual std::array<double, 6> AABB() const = 0;
-    virtual WorldIntersectionResult intersect(const Particle& p) const = 0;
-    virtual VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const = 0;
-    virtual const EnergyScore& energyScored(std::size_t index = 0) const = 0;
-    virtual void clearEnergyScored() = 0;
-    virtual void addEnergyScoredToDoseScore(double calibration_factor = 1) = 0;
-    virtual const DoseScore& doseScored(std::size_t index = 0) const = 0;
-    virtual void clearDoseScored() = 0;
-    virtual void transport(Particle& p, RandomState& state) = 0;
-};*/
 }
