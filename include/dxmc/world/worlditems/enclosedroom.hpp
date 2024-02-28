@@ -89,7 +89,7 @@ public:
         return m_outerAABB;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         const bool is_inside_inner = basicshape::AABB::pointInside(p.pos, m_innerAABB);
         WorldIntersectionResult intersect;
@@ -110,7 +110,7 @@ public:
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const
     {
         VisualizationIntersectionResult<U> intersection = basicshape::AABB::template intersectVisualization<U>(p, m_innerAABB);
         if (intersection.valid()) {
@@ -164,7 +164,7 @@ public:
         m_dose.clear();
     }
 
-    void transport(Particle& p, RandomState& state) noexcept
+    void transport(ParticleType auto& p, RandomState& state) noexcept
     {
         bool cont = pointInside(p.pos);
         bool updateAtt = true;

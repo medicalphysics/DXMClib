@@ -97,13 +97,13 @@ public:
         m_cylinder.half_height = std::abs(h / 2);
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept
+    WorldIntersectionResult intersect(const ParticleType auto& p) const noexcept
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
         auto inter = basicshape::cylinder::template intersectVisualization<U>(p, m_cylinder);
         if (inter.valid())
@@ -111,7 +111,7 @@ public:
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept
+    void transport(ParticleType auto& p, RandomState& state) noexcept
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;

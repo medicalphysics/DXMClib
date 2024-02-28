@@ -114,7 +114,7 @@ public:
         return m_grid.AABB();
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         WorldIntersectionResult res;
         if (const auto kres = m_grid.intersect(p); kres.valid()) {
@@ -126,7 +126,7 @@ public:
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const
     {
         VisualizationIntersectionResult<U> res;
         if (const auto kres = m_grid.intersect(p); kres.valid()) {
@@ -173,7 +173,7 @@ public:
         m_grid.clearDoseScored();
     }
 
-    void transport(Particle& p, RandomState& state)
+    void transport(ParticleType auto& p, RandomState& state)
     {
         if constexpr (FLUENCESCORING)
             transportSiddon(p, state);
@@ -249,7 +249,7 @@ protected:
         m_woodcockStepTableLin = data;
     }
 
-    void transportWoodcock(Particle& p, RandomState& state)
+    void transportWoodcock(ParticleType auto& p, RandomState& state)
     {
         bool still_inside = true;
         double attMaxInv;
@@ -291,7 +291,7 @@ protected:
         }
     }
 
-    void transportSiddon(Particle& p, RandomState& state)
+    void transportSiddon(ParticleType auto& p, RandomState& state)
     {
         Tetrahedron* tet = m_grid.pointInside(p.pos);
         bool updateAtt = true;

@@ -98,13 +98,13 @@ public:
         return aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const
     {
         auto inter = basicshape::cylinder::template intersectVisualization<U>(p, m_cylinder);
         if (inter.valid()) {
@@ -117,7 +117,7 @@ public:
         return basicshape::cylinder::template intersectVisualization<U>(p, m_cylinder);
     }
 
-    void transport(Particle& p, RandomState& state)
+    void transport(ParticleType auto& p, RandomState& state)
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = false;

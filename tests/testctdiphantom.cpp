@@ -38,7 +38,7 @@ bool testTracker()
     auto& sphere = w.addItem<Sphere>({ 2, { 0, 0, 15 } });
     w.build();
 
-    dxmc::PencilBeam beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
+    dxmc::PencilBeam<true> beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
     beam.setNumberOfExposures(48);
     beam.setNumberOfParticlesPerExposure(1e4);
 

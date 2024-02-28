@@ -220,7 +220,7 @@ public:
         return arr;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         auto inter = basicshape::AABB::intersect(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
@@ -232,7 +232,7 @@ public:
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const final
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const final
     {
         auto res = basicshape::AABB::template intersectVisualization<U>(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {
@@ -304,7 +304,7 @@ public:
         std::for_each(std::execution::par_unseq, m_dose.begin(), m_dose.end(), [](auto& d) { d.clear(); });
     }
 
-    void transport(Particle& p, RandomState& state)
+    void transport(ParticleType auto& p, RandomState& state)
     {
         if constexpr (TRANSPARENTVOXELS != 255) {
             voxelTransport<TRANSPARENTVOXELS>(p, state);
@@ -337,7 +337,7 @@ protected:
     }
 
     template <typename Intersection = WorldIntersectionResult, std::uint_fast8_t IGNOREIDX = 255>
-    void voxelIntersect(const Particle& p, Intersection& intersection) const
+    void voxelIntersect(const ParticleType auto& p, Intersection& intersection) const
     {
         std::array<std::size_t, 3> xyz;
 
@@ -408,7 +408,7 @@ protected:
     }
 
     template <std::uint_fast8_t IGNOREIDX = 255>
-    void voxelTransport(Particle& p, RandomState& state)
+    void voxelTransport(ParticleType auto& p, RandomState& state)
     {
         bool still_inside;
         do {
@@ -554,7 +554,7 @@ protected:
         m_woodcockStepTableLin = data;
     }
 
-    void woodcockTransport(Particle& p, RandomState& state)
+    void woodcockTransport(ParticleType auto& p, RandomState& state)
     {
         bool valid = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;

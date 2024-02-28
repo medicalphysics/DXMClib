@@ -138,13 +138,13 @@ public:
         return m_aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept
+    WorldIntersectionResult intersect(const ParticleType auto& p) const noexcept
     {
         return basicshape::AABB::intersect(p, m_aabb);
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
         auto inter = basicshape::AABB::template intersectVisualization<U>(p, m_aabb);
         if (inter.valid()) {
@@ -156,7 +156,7 @@ public:
         return inter;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept
+    void transport(ParticleType auto& p, RandomState& state) noexcept
     {
         bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
         bool updateAtt = true;

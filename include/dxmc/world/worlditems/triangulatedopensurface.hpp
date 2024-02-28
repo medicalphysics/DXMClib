@@ -151,14 +151,14 @@ public:
         return center;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
         return WorldIntersectionResult { .intersection = res.intersection, .rayOriginIsInsideItem = false, .intersectionValid = res.item != nullptr };
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
         const auto res = m_kdtree.intersect(p, m_aabb);
         VisualizationIntersectionResult<U> res_int;
@@ -174,7 +174,7 @@ public:
         return res_int;
     }
 
-    void transport(Particle& p, RandomState& state)
+    void transport(ParticleType auto& p, RandomState& state)
     {
         const auto att = m_material.attenuationValues(p.energy);
         const auto attSumInv = 1 / (att.sum() * m_materialDensity);

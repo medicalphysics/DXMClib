@@ -196,14 +196,14 @@ public:
         }
     }
 
-    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 6>& aabb) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb) const
     {
         const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
         return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<const U> {};
     }
 
 protected:
-    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 2>& tbox) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;

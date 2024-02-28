@@ -33,11 +33,11 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <typename U>
-concept StaticKDTreeType = requires(U u, Particle p, std::array<double, 3> vec) {
+concept StaticKDTreeType = requires(U u,  std::array<double, 3> vec) {
     u.translate(vec);
-    {
+    /*{
         u.intersect(p)
-    } -> std::same_as<WorldIntersectionResult>;
+    } -> std::same_as<WorldIntersectionResult>;*/
     {
         u.center()
     } -> std::convertible_to<std::array<double, 3>>;
@@ -97,12 +97,12 @@ public:
         }
         return left;
     }
-    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 6>& aabb) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb) const
     {
         const auto tbox = basicshape::AABB::intersectForwardInterval(particle, aabb);
         return tbox ? intersect(particle, *tbox) : KDTreeIntersectionResult<const U> {};
     }
-    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 2>& tbox) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox) const
     {
         // test for parallell beam, if parallell we must test both sides.
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<double>::epsilon()) {
@@ -259,7 +259,7 @@ public:
         return 0;
     }
 
-    KDTreeIntersectionResult<const U> intersect(const Particle& particle, const std::array<double, 2>& tbox) const noexcept
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox) const noexcept
     {
         KDTreeIntersectionResult<const U> res { .item = nullptr, .intersection = std::numeric_limits<double>::max() };
 

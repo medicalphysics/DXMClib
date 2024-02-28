@@ -143,13 +143,13 @@ public:
         return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
         auto res = basicshape::cylinder::intersectVisualization<U>(p, m_cylinder);
         if (res.valid()) {
@@ -164,7 +164,7 @@ public:
         return res;
     }
 
-    void transport(Particle& p, RandomState& state)
+    void transport(ParticleType auto& p, RandomState& state)
     {
         bool updateAtt = true;
         AttenuationValues att;
@@ -263,7 +263,7 @@ protected:
         {
             return basicshape::cylinder::cylinderAABB(cylinder);
         }
-        auto intersect(const Particle& p) const noexcept
+        auto intersect(const ParticleType auto& p) const noexcept
         {
             return basicshape::cylinder::intersect(p, cylinder);
         }

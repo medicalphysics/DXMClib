@@ -97,7 +97,7 @@ namespace basicshape {
             return false;
         }
 
-        std::optional<double> intersectDisc(const Particle& p, const std::array<double, 3>& center, const std::array<double, 3>& normal, double radius)
+        std::optional<double> intersectDisc(const ParticleType auto& p, const std::array<double, 3>& center, const std::array<double, 3>& normal, double radius)
         {
             const auto D = vectormath::dot(p.dir, normal);
             constexpr double minOrt = GEOMETRIC_ERROR();
@@ -117,7 +117,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        std::optional<std::array<double, 2>> intersectInterval(const Particle& p, const Cylinder& cylinder)
+        std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
             // return line segment cylinder wall intersection
             // intersection may be behind line start
@@ -183,7 +183,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const Cylinder& cylinder)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
             auto t_cand = intersectInterval(p, cylinder);
             if (t_cand) {
@@ -195,7 +195,7 @@ namespace basicshape {
             return t_cand;
         }
 
-        WorldIntersectionResult intersect(const Particle& p, const Cylinder& cylinder)
+        WorldIntersectionResult intersect(const ParticleType auto& p, const Cylinder& cylinder)
         {
             const auto t_cand = intersectInterval(p, cylinder);
             WorldIntersectionResult res;
@@ -211,7 +211,7 @@ namespace basicshape {
         }
 
         template <typename U>
-        VisualizationIntersectionResult<U> intersectVisualization(const Particle& p, const Cylinder& cylinder)
+        VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p, const Cylinder& cylinder)
         {
             const auto t_cand = intersectInterval(p, cylinder);
             VisualizationIntersectionResult<U> res;

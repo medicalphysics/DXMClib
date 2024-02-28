@@ -129,7 +129,7 @@ public:
     }
 
     template <std::uint16_t COLLECTION = 65535>
-    KDTreeIntersectionResult<const Tetrahedron> intersect(const Particle& particle) const
+    KDTreeIntersectionResult<const Tetrahedron> intersect(const ParticleType auto& particle) const
     {
         const auto inter = basicshape::AABB::intersectForwardInterval<false>(particle, m_aabb);
         return inter ? intersect<COLLECTION>(particle, *inter) : KDTreeIntersectionResult<const Tetrahedron> {};
@@ -203,7 +203,7 @@ protected:
     }
 
     template <std::uint16_t COLLECTION = 65535>
-    KDTreeIntersectionResult<const Tetrahedron> intersect(const Particle& p, const std::array<double, 2>& t) const
+    KDTreeIntersectionResult<const Tetrahedron> intersect(const ParticleType auto& p, const std::array<double, 2>& t) const
     {
         auto idx = getIndices<true>(vectormath::add(p.pos, vectormath::scale(p.dir, t[0])));
         const std::array<int, 3> step = {

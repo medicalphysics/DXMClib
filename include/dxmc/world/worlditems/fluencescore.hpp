@@ -86,14 +86,14 @@ public:
         return spec;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const
+    WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         const auto aabb_inter = basicshape::AABB::intersectForwardInterval(p, m_aabb);
         return aabb_inter ? intersectDisc(p) : WorldIntersectionResult {};
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const
     {
         const auto res = intersect(p);
         VisualizationIntersectionResult<U> w;
@@ -134,7 +134,7 @@ public:
         return;
     }
 
-    void transport(Particle& particle, RandomState& state)
+    void transport(ParticleType auto& particle, RandomState& state)
     {
         // Assuming particle is on the disc
         const auto eIdx = static_cast<std::size_t>(particle.energy / m_energy_step);
@@ -182,7 +182,7 @@ protected:
         }
     }
 
-    WorldIntersectionResult intersectDisc(const Particle& p) const
+    WorldIntersectionResult intersectDisc(const ParticleType auto& p) const
     {
         WorldIntersectionResult res;
         const auto D = vectormath::dot(p.dir, m_normal);
