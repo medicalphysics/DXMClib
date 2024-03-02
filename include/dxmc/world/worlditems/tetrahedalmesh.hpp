@@ -25,6 +25,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/material/material.hpp"
 #include "dxmc/material/nistmaterials.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/particletracker.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
@@ -133,7 +134,6 @@ public:
             res.intersection = kres.intersection;
             res.rayOriginIsInsideItem = kres.rayOriginIsInsideItem;
             res.intersectionValid = kres.valid();
-            res.item = this;
             res.value = kres.item->doseScored().dose();
             const auto hit_pos = vectormath::add(p.pos, vectormath::scale(p.dir, kres.intersection));
             res.normal = kres.item->normal(hit_pos);
@@ -173,8 +173,12 @@ public:
         m_grid.clearDoseScored();
     }
 
-    void transport(ParticleType auto& p, RandomState& state)
+    template <ParticleType P>
+    void transport(P& p, RandomState& state)
     {
+        if constexpr (std::is_same_v<P, ParticleTrack>) {
+            m_tracker.registerParticle(p);
+        }
         if constexpr (FLUENCESCORING)
             transportSiddon(p, state);
         else
@@ -193,6 +197,11 @@ public:
     {
         if (index < m_materials.size())
             m_materials[index] = material;
+    }
+
+    const ParticleTracker& particleTracker() const
+    {
+        return m_tracker;
     }
 
 protected:
@@ -341,5 +350,6 @@ private:
     std::vector<Collection> m_collections;
     std::vector<Material<NMaterialShells>> m_materials;
     std::vector<std::string> m_collectionNames;
+    ParticleTracker m_tracker;
 };
 }

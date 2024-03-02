@@ -17,6 +17,7 @@ Copyright 2023 Erlend Andersen
 */
 
 #include "dxmc/beams/dxbeam.hpp"
+#include "dxmc/particletracker.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/transportprogress.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
@@ -104,7 +105,6 @@ int main()
     using Room = dxmc::EnclosedRoom<5, 1>;
     using TetMesh = dxmc::TetrahedalMesh<5, 1>;
     using World = dxmc::World<Mesh, Sphere, VGrid, Room, Surface, TetMesh>;
-    using Viz = dxmc::VisualizeWorld;
 
     World world {};
     world.reserveNumberOfItems(6);
@@ -134,19 +134,19 @@ int main()
     auto phantom_aabb = phantom.AABB();
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
-    auto& doctor = world.addItem(readICRP145Phantom({ 64, 64, 256 }, true));
+    auto& doctor = world.addItem<TetMesh>(readICRP145Phantom({ 64, 64, 256 }, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
     world.build();
 
     // adding beam
-    using Beam = dxmc::DXBeam;
+    using Beam = dxmc::DXBeam<true>;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(2000);
-    beam.setNumberOfParticlesPerExposure(1000000);
+    beam.setNumberOfExposures(20);
+    beam.setNumberOfParticlesPerExposure(10000);
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
@@ -159,29 +159,19 @@ int main()
 
     std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << std::endl;
 
-    Viz viz(world);
-
-    viz.addColorByValueItem(&doctor);
-    viz.addColorByValueItem(&phantom);
+    dxmc::VisualizeWorld viz(world);
+    viz.addParticleTracks(doctor.particleTracker(), 0.1);
+    // viz.addColorByValueItem(&doctor);
+    // viz.addColorByValueItem(&phantom);
     viz.setColorByValueMinMax(0, 0.00001);
     auto buffer = viz.createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, 114, .2);
 
     viz.setDistance(400);
-    viz.setAzimuthalAngleDeg(60);
+
     std::vector<double> angles;
     for (std::size_t i = 0; i < 12; ++i)
         angles.push_back(i * 30);
-
-    for (auto a : angles) {
-        viz.setPolarAngleDeg(a);
-        viz.suggestFOV(3);
-        viz.generate(world, buffer);
-        std::string name = "test" + std::to_string(int(a)) + ".png";
-        viz.savePNG(name, buffer);
-        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
-                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
-    }
 
     viz.setAzimuthalAngleDeg(120);
     for (auto a : angles) {
@@ -189,6 +179,17 @@ int main()
         viz.suggestFOV(3);
         viz.generate(world, buffer);
         std::string name = "test_low" + std::to_string(int(a)) + ".png";
+        viz.savePNG(name, buffer);
+        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
+                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
+    }
+
+    viz.setAzimuthalAngleDeg(60);
+    for (auto a : angles) {
+        viz.setPolarAngleDeg(a);
+        viz.suggestFOV(3);
+        viz.generate(world, buffer);
+        std::string name = "test" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
         std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
