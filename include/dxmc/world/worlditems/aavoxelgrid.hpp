@@ -232,7 +232,7 @@ public:
     }
 
     template <typename U>
-    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const final
+    VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const
     {
         auto res = basicshape::AABB::template intersectVisualization<U>(p, m_aabb);
         if constexpr (TRANSPARENTVOXELS != 255) {

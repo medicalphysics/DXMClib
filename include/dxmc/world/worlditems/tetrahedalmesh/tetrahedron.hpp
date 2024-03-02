@@ -132,7 +132,7 @@ public:
     auto end() const { return m_vertices.end(); }
     auto cend() const { return m_vertices.cend(); }
 
-    WorldIntersectionResult intersect(const Particle& particle) const
+    WorldIntersectionResult intersect(const ParticleType auto& particle) const
     {
 
         const std::array<std::optional<double>, 4> hits = {
@@ -245,7 +245,7 @@ protected:
             return vectormath::cross(s2, s1);
     }
 
-    static std::optional<double> intersectTriangle(const std::array<double, 3>& v0, const std::array<double, 3>& v1, const std::array<double, 3>& v2, const Particle& p)
+    static std::optional<double> intersectTriangle(const std::array<double, 3>& v0, const std::array<double, 3>& v1, const std::array<double, 3>& v2, const ParticleType auto& p)
     {
         const auto E1 = vectormath::subtract(v1, v0);
         const auto TT = vectormath::subtract(p.pos, v0);

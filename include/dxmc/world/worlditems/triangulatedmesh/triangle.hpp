@@ -133,7 +133,7 @@ public:
         return vectormath::length(vectormath::cross(AB, AC)) / 2;
     }
 
-    std::optional<double> intersect(const Particle& p) const
+    std::optional<double> intersect(const ParticleType auto& p) const
     {
         // from moller trombore paper
         const auto& v0 = m_vertices[0];
