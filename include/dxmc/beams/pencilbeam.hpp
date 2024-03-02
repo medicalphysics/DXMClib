@@ -50,6 +50,7 @@ public:
                 .dir = m_dir,
                 .energy = m_energy,
                 .weight = m_weight };
+            p.registerPosition();
             return p;
         } else {
             Particle p = { .pos = m_pos,

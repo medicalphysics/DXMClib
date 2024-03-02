@@ -102,7 +102,6 @@ struct ParticleTrack {
 
     inline void translate(const double dist)
     {
-        registerPosition(pos);
         pos[0] += dir[0] * dist;
         pos[1] += dir[1] * dist;
         pos[2] += dir[2] * dist;
@@ -120,26 +119,23 @@ struct ParticleTrack {
         translate(dist + border_translate_minimum());
     }
 
-    void registerPosition(const std::array<double, 3>& pos)
+    void registerPosition()
     {
         // incrementing and circle around
-        m_index++;
         m_history[m_index % N] = pos;
+        m_index++;
     }
 
     std::array<std::array<double, 3>, N> getHistory() const
     {
         std::array<std::array<double, 3>, N> r;
-        if (m_index < N) {
-            for (std::size_t i = 0; i < m_index; ++i)
+        if (m_index <= N) {
+            for (std::uint_fast32_t i = 0; i < m_index; ++i)
                 r[i] = m_history[i];
         } else {
-            const std::uint_fast32_t first = (m_index + std::uint_fast32_t { 1 }) % N;
-            std::uint_fast32_t teller = 0;
-            while (teller < N) {
-                r[teller] = m_history[(first + teller) % N];
-                ++teller;
-            }
+            const std::uint_fast32_t first = m_index % N;
+            for (std::uint_fast32_t i = 0; i < N; ++i)
+                r[i] = m_history[(first + i) % N];
         }
         return r;
     }

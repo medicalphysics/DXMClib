@@ -35,7 +35,7 @@ Copyright 2023 Erlend Andersen
 #include <map>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING = false>
 class CTSpiralBeamExposure {
 public:
     CTSpiralBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N, double weight,
@@ -64,19 +64,31 @@ public:
         return m_NParticles;
     }
 
-    Particle sampleParticle(RandomState& state) const noexcept
+    auto sampleParticle(RandomState& state) const noexcept
     {
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
-        Particle p = {
-            .pos = m_pos,
-            .dir = particleDirection(angx, angy),
-            .energy = m_specter->sampleValue(state),
-            .weight = m_weight * bowtie_weight
-        };
-        return p;
+
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter->sampleValue(state),
+                .weight = m_weight * bowtie_weight
+            };
+            p.registerPosition();
+            return p;
+        } else {
+            Particle p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter->sampleValue(state),
+                .weight = m_weight * bowtie_weight
+            };
+            return p;
+        }
     }
 
 protected:
@@ -103,6 +115,7 @@ private:
     const BowtieFilter* m_bowtieFilter = nullptr;
 };
 
+template <bool ENABLETRACKING = false>
 class CTSpiralBeam {
 public:
     CTSpiralBeam(
@@ -259,7 +272,7 @@ public:
         return m_aecFilter;
     }
 
-    CTSpiralBeamExposure exposure(std::size_t i) const noexcept
+    CTSpiralBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
         constexpr auto pi2 = PI_VAL() * 2;
         const auto angle = i * m_stepAngle;
@@ -288,7 +301,7 @@ public:
 
         const auto weight = m_weight * m_aecFilter(pos);
 
-        CTSpiralBeamExposure exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter, &m_bowtieFilter);
+        CTSpiralBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter, &m_bowtieFilter);
         return exp;
     }
 

@@ -28,7 +28,7 @@ Copyright 2023 Erlend Andersen
 #include <array>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING = false>
 class CTDIBeamExposure {
 public:
     CTDIBeamExposure(double angle, double SDD, std::uint64_t historiesPerExposure,
@@ -53,20 +53,31 @@ public:
         return m_Nparticles;
     }
 
-    Particle sampleParticle(RandomState& state) const noexcept
+    auto sampleParticle(RandomState& state) const noexcept
     {
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
 
-        Particle p = {
-            .pos = m_pos,
-            .dir = particleDirection(angx, angy),
-            .energy = m_specter->sampleValue(state),
-            .weight = m_weight * bowtie_weight
-        };
-        return p;
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter->sampleValue(state),
+                .weight = m_weight * bowtie_weight
+            };
+            p.registerPosition();
+            return p;
+        } else {
+            Particle p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter->sampleValue(state),
+                .weight = m_weight * bowtie_weight
+            };
+            return p;
+        }
     }
 
 protected:
@@ -94,6 +105,7 @@ private:
     const BowtieFilter* m_bowtieFilter = nullptr;
 };
 
+template <bool ENABLETRACKING = false>
 class CTDIBeam {
 public:
     CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, double weight = 1)
@@ -115,10 +127,10 @@ public:
 
     std::uint64_t numberOfParticles() const { return numberOfExposures() * m_particlesPerExposure; }
 
-    CTDIBeamExposure exposure(std::size_t i) const noexcept
+    CTDIBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
         const auto angle = i * m_angleStep;
-        return CTDIBeamExposure(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter, &m_bowtieFilter, m_weight);
+        return CTDIBeamExposure<ENABLETRACKING>(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter, &m_bowtieFilter, m_weight);
     }
 
     double calibrationFactor(TransportProgress* progress = nullptr) const

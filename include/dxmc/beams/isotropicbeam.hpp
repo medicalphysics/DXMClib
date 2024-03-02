@@ -27,7 +27,7 @@ Copyright 2022 Erlend Andersen
 #include <array>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING = false>
 class IsotropicBeamExposure {
 public:
     IsotropicBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N = 1E6)
@@ -53,17 +53,29 @@ public:
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle sampleParticle(RandomState& state) const noexcept
+    auto sampleParticle(RandomState& state) const noexcept
     {
-
         const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
 
-        Particle p = { .pos = m_pos,
-            .dir = particleDirection(angx, angy),
-            .energy = m_specterDist.sampleValue(state),
-            .weight = 1 };
-        return p;
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specterDist.sampleValue(state),
+                .weight = 1
+            };
+            p.registerPosition();
+            return p;
+        } else {
+            Particle p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specterDist.sampleValue(state),
+                .weight = 1
+            };
+            return p;
+        }
     }
 
 protected:
@@ -88,6 +100,7 @@ private:
     SpecterDistribution<double> m_specterDist;
 };
 
+template <bool ENABLETRACKING = false>
 class IsotropicBeam {
 public:
     IsotropicBeam(const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<std::array<double, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } })
@@ -141,9 +154,9 @@ public:
         m_collimationAngles[3] = maxY;
     }
 
-    IsotropicBeamExposure exposure(std::size_t i) const noexcept
+    IsotropicBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
-        IsotropicBeamExposure exp(m_pos, m_dirCosines, m_particlesPerExposure);
+        IsotropicBeamExposure<ENABLETRACKING> exp(m_pos, m_dirCosines, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
         exp.setSpecterDistribution(m_specter);
         return exp;
@@ -162,5 +175,4 @@ private:
     std::uint64_t m_particlesPerExposure = 100;
     SpecterDistribution<double> m_specter;
 };
-
 }

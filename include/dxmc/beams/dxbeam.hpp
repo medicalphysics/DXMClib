@@ -30,7 +30,7 @@ Copyright 2023 Erlend Andersen
 #include <array>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING = false>
 class DXBeamExposure {
 public:
     DXBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N, double weight,
@@ -49,20 +49,31 @@ public:
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle sampleParticle(RandomState& state) const noexcept
+    auto sampleParticle(RandomState& state) const noexcept
     {
         auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
 
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
-        Particle p = {
-            .pos = m_pos,
-            .dir = particleDirection(angx, angy),
-            .energy = m_specter.sampleValue(state),
-            .weight = m_weight
-        };
-        return p;
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter.sampleValue(state),
+                .weight = m_weight
+            };
+            p.registerPosition();
+            return p;
+        } else {
+            Particle p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter.sampleValue(state),
+                .weight = m_weight
+            };
+            return p;
+        }
     }
 
 protected:
@@ -88,6 +99,7 @@ private:
     SpecterDistribution<double> m_specter;
 };
 
+template <bool ENABLETRACKING = false>
 class DXBeam {
 public:
     DXBeam(
@@ -219,9 +231,9 @@ public:
         }
     }
 
-    DXBeamExposure exposure(std::size_t i) const noexcept
+    DXBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
-        DXBeamExposure exp(m_pos, m_dirCosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
+        DXBeamExposure<ENABLETRACKING> exp(m_pos, m_dirCosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
         return exp;
     }
 
@@ -262,5 +274,4 @@ private:
     Tube m_tube;
     SpecterDistribution<double> m_specter;
 };
-
 }

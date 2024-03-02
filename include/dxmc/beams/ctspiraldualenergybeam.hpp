@@ -35,7 +35,7 @@ Copyright 2023 Erlend Andersen
 #include <map>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING=false>
 class CTSpiralDualEnergyBeam {
 public:
     CTSpiralDualEnergyBeam(
@@ -243,7 +243,7 @@ public:
         return m_aecFilter;
     }
 
-    CTSpiralBeamExposure exposure(std::size_t dualExposureIndex) const noexcept
+    CTSpiralBeamExposure<ENABLETRACKING> exposure(std::size_t dualExposureIndex) const noexcept
     {
         const std::size_t i = dualExposureIndex / 2;
         const bool isTubeB = dualExposureIndex % 2 == 1;
@@ -278,7 +278,7 @@ public:
         weight *= m_aecFilter(pos);
         const SpecterDistribution<double>* const specter = isTubeB ? &m_specterB : &m_specterA;
         const BowtieFilter* const bowtie = isTubeB ? &m_bowtieFilterB : &m_bowtieFilterA;
-        CTSpiralBeamExposure exp(pos, cosines, m_particlesPerExposure, weight, angles, specter, bowtie);
+        CTSpiralBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, weight, angles, specter, bowtie);
         return exp;
     }
 
@@ -351,5 +351,4 @@ private:
     BowtieFilter m_bowtieFilterA;
     BowtieFilter m_bowtieFilterB;
 };
-
 }

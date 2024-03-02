@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #pragma once
 #include "dxmc/beams/beamtype.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/particletracker.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
 #include "dxmc/world/visualization/vizualizationprops.hpp"
@@ -188,6 +189,23 @@ public:
         addLineProp(start, ndir, length, radii);
     }
 
+    void addParticleTracks(const ParticleTracker& tracker, double radii = 1)
+    {
+        for (std::size_t i = 0; i < tracker.numberOfParticles(); ++i) {
+            const auto track = tracker.track(i);
+            if (track.size() > 0) {
+                int teller = 0;
+                while (teller < track.size() - 1) {
+                    const auto first = track[teller];
+                    const auto second = track[teller + 1];
+                    addLineSegment(first, second, radii);
+                    ++teller;
+                }
+            }
+        }
+    }
+
+    
     void clearLineProps()
     {
         m_lines.clear();

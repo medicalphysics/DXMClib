@@ -28,7 +28,7 @@ Copyright 2022 Erlend Andersen
 #include <array>
 
 namespace dxmc {
-
+template <bool ENABLETRACKING = false>
 class IsotropicMonoEnergyBeamExposure {
 public:
     IsotropicMonoEnergyBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, double energy, std::uint64_t N)
@@ -50,17 +50,30 @@ public:
 
     std::uint64_t numberOfParticles() const { return m_NParticles; }
 
-    Particle sampleParticle(RandomState& state) const noexcept
+    auto sampleParticle(RandomState& state) const noexcept
     {
 
         const auto angx = state.randomUniform(m_collimationAngles[0], m_collimationAngles[2]);
         const auto angy = state.randomUniform(m_collimationAngles[1], m_collimationAngles[3]);
 
-        Particle p = { .pos = m_pos,
-            .dir = particleDirection(angx, angy),
-            .energy = m_energy,
-            .weight = 1 };
-        return p;
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_energy,
+                .weight = 1
+            };
+            p.registerPosition();
+            return p;
+        } else {
+            Particle p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_energy,
+                .weight = 1
+            };
+            return p;
+        }
     }
 
 protected:
@@ -85,6 +98,7 @@ private:
     std::uint64_t m_NParticles = 100;
 };
 
+template <bool ENABLETRACKING = false>
 class IsotropicMonoEnergyBeam {
 public:
     IsotropicMonoEnergyBeam(const std::array<double, 3>& pos = { 0, 0, 0 }, const std::array<std::array<double, 3>, 2>& dircosines = { { { 1, 0, 0 }, { 0, 1, 0 } } }, double energy = 60)
@@ -137,9 +151,9 @@ public:
         m_collimationAngles[3] = maxY;
     }
 
-    IsotropicMonoEnergyBeamExposure exposure(std::size_t i) const noexcept
+    IsotropicMonoEnergyBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
-        IsotropicMonoEnergyBeamExposure exp(m_pos, m_dirCosines, m_energy, m_particlesPerExposure);
+        IsotropicMonoEnergyBeamExposure<ENABLETRACKING> exp(m_pos, m_dirCosines, m_energy, m_particlesPerExposure);
         exp.setCollimationAngles(m_collimationAngles);
         return exp;
     }

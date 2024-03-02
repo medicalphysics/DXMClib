@@ -37,9 +37,13 @@ namespace interactions {
         return 0.1;
     }
 
-    template <std::size_t Nshells, int Lowenergycorrection = 2>
-    void rayleightScatter(ParticleType auto& particle, const Material<Nshells>& material, RandomState& state) noexcept
+    template <std::size_t Nshells, int Lowenergycorrection = 2, ParticleType P = Particle>
+    void rayleightScatter(P& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
+        if constexpr (std::is_same_v<P, ParticleTrack>) {
+            particle.registerPosition();
+        }
+
         if constexpr (Lowenergycorrection == 0) {
             bool reject;
             double theta;
@@ -177,12 +181,16 @@ namespace interactions {
         return Ei;
     }
 
-    template <std::size_t Nshells, int Lowenergycorrection = 2>
-    auto comptonScatter(ParticleType auto& particle, const Material<Nshells>& material, RandomState& state) noexcept
+    template <std::size_t Nshells, int Lowenergycorrection = 2, ParticleType P = Particle>
+    auto comptonScatter(P& particle, const Material<Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
     // https://nrc-cnrc.github.io/EGSnrc/doc/pirs701-egsnrc.pdf
     {
+        if constexpr (std::is_same_v<P, ParticleTrack>) {
+            particle.registerPosition();
+        }
+
         if constexpr (Lowenergycorrection == 2) {
             return comptonScatterIA(particle, material, state);
         } else {
@@ -257,9 +265,13 @@ namespace interactions {
         return E;
     }
 
-    template <int Nshells, int Lowenergycorrection = 2>
-    auto photoelectricEffect(const double totalPhotoCrossSection, ParticleType auto& particle, const Material<Nshells>& material, RandomState& state) noexcept
+    template <int Nshells, int Lowenergycorrection = 2, ParticleType P = Particle>
+    auto photoelectricEffect(const double totalPhotoCrossSection, P& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
+        if constexpr (std::is_same_v<P, ParticleTrack>) {
+            particle.registerPosition();
+        }
+
         if constexpr (Lowenergycorrection == 2) {
             return photoelectricEffectIA(totalPhotoCrossSection, particle, material, state);
         } else {

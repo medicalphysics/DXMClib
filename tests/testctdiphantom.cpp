@@ -39,7 +39,7 @@ bool testTracker()
     w.build();
 
     dxmc::PencilBeam<true> beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
-    beam.setNumberOfExposures(48);
+    beam.setNumberOfExposures(16);
     beam.setNumberOfParticlesPerExposure(1e4);
 
     dxmc::Transport transport;    
@@ -48,7 +48,8 @@ bool testTracker()
     dxmc::VisualizeWorld viz(w);
 
     const auto& tracker = sphere.getTracker();
-    for (std::size_t i = 0; i < tracker.numberOfParticles(); ++i) {
+    viz.addParticleTracks(tracker, 0.02);
+    /*for (std::size_t i = 0; i < tracker.numberOfParticles(); ++i) {
         const auto track = tracker.track(i);
         constexpr double radii = 0.02;
 
@@ -61,7 +62,7 @@ bool testTracker()
                 ++teller;
             }
         }
-    }
+    }*/
 
     auto buffer = viz.createBuffer(2048, 2048);
     viz.setAzimuthalAngleDeg(60);
