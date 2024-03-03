@@ -29,6 +29,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
 #include "dxmc/world/worlditems/triangulatedopensurface.hpp"
+#include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
 
 #include "phantomreader.hpp"
@@ -104,10 +105,11 @@ int main()
     using VGrid = dxmc::AAVoxelGrid<5, 1, 0>;
     using Room = dxmc::EnclosedRoom<5, 1>;
     using TetMesh = dxmc::TetrahedalMesh<5, 1>;
-    using World = dxmc::World<Mesh, Sphere, VGrid, Room, Surface, TetMesh>;
+    using Box = dxmc::WorldBox<5, 1>;
+    using World = dxmc::World<Mesh, Sphere, VGrid, Room, Surface, TetMesh, Box>;
 
     World world {};
-    world.reserveNumberOfItems(6);
+    world.reserveNumberOfItems(7);
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
@@ -138,6 +140,9 @@ int main()
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
+    auto& tableBox = world.addItem<Box>({ { -40, -25, -100, 0, -24.95, 0 } });
+    tableBox.setMaterial(lead, lead_dens);
+
     world.build();
 
     // adding beam
@@ -145,8 +150,8 @@ int main()
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(20);
-    beam.setNumberOfParticlesPerExposure(10000);
+    beam.setNumberOfExposures(12);
+    beam.setNumberOfParticlesPerExposure(100000);
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
@@ -165,6 +170,7 @@ int main()
     // viz.addColorByValueItem(&phantom);
     viz.setColorByValueMinMax(0, 0.00001);
     auto buffer = viz.createBuffer<double>(2048, 2048);
+    // auto buffer = viz.createBuffer<double>(512, 512);
     viz.addLineProp(beam, 114, .2);
 
     viz.setDistance(400);
