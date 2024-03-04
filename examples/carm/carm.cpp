@@ -114,11 +114,11 @@ int main()
     auto& table = world.addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
 
-    /*auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
+    auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 0, 0, 1 });
-    ceilingshield.translate({ 20, 20, 100 });
-    */
+    ceilingshield.translate({ -45, -15, 70 });
+    ceilingshield.scale(0.5);
 
     auto& room = world.addItem<Room>();
     room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
@@ -150,11 +150,12 @@ int main()
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(12);
-    beam.setNumberOfParticlesPerExposure(100000);
+    beam.setNumberOfExposures(48);
+    beam.setNumberOfParticlesPerExposure(1000000);
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
+    transport.setNumberOfThreads(1);
     runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
@@ -179,23 +180,23 @@ int main()
     for (std::size_t i = 0; i < 12; ++i)
         angles.push_back(i * 30);
 
-    viz.setAzimuthalAngleDeg(120);
-    for (auto a : angles) {
-        viz.setPolarAngleDeg(a);
-        viz.suggestFOV(3);
-        viz.generate(world, buffer);
-        std::string name = "test_low" + std::to_string(int(a)) + ".png";
-        viz.savePNG(name, buffer);
-        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
-                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
-    }
-
     viz.setAzimuthalAngleDeg(60);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
         viz.suggestFOV(3);
         viz.generate(world, buffer);
         std::string name = "test" + std::to_string(int(a)) + ".png";
+        viz.savePNG(name, buffer);
+        std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
+                  << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
+    }
+
+    viz.setAzimuthalAngleDeg(120);
+    for (auto a : angles) {
+        viz.setPolarAngleDeg(a);
+        viz.suggestFOV(3);
+        viz.generate(world, buffer);
+        std::string name = "test_low" + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
         std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
