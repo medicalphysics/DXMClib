@@ -33,7 +33,8 @@ Copyright 2023 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-template <std::size_t Nshells = 5, int LOWENERGYCORRECTION = 2>
+
+template <std::size_t Nshells = 5, int LOWENERGYCORRECTION = 2, bool FLUENCESCORING = true>
 class TetrahedalmeshReader {
 public:
     TetrahedalmeshReader() { }
@@ -96,22 +97,22 @@ public:
             m_materials.emplace_back(m.material);
     }
 
-    TetrahedalMesh<Nshells, LOWENERGYCORRECTION> getMesh(int depth = 8)
+    TetrahedalMesh<Nshells, LOWENERGYCORRECTION, FLUENCESCORING> getMesh(int depth = 8)
     {
-        TetrahedalMesh<Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
+        TetrahedalMesh<Nshells, LOWENERGYCORRECTION, FLUENCESCORING> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
         return mesh;
     }
 
-    TetrahedalMesh<Nshells, LOWENERGYCORRECTION> getMesh(int x, int y, int z)
+    TetrahedalMesh<Nshells, LOWENERGYCORRECTION, FLUENCESCORING> getMesh(int x, int y, int z)
     {
         std::array<int, 3> d = { x, y, z };
-        TetrahedalMesh<Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, d);
+        TetrahedalMesh<Nshells, LOWENERGYCORRECTION, FLUENCESCORING> mesh(m_tets, m_densities, m_materials, m_organNames, d);
         return mesh;
     }
 
-    TetrahedalMesh<Nshells, LOWENERGYCORRECTION> getMesh(const std::array<int, 3>& depth)
+    TetrahedalMesh<Nshells, LOWENERGYCORRECTION, FLUENCESCORING> getMesh(const std::array<int, 3>& depth)
     {
-        TetrahedalMesh<Nshells, LOWENERGYCORRECTION> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
+        TetrahedalMesh<Nshells, LOWENERGYCORRECTION, FLUENCESCORING> mesh(m_tets, m_densities, m_materials, m_organNames, depth);
         return mesh;
     }
 
