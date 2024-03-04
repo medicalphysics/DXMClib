@@ -180,7 +180,7 @@ public:
             m_tracker.registerParticle(p);
         }
         if constexpr (FLUENCESCORING)
-            transportSiddon(p, state);
+            transportSiddonForced(p, state);
         else
             transportWoodcock(p, state);
     }
@@ -300,18 +300,51 @@ protected:
         }
     }
 
+    void transportSiddonForced(ParticleType auto& p, RandomState& state)
+    {
+        Tetrahedron* tet = m_grid.pointInside(p.pos);
+        std::uint16_t currentCollection;
+        bool updateAtt = true;
+        AttenuationValues att;
+
+        while (tet) {
+            if (updateAtt) {
+                currentCollection = tet->collection();
+                att = m_materials[tet->materialIndex()].attenuationValues(p.energy);
+                updateAtt = false;
+            }
+            const auto intLen = tet->intersect(p).intersection;
+
+            const auto& material = m_materials[tet->materialIndex()];
+            const auto& density = m_collections[currentCollection].density;
+            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, density, att, p, material, state);
+            tet->scoreEnergy(intRes.energyImparted);
+            if (intRes.particleAlive) {
+                updateAtt = intRes.particleEnergyChanged;
+                tet = m_grid.pointInside(p.pos);
+                if (tet) {
+                    // We might have changed density or material
+                    updateAtt = currentCollection != tet->collection();
+                }
+            } else {
+                tet = nullptr;
+            }
+        }
+    }
+
     void transportSiddon(ParticleType auto& p, RandomState& state)
     {
         Tetrahedron* tet = m_grid.pointInside(p.pos);
+        std::uint16_t currentCollection;
         bool updateAtt = true;
         AttenuationValues att;
         double attSumInv;
         while (tet) {
             if (updateAtt) {
+                currentCollection = tet->collection();
                 const auto materialIdx = tet->materialIndex();
-                const auto collectionIdx = tet->collection();
                 att = m_materials[materialIdx].attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_collections[collectionIdx].density);
+                attSumInv = 1 / (att.sum() * m_collections[currentCollection].density);
                 updateAtt = false;
             }
             const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
@@ -330,6 +363,8 @@ protected:
                 // transport to border
                 p.border_translate(intLen);
                 tet = m_grid.pointInside(p.pos);
+                if (tet)
+                    updateAtt = currentCollection != tet->collection();
             }
         }
     }

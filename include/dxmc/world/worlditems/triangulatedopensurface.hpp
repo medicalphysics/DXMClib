@@ -59,9 +59,13 @@ public:
         setData(triangles, surfaceThickness, max_tree_dept);
     }
 
-    double surfaceAttenuationThickness() const
+    double surfaceThickness() const
     {
         return m_thickness;
+    }
+    void setSurfaceThickness(double cm)
+    {
+        m_thickness = std::abs(cm);
     }
 
     void setMaterial(const Material<NMaterialShells>& mat)

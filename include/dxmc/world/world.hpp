@@ -101,12 +101,12 @@ public:
         return std::get<U>(m_items.back());
     }
 
-    const auto& getItems() const
+    const auto& items() const
     {
         return m_items;
     }
 
-    auto& getItems()
+    auto& items()
     {
         return m_items;
     }

@@ -96,7 +96,8 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-int main()
+template <bool TRACK = false>
+void vizualize()
 {
     using CTDIPhantom = dxmc::CTDIPhantom<5, 1>;
     using Mesh = dxmc::TriangulatedMesh<5, 1>;
@@ -104,28 +105,40 @@ int main()
     using Sphere = dxmc::WorldSphere<5, 1>;
     using VGrid = dxmc::AAVoxelGrid<5, 1, 0>;
     using Room = dxmc::EnclosedRoom<5, 1>;
-    using TetMesh = dxmc::TetrahedalMesh<5, 1>;
+    using TetMesh = dxmc::TetrahedalMesh<5, 1, !TRACK>;
     using Box = dxmc::WorldBox<5, 1>;
     using World = dxmc::World<Mesh, Sphere, VGrid, Room, Surface, TetMesh, Box>;
 
     World world {};
     world.reserveNumberOfItems(7);
+
+    const auto carbon = dxmc::Material<5>::byZ(6).value();
+    const auto carbon_atom = dxmc::AtomHandler::Atom(6);
+    const auto carbon_dens = dxmc::AtomHandler::Atom(6).standardDensity;
+
     auto& carm = world.addItem<Mesh>({ "carm.stl" });
     auto& table = world.addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
+    table.setMaterial(carbon, carbon_dens);
+
+    const auto lead = dxmc::Material<5>::byZ(82).value();
+    const auto lead_atom = dxmc::AtomHandler::Atom(82);
+    const auto lead_dens = dxmc::AtomHandler::Atom(82).standardDensity;
 
     auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 0, 0, 1 });
     ceilingshield.translate({ -45, -15, 70 });
     ceilingshield.scale(0.5);
+    ceilingshield.setMaterial(lead, lead_dens);
+    ceilingshield.setSurfaceThickness(0.05);
+
+    auto& tableBox = world.addItem<Box>({ { -40, -25, -100, 0, -24.95, 0 } });
+    tableBox.setMaterial(lead, lead_dens);
 
     auto& room = world.addItem<Room>();
     room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
     room.setWallThickness(2);
-    const auto lead = dxmc::Material<5>::byZ(82).value();
-    const auto lead_atom = dxmc::AtomHandler::Atom(82);
-    const auto lead_dens = dxmc::AtomHandler::Atom(82).standardDensity;
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
 
     auto& phantom = world.addItem(testPhantom());
@@ -140,22 +153,24 @@ int main()
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
-    auto& tableBox = world.addItem<Box>({ { -40, -25, -100, 0, -24.95, 0 } });
-    tableBox.setMaterial(lead, lead_dens);
-
     world.build();
 
     // adding beam
-    using Beam = dxmc::DXBeam<true>;
+    using Beam = dxmc::DXBeam<TRACK>;
     const std::array<double, 3> source_pos = { 0, 0, -70 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
-    beam.setNumberOfExposures(48);
-    beam.setNumberOfParticlesPerExposure(1000000);
+    if constexpr (TRACK) {
+        beam.setNumberOfExposures(48);
+        beam.setNumberOfParticlesPerExposure(100000);
+    } else {
+        beam.setNumberOfExposures(512);
+        beam.setNumberOfParticlesPerExposure(1000000);
+    }
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
-    transport.setNumberOfThreads(1);
+    // transport.setNumberOfThreads(1);
     runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
@@ -166,14 +181,17 @@ int main()
     std::cout << "Max doctor dose " << max_doctor_dose << " mGy, dose norm: " << std::endl;
 
     dxmc::VisualizeWorld viz(world);
-    viz.addParticleTracks(doctor.particleTracker(), 0.1);
-    // viz.addColorByValueItem(&doctor);
-    // viz.addColorByValueItem(&phantom);
+    if constexpr (TRACK) {
+        viz.addParticleTracks(doctor.particleTracker(), 0.1);
+    } else {
+        for (const auto& item : world.items()) {
+            if (std::holds_alternative<TetMesh>(item))
+                viz.addColorByValueItem(&item);
+        }
+    }
     viz.setColorByValueMinMax(0, 0.00001);
-    auto buffer = viz.createBuffer<double>(2048, 2048);
-    // auto buffer = viz.createBuffer<double>(512, 512);
+    auto buffer = viz.createBuffer<double>(2048 * 2, 2048 * 2);
     viz.addLineProp(beam, 114, .2);
-
     viz.setDistance(400);
 
     std::vector<double> angles;
@@ -183,9 +201,11 @@ int main()
     viz.setAzimuthalAngleDeg(60);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(3);
+        viz.suggestFOV(2);
         viz.generate(world, buffer);
-        std::string name = "test" + std::to_string(int(a)) + ".png";
+        std::string prefix = TRACK ? "Track" : "Dose";
+        prefix += "Upper";
+        std::string name = prefix + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
         std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
@@ -194,13 +214,21 @@ int main()
     viz.setAzimuthalAngleDeg(120);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(3);
+        viz.suggestFOV(2);
         viz.generate(world, buffer);
-        std::string name = "test_low" + std::to_string(int(a)) + ".png";
+        std::string prefix = TRACK ? "Track" : "Dose";
+        prefix += "Lower";
+        std::string name = prefix + std::to_string(int(a)) + ".png";
         viz.savePNG(name, buffer);
         std::cout << "Rendertime " << buffer.renderTime.count() << " ms"
                   << "(" << 1000.0 / buffer.renderTime.count() << " fps)" << std::endl;
     }
+}
+
+int main()
+{
+    //vizualize<true>();
+    vizualize<false>();
 
     return 0;
 }

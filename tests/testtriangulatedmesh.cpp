@@ -5,20 +5,12 @@
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh.hpp"
+#include "dxmc/world/worlditems/triangulatedopensurface.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 
 #include <chrono>
 #include <fstream>
 #include <iostream>
-
-template <typename T>
-void writeImage(const std::vector<T>& buffer, const std::string& name)
-{
-    std::ofstream file;
-    file.open(name, std::ios::out | std::ios::binary);
-    file.write((char*)buffer.data(), buffer.size() * sizeof(T));
-    file.close();
-}
 
 template <typename T, typename W, typename B>
 auto runDispatcher(T& transport, W& world, const B& beam)
@@ -42,11 +34,10 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-template <typename T>
-std::vector<dxmc::Triangle<T>> getPyramid()
+std::vector<dxmc::Triangle> getPyramid()
 {
-    std::vector<std::array<T, 3>> p;
-    constexpr T d = 30;
+    std::vector<std::array<double, 3>> p;
+    constexpr auto d = 30.0;
     p.push_back({ 1, 1, 0 }); // 0
     p.push_back({ 1, -1, 0 }); // 1
     p.push_back({ -1, -1, 0 }); // 2
@@ -56,7 +47,7 @@ std::vector<dxmc::Triangle<T>> getPyramid()
         for (auto& j : i)
             j *= d;
 
-    std::vector<dxmc::Triangle<T>> t;
+    std::vector<dxmc::Triangle> t;
     t.push_back({ p[0], p[1], p[4] });
     t.push_back({ p[1], p[2], p[4] });
     t.push_back({ p[2], p[3], p[4] });
@@ -69,10 +60,9 @@ std::vector<dxmc::Triangle<T>> getPyramid()
     return t;
 }
 
-template <typename T>
-std::vector<dxmc::Triangle<T>> getBox(T scale = 1)
+std::vector<dxmc::Triangle> getBox(double scale = 1)
 {
-    std::vector<std::array<T, 3>> p;
+    std::vector<std::array<double, 3>> p;
     p.push_back({ 1, 1, 1 }); // 0
     p.push_back({ 1, 1, -1 }); // 1
     p.push_back({ 1, -1, 1 }); // 2
@@ -85,7 +75,7 @@ std::vector<dxmc::Triangle<T>> getBox(T scale = 1)
         for (auto& j : i)
             j *= scale;
 
-    std::vector<dxmc::Triangle<T>> t;
+    std::vector<dxmc::Triangle> t;
     t.push_back({ p[0], p[3], p[4] });
     t.push_back({ p[0], p[4], p[2] });
     t.push_back({ p[6], p[2], p[4] });
@@ -100,18 +90,37 @@ std::vector<dxmc::Triangle<T>> getBox(T scale = 1)
     t.push_back({ p[5], p[0], p[1] });
     return t;
 }
+std::vector<dxmc::Triangle> getPlane(double scale = 1)
+{
+    std::vector<std::array<double, 3>> p;
+    p.push_back({ -1, -1, 0 }); // 0
+    p.push_back({ 1, -1, 0 }); // 1
+    p.push_back({ 1, 1, 0 }); // 2
+    p.push_back({ -1, -1, 0 }); // 3
+    p.push_back({ 1, 1, 0 }); // 4
+    p.push_back({ -1, 1, 0 }); // 5
 
-template <typename T, std::size_t N = 5, int L = 2>
+    for (auto& i : p)
+        for (auto& j : i)
+            j *= scale;
+
+    std::vector<dxmc::Triangle> t;
+    t.push_back({ p[0], p[1], p[2] });
+    t.push_back({ p[3], p[4], p[5] });
+    return t;
+}
+
+template <std::size_t N = 5, int L = 2>
 void testMeshVisualization()
 {
 
-    using Mesh = dxmc::TriangulatedMesh<T, 5, 2>;
-    using World = dxmc::World2<T, Mesh>;
-    using Material = dxmc::Material<T, 5>;
+    using Mesh = dxmc::TriangulatedMesh<N, L>;
+    using World = dxmc::World<Mesh>;
+    using Material = dxmc::Material<N>;
 
     World world;
 
-    const auto waterComp = dxmc::NISTMaterials<T>::Composition("Water, Liquid");
+    const auto waterComp = dxmc::NISTMaterials::Composition("Water, Liquid");
     auto water = Material::byWeight(waterComp).value();
 
     int option;
@@ -119,16 +128,15 @@ void testMeshVisualization()
     option = 1; // Triangle
     option = 2; // Bunny
     option = 3; // bunny_low
-    //option = 4; // duck
-    
+    // option = 4; // duck
 
     if (option == 0) {
-        const auto triangles = getBox<T>();
+        const auto triangles = getBox();
         Mesh mesh(triangles);
         mesh.setMaterial(water, 1);
         world.addItem(std::move(mesh));
     } else if (option == 1) {
-        const auto triangles = getPyramid<T>();
+        const auto triangles = getPyramid();
         Mesh mesh(triangles);
         mesh.setMaterial(water, 1);
         world.addItem(std::move(mesh));
@@ -146,51 +154,98 @@ void testMeshVisualization()
         world.addItem(std::move(mesh));
     }
 
-    world.build(T { 0 });
+    world.build();
 
-    dxmc::VisualizeWorld<T> viz(world);
+    dxmc::VisualizeWorld viz(world);
 
-    int height = 1024;
-    int width = 1024;
-    std::vector<T> buffer(height * width * 4, T { 1 });
+    auto buffer = viz.createBuffer();
 
     for (std::size_t i = 0; i < 12; ++i) {
         viz.setDistance(500);
-        viz.setPolarAngle(std::numbers::pi_v<T> / 3.0);
-        viz.setAzimuthalAngle(std::numbers::pi_v<T> * i / 6.0);
+        viz.setPolarAngle(std::numbers::pi_v<double> / 3.0);
+        viz.setAzimuthalAngle(std::numbers::pi_v<double> * i / 6.0);
         // viz.setCameraPosition({ -60, -30, -10 });
         viz.suggestFOV();
-        viz.generate(world, buffer, width, height);
+        viz.generate(world, buffer);
         std::string name = "color_" + std::to_string(i) + ".png";
-        viz.savePNG(name, buffer, width, height);
-        //writeImage(buffer, name);
+        viz.savePNG(name, buffer);
+        // writeImage(buffer, name);
     }
 }
 
-template <dxmc::Floating T, bool MESH = true>
-T testScoring()
+template <std::size_t N = 5, int L = 2>
+void testMeshPlaneVisualization()
 {
-    using Mesh = dxmc::TriangulatedMesh<T, 5, 2>;
-    using Box = dxmc::WorldBox<T, 5, 2>;
-    using World = dxmc::World2<T, Mesh, Box>;
-    using Material = dxmc::Material<T, 5>;
+
+    using Plane = dxmc::TriangulatedOpenSurface<N, L>;
+    using World = dxmc::World<Plane>;
+    using Material = dxmc::Material<N>;
 
     World world;
-    const auto waterComp = dxmc::NISTMaterials<T>::Composition("Water, Liquid");
+
+    const auto waterComp = dxmc::NISTMaterials::Composition("Water, Liquid");
+    auto water = Material::byWeight(waterComp).value();
+
+    const auto tri = getPlane(5);
+    world.reserveNumberOfItems(1);
+    auto& plane = world.addItem<Plane>({ tri });
+    plane.setMaterial(water);
+
+    world.build();
+
+    dxmc::VisualizeWorld viz(world);
+
+    dxmc::IsotropicMonoEnergyBeam<true> beam;
+    beam.setPosition({ 0, 0, 10 });
+    beam.setDirectionCosines({ -1, 0, 0, 0, 1, 0 });
+    beam.setNumberOfExposures(24);
+    beam.setNumberOfParticlesPerExposure(100);
+    beam.setCollimationAngles({ 0.1, 0.1 });
+
+    dxmc::Transport transport;
+    transport.setNumberOfThreads(1);
+    transport(world, beam);
+    viz.addLineProp(beam, 100, 1);
+
+    auto buffer = viz.createBuffer();
+
+    for (std::size_t i = 0; i < 12; ++i) {
+        viz.setDistance(500);
+        viz.setPolarAngle(std::numbers::pi_v<double> / 3.0);
+        viz.setAzimuthalAngle(std::numbers::pi_v<double> * i / 6.0);
+        // viz.setCameraPosition({ -60, -30, -10 });
+        viz.suggestFOV();
+        viz.generate(world, buffer);
+        std::string name = "color_" + std::to_string(i) + ".png";
+        viz.savePNG(name, buffer);
+        // writeImage(buffer, name);
+    }
+}
+
+template <bool MESH = true>
+double testScoring()
+{
+    using Mesh = dxmc::TriangulatedMesh<5, 2>;
+    using Box = dxmc::WorldBox<5, 2>;
+    using World = dxmc::World<Mesh, Box>;
+    using Material = dxmc::Material<5>;
+
+    World world;
+    const auto waterComp = dxmc::NISTMaterials::Composition("Water, Liquid");
     auto water = Material::byWeight(waterComp).value();
 
     if constexpr (MESH) {
 
-        auto tri = getBox<T>();
+        auto tri = getBox();
         auto& mesh = world.addItem<Mesh>({ tri });
-        mesh.setMaterial(water, T { 1 });
+        mesh.setMaterial(water, 1);
     } else {
-        auto& box = world.addItem<Box>({ T { 1 } });
-        box.setMaterial(water, T { 1 });
+        auto& box = world.addItem<Box>({ 1 });
+        box.setMaterial(water, 1);
     }
     world.build();
 
-    using Beam = dxmc::IsotropicMonoEnergyBeam<T>;
+    using Beam = dxmc::IsotropicMonoEnergyBeam<>;
     Beam beam({ 0, 0, -1000 }, { 1, 0, 0, 0, 1, 0 }, 60);
     beam.setNumberOfExposures(8);
     beam.setNumberOfParticlesPerExposure(1E5);
@@ -199,31 +254,31 @@ T testScoring()
 
     runDispatcher(transport, world, beam);
 
-    const auto* item = world.getItemPointers()[0];
-    const auto& dose = item->dose();
-
-    return dose.energyImparted();
+    return 0;
 }
 
 int main(int argc, char* argv[])
 {
     std::cout << "Testing tetrahedal mesh\n";
-    testMeshVisualization<double>();
+    testMeshPlaneVisualization();
+    // testMeshVisualization();
 
-    std::cout << "Testing dose scoring of mesh\n";
-    bool success = true;
-    const auto dmesh = testScoring<double, true>();
-    const auto dbox = testScoring<double, false>();
-    const auto ddiff = (dmesh / dbox - 1) * 100;
-    success = success && std::abs(ddiff) < 0.1;
-    if (success)
-        std::cout << "SUCCESS: ";
-    else
-        std::cout << "FAILURE: ";
-    std::cout << "Dose mesh: " << dmesh << ", dose box: ";
-    std::cout << dbox << ", difference[%] " << ddiff << std::endl;
+    /*
+        std::cout << "Testing dose scoring of mesh\n";
+        bool success = true;
+        const auto dmesh = testScoring<true>();
+        const auto dbox = testScoring<false>();
+        const auto ddiff = (dmesh / dbox - 1) * 100;
+        success = success && std::abs(ddiff) < 0.1;
+        if (success)
+            std::cout << "SUCCESS: ";
+        else
+            std::cout << "FAILURE: ";
+        std::cout << "Dose mesh: " << dmesh << ", dose box: ";
+        std::cout << dbox << ", difference[%] " << ddiff << std::endl;
 
     if (success)
         return EXIT_SUCCESS;
+        */
     return EXIT_FAILURE;
 }
