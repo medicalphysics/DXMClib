@@ -180,6 +180,9 @@ public:
         const auto attSumInv = 1 / (att.sum() * m_materialDensity);
         const auto stepLen = -std::log(state.randomUniform()) * attSumInv;
 
+        // The particle is transported right behind this plane, we correct this
+        p.translate(-2 * GEOMETRIC_ERROR());
+
         const auto intersection = m_kdtree.intersect(p, m_aabb);
         const auto normal = intersection.item->planeVector();
         const auto length_scale = std::abs(vectormath::dot(p.dir, normal));
