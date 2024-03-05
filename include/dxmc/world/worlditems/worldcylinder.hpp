@@ -82,7 +82,7 @@ public:
         return m_cylinder.center;
     }
 
-    const std::array<double, 6>& AABB() const
+    std::array<double, 6> AABB() const
     {
         return basicshape::cylinder::cylinderAABB(m_cylinder);
     }
