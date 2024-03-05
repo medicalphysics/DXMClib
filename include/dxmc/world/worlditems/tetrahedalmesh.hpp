@@ -204,6 +204,11 @@ public:
         return m_tracker;
     }
 
+    ParticleTracker& particleTracker()
+    {
+        return m_tracker;
+    }
+
 protected:
     void generateWoodcockStepTable()
     {

@@ -32,6 +32,11 @@ public:
         m_points.resize(size);
     }
 
+    void setNumberOfPoints(std::size_t size)
+    {
+        m_points.resize(size);
+    }
+
     void registerParticle(const ParticleTrack& p)
     {
         // Threadsafe particle register
