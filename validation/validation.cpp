@@ -302,7 +302,7 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 }
 
 template <BeamType Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam> || std::same_as<Beam, IsotropicMonoEnergyBeam>)
+    requires(std::same_as<Beam, IsotropicBeam<>> || std::same_as<Beam, IsotropicMonoEnergyBeam<>>)
 bool TG195Case2AbsorbedEnergy(bool tomo = false)
 {
     constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 512;
@@ -336,7 +336,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 
     Beam beam;
 
-    if constexpr (std::same_as<Beam, IsotropicBeam>) {
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>) {
         const auto specter = TG195_120KV();
         beam.setEnergySpecter(specter);
     } else {
@@ -359,7 +359,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
     }
 
     ResultKeys res;
-    res.specter = std::same_as<Beam, IsotropicBeam> ? "120kVp" : "56.4keV";
+    res.specter = std::same_as<Beam, IsotropicBeam<>> ? "120kVp" : "56.4keV";
     res.rCase = "Case 2";
     res.modus = tomo ? "tomosyntesis" : "radiography";
     if (LOWENERGYCORRECTION == 0)
@@ -373,7 +373,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 
     double TG195_value;
     std::array<double, 9> TG195_voi_values;
-    if constexpr (std::same_as<Beam, IsotropicBeam>) {
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>) {
         if (tomo) {
             TG195_value = 30923.13;
             TG195_voi_values = { 30.35, 23.52, 31.64, 23.52, 8.90, 70.53, 47.74, 20.31, 12.51 };
@@ -391,7 +391,7 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
         }
     }
 
-    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam>) {
+    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam<>>) {
         if (tomo) {
             saveImageOfWorld("Case2worldTomo.png", world, beam, 60, 45, 200, 4);
         } else {
@@ -477,12 +477,12 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 }
 
 template <BeamType Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam> || std::same_as<Beam, IsotropicMonoEnergyBeam>)
+    requires(std::same_as<Beam, IsotropicBeam<>> || std::same_as<Beam, IsotropicMonoEnergyBeam<>>)
 bool TG195Case3AbsorbedEnergy(bool tomo = false)
 {
     ResultKeys res;
     res.rCase = "Case 3";
-    res.specter = std::same_as<Beam, IsotropicBeam> ? "30kVp" : "16.8keV";
+    res.specter = std::same_as<Beam, IsotropicBeam<>> ? "30kVp" : "16.8keV";
     res.modus = tomo ? "tomosyntesis" : "radiography";
     std::string model = "NoneLC";
     if (LOWENERGYCORRECTION == 1)
@@ -534,7 +534,7 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
     world.build(70);
 
     Beam beam;
-    if constexpr (std::same_as<Beam, IsotropicBeam>) {
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>) {
         const auto specter = TG195_30KV();
         beam.setEnergySpecter(specter);
     } else {
@@ -570,7 +570,7 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
         beam.setCollimationAngles(0, -collangley, collanglex, collangley);
     }
 
-    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam>) {
+    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam<>>) {
         std::string tp;
         if (tomo)
             tp = "Tomo";
@@ -589,7 +589,7 @@ bool TG195Case3AbsorbedEnergy(bool tomo = false)
 
     double sim_ev;
     std::array<double, 7> sim_subvol;
-    if constexpr (std::same_as<Beam, IsotropicBeam>) {
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>) {
         // specter
         if (tomo) {
             sim_ev = 4188.833;
@@ -765,7 +765,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
 }
 
 template <BeamType Beam, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<Beam, IsotropicBeam> || std::same_as<Beam, IsotropicMonoEnergyBeam>)
+    requires(std::same_as<Beam, IsotropicBeam<>> || std::same_as<Beam, IsotropicMonoEnergyBeam<>>)
 bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 {
     std::string model;
@@ -781,7 +781,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         std::cout << "80mm collimation and ";
     else
         std::cout << "10mm collimation and ";
-    if constexpr (std::same_as<Beam, IsotropicBeam>)
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>)
         std::cout << "120kVp";
     else
         std::cout << "56.4keV";
@@ -813,10 +813,10 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         res.model = "IA";
     res.modus = large_collimation ? "80mm collimation" : "10mm collimation";
     res.rCase = "Case 4.2";
-    res.specter = std::same_as<Beam, IsotropicBeam> ? "120kVp" : "56.4keV";
+    res.specter = std::same_as<Beam, IsotropicBeam<>> ? "120kVp" : "56.4keV";
 
     Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } });
-    if constexpr (std::same_as<Beam, IsotropicBeam>) {
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>) {
         const auto specter = TG195_120KV();
         beam.setEnergySpecter(specter);
     } else {
@@ -830,7 +830,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
 
     // setting up benchmarking values
     std::array<double, 36> sim_ev_center, sim_ev_pher;
-    if constexpr (std::same_as<Beam, IsotropicBeam>) {
+    if constexpr (std::same_as<Beam, IsotropicBeam<>>) {
         if (large_collimation) {
             sim_ev_center = { 10.878025, 10.9243, 10.884625, 10.89795, 10.87265, 10.902675, 10.8994, 10.880875, 10.875475, 10.8862, 10.895975, 10.88105, 10.8996, 10.886225, 10.8934, 10.8942, 10.879025, 10.8855, 10.894125, 10.8898, 10.8916, 10.895875, 10.889525, 10.889775, 10.89365, 10.901875, 10.894475, 10.906975, 10.888025, 10.877475, 10.883325, 10.875925, 10.8881, 10.886775, 10.88975, 10.900075 };
             sim_ev_pher = { 115.34325, 113.76275, 109.16925, 101.706, 91.562975, 78.39105, 61.388325, 40.08625, 22.471075, 11.781725, 6.14551, 3.42218, 2.05605, 1.35319, 0.96088275, 0.743808, 0.61922025, 0.55457575, 0.5309405, 0.55428325, 0.6219885, 0.74445025, 0.96480125, 1.3481875, 2.0611025, 3.4154, 6.15532, 11.7854, 22.461525, 40.13715, 61.42595, 78.328975, 91.481375, 101.61325, 109.10425, 113.8365 };
@@ -860,7 +860,7 @@ bool TG195Case42AbsorbedEnergy(bool large_collimation = false)
         beam.setPosition(p_ang);
         beam.setDirectionCosines(x, co_y);
 
-        if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam>) {
+        if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam<>>) {
             if (i == 0) {
                 std::string tp;
                 if (large_collimation)
@@ -1006,7 +1006,7 @@ std::pair<AAVoxelGrid<NMATSHELLS, LOWENERGYCORRECTION, TRANSPARENTVOXEL>, std::v
 }
 
 template <BeamType B, int LOWENERGYCORRECTION = 2>
-    requires(std::same_as<B, IsotropicBeam> || std::same_as<B, IsotropicMonoEnergyBeam>)
+    requires(std::same_as<B, IsotropicBeam<>> || std::same_as<B, IsotropicMonoEnergyBeam<>>)
 bool TG195Case5AbsorbedEnergy()
 {
     const std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 24 : 512;
@@ -1030,7 +1030,7 @@ bool TG195Case5AbsorbedEnergy()
     res.rCase = "Case 5";
 
     B beam;
-    if constexpr (std::same_as<B, IsotropicBeam>) {
+    if constexpr (std::same_as<B, IsotropicBeam<>>) {
         const auto specter = TG195_120KV();
         beam.setEnergySpecter(specter);
         res.specter = "120kVp";
@@ -1041,7 +1041,7 @@ bool TG195Case5AbsorbedEnergy()
 
     // const std::array<std::uint8_t, 17> tg195_organ_idx = { 3, 4, 5, 6, 7, 8, 9, 10, 11, 12, 13, 14, 15, 16, 17, 18, 19 };
     std::array<std::array<double, 17>, 8> tg195_doses;
-    if constexpr (std::same_as<B, IsotropicBeam>) {
+    if constexpr (std::same_as<B, IsotropicBeam<>>) {
         tg195_doses[0] = { 12374.98, 2917.75, 1275.86, 612.31, 5.78, 16.68, 121.04, 15.16, 8.17, 0.15, 1.65, 40.66, 9.78, 33.37, 559.77, 21.49, 7727.77 };
         tg195_doses[1] = { 12594.50, 1801.82, 1007.28, 612.42, 5.74, 9.97, 76.98, 8.73, 5.86, 0.13, 1.39, 33.38, 7.12, 30.52, 538.17, 17.76, 6631.55 };
         tg195_doses[2] = { 10648.03, 737.54, 640.75, 447.05, 3.70, 6.58, 36.07, 3.29, 3.19, 0.10, 1.03, 15.51, 3.38, 21.38, 348.68, 6.82, 4814.57 };
@@ -1128,28 +1128,28 @@ bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
     success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
 
-    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case5AbsorbedEnergy<IsotropicBeam, LOWENERGYCORRECTION>();
-    success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam, LOWENERGYCORRECTION>();
+    success = success && TG195Case5AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>();
+    success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>();
 
     return success;
 }

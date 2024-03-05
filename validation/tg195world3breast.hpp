@@ -26,7 +26,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/cylinderz.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -34,12 +33,10 @@ Copyright 2023 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class TG195World3Breast final : public WorldItemBase {
-
+class TG195World3Breast {
 public:
     TG195World3Breast()
-        : WorldItemBase()
-        , m_skin_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        : m_skin_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_tissue_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         translateBox(m_dose_boxes[0], { double { 5 }, double { 5 }, double { 0 } });
@@ -63,7 +60,7 @@ public:
         m_skin_density = std::abs(dens);
     }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_center = vectormath::add(m_center, dist);
         for (auto& b : m_dose_boxes) {
@@ -74,12 +71,12 @@ public:
         }
     }
 
-    std::array<double, 3> center() const override
+    std::array<double, 3> center() const
     {
         return m_center;
     }
 
-    std::array<double, 6> AABB() const override
+    std::array<double, 6> AABB() const
     {
         std::array aabb {
             m_center[0],
@@ -92,7 +89,7 @@ public:
         return aabb;
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
         m_skin_energy.clear();
@@ -100,7 +97,7 @@ public:
             b.energyScored.clear();
         }
     }
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         if (index < m_dose_boxes.size())
             return m_dose_boxes[index].energyScored;
@@ -109,7 +106,7 @@ public:
         return m_energyScored;
     }
 
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         auto skin_volume = std::numbers::pi_v<double> * (m_halfHeight - m_skin_thick) * 2 * (m_radius * m_radius - (m_radius - m_skin_thick) * (m_radius - m_skin_thick));
         skin_volume += std::numbers::pi_v<double> * 2 * m_skin_thick * m_radius * m_radius;
@@ -137,7 +134,7 @@ public:
         }
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         if (index < m_dose_boxes.size())
             return m_dose_boxes[index].doseScored;
@@ -146,7 +143,7 @@ public:
         return m_doseScored;
     }
 
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_doseScored.clear();
         m_skin_dose.clear();
@@ -155,16 +152,17 @@ public:
         }
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept
     {
         return intersectHalfCylindar(p, m_center, m_radius, m_halfHeight);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
         const auto aabb = AABB();
-        auto cyl = basicshape::cylinderZ::template intersectVisualization<WorldItemBase>(p, m_center, m_radius, m_halfHeight);
-        const auto box = basicshape::AABB::template intersectVisualization<WorldItemBase>(p, aabb);
+        auto cyl = basicshape::cylinderZ::template intersectVisualization<U>(p, m_center, m_radius, m_halfHeight);
+        const auto box = basicshape::AABB::template intersectVisualization<U>(p, aabb);
         if (cyl.valid() && box.valid()) {
             if (basicshape::AABB::pointInside(p.pos, aabb)) {
                 cyl.intersection = std::min(cyl.intersection, box.intersection);
@@ -183,7 +181,7 @@ public:
         return cyl;
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::cylinderZ::pointInside(p.pos, m_center, m_radius, m_halfHeight) && basicshape::AABB::pointInside(p.pos, AABB());
         while (cont) {

@@ -26,7 +26,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/cylinder.hpp"
-#include "dxmc/world/worlditems/worlditembase.hpp"
 
 #include <limits>
 #include <optional>
@@ -34,7 +33,7 @@ Copyright 2022 Erlend Andersen
 namespace dxmc {
 
 template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
-class TG195World42 final : public WorldItemBase {
+class TG195World42 {
 protected:
     static bool insideChild(const Particle& p, const basicshape::cylinder::Cylinder& child, const std::array<double, 6>& aabb)
     {
@@ -46,9 +45,7 @@ protected:
 
 public:
     TG195World42(double radius = 16, double height = 10, const std::array<double, 3>& pos = { 0, 0, 0 })
-        : WorldItemBase()
-        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-
+        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         m_cylinder.center = pos;
         m_cylinder.direction = { 0, 0, 1 };
@@ -86,7 +83,7 @@ public:
 
     void setMaterialDensity(double density) { m_materialDensity = density; }
 
-    void translate(const std::array<double, 3>& dist) override
+    void translate(const std::array<double, 3>& dist)
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
         m_centerChild.center = vectormath::add(m_centerChild.center, dist);
@@ -99,12 +96,12 @@ public:
         }
     }
 
-    std::array<double, 3> center() const override
+    std::array<double, 3> center() const
     {
         return m_cylinder.center;
     }
 
-    std::array<double, 6> AABB() const override
+    std::array<double, 6> AABB() const
     {
         std::array aabb {
             m_cylinder.center[0] - m_cylinder.radius,
@@ -117,17 +114,18 @@ public:
         return aabb;
     }
 
-    WorldIntersectionResult intersect(const Particle& p) const noexcept override
+    WorldIntersectionResult intersect(const Particle& p) const noexcept
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
 
-    VisualizationIntersectionResult<WorldItemBase> intersectVisualization(const Particle& p) const noexcept override
+    template <typename U>
+    VisualizationIntersectionResult<U> intersectVisualization(const Particle& p) const noexcept
     {
-        return basicshape::cylinder::template intersectVisualization<WorldItemBase>(p, m_cylinder);
+        return basicshape::cylinder::template intersectVisualization<U>(p, m_cylinder);
     }
 
-    void transport(Particle& p, RandomState& state) noexcept override
+    void transport(Particle& p, RandomState& state) noexcept
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         bool updateAtt = true;
@@ -170,7 +168,7 @@ public:
         }
     }
 
-    void clearEnergyScored() override
+    void clearEnergyScored()
     {
         m_energyScored.clear();
         m_centerChild_energyScored.clear();
@@ -184,7 +182,7 @@ public:
     {
         return m_periferyChild_energyScored;
     }
-    const EnergyScore& energyScored(std::size_t index = 0) const override
+    const EnergyScore& energyScored(std::size_t index = 0) const
     {
         if (index == 0)
             return m_centerChild_energyScored;
@@ -192,7 +190,7 @@ public:
             return m_periferyChild_energyScored;
         return m_energyScored;
     }
-    void addEnergyScoredToDoseScore(double calibration_factor = 1) override
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         const auto c_vol = m_centerChild.volume();
         const auto p_vol = m_periferyChild.volume();
@@ -201,7 +199,7 @@ public:
         m_centerChild_doseScored.addScoredEnergy(m_centerChild_energyScored, c_vol, m_materialDensity, calibration_factor);
         m_periferyChild_doseScored.addScoredEnergy(m_periferyChild_energyScored, p_vol, m_materialDensity, calibration_factor);
     };
-    const DoseScore& doseScored(std::size_t index = 0) const override
+    const DoseScore& doseScored(std::size_t index = 0) const
     {
         if (index == 0)
             return m_centerChild_doseScored;
@@ -209,7 +207,7 @@ public:
             return m_periferyChild_doseScored;
         return m_doseScored;
     }
-    void clearDoseScored() override
+    void clearDoseScored()
     {
         m_doseScored.clear();
         m_centerChild_doseScored.clear();
