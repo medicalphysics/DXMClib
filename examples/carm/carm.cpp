@@ -56,7 +56,8 @@ dxmc::AAVoxelGrid<5, 1, 0> testPhantom()
     return phantom;
 }
 
-dxmc::TetrahedalMesh<5, 1> readICRP145Phantom(std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
+template <bool TRACK>
+dxmc::TetrahedalMesh<5, 1, !TRACK> readICRP145Phantom(std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
 {
     const std::string name = female ? "MRCP_AF" : "MRCP_AM";
     const std::string elefile = name + ".ele";
@@ -64,14 +65,15 @@ dxmc::TetrahedalMesh<5, 1> readICRP145Phantom(std::array<int, 3> depth = { 8, 8,
     const std::string mediafile = name + "_media.dat";
     const std::string organfile = "icrp145organs.csv";
 
-    dxmc::TetrahedalmeshReader<5, 1> reader(nodefile, elefile, mediafile, organfile);
+    dxmc::TetrahedalmeshReader<5, 1, !TRACK> reader(nodefile, elefile, mediafile, organfile);
     reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
     return reader.getMesh(depth);
 }
 
-dxmc::TetrahedalMesh<5, 1> readICRP145Phantom(int depth = 8, bool female = true)
+template <bool TRACK>
+dxmc::TetrahedalMesh<5, 1, !TRACK> readICRP145Phantom(int depth = 8, bool female = true)
 {
-    return readICRP145Phantom({ depth, depth, depth }, female);
+    return readICRP145Phantom<TRACK>({ depth, depth, depth }, female);
 }
 
 template <typename T, typename W, typename B>
@@ -149,7 +151,7 @@ void vizualize()
     auto phantom_aabb = phantom.AABB();
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
-    auto& doctor = world.addItem<TetMesh>(readICRP145Phantom({ 64, 64, 256 }, true));
+    auto& doctor = world.addItem<TetMesh>(readICRP145Phantom<TRACK>({ 64, 64, 256 }, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
@@ -164,13 +166,12 @@ void vizualize()
         beam.setNumberOfExposures(48);
         beam.setNumberOfParticlesPerExposure(100000);
     } else {
-        beam.setNumberOfExposures(512);
+        beam.setNumberOfExposures(2048);
         beam.setNumberOfParticlesPerExposure(1000000);
     }
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
-    // transport.setNumberOfThreads(1);
     runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
@@ -227,7 +228,7 @@ void vizualize()
 
 int main()
 {
-    //vizualize<true>();
+    vizualize<true>();
     vizualize<false>();
 
     return 0;
