@@ -30,13 +30,13 @@ namespace dxmc {
 namespace basicshape {
     namespace sphere {
 
-        bool pointInside(const std::array<double, 3>& pos, const std::array<double, 3>& center, const double radii)
+        static bool pointInside(const std::array<double, 3>& pos, const std::array<double, 3>& center, const double radii)
         {
             const std::array<double, 3> dp = { pos[0] - center[0], pos[1] - center[1], pos[2] - center[2] };
             return dp[0] * dp[0] + dp[1] * dp[1] + dp[2] * dp[2] < radii * radii;
         }
 
-        WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
+        static WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
         {
             WorldIntersectionResult res;
             // nummeric stable ray sphere intersection
@@ -78,7 +78,7 @@ namespace basicshape {
             return res;
         }
 
-        std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
+        static std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection
             const auto r2 = radii * radii;

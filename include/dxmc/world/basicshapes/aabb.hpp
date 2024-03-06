@@ -31,12 +31,12 @@ namespace dxmc {
 namespace basicshape {
     namespace AABB {
 
-        inline constexpr bool pointInside(const std::array<double, 3>& p, const std::array<double, 6>& aabb)
+        static constexpr bool pointInside(const std::array<double, 3>& p, const std::array<double, 6>& aabb)
         {
             return aabb[0] <= p[0] && p[0] <= aabb[3] && aabb[1] <= p[1] && p[1] <= aabb[4] && aabb[2] <= p[2] && p[2] <= aabb[5];
         }
 
-        inline constexpr bool overlap(const std::array<double, 6>& a, const std::array<double, 6>& b)
+        static constexpr bool overlap(const std::array<double, 6>& a, const std::array<double, 6>& b)
         {
             const bool x = a[0] <= b[3] && a[3] >= b[0];
             const bool y = a[1] <= b[4] && a[4] >= b[1];
@@ -65,7 +65,7 @@ namespace basicshape {
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
 
-        WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
+        static WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             WorldIntersectionResult res;
             if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {

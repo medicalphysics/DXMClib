@@ -30,43 +30,43 @@ namespace dxmc {
 namespace BetheHeitlerCrossSection {
 
     // ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN
-    constexpr double SIMULATED_ENERGY()
+    static constexpr double SIMULATED_ENERGY()
     {
         return 100.0; // Elektron energy [keV] for MonteCarlo simulation of electron penetration in tungsten
     }
 
-    constexpr std::array<double, 5> THOMSONWIDDINGTONCONSTANT_T()
+    static constexpr std::array<double, 5> THOMSONWIDDINGTONCONSTANT_T()
     {
         std::array<double, 5> res = { 50, 80, 100, 120, 150 };
         return res;
     }
 
-    constexpr std::array<double, 5> THOMSONWIDDINGTONCONSTANT_C()
+    static constexpr std::array<double, 5> THOMSONWIDDINGTONCONSTANT_C()
     {
         std::array<double, 5> res = { 565, 710, 792, 865, 964 };
         return res;
     }
     // Electron density distributions:
 
-    constexpr std::array<double, 12> CP100_F_x()
+    static constexpr std::array<double, 12> CP100_F_x()
     {
         std::array<double, 12> res = { 0, 0.965, 1.93, 2.895, 3.86, 4.825, 5.79, 7.72, 9.65, 11.58, 13.51, 15.44 }; // [mg/cm2]
         return res;
     }
 
-    constexpr std::array<double, 45> CP100_u()
+    static constexpr std::array<double, 45> CP100_u()
     {
         std::array<double, 45> res = { 0.11, 0.13, 0.15, 0.17, 0.19, 0.21, 0.23, 0.25, 0.27, 0.29, 0.31, 0.33, 0.35, 0.37, 0.39, 0.41, 0.43, 0.45, 0.47, 0.49, 0.51, 0.53, 0.55, 0.57, 0.59, 0.61, 0.63, 0.65, 0.67, 0.69, 0.71, 0.73, 0.75, 0.77, 0.79, 0.81, 0.83, 0.85, 0.87, 0.89, 0.91, 0.93, 0.95, 0.97, 0.99 };
         return res;
     }
 
-    constexpr std::array<double, 12> CP100_M_x()
+    static constexpr std::array<double, 12> CP100_M_x()
     {
         std::array<double, 12> res = { 0, 0.5, 1, 1.5, 2, 2.5, 3, 4, 5, 6, 7, 8 }; // [mg/cm2]
         return res;
     }
 
-    constexpr auto CP100_F()
+    static constexpr auto CP100_F()
     {
         std::array<double, CP100_F_x().size() * CP100_u().size()> res = {
             0, 0.029, 0.04, 0.049, 0.06, 0.077, 0.096, 0.137, 0.186, 0.242, 0.381, 0.5,
@@ -118,7 +118,7 @@ namespace BetheHeitlerCrossSection {
         return res;
     }
 
-    constexpr auto CP100_M()
+    static constexpr auto CP100_M()
     {
         std::array<double, CP100_M_x().size() * CP100_u().size()> res = {
             0.109, 0.44, 0.528, 0.617, 0.706, 0.808, 0.9, 1.1, 1.335, 1.595, 1.916, 2.177,
@@ -170,13 +170,13 @@ namespace BetheHeitlerCrossSection {
         return res;
     }
 
-    double ThomsonWiddingtonRange(double T0)
+    static double ThomsonWiddingtonRange(double T0)
     // T0: electron energy, returns Thomson widdington range [mg/cm2] for a electron with initial energy T0 in tungsten. Valid for range [50, 150] keV
     {
         return 0.0119 * std::pow(T0, 1.513);
     }
 
-    double ThomsonWiddingtonLaw(double x, double tubeVoltage)
+    static double ThomsonWiddingtonLaw(double x, double tubeVoltage)
     {
         const auto& twct_array = THOMSONWIDDINGTONCONSTANT_T();
         auto twct_begin = twct_array.cbegin();
@@ -202,13 +202,13 @@ namespace BetheHeitlerCrossSection {
         return twl < 0 ? 0 : twl;
     }
 
-    double numberFractionF(double x, double tubeVoltage)
+    static double numberFractionF(double x, double tubeVoltage)
     {
         constexpr auto L = 1.753;
         return std::pow(ThomsonWiddingtonLaw(x, tubeVoltage), L);
     }
 
-    double numberFractionM(double x, double tubeVoltage)
+    static double numberFractionM(double x, double tubeVoltage)
     {
         constexpr auto K = 18.0;
         constexpr auto Bd = 0.584;
@@ -219,7 +219,7 @@ namespace BetheHeitlerCrossSection {
         return numberFractionF(x, tubeVoltage) * B * (F + 1) / (1 - B * F);
     }
 
-    inline double bilinearInterpolate(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y)
+    static double bilinearInterpolate(double q11, double q12, double q21, double q22, double x1, double x2, double y1, double y2, double x, double y)
     {
         const auto xf1 = ((x2 - x) / (x2 - x1));
         const auto xf2 = ((x - x1) / (x2 - x1));
@@ -232,7 +232,7 @@ namespace BetheHeitlerCrossSection {
         return ((y2 - y) * invdiv) * r1 + ((y - y1) * invdiv) * r2;
     }
 
-    double electronDensity_F(double uval, double xval)
+    static double electronDensity_F(double uval, double xval)
     {
         const auto& cp_f_x = CP100_F_x();
         const auto x = std::clamp(xval, cp_f_x.front(), cp_f_x.back());
@@ -269,7 +269,7 @@ namespace BetheHeitlerCrossSection {
         return bilinearInterpolate(q11, q12, q21, q22, *idx1, *idx2, *idu1, *idu2, x, u);
     }
 
-    double electronDensity_M(double uval, double xval)
+    static double electronDensity_M(double uval, double xval)
     {
         const auto& cp_m_x = CP100_M_x();
         const auto x = std::clamp(xval, cp_m_x.front(), cp_m_x.back());
@@ -306,7 +306,7 @@ namespace BetheHeitlerCrossSection {
         return bilinearInterpolate(q11, q12, q21, q22, *idx1, *idx2, *idu1, *idu2, x, u);
     }
 
-    double electronDensity(double u, double x, double tubeVoltage)
+    static double electronDensity(double u, double x, double tubeVoltage)
     {
         const auto f = ThomsonWiddingtonRange(SIMULATED_ENERGY()) / ThomsonWiddingtonRange(tubeVoltage);
         return numberFractionF(x, tubeVoltage) * electronDensity_F(u, x * f) + numberFractionM(x, tubeVoltage) * electronDensity_M(u, x * f);
@@ -314,32 +314,32 @@ namespace BetheHeitlerCrossSection {
 
     // END ELECTRON DIFFUSION CALCULATIONS IN TUNGSTEN END
 
-    constexpr std::size_t TUNGSTEN_ATOMIC_NUMBER = 74;
+    static constexpr std::size_t TUNGSTEN_ATOMIC_NUMBER = 74;
 
-    constexpr double FINE_STRUCTURE_CONSTANT()
+    static constexpr double FINE_STRUCTURE_CONSTANT()
     {
         return 7.29735308E-03;
     }
 
-    constexpr double CLASSIC_ELECTRON_RADIUS()
+    static constexpr double CLASSIC_ELECTRON_RADIUS()
     {
         return 2.81794092E-15; // [m]
     }
 
-    constexpr double PHI_BAR()
+    static constexpr double PHI_BAR()
     {
         return (TUNGSTEN_ATOMIC_NUMBER * TUNGSTEN_ATOMIC_NUMBER) * CLASSIC_ELECTRON_RADIUS() * CLASSIC_ELECTRON_RADIUS() * FINE_STRUCTURE_CONSTANT();
     }
 
     // BEGIN SEMIRELATIVISTIC BETHE HEITLER CROSSECTION CALCULATION
 
-    double tungstenFiltration(double tungstenAtt, double x, double sintakeoffAngle)
+    static double tungstenFiltration(double tungstenAtt, double x, double sintakeoffAngle)
     {
         // filtrates a photon in the tungsten anode. hv :photon energy [keV], x depth in tungsten (density*distance) [mg/cm2], takeoffAngle: scatter angle in radians
         return std::exp(-tungstenAtt * x * 0.001 / sintakeoffAngle); // 0.001 is for mg/cm2 -> g/cm2
     }
 
-    double betheHeitlerCrossSection(double hv, double Ti)
+    static double betheHeitlerCrossSection(double hv, double Ti)
     {
         constexpr auto phi_bar_const = (PHI_BAR() * 2) / 3;
         const auto Ei = ELECTRON_REST_MASS() + Ti;
@@ -357,7 +357,7 @@ namespace BetheHeitlerCrossSection {
         return phi_bar_const * (4 * Ei * Ef * L - 7 * pic * pfc) / (hv * pic * pic) * columb_correction;
     }
 
-    double betheHeitlerSpectra(double T0, double hv, double takeoffAngle)
+    static double betheHeitlerSpectra(double T0, double hv, double takeoffAngle)
     {
 
         const auto& tungsten = AtomHandler::Atom(TUNGSTEN_ATOMIC_NUMBER);
@@ -390,7 +390,7 @@ namespace BetheHeitlerCrossSection {
         return I_obs;
     }
 
-    std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, double takeoffAngle)
+    static std::array<std::pair<double, double>, 5> characteristicTungstenKedge(double T0, double takeoffAngle)
     {
         constexpr std::array<double, 4> k_edge_energies { 59.3, 58.0, 67.2, 69.1 };
         constexpr std::array<double, 4> k_edge_fractions { 0.505, 0.291, 0.162, 0.042 };
