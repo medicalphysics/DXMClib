@@ -118,8 +118,8 @@ void vizualize()
     const auto carbon_atom = dxmc::AtomHandler::Atom(6);
     const auto carbon_dens = dxmc::AtomHandler::Atom(6).standardDensity;
 
-    auto& carm = world.addItem<Mesh>({ "carm.stl" });
-    auto& table = world.addItem<Mesh>({ "table.stl" });
+    auto& carm = world.template addItem<Mesh>({ "carm.stl" });
+    auto& table = world.template addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
     table.setMaterial(carbon, carbon_dens);
 
@@ -127,7 +127,7 @@ void vizualize()
     const auto lead_atom = dxmc::AtomHandler::Atom(82);
     const auto lead_dens = dxmc::AtomHandler::Atom(82).standardDensity;
 
-    auto& ceilingshield = world.addItem<Surface>({ "ceilingshield.stl" });
+    auto& ceilingshield = world.template addItem<Surface>({ "ceilingshield.stl" });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 0, 0, 1 });
     ceilingshield.translate({ -45, -15, 70 });
@@ -135,10 +135,10 @@ void vizualize()
     ceilingshield.setMaterial(lead, lead_dens);
     ceilingshield.setSurfaceThickness(0.05);
 
-    auto& tableBox = world.addItem<Box>({ { -40, -25, -100, 0, -24.95, 0 } });
+    auto& tableBox = world.template addItem<Box>({ { -40, -25, -100, 0, -24.95, 0 } });
     tableBox.setMaterial(lead, lead_dens);
 
-    auto& room = world.addItem<Room>();
+    auto& room = world.template addItem<Room>();
     room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
     room.setWallThickness(2);
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
@@ -151,7 +151,7 @@ void vizualize()
     auto phantom_aabb = phantom.AABB();
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
-    auto& doctor = world.addItem<TetMesh>(readICRP145Phantom<TRACK>({ 64, 64, 256 }, true));
+    auto& doctor = world.template addItem<TetMesh>(readICRP145Phantom<TRACK>({ 64, 64, 256 }, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
 
@@ -191,7 +191,7 @@ void vizualize()
         }
     }
     viz.setColorByValueMinMax(0, 0.00001);
-    auto buffer = viz.createBuffer<double>(2048 * 2, 2048 * 2);
+    auto buffer = viz.template createBuffer<double>(2048 * 2, 2048 * 2);
     viz.addLineProp(beam, 114, .2);
     viz.setDistance(400);
 
