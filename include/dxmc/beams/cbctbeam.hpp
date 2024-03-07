@@ -18,7 +18,6 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
-#include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
@@ -31,6 +30,82 @@ Copyright 2023 Erlend Andersen
 #include <array>
 
 namespace dxmc {
+
+template <bool ENABLETRACKING = false>
+class CBCTBeamExposure {
+public:
+    CBCTBeamExposure(const std::array<double, 3>& pos, const std::array<std::array<double, 3>, 2>& dircosines, std::uint64_t N, double weight,
+        const std::array<double, 2>& collimationAngles, const SpecterDistribution<double>* specter)
+        : m_pos(pos)
+        , m_dirCosines(dircosines)
+        , m_collimationAngles(collimationAngles)
+        , m_NParticles(N)
+        , m_weight(weight)
+        , m_specter(specter)
+    {
+        m_dir = vectormath::cross(m_dirCosines);
+    }
+
+    CBCTBeamExposure() = delete;
+
+    const std::array<double, 3>& position() const { return m_pos; }
+
+    const std::array<std::array<double, 3>, 2>& directionCosines() const { return m_dirCosines; }
+
+    const std::array<double, 2> collimationAngles() const { return m_collimationAngles; }
+
+    std::uint64_t numberOfParticles() const
+    {
+        return m_NParticles;
+    }
+
+    auto sampleParticle(RandomState& state) const noexcept
+    {
+        const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
+        const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
+
+        if constexpr (ENABLETRACKING) {
+            ParticleTrack p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter->sampleValue(state),
+                .weight = m_weight
+            };
+            p.registerPosition();
+            return p;
+        } else {
+            Particle p = {
+                .pos = m_pos,
+                .dir = particleDirection(angx, angy),
+                .energy = m_specter->sampleValue(state),
+                .weight = m_weight
+            };
+            return p;
+        }
+    }
+
+protected:
+    std::array<double, 3> particleDirection(double anglex, double angley) const
+    {
+        const auto dx = std::tan(anglex);
+        const auto dy = std::tan(angley);
+        const std::array pdir = {
+            m_dirCosines[0][0] * dx + m_dirCosines[1][0] * dy + m_dir[0],
+            m_dirCosines[0][1] * dx + m_dirCosines[1][1] * dy + m_dir[1],
+            m_dirCosines[0][2] * dx + m_dirCosines[1][2] * dy + m_dir[2]
+        };
+        return vectormath::normalized(pdir);
+    }
+
+private:
+    std::array<double, 3> m_pos = { 0, 0, 0 };
+    std::array<double, 3> m_dir = { 0, 0, 1 };
+    std::array<std::array<double, 3>, 2> m_dirCosines = { { { 1, 0, 0 }, { 0, 1, 0 } } };
+    std::array<double, 2> m_collimationAngles = { 0, 0 };
+    std::uint64_t m_NParticles = 100;
+    double m_weight = 1;
+    const SpecterDistribution<double>* m_specter = nullptr;
+};
 
 template <bool ENABLETRACKING = false>
 class CBCTBeam {
@@ -175,7 +250,7 @@ public:
         m_SDD = std::max(std::abs(SDD_cm), 1.0);
     }
 
-    DXBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
+    CBCTBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
         auto angle = i * m_angleStep;
         if (m_angleStart > m_angleStop)
@@ -194,7 +269,9 @@ public:
 
         auto pos = vectormath::add(m_isocenter, vectormath::scale(beamdir, -m_SDD / 2));
 
-        DXBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, m_weight, m_collimationAngles, m_specter);
+        // position along cylinder axis
+
+        CBCTBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, m_weight, m_collimationAngles, &m_specter);
         return exp;
     }
 
