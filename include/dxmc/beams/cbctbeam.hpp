@@ -48,7 +48,7 @@ public:
 
     std::uint64_t numberOfExposures() const
     {
-        const auto dAngle = m_angleStop - m_angleStart;
+        const auto dAngle = std::abs(m_angleStop - m_angleStart);
         const auto steps = std::max(1.0, dAngle / m_angleStep);
         return static_cast<std::uint64_t>(steps);
     }
@@ -69,6 +69,24 @@ public:
     {
         m_direction = vectormath::normalized(dir);
     }
+
+    double startAngle() const { return m_angleStart; }
+    void setStartAngle(double angle) { m_angleStart = angle; }
+    double startAngleDeg() const { return m_angleStart * RAD_TO_DEG(); }
+    void setStartAngleDeg(double angle) { m_angleStart = angle * DEG_TO_RAD(); }
+
+    double stepAngle() const { return m_angleStep; }
+    void setStepAngle(double angle)
+    {
+        m_angleStep = std::max(std::abs(angle), DEG_TO_RAD() / 10);
+    }
+    double stepAngleDeg() const { return m_angleStep * RAD_TO_DEG(); }
+    void setStepAngleDeg(double angle) { setStepAngle(angle * DEG_TO_RAD()); }
+
+    double stopAngle() const { return m_angleStop; }
+    void setStopAngle(double angle) { m_angleStop = angle; }
+    double stopAngleDeg() const { return m_angleStop * RAD_TO_DEG(); }
+    void setStopAngleDeg(double angle) { m_angleStop = angle * DEG_TO_RAD(); }
 
     double DAPvalue() const { return m_measuredDAP; }
     void setDAPvalue(double dap) { m_measuredDAP = std::abs(dap); }
@@ -157,17 +175,11 @@ public:
         m_SDD = std::max(std::abs(SDD_cm), 1.0);
     }
 
-    void setBeamSize(double beamSizeX, double beamSizeY, double sourceDetectorDistance)
-    {
-        if (sourceDetectorDistance > 0) {
-            m_collimationAngles[0] = std::atan(std::abs(beamSizeX) / (2 * sourceDetectorDistance));
-            m_collimationAngles[1] = std::atan(std::abs(beamSizeY) / (2 * sourceDetectorDistance));
-        }
-    }
-
     DXBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
-        const auto angle = i * m_angleStep;
+        auto angle = i * m_angleStep;
+        if (m_angleStart > m_angleStop)
+            angle = -angle;
 
         // finding normal vector to direction
         const auto normal_ind = vectormath::argmin3(m_direction);
