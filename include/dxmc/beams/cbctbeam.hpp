@@ -55,7 +55,7 @@ public:
 
     std::uint64_t numberOfParticles() const { return numberOfExposures() * m_particlesPerExposure; }
     std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
-    void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = std::max(n, 1); }
+    void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = std::max(n, std::uint64_t { 1 }); }
 
     const std::array<double, 3>& isocenter() const { return m_isocenter; }
     void setIsocenter(const std::array<double, 3>& pos) { m_isocenter = pos; }
