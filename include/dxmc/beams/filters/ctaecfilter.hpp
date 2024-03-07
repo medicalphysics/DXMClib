@@ -167,7 +167,7 @@ protected:
     {
         const auto area = integrate(start, stop);
         // we want the total area equal to m_length * 1 for an expected value of 1.0;
-        const auto k = m_length / area;
+        const auto k = std::abs(stop - start) / area;
         for (auto& d : m_data)
             d *= k;
     }

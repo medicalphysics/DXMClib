@@ -119,6 +119,7 @@ void vizualize()
     const auto carbon_dens = dxmc::AtomHandler::Atom(6).standardDensity;
 
     auto& carm = world.template addItem<Mesh>({ "carm.stl" });
+    carm.setMaterial(carbon, carbon_dens);
     auto& table = world.template addItem<Mesh>({ "table.stl" });
     table.translate({ -30, 0, 0 });
     table.setMaterial(carbon, carbon_dens);
@@ -129,17 +130,17 @@ void vizualize()
 
     auto& ceilingshield = world.template addItem<Surface>({ "ceilingshield.stl" });
     ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
-    ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 0, 0, 1 });
-    ceilingshield.translate({ -45, -15, 70 });
+    ceilingshield.rotate(std::numbers::pi_v<double> / 2 + 1.2 * std::numbers::pi_v<double> / 4, { 0, 0, 1 });
+    ceilingshield.translate({ -45, -20, 60 });
     ceilingshield.scale(0.5);
     ceilingshield.setMaterial(lead, lead_dens);
-    ceilingshield.setSurfaceThickness(0.05);
+    ceilingshield.setSurfaceThickness(0.1);
 
-    auto& tableBox = world.template addItem<Box>({ { -40, -25, -100, 0, -24.95, 0 } });
+    auto& tableBox = world.template addItem<Box>({ { -80, -28, -120, 0, -27.9, 10 } });
     tableBox.setMaterial(lead, lead_dens);
 
     auto& room = world.template addItem<Room>();
-    room.setInnerRoomAABB({ -350, -300, -150, 350, 300, 150 });
+    room.setInnerRoomAABB({ -350, -300, -120.1, 350, 300, 150 });
     room.setWallThickness(2);
     room.setMaterial(lead, lead_dens * 0.2 / 2.0);
 
@@ -159,11 +160,11 @@ void vizualize()
 
     // adding beam
     using Beam = dxmc::DXBeam<TRACK>;
-    const std::array<double, 3> source_pos = { 0, 0, -70 };
+    const std::array<double, 3> source_pos = { 0, 0, -65 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
     if constexpr (TRACK) {
-        beam.setNumberOfExposures(48);
+        beam.setNumberOfExposures(128);
         beam.setNumberOfParticlesPerExposure(100000);
     } else {
         beam.setNumberOfExposures(2048);
@@ -190,8 +191,10 @@ void vizualize()
                 viz.addColorByValueItem(&item);
         }
     }
+
     viz.setColorByValueMinMax(0, 0.00001);
-    auto buffer = viz.template createBuffer<double>(2048 * 2, 2048 * 2);
+    constexpr int res = 2;
+    auto buffer = viz.template createBuffer<double>(1024 * res, 1024 * res);
     viz.addLineProp(beam, 114, .2);
     viz.setDistance(400);
 
@@ -202,7 +205,7 @@ void vizualize()
     viz.setAzimuthalAngleDeg(60);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(2);
+        viz.suggestFOV(1.5);
         viz.generate(world, buffer);
         std::string prefix = TRACK ? "Track" : "Dose";
         prefix += "Upper";
@@ -215,7 +218,7 @@ void vizualize()
     viz.setAzimuthalAngleDeg(120);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(2);
+        viz.suggestFOV(1.5);
         viz.generate(world, buffer);
         std::string prefix = TRACK ? "Track" : "Dose";
         prefix += "Lower";
