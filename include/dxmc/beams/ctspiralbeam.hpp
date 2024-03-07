@@ -128,6 +128,7 @@ public:
         for (const auto [Z, mm] : filtrationMaterials)
             m_tube.addFiltrationMaterial(Z, mm);
         tubeChanged();
+        m_aecFilter.normalizeBetween(m_start, m_stop);
     }
 
     std::uint64_t numberOfExposures() const
@@ -145,12 +146,21 @@ public:
 
     const std::array<double, 3>& startPosition() const { return m_start; }
     const std::array<double, 3>& stopPosition() const { return m_stop; }
-    void setStartPosition(const std::array<double, 3>& start) { m_start = start; }
-    void setStopPosition(const std::array<double, 3>& stop) { m_stop = stop; }
+    void setStartPosition(const std::array<double, 3>& start)
+    {
+        m_start = start;
+        m_aecFilter.normalizeBetween(m_start, m_stop);
+    }
+    void setStopPosition(const std::array<double, 3>& stop)
+    {
+        m_stop = stop;
+        m_aecFilter.normalizeBetween(m_start, m_stop);
+    }
     void setStartStopPosition(const std::array<double, 3>& start, const std::array<double, 3>& stop)
     {
         m_start = start;
         m_stop = stop;
+        m_aecFilter.normalizeBetween(m_start, m_stop);
     }
 
     double collimation() const { return m_collimation; }
@@ -262,10 +272,12 @@ public:
     void setAECFilter(const CTAECFilter& filter)
     {
         m_aecFilter = filter;
+        m_aecFilter.normalizeBetween(m_start, m_stop);
     }
     void setAECFilterData(const std::array<double, 3>& start, const std::array<double, 3>& stop, const std::vector<double>& data)
     {
         m_aecFilter.setData(start, stop, data);
+        m_aecFilter.normalizeBetween(m_start, m_stop);
     }
     const CTAECFilter& AECFilter() const
     {
