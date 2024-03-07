@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
+#include "dxmc/beams/cbctbeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/vectormath.hpp"
@@ -39,14 +40,14 @@ bool initiateBeam(B& beam)
 
 bool testDXBeam()
 {
-    dxmc::DXBeam beam;
+    dxmc::DXBeam<> beam;
     auto& tube = beam.tube();
     return initiateBeam(beam);
 }
 
 bool testpencilbeam()
 {
-    dxmc::PencilBeam beam;
+    dxmc::PencilBeam<> beam;
     auto e = beam.exposure(0);
     dxmc::RandomState state;
     auto p = e.sampleParticle(state);
@@ -55,14 +56,14 @@ bool testpencilbeam()
 
 bool testIsotropicMonoEnergyBeam()
 {
-    using Beam = dxmc::IsotropicMonoEnergyBeam;
+    using Beam = dxmc::IsotropicMonoEnergyBeam<>;
     Beam beam;
     return initiateBeam(beam);
 }
 
 bool testCTSpiralBeam()
 {
-    using Beam = dxmc::CTSpiralBeam;
+    using Beam = dxmc::CTSpiralBeam<>;
     Beam beam;
     beam.setStartStopPosition({ 0, 0, 0 }, { 0, 0, 1 });
     beam.setNumberOfParticlesPerExposure(1E2);
@@ -76,11 +77,19 @@ bool testCTSpiralBeam()
 
 bool testCTSpiralDEBeam()
 {
-    using Beam = dxmc::CTSpiralDualEnergyBeam;
+    using Beam = dxmc::CTSpiralDualEnergyBeam<>;
     Beam beam;
     beam.setTubeAVoltage(140);
     beam.setTubeBVoltage(80);
 
+    return initiateBeam(beam);
+}
+
+bool testCBCTBeam()
+{
+    using Beam = dxmc::CBCTBeam<>;
+    Beam beam;
+    beam.setTubeVoltage(140);
     return initiateBeam(beam);
 }
 
@@ -94,7 +103,7 @@ int main()
     success = success && testIsotropicMonoEnergyBeam();
     success = success && testpencilbeam();
     success = success && testCTSpiralBeam();
-
+    success = success && testCBCTBeam();
     success = success && testCTSpiralDEBeam();
 
     if (success)
