@@ -50,7 +50,7 @@ namespace basicshape {
             }
         };
 
-        static std::array<double, 6> cylinderAABB(const Cylinder& cyl)
+        static constexpr std::array<double, 6> cylinderAABB(const Cylinder& cyl)
         {
             // calculating disc extents
             const std::array<double, 3> e = {
@@ -77,7 +77,7 @@ namespace basicshape {
             return vectormath::dot(vectormath::subtract(point, planepoint), planenormal) >= 0;
         }
 
-        static bool pointInside(const std::array<double, 3>& pos, const Cylinder& cylinder)
+        static constexpr bool pointInside(const std::array<double, 3>& pos, const Cylinder& cylinder)
         {
             const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
             // test if point inside infinite cylinder
@@ -97,7 +97,7 @@ namespace basicshape {
             return false;
         }
 
-        static std::optional<double> intersectDisc(const ParticleType auto& p, const std::array<double, 3>& center, const std::array<double, 3>& normal, double radius)
+        static constexpr std::optional<double> intersectDisc(const ParticleType auto& p, const std::array<double, 3>& center, const std::array<double, 3>& normal, double radius)
         {
             const auto D = vectormath::dot(p.dir, normal);
             constexpr double minOrt = GEOMETRIC_ERROR();
@@ -117,7 +117,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
+        static constexpr std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
             // return line segment cylinder wall intersection
             // intersection may be behind line start
@@ -183,7 +183,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
+        static constexpr std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
             auto t_cand = intersectInterval(p, cylinder);
             if (t_cand) {
@@ -195,7 +195,7 @@ namespace basicshape {
             return t_cand;
         }
 
-        static WorldIntersectionResult intersect(const ParticleType auto& p, const Cylinder& cylinder)
+        static constexpr WorldIntersectionResult intersect(const ParticleType auto& p, const Cylinder& cylinder)
         {
             const auto t_cand = intersectInterval(p, cylinder);
             WorldIntersectionResult res;

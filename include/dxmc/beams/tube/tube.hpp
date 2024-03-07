@@ -272,7 +272,7 @@ protected:
 private:
     double m_voltage = 120;
     double m_energyResolution = 1;
-    double m_anodeAngle = 0.21f; // about 12 degrees
+    double m_anodeAngle = 0.21; // about 12 degrees
     double m_cachedHVL = 0;
     std::map<std::size_t, double> m_filtrationMaterials;
     bool m_hasCachedHVL = false;

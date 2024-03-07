@@ -30,14 +30,14 @@ namespace dxmc {
 namespace basicshape {
     namespace cylinderZ {
 
-        static bool pointInside(const std::array<double, 3>& pos, const std::array<double, 3>& center, const double radii, const double half_height)
+        static constexpr bool pointInside(const std::array<double, 3>& pos, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             const std::array<double, 2> dp = { pos[0] - center[0], pos[1] - center[1] };
             return center[0] - radii <= pos[0] && pos[0] <= center[0] + radii && center[1] - radii <= pos[1] && pos[1] <= center[1] + radii
                 && (center[2] - half_height < pos[2]) && (pos[2] < center[2] + half_height) && ((dp[0] * dp[0] + dp[1] * dp[1]) < radii * radii);
         }
 
-        static std::optional<double> intersectCylinderWall(const Particle& p, const std::array<double, 3>& center, const double radii)
+        static constexpr std::optional<double> intersectCylinderWall(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection in 2D
             const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
@@ -79,7 +79,7 @@ namespace basicshape {
             }
         }
 
-        static std::optional<std::array<double, 2>> intersectCylinderWallInterval(const Particle& p, const std::array<double, 3>& center, const double radii)
+        static constexpr std::optional<std::array<double, 2>> intersectCylinderWallInterval(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             // nummeric stable ray sphere intersection in 2D
             const auto a = p.dir[0] * p.dir[0] + p.dir[1] * p.dir[1];
@@ -123,7 +123,7 @@ namespace basicshape {
             }
         }
 
-        static std::optional<double> intersectCylinderDiscIntervalZ(const Particle& p, const std::array<double, 3>& center, const double radii)
+        static constexpr std::optional<double> intersectCylinderDiscIntervalZ(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             if (std::abs(p.dir[2]) <= std::numeric_limits<double>::epsilon())
                 return std::nullopt;
@@ -136,7 +136,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static std::optional<double> intersectCylinderDiscZ(const Particle& p, const std::array<double, 3>& center, const double radii)
+        static constexpr std::optional<double> intersectCylinderDiscZ(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             if (std::abs(p.dir[2]) <= std::numeric_limits<double>::epsilon())
                 return std::nullopt;
@@ -154,7 +154,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
+        static constexpr WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             auto t_cand = intersectCylinderWall(p, center, radii);
             if (t_cand) {
@@ -181,7 +181,7 @@ namespace basicshape {
             return res;
         }
 
-        static std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
+        static constexpr std::optional<std::array<double, 2>> intersectForwardInterval(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             auto t_cand = intersectCylinderWallInterval(p, center, radii);
             if (!t_cand) {

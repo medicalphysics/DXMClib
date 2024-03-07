@@ -107,7 +107,7 @@ void saveImageOfWorld(const std::string& name, W& world, B& beam, double polarAn
     viz.setPolarAngleDeg(polarAngle);
     viz.setDistance(dist);
     viz.suggestFOV(zoom);
-    auto buffer = viz.createBuffer<double>(2048, 2048);
+    auto buffer = viz.template createBuffer<double>(2048, 2048);
     viz.addLineProp(beam, linelenght, 0.02);
     viz.generate(world, buffer);
     viz.savePNG(name, buffer);
@@ -673,7 +673,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
     cylinder.setMaterialDensity(mat_dens);
     std::chrono::milliseconds time_elapsed;
     if (specter) {
-        using Beam = IsotropicBeam;
+        using Beam = IsotropicBeam<>;
         Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } });
         const auto specter = TG195_120KV();
         beam.setEnergySpecter(specter);
@@ -685,7 +685,7 @@ bool TG195Case41AbsorbedEnergy(bool specter = false, bool large_collimation = fa
         Transport transport;
         time_elapsed = runDispatcher(transport, world, beam);
     } else {
-        using Beam = IsotropicMonoEnergyBeam;
+        using Beam = IsotropicMonoEnergyBeam<>;
         Beam beam({ -60, 0, 0 }, { { { 0, 1, 0 }, { 0, 0, 1 } } }, 56.4);
         const auto collangle_y = std::atan(16.0 / 60);
         const auto collangle_z = large_collimation ? std::atan(4.0 / 60) : std::atan(0.5 / 60);

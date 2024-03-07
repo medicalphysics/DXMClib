@@ -65,7 +65,7 @@ namespace basicshape {
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
 
-        static WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
+        static constexpr WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             WorldIntersectionResult res;
             if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {

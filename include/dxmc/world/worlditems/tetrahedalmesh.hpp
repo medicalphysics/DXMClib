@@ -155,7 +155,7 @@ public:
     void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         auto& tets = m_grid.tetrahedrons();
-        std::for_each(std::execution::par_unseq, tets.begin(), tets.end(), [=](auto& tet) {
+        std::for_each(std::execution::par_unseq, tets.begin(), tets.end(), [calibration_factor, this](auto& tet) {
             const auto cidx = tet.collection();
             const auto dens = this->m_collections[cidx].density;
             tet.addEnergyScoredToDoseScore(dens, calibration_factor);
