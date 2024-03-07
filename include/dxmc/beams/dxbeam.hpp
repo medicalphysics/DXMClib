@@ -51,8 +51,6 @@ public:
 
     auto sampleParticle(RandomState& state) const noexcept
     {
-        auto dir = vectormath::cross(m_dirCosines[0], m_dirCosines[1]);
-
         const auto angx = state.randomUniform(-m_collimationAngles[0], m_collimationAngles[0]);
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
