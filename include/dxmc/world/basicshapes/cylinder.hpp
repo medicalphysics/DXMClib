@@ -50,7 +50,7 @@ namespace basicshape {
             }
         };
 
-        static constexpr std::array<double, 6> cylinderAABB(const Cylinder& cyl)
+        static std::array<double, 6> cylinderAABB(const Cylinder& cyl)
         {
             // calculating disc extents
             const std::array<double, 3> e = {
@@ -117,7 +117,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static constexpr std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
+        static std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
             // return line segment cylinder wall intersection
             // intersection may be behind line start
@@ -183,7 +183,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static constexpr std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
+        static std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
             auto t_cand = intersectInterval(p, cylinder);
             if (t_cand) {
@@ -195,7 +195,7 @@ namespace basicshape {
             return t_cand;
         }
 
-        static constexpr WorldIntersectionResult intersect(const ParticleType auto& p, const Cylinder& cylinder)
+        static WorldIntersectionResult intersect(const ParticleType auto& p, const Cylinder& cylinder)
         {
             const auto t_cand = intersectInterval(p, cylinder);
             WorldIntersectionResult res;
