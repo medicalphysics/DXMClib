@@ -91,6 +91,11 @@ public:
         }
     }
 
+    double weight() const
+    {
+        return m_weight;
+    }
+
 protected:
     std::array<double, 3> particleDirection(double anglex, double angley) const
     {
