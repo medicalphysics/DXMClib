@@ -34,12 +34,18 @@ public:
     }
     STLReader() { }
 
+    void setFilePath(const std::string& path)
+    {
+        m_filePath = path;
+    }
+
     const std::string& message() const { return m_error; }
 
     std::vector<Triangle> operator()()
     {
         return operator()(m_filePath);
     }
+    
     std::vector<Triangle> operator()(const std::string& path)
     {
         m_filePath = path;

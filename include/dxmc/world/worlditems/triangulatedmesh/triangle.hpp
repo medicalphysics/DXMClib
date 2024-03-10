@@ -62,6 +62,22 @@ public:
         });
     }
 
+    void mirror(const std::array<double, 3>& point)
+    {
+        for (std::size_t i = 0; i < 3; ++i) {
+            const auto d = vectormath::subtract(m_vertices[i], point);
+            m_vertices[i] = vectormath::add(m_vertices[i], vectormath::scale(d, -2.0));
+        }
+    }
+
+    void mirror(const double value, const std::uint_fast32_t dim)
+    {
+        for (std::uint_fast32_t i = 0; i < 3; ++i) {
+            const auto d = m_vertices[i][dim] - value;
+            m_vertices[i][dim] += d * -2.0;
+        }
+    }
+
     void scale(double scale)
     {
         std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {

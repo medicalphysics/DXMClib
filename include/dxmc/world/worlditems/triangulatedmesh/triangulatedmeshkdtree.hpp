@@ -184,14 +184,29 @@ public:
         }
     }
 
-    void rotate(double radians, const std::array<double, 3>& axis)
+    void mirror(const std::array<double, 3>& point)
     {
+        m_plane += -2 * (m_plane - point[m_D]);
         if (m_left) {
-            m_left->rotate(radians, axis);
-            m_right->rotate(radians, axis);
+            m_left->mirror(point);
+            m_right->mirror(point);
         } else {
             std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-                tri.rotate(radians, axis);
+                tri.mirror(point);
+            });
+        }
+    }
+
+    void mirror(const double value, const std::uint_fast32_t dim)
+    {
+        if (m_D == dim)
+            m_plane += -2 * (m_plane - value);
+        if (m_left) {
+            m_left->mirror(value, dim);
+            m_right->mirror(value, dim);
+        } else {
+            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+                tri.mirror(value, dim);
             });
         }
     }

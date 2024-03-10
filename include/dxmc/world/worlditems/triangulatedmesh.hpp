@@ -124,14 +124,15 @@ public:
             e *= s;
     }
 
-    void rotate(double radians, const std::array<double, 3>& axis)
+    void mirror(const std::array<double, 3>& point)
     {
-        const auto axisn = vectormath::normalized(axis);
-        const auto c = center();
-        const auto cm = vectormath::scale(c, -1.0);
-        m_kdtree.translate(cm);
-        m_kdtree.rotate(radians, axisn);
-        m_kdtree.translate(c);
+        m_kdtree.mirror(point);
+        m_aabb = expandAABB(m_kdtree.AABB());
+    }
+
+    void mirror(const double value, const std::uint_fast32_t dim)
+    {
+        m_kdtree.mirror(value, dim);
         m_aabb = expandAABB(m_kdtree.AABB());
     }
 
