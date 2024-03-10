@@ -112,7 +112,7 @@ void vizualize()
     using World = dxmc::World<Mesh, Sphere, VGrid, Room, Surface, TetMesh, Box>;
 
     World world {};
-    world.reserveNumberOfItems(7);
+    world.reserveNumberOfItems(8);
 
     const auto carbon = dxmc::Material<5>::byZ(6).value();
     const auto carbon_atom = dxmc::AtomHandler::Atom(6);
@@ -120,23 +120,31 @@ void vizualize()
 
     auto& carm = world.template addItem<Mesh>({ "carm.stl" });
     carm.setMaterial(carbon, carbon_dens);
+    carm.translate({ 10, 0, 0 });
+
     auto& table = world.template addItem<Mesh>({ "table.stl" });
-    table.translate({ -30, 0, 0 });
+    table.translate({ -30, 0, -20 });
     table.setMaterial(carbon, carbon_dens);
 
     const auto lead = dxmc::Material<5>::byZ(82).value();
     const auto lead_atom = dxmc::AtomHandler::Atom(82);
     const auto lead_dens = dxmc::AtomHandler::Atom(82).standardDensity;
 
-    auto& ceilingshield = world.template addItem<Surface>({ "ceilingshield.stl" });
-    ceilingshield.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
-    ceilingshield.rotate(std::numbers::pi_v<double> / 2 + 1.2 * std::numbers::pi_v<double> / 4, { 0, 0, 1 });
-    ceilingshield.translate({ -45, -20, 60 });
+    dxmc::STLReader stlreader;
+
+    stlreader.setFilePath("ceilingshield.stl");
+    auto ceilingshield_tri = stlreader();
+    std::for_each(std::execution::par_unseq, ceilingshield_tri.begin(), ceilingshield_tri.end(), [](auto& tri) {
+        tri.rotate(std::numbers::pi_v<double> / 2, { 1, 0, 0 });
+        tri.rotate(std::numbers::pi_v<double> / 2 + std::numbers::pi_v<double> / 4, { 0, 0, 1 });
+    });
+    auto& ceilingshield = world.template addItem<Surface>({ ceilingshield_tri });
+    ceilingshield.translate({ -5, -35, 50 });
     ceilingshield.scale(0.5);
     ceilingshield.setMaterial(lead, lead_dens);
     ceilingshield.setSurfaceThickness(0.1);
 
-    auto& tableBox = world.template addItem<Box>({ { -80, -28, -120, 0, -27.9, 10 } });
+    auto& tableBox = world.template addItem<Box>({ { -80, -28, -120, 0, -27.9, 0 } });
     tableBox.setMaterial(lead, lead_dens);
 
     auto& room = world.template addItem<Room>();
@@ -152,6 +160,14 @@ void vizualize()
     auto phantom_aabb = phantom.AABB();
     phantom.translate({ -40, 0, table_aabb[5] - phantom_aabb[2] });
 
+    stlreader.setFilePath("blanket.stl");
+    auto blanket_tri = stlreader();
+    std::for_each(std::execution::par_unseq, blanket_tri.begin(), blanket_tri.end(), [](auto& tri) { tri.rotate(std::numbers::pi_v<double>, { 0, 0, 1 }); });
+    auto& blanket = world.template addItem<Surface>({ blanket_tri });
+    blanket.translate({ -35, 0, table_aabb[5] - phantom_aabb[2] + 3 });
+    blanket.setMaterial(lead, lead_dens);
+    blanket.setSurfaceThickness(0.1);
+
     auto& doctor = world.template addItem<TetMesh>(readICRP145Phantom<TRACK>({ 64, 64, 256 }, true));
     const auto doctor_aabb = doctor.AABB();
     doctor.translate({ -40, -40, -doctor_aabb[2] - 120 });
@@ -160,14 +176,14 @@ void vizualize()
 
     // adding beam
     using Beam = dxmc::DXBeam<TRACK>;
-    const std::array<double, 3> source_pos = { 0, 0, -65 };
+    const std::array<double, 3> source_pos = { 10, 0, -64 };
     Beam beam(source_pos);
     beam.setBeamSize(6, 6, 114);
     if constexpr (TRACK) {
-        beam.setNumberOfExposures(128);
+        beam.setNumberOfExposures(56);
         beam.setNumberOfParticlesPerExposure(100000);
     } else {
-        beam.setNumberOfExposures(2048);
+        beam.setNumberOfExposures(2048 * 4);
         beam.setNumberOfParticlesPerExposure(1000000);
     }
     beam.setDAPvalue(25);
@@ -189,11 +205,14 @@ void vizualize()
         for (const auto& item : world.items()) {
             if (std::holds_alternative<TetMesh>(item))
                 viz.addColorByValueItem(&item);
+            if (std::holds_alternative<VGrid>(item))
+                viz.addColorByValueItem(&item);
         }
     }
 
     viz.setColorByValueMinMax(0, 0.00001);
-    constexpr int res = 2;
+    constexpr int res = 8;
+    constexpr double zoom = 1.5;
     auto buffer = viz.template createBuffer<double>(1024 * res, 1024 * res);
     viz.addLineProp(beam, 114, .2);
     viz.setDistance(400);
@@ -205,7 +224,7 @@ void vizualize()
     viz.setAzimuthalAngleDeg(60);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(1.5);
+        viz.suggestFOV(zoom);
         viz.generate(world, buffer);
         std::string prefix = TRACK ? "Track" : "Dose";
         prefix += "Upper";
@@ -218,7 +237,7 @@ void vizualize()
     viz.setAzimuthalAngleDeg(120);
     for (auto a : angles) {
         viz.setPolarAngleDeg(a);
-        viz.suggestFOV(1.5);
+        viz.suggestFOV(zoom);
         viz.generate(world, buffer);
         std::string prefix = TRACK ? "Track" : "Dose";
         prefix += "Lower";
