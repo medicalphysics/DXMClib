@@ -18,6 +18,7 @@ target_link_libraries(carm PRIVATE libdxmc)
 set(CARM_ARM_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCarm.stl")
 set(CARM_TABLE_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmTable.stl")
 set(CARM_CSHIELD_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/carmCeilingShield.stl")
+set(CARM_BLANKET_PATH "${CMAKE_CURRENT_SOURCE_DIR}/data/blanket.stl")
 
 add_custom_command(TARGET carm POST_BUILD
 			COMMENT "Copying carmCarm.stl for C-arm example"
@@ -29,6 +30,12 @@ add_custom_command(TARGET carm POST_BUILD
 			COMMENT "Copying carmTable.stl for C-arm example"
 			DEPENDS ${CARM_TABLE_PATH}
 			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CARM_TABLE_PATH} table.stl
+			WORKING_DIRECTORY $<TARGET_FILE_DIR:carm>
+			)
+add_custom_command(TARGET carm POST_BUILD
+			COMMENT "Copying blanket.stl for C-arm example"
+			DEPENDS ${CARM_BLANKET_PATH}
+			COMMAND ${CMAKE_COMMAND} -E copy_if_different ${CARM_BLANKET_PATH} blanket.stl
 			WORKING_DIRECTORY $<TARGET_FILE_DIR:carm>
 			)
 add_custom_command(TARGET carm POST_BUILD
