@@ -162,9 +162,11 @@ void vizualize()
 
     stlreader.setFilePath("blanket.stl");
     auto blanket_tri = stlreader();
-    std::for_each(std::execution::par_unseq, blanket_tri.begin(), blanket_tri.end(), [](auto& tri) { tri.rotate(std::numbers::pi_v<double>, { 0, 0, 1 }); });
+    // std::for_each(std::execution::par_unseq, blanket_tri.begin(), blanket_tri.end(), [](auto& tri) { tri.rotate(std::numbers::pi_v<double>, { 0, 0, 1 }); });
     auto& blanket = world.template addItem<Surface>({ blanket_tri });
-    blanket.translate({ -35, 0, table_aabb[5] - phantom_aabb[2] + 3 });
+    auto bc = blanket.center();
+    blanket.translate(dxmc::vectormath::scale(bc, -1.0));
+    blanket.translate({ -20, 0, table_aabb[5] - phantom_aabb[2] + 7 });
     blanket.setMaterial(lead, lead_dens);
     blanket.setSurfaceThickness(0.1);
 
@@ -189,7 +191,7 @@ void vizualize()
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
-    runDispatcher(transport, world, beam);
+    // runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
     for (const auto& tet : doctor.tetrahedrons()) {
@@ -211,8 +213,8 @@ void vizualize()
     }
 
     viz.setColorByValueMinMax(0, 0.00001);
-    constexpr int res = 8;
-    constexpr double zoom = 1.5;
+    constexpr int res = 2;
+    constexpr double zoom = 3;
     auto buffer = viz.template createBuffer<double>(1024 * res, 1024 * res);
     viz.addLineProp(beam, 114, .2);
     viz.setDistance(400);
@@ -251,7 +253,7 @@ void vizualize()
 int main()
 {
     vizualize<true>();
-    vizualize<false>();
+    // vizualize<false>();
 
     return 0;
 }
