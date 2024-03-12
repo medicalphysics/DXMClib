@@ -191,7 +191,7 @@ void vizualize()
     beam.setDAPvalue(25);
 
     dxmc::Transport transport;
-    // runDispatcher(transport, world, beam);
+    runDispatcher(transport, world, beam);
 
     double max_doctor_dose = 0;
     for (const auto& tet : doctor.tetrahedrons()) {
@@ -253,7 +253,6 @@ void vizualize()
 int main()
 {
     vizualize<true>();
-    // vizualize<false>();
-
+    vizualize<false>();
     return 0;
 }

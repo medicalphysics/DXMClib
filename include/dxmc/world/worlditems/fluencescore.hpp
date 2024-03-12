@@ -101,7 +101,6 @@ public:
             w.rayOriginIsInsideItem = false;
             w.intersection = res.intersection;
             w.intersectionValid = true;
-            w.item = this;
             w.normal = vectormath::dot(p.dir, m_normal) <= 0 ? m_normal : vectormath::scale(m_normal, -1.0);
         }
         return w;

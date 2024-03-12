@@ -84,7 +84,7 @@ public:
 
     void setHoleMaterial(const std::string& nistName, double density)
     {
-        auto m = Material<double, NMaterialShells>::byNistName(nistName);
+        auto m = Material<NMaterialShells>::byNistName(nistName);
         if (m) {
             m_air = m.value();
             m_air_density = density;
