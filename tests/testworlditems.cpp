@@ -32,17 +32,16 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worldcylinder.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
 
-template <dxmc::Floating T, typename U>
-    requires std::is_base_of<dxmc::WorldItemBase<T>, U>::value
+template < typename U>   
 bool testItem()
 {
-    dxmc::World<T, U> world;
+    dxmc::World< U> world;
     world.reserveNumberOfItems(1);
     auto& item = world.template addItem<U>({});
 
-    if constexpr (std::is_same_v<U, dxmc::TriangulatedMesh<T>> || std::is_same_v<U, dxmc::TriangulatedOpenSurface<T>>) {
-        std::vector<std::array<T, 3>> p;
-        constexpr T d = 30;
+    if constexpr (std::is_same_v<U, dxmc::TriangulatedMesh<>> || std::is_same_v<U, dxmc::TriangulatedOpenSurface<>>) {
+        std::vector<std::array<double, 3>> p;
+        constexpr double d = 30;
         p.push_back({ 1, 1, 0 }); // 0
         p.push_back({ 1, -1, 0 }); // 1
         p.push_back({ -1, -1, 0 }); // 2
@@ -52,21 +51,21 @@ bool testItem()
             for (auto& j : i)
                 j *= d;
 
-        std::vector<dxmc::Triangle<T>> t;
+        std::vector<dxmc::Triangle> t;
         t.push_back({ p[0], p[1], p[4] });
         t.push_back({ p[1], p[2], p[4] });
         t.push_back({ p[2], p[3], p[4] });
         t.push_back({ p[3], p[0], p[4] });
 
-        if constexpr (std::is_same_v<U, dxmc::TriangulatedMesh<T>>) {
+        if constexpr (std::is_same_v<U, dxmc::TriangulatedMesh<>>) {
             // underside
             t.push_back({ p[0], p[3], p[2] });
             t.push_back({ p[2], p[1], p[0] });
         }
         item.setData(t);
 
-    } else if constexpr (std::is_same_v<U, dxmc::TetrahedalMesh<T>>) {
-        std::vector<std::array<T, 3>> v(8);
+    } else if constexpr (std::is_same_v<U, dxmc::TetrahedalMesh<>>) {
+        std::vector<std::array<double, 3>> v(8);
         v[0] = { -1, 1, 1 };
         v[1] = { 1, -1, 1 };
         v[2] = { 1, 1, 1 };
@@ -80,7 +79,7 @@ bool testItem()
             for (auto& n : i)
                 n *= 10;
 
-        std::vector<dxmc::Tetrahedron<T>> t(6);
+        std::vector<dxmc::Tetrahedron> t(6);
         t[0] = { v[1], v[7], v[0], v[2], 0, 0 }; //*
         t[1] = { v[7], v[3], v[0], v[6], 0, 0 }; //*
         t[2] = { v[1], v[3], v[0], v[4], 0, 0 }; //*
@@ -88,9 +87,9 @@ bool testItem()
         t[4] = { v[7], v[3], v[4], v[0], 0, 0 }; //*
         t[5] = { v[1], v[3], v[5], v[0], 0, 0 }; //*
 
-        std::vector<T> dens(1, 1);
-        std::vector<dxmc::Material<T>> mats;
-        mats.push_back(dxmc::Material<T>::byChemicalFormula("H2O").value());
+        std::vector<double> dens(1, 1);
+        std::vector<dxmc::Material<>> mats;
+        mats.push_back(dxmc::Material<>::byChemicalFormula("H2O").value());
 
         item.setData(t, dens, mats);
     }
@@ -99,12 +98,12 @@ bool testItem()
     item.translate({ -1, -1, -1 });
     auto center = item.center();
     auto aabb = item.AABB();
-    dxmc::Particle<T> p { .pos = { 0, 0, 0 }, .dir = { 0, 0, 1 } };
+    dxmc::Particle p { .pos = { 0, 0, 0 }, .dir = { 0, 0, 1 } };
     auto intersection = item.intersect(p);
-    auto intersectionViz = item.intersectVisualization(p);
+    auto intersectionViz = item.intersectVisualization<U>(p);
 
     world.build();
-    dxmc::PencilBeam<T> beam;
+    dxmc::PencilBeam<> beam;
     beam.setNumberOfExposures(1);
     beam.setNumberOfParticlesPerExposure(8);
     dxmc::Transport transport;
@@ -119,22 +118,21 @@ bool testItem()
     return true;
 }
 
-template <dxmc::Floating T>
 bool basicTestAllItems()
 {
     auto success = true;
-    success = success && testItem<T, dxmc::AAVoxelGrid<T>>();
-    success = success && testItem<T, dxmc::CTDIPhantom<T>>();
-    success = success && testItem<T, dxmc::DepthDose<T>>();
-    success = success && testItem<T, dxmc::FluenceScore<T>>();
-    success = success && testItem<T, dxmc::TetrahedalMesh<T>>();
-    success = success && testItem<T, dxmc::TriangulatedMesh<T>>();
-    success = success && testItem<T, dxmc::TriangulatedOpenSurface<T>>();
-    success = success && testItem<T, dxmc::WorldBox<T>>();
-    success = success && testItem<T, dxmc::WorldBoxGrid<T>>();
-    success = success && testItem<T, dxmc::WorldCylinder<T>>();
-    success = success && testItem<T, dxmc::WorldSphere<T>>();
-    success = success && testItem<T, dxmc::EnclosedRoom<T>>();
+    success = success && testItem<dxmc::AAVoxelGrid<>>();
+    success = success && testItem<dxmc::CTDIPhantom<>>();
+    success = success && testItem<dxmc::DepthDose<>>();
+    success = success && testItem<dxmc::FluenceScore>();
+    success = success && testItem<dxmc::TetrahedalMesh<>>();
+    success = success && testItem<dxmc::TriangulatedMesh<>>();
+    success = success && testItem<dxmc::TriangulatedOpenSurface<>>();
+    success = success && testItem<dxmc::WorldBox<>>();
+    success = success && testItem<dxmc::WorldBoxGrid<>>();
+    success = success && testItem<dxmc::WorldCylinder<>>();
+    success = success && testItem<dxmc::WorldSphere<>>();
+    success = success && testItem<dxmc::EnclosedRoom<>>();
 
     return success;
 }
@@ -143,8 +141,7 @@ int main(int argc, char* argv[])
 {
     auto success = true;
 
-    success = success && basicTestAllItems<float>();
-    success = success && basicTestAllItems<double>();
+    success = success && basicTestAllItems();
 
     if (success)
         return EXIT_SUCCESS;

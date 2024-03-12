@@ -10,15 +10,14 @@ using namespace dxmc;
 
 constexpr double DOUBLEERRF = 1E-6;
 
-template <typename T>
 bool testHalfLayerCalculation()
 {
 
-    Tube<T> t;
+    Tube t;
     t.setAlFiltration(2.0);
     auto e = t.getEnergy();
     auto s = t.getSpecter(e);
-    const auto& al = AtomHandler<T>::Atom(13);
+    const auto& al = AtomHandler::Atom(13);
 
     auto p = interpolate(al.photoel, e);
     auto i = interpolate(al.incoherent, e);
@@ -27,32 +26,29 @@ bool testHalfLayerCalculation()
 
     const auto al_dens = al.standardDensity;
 
-    std::transform(att.cbegin(), att.cend(), att.begin(), [al_dens](auto a) -> T {
+    std::transform(att.cbegin(), att.cend(), att.begin(), [al_dens](auto a) {
         return a * al_dens;
     });
 
     const auto mmHVL = t.mmAlHalfValueLayer();
 
-    auto I0 = std::reduce(s.cbegin(), s.cend(), T { 0 });
+    auto I0 = std::reduce(s.cbegin(), s.cend(), 0.0);
     auto I1 = std::transform_reduce(
-        s.cbegin(), s.cend(), att.cbegin(), T { 0 }, std::plus<T>(),
-        [=](auto i, auto a) -> T { return i * std::exp(-a * mmHVL * T { .1 }); });
+        s.cbegin(), s.cend(), att.cbegin(), 0.0, std::plus<>(),
+        [=](auto i, auto a) { return i * std::exp(-a * mmHVL * .1); });
 
-    bool success = (std::abs(I1 / I0) - T { 0.5 }) < T { 0.01 };
+    bool success = (std::abs(I1 / I0) - 0.5) < 0.01;
     if (success)
         std::cout << "SUCCESS ";
     else
         std::cout << "FAILURE ";
 
-    std::cout << "HVL Al for sizeof(T) = " << sizeof(T) << std::endl;
-
     return success;
 }
 
-template <typename T>
 void printSpecter()
 {
-    Tube<T> t;
+    Tube t;
     t.setAnodeAngleDeg(30);
     t.setVoltage(100);
     const auto s = t.getSpecter();
@@ -65,8 +61,8 @@ void printSpecter()
 int main(int argc, char* argv[])
 {
     std::cout << "Testing tube\n";
-    bool success = testHalfLayerCalculation<float>();
-    success = success && testHalfLayerCalculation<double>();
+    bool success = testHalfLayerCalculation();
+
     if (success)
         return EXIT_SUCCESS;
     return EXIT_FAILURE;

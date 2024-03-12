@@ -86,15 +86,14 @@ std::vector<T> generateEdges(const std::array<std::size_t, 3>& dim, const std::a
     return d;
 }
 
-template <typename T>
 bool testGeometryColor()
 {
     std::array<std::size_t, 3> dim = { 128, 128, 128 };
-    std::array<T, 3> spacing = { .1, .1, .1 };
+    std::array spacing = { .1, .1, .1 };
 
-    using Grid = dxmc::AAVoxelGrid<T, 5, 2, 0>;
-    using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
-    using World = dxmc::World2<T, Grid, Cylinder>;
+    using Grid = dxmc::AAVoxelGrid<5, 2, 0>;
+    using Cylinder = dxmc::WorldCylinder<5, 2>;
+    using World = dxmc::World<Grid, Cylinder>;
 
     World world;
     auto& grid = world.addItem<Grid>({});
@@ -102,31 +101,31 @@ bool testGeometryColor()
     cylinder.setRadius(1);
     cylinder.setHeight(5);
 
-    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
-    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+    auto air = dxmc::Material<5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    const auto air_dens = dxmc::NISTMaterials::density("Air, Dry (near sea level)");
+    const auto pmma_dens = dxmc::NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)");
 
     const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
     // const auto matIdx = generateEdges<std::uint8_t>(dim, spacing);
-    std::vector<T> dens(matIdx.size(), 0);
+    std::vector<double> dens(matIdx.size(), 0);
     std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
 
-    std::vector<dxmc::Material<T>> materials;
+    std::vector<dxmc::Material<>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
 
     grid.setData(dim, dens, matIdx, materials);
     grid.setSpacing(spacing);
 
-    world.build(T { 0 });
+    world.build();
 
-    dxmc::VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> / 4);
-    viz.setAzimuthalAngle((std::numbers::pi_v<T> * 2) / 4 + T {0.1});
+    dxmc::VisualizeWorld viz(world);
+    viz.setPolarAngle(std::numbers::pi_v<double> / 4);
+    viz.setAzimuthalAngle((std::numbers::pi_v<double> * 2) / 4 + 0.1);
     int height = 1024;
     int width = 1024;
-    std::vector<T> buffer(height * width * 4, T { 1 });
+    std::vector<double> buffer(height * width * 4, 1);
     viz.generate(world, buffer, width, height);
 
     writeImage(buffer, "color.bin");
@@ -137,9 +136,9 @@ int main()
 {
 
     bool success = false;
-    testGeometryColor<double>();
-    // testGeometryColor<float>();
-    // testGeometryDistance<double>();
+    testGeometryColor();
+    // testGeometryColor();
+    // testGeometryDistance();
 
     if (success)
         return EXIT_SUCCESS;

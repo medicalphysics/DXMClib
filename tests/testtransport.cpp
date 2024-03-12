@@ -53,22 +53,20 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-template <typename T>
-void saveBinaryArray(const std::vector<T>& data, const std::string& name)
+void saveBinaryArray(const std::vector<double>& data, const std::string& name)
 {
     auto myfile = std::fstream(name, std::ios::out | std::ios::binary);
-    const auto bytes = data.size() * sizeof(T);
+    const auto bytes = data.size() * sizeof(double);
     myfile.write((char*)&data[0], bytes);
     myfile.close();
 }
 
-template <dxmc::Floating T>
 bool testTriangularMesh()
 {
-    using Mesh = dxmc::TriangulatedMesh<T, 5, 1>;
-    using World = dxmc::World<T, Mesh>;
-    using Triangle = dxmc::Triangle<T>;
-    using Box = dxmc::WorldBox<T, 5, 1>;
+    using Mesh = dxmc::TriangulatedMesh<5, 1>;
+    using World = dxmc::World<Mesh>;
+    using Triangle = dxmc::Triangle;
+    using Box = dxmc::WorldBox<5, 1>;
 
     std::vector<Triangle> triangles;
     /* triangles.push_back({ { 1, 1, 1 }, { -1, 1, 1 }, { -1, -1, 1 } });
@@ -96,12 +94,12 @@ bool testTriangularMesh()
     mesh.setNistMaterial("Water, Liquid");
     world.build();
 
-    dxmc::World<T, Box> worldBox;
+    dxmc::World<Box> worldBox;
     auto& box = worldBox.template addItem<Box>({ 1 });
     box.setNistMaterial("Water, Liquid");
     worldBox.build();
 
-    using Beam = dxmc::IsotropicMonoEnergyBeam<T>;
+    using Beam = dxmc::IsotropicMonoEnergyBeam<>;
 
     Beam beam;
     beam.setPosition({ 0, 0, -1 });
@@ -122,27 +120,26 @@ bool testTriangularMesh()
     auto test = (dose.dose() - doseBox.dose()) / std::sqrt((dose.variance() + doseBox.variance()) / 2);
     std::cout << "t-test: " << test << "\n";
 
-    dxmc::VisualizeWorld<T> viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<T> * 1.0f / 3.0f);
-    viz.setAzimuthalAngle(std::numbers::pi_v<T> * 1.0f / 3.0f);
+    dxmc::VisualizeWorld viz(world);
+    viz.setPolarAngle(std::numbers::pi_v<double> * 1.0f / 3.0f);
+    viz.setAzimuthalAngle(std::numbers::pi_v<double> * 1.0f / 3.0f);
     viz.setDistance(60);
     viz.setCameraPosition({ 30, 30, -10 });
     viz.suggestFOV(5);
     int height = 1024;
     int width = 1024;
-    std::vector<T> buffer(height * width * 4, T { 1 });
+    std::vector<double> buffer(height * width * 4, 1);
     viz.generate(world, buffer, width, height);
     saveBinaryArray(buffer, "color.bin");
 
     return false;
 }
 
-template <typename T>
 bool testCylinder()
 {
-    using Cylinder = dxmc::WorldCylinder<T, 5, 1>;
+    using Cylinder = dxmc::WorldCylinder<5, 1>;
 
-    dxmc::World<T, Cylinder> world;
+    dxmc::World<Cylinder> world;
 
     auto& cylinder = world.template addItem<Cylinder>({ 4, 60 });
 
@@ -153,9 +150,9 @@ bool testCylinder()
     std::uint64_t nPart = 0;
     std::chrono::milliseconds time;
 
-    constexpr T dist = 60;
+    constexpr double dist = 60;
 
-    dxmc::IsotropicMonoEnergyBeam<T> beam;
+    dxmc::IsotropicMonoEnergyBeam<> beam;
     const auto collAngleY = std::atan(2.0f / dist);
     const auto collAngleZ = std::atan(2.0f / dist);
     beam.setCollimationAngles({ -collAngleY, -collAngleZ, collAngleY, collAngleZ });
@@ -165,13 +162,13 @@ bool testCylinder()
 
     std::cout << "Angle, EnergyImparted, nEvents, StdDev*2" << std::endl;
 
-    std::vector<dxmc::EnergyScore<T>> res(8 * 3);
-    const T angStep = 360 / res.size();
+    std::vector<dxmc::EnergyScore> res(8 * 3);
+    const double angStep = 360 / res.size();
     for (int ang = 0; ang < res.size(); ++ang) {
-        const auto a = dxmc::DEG_TO_RAD<T>() * ang * angStep;
-        constexpr std::array<T, 3> pos = { -dist, 0, 0 };
-        constexpr std::array<T, 3> cosy = { 0, 1, 0 };
-        constexpr std::array<T, 3> cosz = { 0, 0, 1 };
+        const auto a = dxmc::DEG_TO_RAD() * ang * angStep;
+        constexpr std::array<double, 3> pos = { -dist, 0, 0 };
+        constexpr std::array<double, 3> cosy = { 0, 1, 0 };
+        constexpr std::array<double, 3> cosz = { 0, 0, 1 };
 
         auto rpos = dxmc::vectormath::rotate(pos, { 0, 0, 1 }, a);
         auto rcosy = dxmc::vectormath::rotate(cosy, { 0, 0, 1 }, a);
@@ -191,16 +188,15 @@ bool testCylinder()
     return true;
 }
 
-template <typename T>
 bool testCTDI()
 {
-    using CTDI = dxmc::CTDIPhantom<T>;
-    using Box = dxmc::WorldBox<T, 4, 1>;
+    using CTDI = dxmc::CTDIPhantom<5, 1>;
+    using Box = dxmc::WorldBox<4, 1>;
 
-    dxmc::World<T, CTDI, Box> world;
+    dxmc::World<CTDI, Box> world;
     auto& phantom = world.template addItem<CTDI>({});
 
-    phantom.setHoleMaterial("Polymethyl Methacralate (Lucite, Perspex)", dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)"));
+    phantom.setHoleMaterial("Polymethyl Methacralate (Lucite, Perspex)", dxmc::NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)"));
 
     world.build(30);
 
@@ -209,21 +205,21 @@ bool testCTDI()
     std::uint64_t nPart = 0;
     std::chrono::milliseconds time;
 
-    dxmc::IsotropicMonoEnergyBeam<T> beam;
+    dxmc::IsotropicMonoEnergyBeam<> beam;
 
-    const auto collAngleY = std::atan(16.0f / 60);
+    const auto collAngleY = std::atan(16.0 / 60);
     const auto collAngleZ = 0; //    std::atan(4.0f / 60);
     beam.setCollimationAngles({ -collAngleY, -collAngleZ, collAngleY, collAngleZ });
     beam.setNumberOfParticlesPerExposure(1e6);
     beam.setNumberOfExposures(32);
 
-    std::vector<std::array<T, 6>> res(8);
-    constexpr T angStep = 45;
+    std::vector<std::array<double, 6>> res(8);
+    constexpr double angStep = 45;
     for (int ang = 0; ang < res.size(); ++ang) {
-        const auto a = dxmc::DEG_TO_RAD<T>() * ang * angStep;
-        constexpr std::array<T, 3> pos = { -60, 0, 0 };
-        constexpr std::array<T, 3> cosy = { 0, 1, 0 };
-        constexpr std::array<T, 3> cosz = { 0, 0, 1 };
+        const auto a = dxmc::DEG_TO_RAD() * ang * angStep;
+        constexpr std::array<double, 3> pos = { -60, 0, 0 };
+        constexpr std::array<double, 3> cosy = { 0, 1, 0 };
+        constexpr std::array<double, 3> cosz = { 0, 0, 1 };
 
         auto rpos = dxmc::vectormath::rotate(pos, { 0, 0, 1 }, a);
         auto rcosy = dxmc::vectormath::rotate(cosy, { 0, 0, 1 }, a);
@@ -255,23 +251,22 @@ bool testCTDI()
     return true;
 }
 
-template <typename T>
 bool testDepth(bool print = false)
 {
-    using Cylinder = dxmc::DepthDose<T, 5, 2>;
-    using World = dxmc::World<T, Cylinder>;
-    using Beam = dxmc::PencilBeam<T>;
+    using Cylinder = dxmc::DepthDose<5, 2>;
+    using World = dxmc::World<Cylinder>;
+    using Beam = dxmc::PencilBeam<>;
 
     World world;
-    auto& cylinder = world.template addItem<Cylinder>({ T { 0.1 }, T { 20 }, 20 });
-    auto material = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)");
+    auto& cylinder = world.template addItem<Cylinder>({ 0.1, 20, 20 });
+    auto material = dxmc::Material<5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)");
     if (material) {
         cylinder.setMaterial(material.value());
-        cylinder.setMaterialDensity(T { 1.19 });
+        cylinder.setMaterialDensity(1.19);
     }
     world.build();
 
-    const T energy = 60;
+    const double energy = 60;
 
     Beam beam;
     beam.setEnergy(energy);
@@ -289,8 +284,8 @@ bool testDepth(bool print = false)
     if (print)
         std::cout << "pos, energy, std, nevents\n";
 
-    T dose0 = -1;
-    T pos0 = -1;
+    double dose0 = -1;
+    double pos0 = -1;
     const auto att = material.value().attenuationValues(beam.energy()).sum();
 
     bool success = true;
@@ -372,44 +367,44 @@ std::vector<T> generateEdges(const std::array<std::size_t, 3>& dim, const std::a
     return d;
 }
 
-template <typename T, std::uint_fast8_t TRANSPARENT = 0>
+template <std::uint_fast8_t TRANSPARENT = 0>
 bool testAAVoxelGridTransport()
 {
     bool success = true;
 
-    using AAVoxelGrid = dxmc::AAVoxelGrid<T, 5, 1, TRANSPARENT>;
-    using Cylinder = dxmc::WorldCylinder<T, 5, 2>;
-    using Sphere = dxmc::WorldSphere<T, 5, 2>;
-    using World = dxmc::World<T, AAVoxelGrid, Sphere>;
+    using AAVoxelGrid = dxmc::AAVoxelGrid<5, 1, TRANSPARENT>;
+    using Cylinder = dxmc::WorldCylinder<5, 2>;
+    using Sphere = dxmc::WorldSphere<5, 2>;
+    using World = dxmc::World<AAVoxelGrid, Sphere>;
 
     World world;
-    auto& grid = world.template addItem(AAVoxelGrid());
-    auto& sphere = world.template addItem(Sphere(3));
+    auto& grid = world.addItem(AAVoxelGrid());
+    auto& sphere = world.addItem(Sphere(3));
 
-    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
-    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+    auto air = dxmc::Material<5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    const auto air_dens = dxmc::NISTMaterials::density("Air, Dry (near sea level)");
+    const auto pmma_dens = dxmc::NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)");
 
     sphere.setMaterial(pmma);
     sphere.setMaterialDensity(pmma_dens);
 
     const std::array<std::size_t, 3> dim = { 64, 64, 64 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { .5f, .5f, .5f };
+    std::array<double, 3> spacing = { .5f, .5f, .5f };
 
     // setting up grid
     auto matInd = generateDonut<std::uint8_t>(dim, spacing);
     // auto matInd = generateEdges<std::uint8_t>(dim, spacing);
-    std::vector<T> dens(size, air_dens);
+    std::vector<double> dens(size, air_dens);
     std::transform(matInd.cbegin(), matInd.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
-    std::vector<dxmc::Material<T, 5>> materials;
+    std::vector<dxmc::Material<5>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
     grid.setData(dim, dens, matInd, materials);
     grid.setSpacing(spacing);
 
-    dxmc::PencilBeam<T> beam({ 0, 0, -100 }, { 0, 0, 1 }, 60);
+    dxmc::PencilBeam<> beam({ 0, 0, -100 }, { 0, 0, 1 }, 60);
     beam.setNumberOfExposures(64);
     beam.setNumberOfParticlesPerExposure(100000);
     dxmc::Transport transport;
@@ -417,7 +412,7 @@ bool testAAVoxelGridTransport()
     auto time = runDispatcher(transport, world, beam);
     std::cout << std::format("Total time: {}", time) << std::endl;
 
-    std::vector<T> doseArray(dens.size());
+    std::vector<double> doseArray(dens.size());
     for (std::size_t i = 0; i < size; ++i) {
         const auto& dose = grid.energyScored(i);
         doseArray[i] = dose.energyImparted();
@@ -427,24 +422,23 @@ bool testAAVoxelGridTransport()
     return success;
 }
 
-template <typename T>
 bool testAAVoxelGrid()
 {
-    dxmc::AAVoxelGrid<T, 5> item;
+    dxmc::AAVoxelGrid<5> item;
 
-    auto air = dxmc::Material<T, 5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material<T, 5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
-    const auto air_dens = dxmc::NISTMaterials<T>::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials<T>::density("Polymethyl Methacralate (Lucite, Perspex)");
+    auto air = dxmc::Material<5>::byNistName("Air, Dry (near sea level)").value();
+    auto pmma = dxmc::Material<5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
+    const auto air_dens = dxmc::NISTMaterials::density("Air, Dry (near sea level)");
+    const auto pmma_dens = dxmc::NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)");
 
     const std::array<std::size_t, 3> dim = { 64, 64, 64 };
     const auto size = std::reduce(dim.cbegin(), dim.cend(), size_t { 1 }, std::multiplies<>());
-    std::array<T, 3> spacing = { .20f, .20f, .20f };
+    std::array<double, 3> spacing = { .20f, .20f, .20f };
 
     // material arrays
-    std::vector<T> dens(size, air_dens);
+    std::vector<double> dens(size, air_dens);
     std::vector<std::uint8_t> materialIdx(size, 0);
-    std::vector<dxmc::Material<T, 5>> materials;
+    std::vector<dxmc::Material<5>> materials;
     materials.push_back(air);
     materials.push_back(pmma);
 
@@ -476,7 +470,7 @@ bool testAAVoxelGrid()
     item.setData(dim, dens, materialIdx, materials);
     item.setSpacing(spacing);
 
-    dxmc::Particle<T> p;
+    dxmc::Particle p;
 
     p.pos = { -100, 0, 0 };
     p.dir = { 1, 0, 0 };
@@ -492,7 +486,7 @@ bool testAAVoxelGrid()
     p.dir = { 1, 1, 1 };
     dxmc::vectormath::normalize(p.dir);
     res = item.intersect(p);
-    auto val = std::sqrt(3 * 100 * T { 100 }) - std::sqrt(3 * spacing[0] * spacing[0] / 4);
+    auto val = std::sqrt(3 * 100 * 100.0) - std::sqrt(3 * spacing[0] * spacing[0] / 4);
     success = success && res.valid() && val - res.intersection < 1E-6;
 
     return success;
@@ -502,20 +496,17 @@ int main()
 {
     bool success = true;
 
-    success = success && testTriangularMesh<double>();
+    success = success && testTriangularMesh();
 
-    success = success && testCylinder<double>();
-    success = success && testCTDI<double>();
+    success = success && testCylinder();
+    success = success && testCTDI();
 
-    success = success && testAAVoxelGridTransport<double, 0>();
-    success = success && testAAVoxelGridTransport<float, 0>();
-    success = success && testAAVoxelGridTransport<float, 255>();
+    success = success && testAAVoxelGridTransport<0>();
+    success = success && testAAVoxelGridTransport<255>();
 
-    success = success && testAAVoxelGrid<float>();
-    success = success && testAAVoxelGrid<double>();
+    success = success && testAAVoxelGrid();
 
-    success = success && testDepth<float>();
-    success = success && testDepth<double>();
+    success = success && testDepth();
 
     if (success)
         return EXIT_SUCCESS;

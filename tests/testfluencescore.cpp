@@ -18,8 +18,8 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
+#include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/transport.hpp"
-#include "dxmc/tube.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/fluencescore.hpp"
@@ -51,47 +51,46 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     return progress.totalTime();
 }
 
-template <typename T, std::size_t N = 5, int L = 2>
+template <std::size_t N = 5, int L = 2>
 void testfluencescore()
 {
-    using Box = dxmc::WorldBox<T, N, L>;
-    using FluenceScore = dxmc::FluenceScore<T>;
-    using World = dxmc::World2<T, Box, FluenceScore>;
-    using Material = dxmc::Material<T, N>;
+    using Box = dxmc::WorldBox<N, L>;
+    using FluenceScore = dxmc::FluenceScore;
+    using World = dxmc::World<Box, FluenceScore>;
+    using Material = dxmc::Material<N>;
 
     World world;
-    {
-        auto& box = world.template addItem<Box>({ 10 });
-        auto water = Material::byNistName("Water, Liquid").value();
-        const T density = 1;
-        box.setMaterial(water, density);
-        world.template addItem<FluenceScore>({ 20, { 0, 0, 15 }, { 0, 0, 1 } });
-    }
+
+    auto& box = world.template addItem<Box>({ 10 });
+    auto water = Material::byNistName("Water, Liquid").value();
+    const double density = 1;
+    box.setMaterial(water, density);
+    auto& fluence = world.template addItem<FluenceScore>({ 20, { 0, 0, 15 }, { 0, 0, 1 } });
+
     world.build();
 
-    dxmc::VisualizeWorld<T> viz(world);
+    dxmc::VisualizeWorld viz(world);
     viz.addLineProp({ -1000, 0, 0 }, { 1, 0, 0 }, 1000, 0.1);
     int height = 528;
     int width = 528;
-    std::vector<T> buffer(height * width * 4, T { 1 });
+    std::vector<double> buffer(height * width * 4, 1);
     for (std::size_t i = 0; i < 12; ++i) {
         viz.setDistance(500);
-        viz.setPolarAngle(std::numbers::pi_v<T> / 3.0);
-        viz.setAzimuthalAngle(std::numbers::pi_v<T> * i / 6.0);
-        // viz.setCameraPosition({ -60, -30, -10 });
+        viz.setPolarAngle(std::numbers::pi_v<double> / 3.0);
+        viz.setAzimuthalAngle(std::numbers::pi_v<double> * i / 6.0);
         viz.suggestFOV();
         viz.generate(world, buffer, width, height);
         std::string name = "fluence_score" + std::to_string(i) + ".png";
         viz.savePNG(name, buffer, width, height);
     }
 
-    dxmc::Tube<T> tube;
+    dxmc::Tube tube;
     tube.setVoltage(140);
     tube.setAlFiltration(8);
     tube.setEnergyResolution(1);
     const auto ts = tube.getSpecter();
 
-    dxmc::IsotropicBeam<T> beam({ -1000, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
+    dxmc::IsotropicBeam<> beam({ -1000, 0, 0 }, { 0, 1, 0, 0, 0, 1 });
     beam.setEnergySpecter(ts);
     beam.setCollimationAngles(0, 0, 0, 0);
 
@@ -100,11 +99,7 @@ void testfluencescore()
 
     dxmc::Transport transport;
     runDispatcher(transport, world, beam);
-    // transport(world, beam);
-    // transport.setNumberOfThreads(4);
 
-    const auto& fluence_vec = world.template getItems<FluenceScore>();
-    const auto& fluence = fluence_vec[0];
     const auto specter = fluence.getSpecter();
     const auto N = beam.numberOfExposures() * beam.numberOfParticles();
 
@@ -120,7 +115,7 @@ int main()
     std::cout << "Testing fluence scoring\n";
     bool success = true;
 
-    testfluencescore<double, 5, 2>();
+    testfluencescore<5, 2>();
     if (success)
         std::cout << "SUCCESS ";
     else

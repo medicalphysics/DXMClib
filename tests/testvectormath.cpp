@@ -72,7 +72,7 @@ bool testPeturb()
             const auto vt = vectormath::peturb(vec, cosang, std::cos(state.randomUniform<T>(2 * std::numbers::pi_v<T>)));
             const auto res = dxmc::vectormath::angleBetween(vec, vt);
             success = success && equal(res, std::abs(angle), T { 1E-2 });
-            const auto vt_lenght = vectormath::lenght(vt);
+            const auto vt_lenght = vectormath::length(vt);
             success = success && equal(vt_lenght, T { 1 });
             if (!success) {
                 auto test = false;
@@ -86,7 +86,7 @@ bool testPeturb()
         const auto cosang = std::cos(angle);
         const auto cosphi = std::cos(state.randomUniform<T>(2 * std::numbers::pi_v<T>));
         vec = vectormath::peturb(vec, cosang, cosphi);
-        const auto lenght = vectormath::lenght(vec);
+        const auto lenght = vectormath::length(vec);
         success = success && equal(lenght, T { 1 }, T { 1E-3 });
         if (!success) {
             auto test = false;

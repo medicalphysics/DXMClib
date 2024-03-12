@@ -21,10 +21,9 @@ Copyright 2023 Erlend Andersen
 
 #include <iostream>
 
-template <typename T>
 bool testBowtie()
 {
-    std::vector<T> angle, weight;
+    std::vector<double> angle, weight;
 
     weight = {
         9084.336977,
@@ -175,7 +174,7 @@ bool testBowtie()
     angle.push_back(0.390607044);
     weight.push_back(0.947716);
 */
-    dxmc::BowtieFilter<T> filter(angle, weight);
+    dxmc::BowtieFilter filter(angle, weight);
 
     // test values
     std::cout << "a, f1, f1s, f2, f2s, f3, f3s\n";
@@ -186,16 +185,16 @@ bool testBowtie()
         std::cout << filter(a) << '\n';
     }
 
-    T w = 0;
+    double w = 0;
     constexpr std::size_t N = 1E6;
     dxmc::RandomState state;
     for (std::size_t i = 0; i < N; ++i) {
-        const T ang = state.randomUniform(T { 0.340129958 });
+        const auto ang = state.randomUniform(0.340129958);
         w += filter(ang);
     }
     w /= N;
 
-    auto success = std::abs(w - 1) < T { 0.01 };
+    auto success = std::abs(w - 1) < 0.01;
 
     return success;
 }
@@ -204,8 +203,8 @@ int main()
 {
 
     bool success = true;
-    // success = success && testBowtie<float>();
-    success = success && testBowtie<double>();
+
+    success = success && testBowtie();
     if (success) {
         return EXIT_SUCCESS;
     } else {

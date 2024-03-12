@@ -17,12 +17,12 @@ Copyright 2022 Erlend Andersen
 */
 
 #include "dxmc/beams/beamtype.hpp"
+#include "dxmc/beams/cbctbeam.hpp"
 #include "dxmc/beams/ctspiralbeam.hpp"
 #include "dxmc/beams/ctspiraldualenergybeam.hpp"
 #include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/isotropicbeam.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
-#include "dxmc/beams/cbctbeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/vectormath.hpp"

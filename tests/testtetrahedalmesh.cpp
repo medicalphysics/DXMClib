@@ -30,10 +30,9 @@ Copyright 2022 Erlend Andersen
 #include <string>
 #include <vector>
 
-template <typename T>
-std::vector<dxmc::Tetrahedron<T>> tetCube()
+std::vector<dxmc::Tetrahedron> tetCube()
 {
-    std::vector<std::array<T, 3>> v(8);
+    std::vector<std::array<double, 3>> v(8);
     v[0] = { -1, 1, 1 };
     v[1] = { 1, -1, 1 };
     v[2] = { 1, 1, 1 };
@@ -47,7 +46,7 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
         for (auto& n : i)
             n *= 100;
 
-    std::vector<dxmc::Tetrahedron<T>> t(6);
+    std::vector<dxmc::Tetrahedron> t(6);
 
     t[0] = { v[1], v[7], v[0], v[2], 0, 0 }; //*
     t[1] = { v[7], v[3], v[0], v[6], 0, 0 }; //*
@@ -65,49 +64,50 @@ std::vector<dxmc::Tetrahedron<T>> tetCube()
     return t;
 }
 
-template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
-dxmc::TetrahedalMesh<T, N, L, Fluence> simpletetrahedron()
+template <std::size_t N = 5, int L = 2, bool Fluence = true>
+dxmc::TetrahedalMesh<N, L, Fluence> simpletetrahedron()
 {
-    auto tets = tetCube<T>();
+    auto tets = tetCube();
 
-    std::vector<dxmc::Material<T, N>> mats;
-    mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
-    std::vector<T> dens(tets.size(), 1);
+    std::vector<dxmc::Material<N>> mats;
+    mats.push_back(dxmc::Material<N>::byNistName("Water, Liquid").value());
+    std::vector<double> dens(tets.size(), 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names, 1);
+    dxmc::TetrahedalMesh<N, L, Fluence> mesh(tets, dens, mats, names, 1);
 
     return mesh;
 }
 
-template <typename T, std::size_t N = 5, int L = 2>
-dxmc::WorldBox<T, N, L> simplebox()
+template <std::size_t N = 5, int L = 2>
+dxmc::WorldBox<N, L> simplebox()
 {
-    dxmc::WorldBox<T, N, L> box(100);
-    auto water = dxmc::Material<T, N>::byNistName("Water, Liquid").value();
+    dxmc::WorldBox<N, L> box(100);
+    auto water = dxmc::Material<N>::byNistName("Water, Liquid").value();
     box.setMaterial(water, 1);
     return box;
 }
-template <typename T, std::size_t N = 5, int L = 2>
-dxmc::AAVoxelGrid<T, N, L, 255> simplegrid()
+
+template <std::size_t N = 5, int L = 2>
+dxmc::AAVoxelGrid<N, L, 255> simplegrid()
 {
 
-    dxmc::AAVoxelGrid<T, N, L, 255> grid;
+    dxmc::AAVoxelGrid<N, L, 255> grid;
     std::vector<std::uint8_t> m(1000, 0);
-    std::vector<T> d(1000, 1);
-    std::vector<dxmc::Material<T, N>> mats;
-    mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
+    std::vector<double> d(1000, 1);
+    std::vector<dxmc::Material<N>> mats;
+    mats.push_back(dxmc::Material<N>::byNistName("Water, Liquid").value());
     grid.setData({ 10, 10, 10 }, d, m, mats);
     grid.setSpacing({ 20, 20, 20 });
     return grid;
 }
 
-template <typename T, std::size_t N = 5, int L = 2, bool Fluence = true>
-dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
+template <std::size_t N = 5, int L = 2, bool Fluence = true>
+dxmc::TetrahedalMesh<N, L> simpletetrahedron2()
 {
-    std::vector<dxmc::Tetrahedron<T>> tets;
+    std::vector<dxmc::Tetrahedron> tets;
 
-    std::vector<std::array<T, 3>> p;
+    std::vector<std::array<double, 3>> p;
     p.push_back({ -1, 0, -1 });
     p.push_back({ 1, 0, -1 });
     p.push_back({ 1, 2, -1 });
@@ -119,20 +119,20 @@ dxmc::TetrahedalMesh<T, N, L> simpletetrahedron2()
     for (const auto& t : tets)
         valid = valid && t.validVerticeOrientation();
 
-    std::vector<dxmc::Material<T, N>> mats;
-    mats.push_back(dxmc::Material<T, N>::byNistName("Water, Liquid").value());
-    std::vector<T> dens(1, 1);
+    std::vector<dxmc::Material<N>> mats;
+    mats.push_back(dxmc::Material<N>::byNistName("Water, Liquid").value());
+    std::vector<double> dens(1, 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<T, N, L, Fluence> mesh(tets, dens, mats, names, 1);
+    dxmc::TetrahedalMesh<N, L, Fluence> mesh(tets, dens, mats, names, 1);
 
     return mesh;
 }
 
 bool testIntersectionMesh()
 {
-    auto mesh = simpletetrahedron<double, 5, 1, false>();
-    dxmc::Particle<double> p { .pos = { 0, 0, -1000 }, .dir = { 0, 0, 1 } };
+    auto mesh = simpletetrahedron<5, 1, false>();
+    dxmc::Particle p { .pos = { 0, 0, -1000 }, .dir = { 0, 0, 1 } };
     auto res = mesh.intersect(p);
     bool success = res.valid() && std::abs(res.intersection - 90) < 0.001;
     return success;
@@ -141,24 +141,39 @@ bool testIntersectionMesh()
 bool testTransport()
 {
 
-    using M1 = dxmc::TetrahedalMesh<double, 5, 1, true>;
-    using M2 = dxmc::TetrahedalMesh<double, 5, 1, false>;
-    using B = dxmc::WorldBox<double, 5, 1>;
-    using G = dxmc::AAVoxelGrid<double, 5, 1, 255>;
+    using M1 = dxmc::TetrahedalMesh<5, 1, true>;
+    using M2 = dxmc::TetrahedalMesh<5, 1, false>;
+    using B = dxmc::WorldBox<5, 1>;
+    using G = dxmc::AAVoxelGrid<5, 1, 255>;
 
     constexpr std::size_t N_HIST = 1000000;
     constexpr std::size_t N_EXP = 16;
 
-    dxmc::PencilBeam<double> beam({ 50, 50, -1000 }, { 0, 0, 1 }, 60);
+    dxmc::PencilBeam<> beam({ 50, 50, -1000 }, { 0, 0, 1 }, 60);
     beam.setNumberOfExposures(N_EXP);
     beam.setNumberOfParticlesPerExposure(N_HIST);
 
     dxmc::TransportProgress progress;
 
     {
-        dxmc::World<double, M1> w;
+        dxmc::World<M1> w;
         w.reserveNumberOfItems(1);
-        auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, true>());
+        auto& mesh = w.addItem(simpletetrahedron<5, 1, true>());
+        w.build();
+
+        double dose = 0;
+        dxmc::Transport transport;
+
+        transport(w, beam, &progress);
+        for (const auto& t : mesh.tetrahedrons())
+            dose += t.energyScored().energyImparted();
+        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
+    }
+
+    {
+        dxmc::World<M2> w;
+        w.reserveNumberOfItems(1);
+        auto& mesh = w.addItem(simpletetrahedron<5, 1, false>());
         w.build();
 
         double dose = 0;
@@ -171,24 +186,9 @@ bool testTransport()
     }
 
     {
-        dxmc::World<double, M2> w;
+        dxmc::World<G> w;
         w.reserveNumberOfItems(1);
-        auto& mesh = w.addItem(simpletetrahedron<double, 5, 1, false>());
-        w.build();
-
-        double dose = 0;
-        dxmc::Transport transport;
-        // transport.setNumberOfThreads(1);
-        transport(w, beam, &progress);
-        for (const auto& t : mesh.tetrahedrons())
-            dose += t.energyScored().energyImparted();
-        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
-    }
-
-    {
-        dxmc::World<double, G> w;
-        w.reserveNumberOfItems(1);
-        auto& mesh = w.addItem(simplegrid<double, 5, 1>());
+        auto& mesh = w.addItem(simplegrid<5, 1>());
         w.build();
 
         dxmc::Transport transport;
@@ -201,9 +201,9 @@ bool testTransport()
     }
 
     {
-        dxmc::World<double, B> w;
+        dxmc::World<B> w;
         w.reserveNumberOfItems(1);
-        auto& box = w.addItem(simplebox<double, 5, 1>());
+        auto& box = w.addItem(simplebox<5, 1>());
         w.build();
 
         dxmc::Transport transport;
@@ -218,8 +218,8 @@ bool testTransport()
 bool testIntersection()
 {
 
-    dxmc::Particle<double> p { .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 } };
-    const auto tets = tetCube<double>();
+    dxmc::Particle p { .pos = { 0, 0, -100 }, .dir = { 0, 0, 1 } };
+    const auto tets = tetCube();
 
     bool success = true;
     for (const auto& tet : tets) {
@@ -239,7 +239,7 @@ int main()
 {
 
     bool success = true;
-    // success = success && testIntersection();
+    success = success && testIntersection();
     success = success && testTransport();
     if (success)
         return EXIT_SUCCESS;

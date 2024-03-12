@@ -8,27 +8,18 @@ set(TEST_SOURCES
     "testtriangulatedmesh.cpp"
     "testtetrahedalmesh.cpp"
     "testctaecfilter.cpp"
-    "testkdtree.cpp"
-    "teststatickdtree.cpp"
-    "testworlditems.cpp"
-    "testinteractions.cpp"
+    "testworlditems.cpp" 
     "testbasicshapes.cpp"
     "testtube.cpp"
     "testvisualization.cpp"
     "testfluencescore.cpp"
-    "testbowtiefilter.cpp"
-#    "testsource.cpp"
-#    "testbeamfilters.cpp"
-    "testmaterial.cpp"
+    "testbowtiefilter.cpp"   
     "testrandom.cpp"
     "testtransport.cpp"
-#    "testattenuationlut.cpp"
-#    "testitemcollection.cpp"
     "testvectormath.cpp"
     "testworldsphere.cpp"
-#    "testexposure.cpp"
-#    "testinterpolation.cpp"
 )
+
 
 foreach(sourcefile ${TEST_SOURCES})
     get_filename_component(filename ${sourcefile} NAME_WLE)

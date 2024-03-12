@@ -18,31 +18,30 @@ Copyright 2023 Erlend Andersen
 
 #include "dxmc/beams/filters/ctaecfilter.hpp"
 
-template <typename T>
 bool testAECCTFilter()
 {
 
-    dxmc::CTAECFilter<T> f;
+    dxmc::CTAECFilter f;
 
-    std::vector<T> w = { 5, 6, 7, 6, 3, 5, 6, 2, 6 };
+    std::vector<double> w = { 5, 6, 7, 6, 3, 5, 6, 2, 6 };
 
-    T start = -5;
-    T stop = 4;
+    double start = -5;
+    double stop = 4;
 
     f.setData({ 0, 0, start }, { 0, 0, stop }, w);
 
     constexpr std::size_t N = 100;
 
-    std::vector<T> res;
-    T K = 0;
+    std::vector<double> res;
+    double K = 0;
     for (std::size_t i = 0; i < N; ++i) {
-        T k = start + (stop - start) / N;
+        auto k = start + (stop - start) / N;
         res.push_back(f({ 0, 0, k }));
         K += res.back();
     }
 
     auto test = f.integrate();
-    T kk = K / N;
+    auto kk = K / N;
     return kk > 0.95 && kk < 1.05;
 }
 
@@ -50,8 +49,7 @@ int main()
 {
 
     bool success = true;
-    success = success && testAECCTFilter<float>();
-    success = success && testAECCTFilter<double>();
+    success = success && testAECCTFilter();
     if (success) {
         return EXIT_SUCCESS;
     } else {
