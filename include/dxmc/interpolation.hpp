@@ -174,6 +174,32 @@ T trapz(const std::vector<std::pair<T, T>>& f)
 }
 
 template <Floating T>
+T trapz(const std::vector<std::pair<T, T>>& f, T start, T stop)
+{
+    T integ = 0;
+    const auto start_x = std::clamp(start, f.front().first, f.back().first);
+    const auto stop_x = std::clamp(stop, f.front().first, f.back().first);
+    std::size_t startIdx = f.size() - 1;
+    std::size_t stopIdx = 0;
+
+    for (std::size_t i = 1; i < f.size(); ++i) {
+        if (f[i - 1].first > start_x && f[i].first < stop_x) {
+            integ += (f[i - 1].second + f[i].second) * T { 0.5 } * (f[i].first - f[i - 1].first);
+            stopIdx = std::max(stopIdx, i);
+            startIdx = std::min(startIdx, i - 1);
+        }
+    }
+    // remainder
+    const auto start_y = interpolate(f, start_x);
+    const auto stop_y = interpolate(f, stop_x);
+    if (f[startIdx].first - start_x > T { 0 })
+        integ += (start_y + f[startIdx].second) * T { 0.5 } * (f[startIdx].first - start_x);
+    if (stop_x - f[stopIdx].first > T { 0 })
+        integ += (f[stopIdx].second + stop_y) * T { 0.5 } * (stop_x - f[stopIdx].first);
+    return integ;
+}
+
+template <Floating T>
 constexpr T gaussIntegration(const T start, const T stop, const std::array<T, 20>& gaussPoints)
 {
     constexpr std::array<T, 20> weights = {

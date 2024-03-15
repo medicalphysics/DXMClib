@@ -18,6 +18,7 @@ Copyright 2023 Erlend Andersen
 
 #pragma once
 
+#include "dxmc/constants.hpp"
 #include "dxmc/interpolation.hpp"
 #include "dxmc/vectormath.hpp"
 
@@ -31,7 +32,8 @@ public:
     CTAECFilter()
     {
         m_data.resize(2);
-        std::fill(m_data.begin(), m_data.end(), 1.0);
+        m_data[0] = std::make_pair(0.0, 1.0);
+        m_data[1] = std::make_pair(1.0, 1.0);
     }
 
     CTAECFilter(const std::array<double, 3>& start, const std::array<double, 3>& stop, const std::vector<double>& values)
@@ -42,11 +44,7 @@ public:
     void normalizeBetween(const std::array<double, 3>& start, const std::array<double, 3>& stop)
     {
         if (!isEmpty()) {
-            const auto dist_start = vectormath::subtract(start, m_start);
-            const auto proj_start = vectormath::dot(dist_start, m_dir);
-            const auto dist_stop = vectormath::subtract(stop, m_start);
-            const auto proj_stop = vectormath::dot(dist_stop, m_dir);
-            normalize(proj_start, proj_stop);
+            normalize(start, stop);
         }
     }
 
@@ -60,9 +58,11 @@ public:
         return m_data.size() == 2;
     }
 
-    const std::vector<double>& weights() const
+    std::vector<double> weights() const
     {
-        return m_data;
+        std::vector<double> w(m_data.size());
+        std::transform(std::execution::par_unseq, m_data.cbegin(), m_data.cend(), w.begin(), [](const auto& v) { return v.second; });
+        return w;
     }
 
     const std::array<double, 3>& start() const
@@ -84,104 +84,84 @@ public:
     {
         m_start = start;
         const auto dir = vectormath::subtract(stop, start);
-        m_dir = vectormath::normalized(dir);
-        m_length = vectormath::length(dir);
+        if (vectormath::length_sqr(dir) < GEOMETRIC_ERROR()) {
+            m_dir = { 0, 0, 1 };
+            m_length = 1;
+        } else {
+            m_dir = vectormath::normalized(dir);
+            m_length = vectormath::length(dir);
+        }
 
         if (data.size() < 2) {
             m_data.resize(2);
-            std::fill(m_data.begin(), m_data.end(), 1.0);
-            m_step = m_length;
+            m_data[0] = std::make_pair(0.0, 1.0);
+            m_data[1] = std::make_pair(1.0, 1.0);
             return;
         }
 
-        m_step = m_length / (data.size() - 1);
-        m_data = data;
-        // normalize
+        m_data.resize(data.size());
+        const auto step = m_length / data.size();
+        for (std::size_t i = 0; i < data.size(); ++i) {
+            m_data[i].first = step * i;
+            m_data[i].second = data[i];
+        }
         normalize();
     }
 
     double operator()(const std::array<double, 3>& pos) const
     {
-        const auto dist = vectormath::subtract(pos, m_start);
-        const auto proj = vectormath::dot(dist, m_dir);
-        return this->operator()(proj);
+        return this->operator()(positionToIndex(pos));
     }
 
     double operator()(double d) const
     {
-        const auto dc = std::clamp(d, 0.0, m_length);
-        const auto idx0 = std::clamp(static_cast<std::size_t>(dc / m_step), std::size_t { 0 }, m_data.size() - 2);
-        const auto idx1 = idx0 + 1;
-        return interp(m_step * idx0, m_step * idx1, m_data[idx0], m_data[idx1], dc);
+        return interpolate(m_data, d);
     }
 
     double integrate() const
     {
-        double s = 0;
-        for (std::size_t i = 0; i < m_data.size() - 1; ++i) {
-            const auto d0 = m_data[i];
-            const auto d1 = m_data[i + 1];
-            s += (d0 + d1) * m_step * 0.5;
-        }
-        return s;
+        return trapz(m_data);
     }
 
-    double integrate(double start_r, double stop_r) const
+    double integrate(const std::array<double, 3>& start_p, const std::array<double, 3>& stop_p) const
     {
-        const auto start = std::clamp(std::min(start_r, stop_r), 0.0, m_length);
-        const auto stop = std::clamp(std::max(start_r, stop_r), 0.0, m_length);
-        const auto idx_start = std::clamp(static_cast<std::size_t>(start / m_step), std::size_t { 0 }, m_data.size() - 2);
-        const auto idx_stop = std::clamp(static_cast<std::size_t>(stop / m_step) + 1, std::size_t { 0 }, m_data.size() - 2);
-
-        double s = 0;
-        for (std::size_t i = idx_start; i < idx_stop; ++i) {
-            const auto d0 = m_data[i];
-            const auto d1 = m_data[i + 1];
-            s += (d0 + d1) * m_step * 0.5;
-        }
-
-        const auto begin_part = (m_step * idx_start - start) * (this->operator()(start) + m_data[idx_start + 1]) / 2;
-        const auto end_part = (m_step * idx_stop - stop) * (this->operator()(stop) + m_data[idx_stop]) / 2;
-
-        return s - begin_part - end_part;
-    }
-
-    double integrate(const std::array<double, 3>& start, const std::array<double, 3>& stop) const
-    {
-        const auto dist_start = vectormath::subtract(start, m_start);
-        const auto proj_start = vectormath::dot(dist_start, m_dir);
-        const auto dist_stop = vectormath::subtract(stop, m_start);
-        const auto proj_stop = vectormath::dot(dist_stop, m_dir);
-        return integrate(proj_start, proj_stop);
+        const auto start = positionToIndex(start_p);
+        const auto stop = positionToIndex(stop_p);
+        return trapz(m_data, start, stop);
     }
 
 protected:
+    double positionToIndex(const std::array<double, 3>& start) const
+    {
+        const auto dist_start = vectormath::subtract(start, m_start);
+        return std::clamp(vectormath::dot(dist_start, m_dir), 0.0, m_length);
+    }
+
     void normalize()
     {
         const auto area = integrate();
         // we want the total area equal to m_length * 1 for an expected value of 1.0;
         const auto k = m_length / area;
         for (auto& d : m_data)
-            d *= k;
+            d.second *= k;
     }
 
-    void normalize(double start, double stop)
+    void normalize(const std::array<double, 3>& start, const std::array<double, 3>& stop)
     {
-        const auto area = integrate(start, stop);
-        const auto start_l = std::clamp(std::min(start, stop), 0.0, m_length);
-        const auto stop_l = std::clamp(std::max(start, stop), 0.0, m_length);
+        const auto p_start = positionToIndex(start);
+        const auto p_stop = positionToIndex(stop);
 
         // we want the total area equal to m_length * 1 for an expected value of 1.0;
-        const auto k = std::abs(stop_l - start_l) / area;
+        const auto area = integrate(start, stop);
+        const auto k = std::abs(p_stop - p_start) / area;
         for (auto& d : m_data)
-            d *= k;
+            d.second *= k;
     }
 
 private:
     std::array<double, 3> m_start = { 0, 0, 0 };
     std::array<double, 3> m_dir = { 0, 0, 1 };
     double m_length = 1;
-    double m_step = 1;
-    std::vector<double> m_data;
+    std::vector<std::pair<double, double>> m_data;
 };
 }
