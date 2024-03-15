@@ -168,9 +168,11 @@ protected:
     void normalize(double start, double stop)
     {
         const auto area = integrate(start, stop);
+        const auto start_l = std::clamp(std::min(start, stop), 0.0, m_length);
+        const auto stop_l = std::clamp(std::max(start, stop), 0.0, m_length);
+
         // we want the total area equal to m_length * 1 for an expected value of 1.0;
-        const auto stop_self = vectormath::add(m_start, vectormath::scale(m_dir, m_length));
-        const auto k = std::abs(stop_self - m_start) / area;
+        const auto k = std::abs(stop_l - start_l) / area;
         for (auto& d : m_data)
             d *= k;
     }
