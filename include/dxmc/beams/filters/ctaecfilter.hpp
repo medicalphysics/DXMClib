@@ -41,11 +41,13 @@ public:
 
     void normalizeBetween(const std::array<double, 3>& start, const std::array<double, 3>& stop)
     {
-        const auto dist_start = vectormath::subtract(start, m_start);
-        const auto proj_start = vectormath::dot(dist_start, m_dir);
-        const auto dist_stop = vectormath::subtract(stop, m_start);
-        const auto proj_stop = vectormath::dot(dist_stop, m_dir);
-        normalize(proj_start, proj_stop);
+        if (!isEmpty()) {
+            const auto dist_start = vectormath::subtract(start, m_start);
+            const auto proj_start = vectormath::dot(dist_start, m_dir);
+            const auto dist_stop = vectormath::subtract(stop, m_start);
+            const auto proj_stop = vectormath::dot(dist_stop, m_dir);
+            normalize(proj_start, proj_stop);
+        }
     }
 
     std::size_t size() const
@@ -167,7 +169,8 @@ protected:
     {
         const auto area = integrate(start, stop);
         // we want the total area equal to m_length * 1 for an expected value of 1.0;
-        const auto k = std::abs(stop - start) / area;
+        const auto stop_self = vectormath::add(m_start, vectormath::scale(m_dir, m_lenght));
+        const auto k = std::abs(stop_self - m_start) / area;
         for (auto& d : m_data)
             d *= k;
     }
