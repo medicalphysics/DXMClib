@@ -719,9 +719,9 @@ class CubicSplineInterpolatorStatic {
 public:
     CubicSplineInterpolatorStatic(const std::vector<T>& x, const std::vector<T>& y)
     {
-        const auto N = std::min(x.size(), y.size());
-        std::vector<std::pair<T, T>> data(N);
-        for (std::size_t i = 0; i < N; ++i) {
+        const auto n_ele = std::min(x.size(), y.size());
+        std::vector<std::pair<T, T>> data(n_ele);
+        for (std::size_t i = 0; i < n_ele; ++i) {
             data[i].first = x[i];
             data[i].second = y[i];
         }

@@ -192,7 +192,7 @@ public:
             return a; });
         return att;
     }
-    inline std::vector<AttenuationValues> totalAttenuationValue(const std::vector<double>& energy) const
+    inline std::vector<double> totalAttenuationValue(const std::vector<double>& energy) const
     {
         const auto att = attenuationValues(energy);
         std::vector<double> sum(att.size());

@@ -17,6 +17,7 @@ Copyright 2023 Erlend Andersen
 */
 
 #include <array>
+#include <cstdint>
 #include <map>
 #include <string>
 #include <vector>

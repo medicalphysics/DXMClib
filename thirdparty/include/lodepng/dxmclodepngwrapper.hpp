@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include <algorithm>
+#include <cstdint>
 #include <string>
 #include <vector>
 
@@ -41,7 +42,8 @@ namespace dxmclodepng {
     bool savePNG(const std::string& filename, const std::vector<std::uint8_t>& encodedImage);
 
     template <typename T>
-        requires std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::uint8_t> bool
+        requires std::is_same_v<T, float> || std::is_same_v<T, double> || std::is_same_v<T, std::uint8_t>
+    bool
     savePNG(const std::string& filename, const std::vector<T>& image, std::size_t width, size_t height)
     {
         return savePNG(filename, encodePNG(image, width, height));

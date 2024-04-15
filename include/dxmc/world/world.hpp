@@ -43,25 +43,25 @@ concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
 template <WorldItemType... Us>
 class World {
-    using Material = Material<5>;
+    using MaterialType = Material<5>;
 
 public:
     World()
-        : m_fillMaterial(Material::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(MaterialType::byNistName("Air, Dry (near sea level)").value())
     {
     }
 
     World(std::size_t reserveNumberOfWorldItems)
-        : m_fillMaterial(Material::byNistName("Air, Dry (near sea level)").value())
+        : m_fillMaterial(MaterialType::byNistName("Air, Dry (near sea level)").value())
     {
         m_items.reserve(reserveNumberOfWorldItems);
     }
 
-    void setMaterial(const Material& mat)
+    void setMaterial(const MaterialType& mat)
     {
         m_fillMaterial = mat;
     }
-    void setMaterial(const Material& mat, double dens)
+    void setMaterial(const MaterialType& mat, double dens)
     {
         m_fillMaterial = mat;
         m_fillMaterialDensity = std::abs(dens);
@@ -71,7 +71,7 @@ public:
         m_fillMaterialDensity = std::abs(dens);
     }
 
-    const Material& fillMaterial() const { return m_fillMaterial; }
+    const MaterialType& fillMaterial() const { return m_fillMaterial; }
     double fillMaterialDensity() const { return m_fillMaterialDensity; }
 
     void reserveNumberOfItems(std::size_t size)
@@ -266,7 +266,7 @@ private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<Us...>> m_items;
     KDTree<Us...> m_kdtree;
-    Material m_fillMaterial;
+    MaterialType m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;
 };

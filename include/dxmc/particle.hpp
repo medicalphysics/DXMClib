@@ -29,10 +29,10 @@ template <typename U>
 concept ParticleType = requires(U p, const U pc, std::array<double, 3> vec, double factor) {
     p.translate(factor);
     p.border_translate(factor);
-    std::same_as<decltype(pc.pos), std::array<double, 3>>;
-    std::same_as<decltype(pc.dir), std::array<double, 3>>;
-    std::same_as<decltype(pc.energy), double>;
-    std::same_as<decltype(pc.weight), double>;
+    requires std::same_as<decltype(pc.pos), std::array<double, 3>>;
+    requires std::same_as<decltype(pc.dir), std::array<double, 3>>;
+    requires std::same_as<decltype(pc.energy), double>;
+    requires std::same_as<decltype(pc.weight), double>;
 };
 
 /**
