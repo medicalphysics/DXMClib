@@ -85,6 +85,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/isotropicbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/cbctbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctspiralbeam.hpp" 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctsequentialbeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctspiraldualenergybeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/beams/ctdibeam.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/world.hpp" 

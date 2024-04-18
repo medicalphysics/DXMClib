@@ -18,6 +18,7 @@ Copyright 2022 Erlend Andersen
 
 #include "dxmc/beams/beamtype.hpp"
 #include "dxmc/beams/cbctbeam.hpp"
+#include "dxmc/beams/ctsequentialbeam.hpp"
 #include "dxmc/beams/ctspiralbeam.hpp"
 #include "dxmc/beams/ctspiraldualenergybeam.hpp"
 #include "dxmc/beams/dxbeam.hpp"
@@ -69,8 +70,17 @@ bool testCTSpiralBeam()
     beam.setNumberOfParticlesPerExposure(1E2);
     beam.setStepAngleDeg(5);
     beam.setSourceDetectorDistance(115);
-    dxmc::TransportProgress progress;
-    auto f = beam.calibrationFactor(&progress);
+
+    return initiateBeam(beam);
+}
+
+bool testCTSeqBeam()
+{
+    using Beam = dxmc::CTSequentialBeam<>;
+    Beam beam;
+    beam.setNumberOfParticlesPerExposure(1E2);
+    beam.setStepAngleDeg(5);
+    beam.setSourceDetectorDistance(115);
 
     return initiateBeam(beam);
 }
