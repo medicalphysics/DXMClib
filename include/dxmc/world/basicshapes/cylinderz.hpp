@@ -123,7 +123,7 @@ namespace basicshape {
             }
         }
 
-        static constexpr std::optional<double> intersectCylinderDiscIntervalZ(const Particle& p, const std::array<double, 3>& center, const double radii)
+        static std::optional<double> intersectCylinderDiscIntervalZ(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             if (std::abs(p.dir[2]) <= std::numeric_limits<double>::epsilon())
                 return std::nullopt;
@@ -136,7 +136,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static constexpr std::optional<double> intersectCylinderDiscZ(const Particle& p, const std::array<double, 3>& center, const double radii)
+        static std::optional<double> intersectCylinderDiscZ(const Particle& p, const std::array<double, 3>& center, const double radii)
         {
             if (std::abs(p.dir[2]) <= std::numeric_limits<double>::epsilon())
                 return std::nullopt;
@@ -154,7 +154,7 @@ namespace basicshape {
             return std::nullopt;
         }
 
-        static constexpr WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
+        static WorldIntersectionResult intersect(const Particle& p, const std::array<double, 3>& center, const double radii, const double half_height)
         {
             auto t_cand = intersectCylinderWall(p, center, radii);
             if (t_cand) {
