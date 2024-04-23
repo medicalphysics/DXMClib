@@ -168,8 +168,8 @@ option(DXMCLIB_USE_LOADPNG "Use thirdparty loadpng library for writing png files
 add_subdirectory(thirdparty)
 
 # Testing
-OPTION(BUILD_TESTING "Build tests" ON)
-if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND BUILD_TESTING)
+OPTION(DXMCLIB_BUILD_TESTING "Build tests" ON)
+if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME AND DXMCLIB_BUILD_TESTING)
     add_subdirectory(tests)
 endif()
 
@@ -191,8 +191,8 @@ endif()
 
 # Examples
 if(CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
-    option(BUILD_EXAMPLES "Build examples" ON)
-    if(BUILD_EXAMPLES)
+    option(DXMCLIB_BUILD_EXAMPLES "Build examples" ON)
+    if(DXMCLIB_BUILD_EXAMPLES)
         add_subdirectory(examples)
     endif()
 endif()
