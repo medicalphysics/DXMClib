@@ -255,6 +255,34 @@ public:
         return m_aecFilter;
     }
 
+    // helpers to set tube weights
+    void setRelativeMasTubeA(double mas)
+    {
+        m_relativeMasA = mas;
+        tubeChanged();
+    }
+    void setRelativeMasTubeB(double mas)
+    {
+        m_relativeMasB = mas;
+        tubeChanged();
+    }
+    double tubeRelativeWeightA() const
+    {
+        return m_weightA;
+    }
+    double tubeRelativeWeightB() const
+    {
+        return m_weightB;
+    }
+    double relativeMasTubeA() const
+    {
+        return m_relativeMasA;
+    }
+    double relativeMasTubeB() const
+    {
+        return m_relativeMasB;
+    }
+
     CTSpiralBeamExposure<ENABLETRACKING> exposure(std::size_t dualExposureIndex) const noexcept
     {
         const std::size_t i = dualExposureIndex / 2;
@@ -327,13 +355,13 @@ protected:
     {
         auto energiesA = m_tubeA.getEnergy();
         auto weightsA = m_tubeA.getSpecter(energiesA, false);
-        const auto weightA = std::reduce(std::execution::par_unseq, weightsA.cbegin(), weightsA.cend(), 0.0);
         m_specterA = SpecterDistribution(energiesA, weightsA);
+        const auto weightA = m_relativeMasA * std::reduce(std::execution::par_unseq, weightsA.cbegin(), weightsA.cend(), 0.0);
 
         auto energiesB = m_tubeB.getEnergy();
         auto weightsB = m_tubeB.getSpecter(energiesB, false);
-        const auto weightB = std::reduce(std::execution::par_unseq, weightsB.cbegin(), weightsB.cend(), 0.0);
         m_specterB = SpecterDistribution(energiesB, weightsB);
+        const auto weightB = m_relativeMasB * std::reduce(std::execution::par_unseq, weightsB.cbegin(), weightsB.cend(), 0.0);
 
         m_weightA = 2 * weightA / (weightA + weightB);
         m_weightB = 2 * weightB / (weightA + weightB);
@@ -352,6 +380,8 @@ private:
     double m_stepAngle = DEG_TO_RAD();
     double m_weightA = 1;
     double m_weightB = 1;
+    double m_relativeMasA = 1;
+    double m_relativeMasB = 1;
     double m_CTDIvol = 1;
     double m_CTDIdiameter = 32;
     std::uint64_t m_particlesPerExposure = 100;
