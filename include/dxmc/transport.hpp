@@ -26,6 +26,7 @@ Copyright 2023 Erlend Andersen
 #include <algorithm>
 #include <atomic>
 #include <functional>
+#include <iostream>
 #include <thread>
 
 namespace dxmc {
@@ -45,6 +46,28 @@ public:
     auto operator()(World<Ws...>& world, const B& beam, TransportProgress* progress = nullptr, bool useBeamCalibration = true) const
     {
         return run(world, beam, m_nThreads, progress, useBeamCalibration);
+    }
+
+    template <BeamType B, WorldItemType... Ws>
+    static auto runConsole(World<Ws...>& world, const B& beam, std::uint64_t nThreads = 1, bool useBeamCalibration = true, std::uint32_t update_ms = 2000)
+    {
+        dxmc::TransportProgress progress;
+
+        bool running = true;
+        std::thread job([&]() {
+            Transport::run<B, Ws...>(world, beam, nThreads, &progress, useBeamCalibration);
+            running = false;
+        });
+        std::string message;
+        while (running) {
+            std::this_thread::sleep_for(std::chrono::milliseconds(update_ms));
+            std::cout << std::string(message.length(), ' ') << "\r";
+            message = progress.message();
+            std::cout << message << std::flush << "\r";
+        }
+        job.join();
+        std::cout << std::string(message.length(), ' ') << "\r";
+        return progress.totalTime();
     }
 
     template <BeamType B, WorldItemType... Ws>
