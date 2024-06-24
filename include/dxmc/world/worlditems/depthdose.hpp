@@ -57,6 +57,12 @@ public:
         m_materialDensity = std::abs(density);
     }
 
+    void setMaterial(const Material<NMaterialShells>& material, double density)
+    {
+        setMaterial(material);
+        setMaterialDensity(density);
+    }
+
     bool setNistMaterial(const std::string& nist_name)
     {
         const auto mat = Material<NMaterialShells>::byNistName(nist_name);
