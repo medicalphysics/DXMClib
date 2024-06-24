@@ -16,5 +16,8 @@ ENDIF()
 add_executable(pencilbeam pencilbeam.cpp)
 target_link_libraries(pencilbeam PRIVATE libdxmc)
 
+#Adding interaction binary data to example 
+dxmclib_add_physics_list(pencilbeam)
+
 install(TARGETS pencilbeam
 	RUNTIME DESTINATION examples)
