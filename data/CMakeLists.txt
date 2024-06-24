@@ -79,7 +79,7 @@ add_custom_target(libdxmc_physics ALL
     DEPENDS "${DXMCLIB_EPICS_PHYSICSLISTS}")
 add_dependencies(libdxmc libdxmc_physics)
 # Adding physics data to install folder
-install(FILES ${DXMCLIB_EPICS_PHYSICSLISTS} DESTINATION bin)
+install(FILES ${DXMCLIB_EPICS_PHYSICSLISTS} DESTINATION ${CMAKE_INSTALL_BINDIR})
 
 # Function to copy generated physicslist binary file to target binary directory
 # Dependency on physicslist.bin file is handles by linking target to libdxmc

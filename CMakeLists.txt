@@ -150,13 +150,13 @@ target_link_libraries(libdxmc INTERFACE
     Threads::Threads # Not needed on all platforms, but doesn't hurt
     )
 
+# Must use GNUInstallDirs to install libraries into correct
+# locations on all platforms.
+include(GNUInstallDirs)
+
 ## Install
 install(TARGETS libdxmc 
-    EXPORT libdxmc
-    LIBRARY DESTINATION lib
-    ARCHIVE DESTINATION lib
-    RUNTIME DESTINATION bin
-    INCLUDES DESTINATION include
+    EXPORT libdxmc    
     )
 
 # EPICS data parser and physics data
