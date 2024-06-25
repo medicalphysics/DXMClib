@@ -47,6 +47,11 @@ public:
         m_dose.resize(resolution);
     }
 
+    std::size_t resolution() const
+    {
+        return m_energyScored.size();
+    }
+
     void setMaterial(const Material<NMaterialShells>& material)
     {
         m_material = material;

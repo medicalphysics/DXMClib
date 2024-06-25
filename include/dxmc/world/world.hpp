@@ -185,6 +185,7 @@ public:
             m_aabb[i] += dist[i];
             m_aabb[i + 3] += dist[i];
         }
+        m_kdtree.translate(dist);
     }
 
     inline auto intersect(const ParticleType auto& p)
