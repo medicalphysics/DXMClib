@@ -125,7 +125,7 @@ public:
             const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_energyScored.size() - 1);
             inter.value = m_dose[ind].dose();
         }
-        return basicshape::cylinder::template intersectVisualization<U>(p, m_cylinder);
+        return inter;
     }
 
     void transport(ParticleType auto& p, RandomState& state)
