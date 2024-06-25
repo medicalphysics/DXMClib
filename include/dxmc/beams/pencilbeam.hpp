@@ -109,6 +109,11 @@ public:
         vectormath::normalize(m_dir);
     }
 
+    const std::array<double, 3>& direction() const
+    {
+        return m_dir;
+    }
+
     std::array<std::array<double, 3>, 2> directionCosines() const
     {
         std::array<double, 3> cand = { 0, 0, 0 };
