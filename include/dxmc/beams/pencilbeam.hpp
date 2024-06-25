@@ -156,11 +156,12 @@ public:
         return exp;
     }
 
-    double calibrationFactor(TransportProgress* progress = nullptr) const noexcept
+    void setAirKerma(double k)
     {
-
-        return 1;
+        m_airKerma = std::abs(k);
     }
+
+    double airKerma() const { return m_airKerma; }
 
     double calibrationFactor(TransportProgress* progress = nullptr) const
     {
