@@ -158,12 +158,24 @@ public:
 
     double calibrationFactor(TransportProgress* progress = nullptr) const noexcept
     {
+
         return 1;
+    }
+
+    double calibrationFactor(TransportProgress* progress = nullptr) const
+    {
+        auto air_cand = Material<5>::byNistName("Air, Dry (near sea level)");
+        if (!air_cand)
+            return 0;
+        const auto& air = air_cand.value();
+        const double kerma = numberOfParticles() * air.massEnergyTransferAttenuation(m_energy);
+        return m_airKerma / kerma;
     }
 
 private:
     double m_energy = 60;
     double m_weight = 1;
+    double m_airKerma = 1;
     std::array<double, 3> m_pos = { 0, 0, 0 };
     std::array<double, 3> m_dir = { 0, 0, 1 };
     std::uint64_t m_Nexposures = 100;
