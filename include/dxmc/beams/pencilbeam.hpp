@@ -90,8 +90,10 @@ public:
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
     void setNumberOfExposures(std::uint64_t n) { m_Nexposures = std::max(n, std::uint64_t { 1 }); }
 
-    std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
     void setNumberOfParticlesPerExposure(std::uint64_t n) { m_particlesPerExposure = n; }
+    std::uint64_t numberOfParticlesPerExposure() const { return m_particlesPerExposure; }
+
+    std::uint64_t numberOfParticles() const { return m_Nexposures * m_particlesPerExposure; }
 
     void setPosition(const std::array<double, 3>& pos)
     {
