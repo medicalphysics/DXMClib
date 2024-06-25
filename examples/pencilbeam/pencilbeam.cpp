@@ -21,7 +21,7 @@ auto calculate()
     dxmc::World<Cylinder> world;
     world.reserveNumberOfItems(8);
 
-    auto& cylinder = world.template addItem<Cylinder>({ 1, 50 });
+    auto& cylinder = world.template addItem<Cylinder>({ 1, 10 });
 
     // We need to specify dimensions and voxel spacing (in millimeters)
 
@@ -46,7 +46,7 @@ auto calculate()
 */
 
     dxmc::PencilBeam<> beam({ 0, 0, -100 }, { 0, 0, 1 });
-    beam.setNumberOfExposures(24);
+    beam.setNumberOfExposures(12);
     beam.setNumberOfParticlesPerExposure(100000);
 
     auto nThreads = std::max(std::thread::hardware_concurrency(), std::uint32_t { 1 });
@@ -66,7 +66,7 @@ auto calculate()
     viz.setAzimuthalAngleDeg(90);
     viz.setPolarAngleDeg(30);
     viz.suggestFOV();
-    viz.setColorByValueMinMax(0, 50000.0);
+    viz.setColorByValueMinMax(0, max_dose);
     viz.addColorByValueItem(world.getItemPointers()[0]);
     //  viz.addLineProp(beam, 50, .2);
     viz.generate(world, buffer);
