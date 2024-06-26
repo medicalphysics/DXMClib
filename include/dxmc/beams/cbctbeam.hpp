@@ -212,6 +212,11 @@ public:
         return m_tube.mmAlHalfValueLayer();
     }
 
+    double tubeMeanSpecterEnergy()
+    {
+        return m_tube.meanSpecterEnergy();
+    }
+
     const std::array<double, 2>& collimationAngles() const
     {
         return m_collimationAngles;

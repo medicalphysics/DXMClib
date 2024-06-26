@@ -233,6 +233,14 @@ public:
     {
         return m_tubeB.mmAlHalfValueLayer();
     }
+    double tubeAMeanSpecterEnergy()
+    {
+        return m_tubeA.meanSpecterEnergy();
+    }
+    double tubeBMeanSpecterEnergy()
+    {
+        return m_tubeB.meanSpecterEnergy();
+    }
     void setTubesEnergyResolution(double energyResolution)
     {
         m_tubeA.setEnergyResolution(energyResolution);
