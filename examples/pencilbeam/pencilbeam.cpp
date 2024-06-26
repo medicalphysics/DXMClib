@@ -6,6 +6,7 @@
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/enclosedroom.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -16,24 +17,30 @@ auto calculate()
     // Create a thin aluminium cylinder and .
 
     // Start creating a depthscore cylinder
-    using Cylinder = dxmc::DepthDose<>;
+    using Cylinder = dxmc::DepthDose<5, 1>;
+    using Room = dxmc::EnclosedRoom<5, 1>;
 
-    dxmc::World<Cylinder> world;
-    world.reserveNumberOfItems(8);
+    dxmc::World<Cylinder, Room> world;
+    world.reserveNumberOfItems(2);
 
     auto& cylinder = world.template addItem<Cylinder>({ 1, 10 });
+    auto& room = world.template addItem<Room>({10, 300});
 
     // We need to specify dimensions and voxel spacing (in millimeters)
 
     // Now we fill the world box with some materials
     // We specify three materials
-    auto aluminium = dxmc::Material<>::byZ(13).value(); // air("Air, Dry (near sea level)"); // Material air("N0.76O0.23Ar0.01") is equivalent
+    auto aluminium = dxmc::Material<5>::byZ(13).value(); // air("Air, Dry (near sea level)"); // Material air("N0.76O0.23Ar0.01") is equivalent
     // Material water("Water, Liquid"); // Material water("H2O") is equivalent
     // Material aluminium(13); // Material aluminum
+    auto concrete = dxmc::Material<5>::byNistName("Concrete, Ordinary").value();
+    auto concrete_density = dxmc::NISTMaterials::density("Concrete, Ordinary");
+
 
     cylinder.setMaterial(aluminium, 2.27 /*g/cm3*/);
+    room.setMaterial(concrete, concrete_density);
 
-    world.build(1);
+    world.build();
 
     /*dxmc::VisualizeWorld viz(world);
     auto buffer = viz.template createBuffer<double>(1024 , 1024 );
@@ -66,11 +73,15 @@ auto calculate()
     viz.setAzimuthalAngleDeg(90);
     viz.setPolarAngleDeg(30);
     viz.suggestFOV();
+
+    viz.addLineProp(beam, 50, .2);
+    viz.generate(world, buffer);
+    viz.savePNG("cylinder.png", buffer);
+
     viz.setColorByValueMinMax(0, max_dose);
     viz.addColorByValueItem(world.getItemPointers()[0]);
-    //  viz.addLineProp(beam, 50, .2);
     viz.generate(world, buffer);
-    viz.savePNG("dose.png", buffer);
+    viz.savePNG("cylinder_dose.png", buffer);
 
     return time_elapsed;
 }
