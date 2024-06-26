@@ -205,7 +205,6 @@ public:
         }
     }
 
-    
     void clearLineProps()
     {
         m_lines.clear();
@@ -315,37 +314,6 @@ public:
         for (auto& thread : threads) {
             thread.join();
         }
-        if constexpr (std::is_same<U, double>::value) {
-            if (m_colorByValue.size() > 0) {
-                if (m_colorByValueClamp[0] >= m_colorByValueClamp[1]) {
-                    double max = 0;
-                    for (std::size_t i = 0; i < buffer.size(); i = i + 4)
-                        max = std::max(max, buffer[i]);
-
-                    const double div = max > 1 ? 255 / (max - 1) : 1;
-                    for (std::size_t i = 0; i < buffer.size(); i = i + 4) {
-                        if (buffer[i] > 1) {
-                            const auto ind = static_cast<std::uint8_t>((buffer[i] - 1) * div);
-                            const auto c = turboColorMap<U>()[ind];
-                            for (std::size_t j = 0; j < 3; ++j)
-                                buffer[i + j] = c[j];
-                            buffer[i + 3] = 1;
-                        }
-                    }
-                } else {
-                    for (std::size_t i = 0; i < buffer.size(); i = i + 4) {
-                        if (buffer[i] > 1) {
-                            const auto val = ((buffer[i] - 1) - m_colorByValueClamp[0]) / (m_colorByValueClamp[1] - m_colorByValueClamp[0]);
-                            const auto ind = static_cast<std::uint8_t>(255 * std::min(val, 1.0));
-                            const auto c = turboColorMap<U>()[ind];
-                            for (std::size_t j = 0; j < 3; ++j)
-                                buffer[i + j] = c[j];
-                            buffer[i + 3] = 1;
-                        }
-                    }
-                }
-            }
-        }
     }
 
 protected:
@@ -398,39 +366,33 @@ protected:
 
             if (res.valid() && res.intersection < line_intersection) {
                 if (m_colorByValue.contains(res.item)) {
-                    buffer[ind] = res.value + 1;
+                    const auto val = (res.value - m_colorByValueClamp[0]) / (m_colorByValueClamp[1] - m_colorByValueClamp[0]);
+                    const auto cind = static_cast<std::uint8_t>(255 * std::clamp(val, 0.0, 1.0));
+                    const auto color = turboColorMap<U>()[cind];
+                    for (std::size_t i = 0; i < 3; ++i)
+                        buffer[ind + i] = color[i];
                 } else {
                     const auto color = colorOfItem<U>(p, res.normal, res.item);
                     for (std::size_t i = 0; i < 3; ++i) {
                         buffer[ind + i] = color[i];
                     }
                 }
-                if constexpr (std::is_same<U, std::uint8_t>::value) {
-                    buffer[ind + 3] = 255;
-                } else {
-                    buffer[ind + 3] = 1;
-                }
             } else {
                 if (line_intersection < std::numeric_limits<double>::max()) {
                     const auto color = colorOfLineProp<U>();
                     for (int i = 0; i < 3; ++i)
                         buffer[ind + i] = color[i];
-                    if constexpr (std::is_same<U, std::uint8_t>::value) {
-                        buffer[ind + 3] = 255;
-                    } else {
-                        buffer[ind + 3] = 1;
-                    }
                 } else {
                     const auto color = colorOfBackgroundProp<U>();
                     for (int i = 0; i < 3; ++i) {
                         buffer[ind + i] = color[i];
                     }
-                    if constexpr (std::is_same<U, std::uint8_t>::value) {
-                        buffer[ind + 3] = 255;
-                    } else {
-                        buffer[ind + 3] = 1;
-                    }
                 }
+            }
+            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                buffer[ind + 3] = 255;
+            } else {
+                buffer[ind + 3] = 1;
             }
             cIndex = idx.fetch_add(1);
         }
