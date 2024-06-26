@@ -39,7 +39,7 @@ public:
         , m_energyResolution(energyResolution)
     {
         setAnodeAngleDeg(anodeAngleDeg);
-        m_hasCachedHVL = false;
+        m_hasCachedSpecterCalculations = false;
     }
 
     static constexpr double maxVoltage() { return 150; }
@@ -49,7 +49,7 @@ public:
     void setVoltage(double voltage)
     {
         m_voltage = std::clamp(voltage, minVoltage(), maxVoltage());
-        m_hasCachedHVL = false;
+        m_hasCachedSpecterCalculations = false;
     }
 
     double anodeAngle() const { return m_anodeAngle; }
@@ -60,7 +60,7 @@ public:
         if (a > PI_VAL() * 0.5)
             a = PI_VAL() * 0.5;
         m_anodeAngle = a;
-        m_hasCachedHVL = false;
+        m_hasCachedSpecterCalculations = false;
     }
     void setAnodeAngleDeg(double angle)
     {
@@ -71,7 +71,7 @@ public:
     {
         if (AtomHandler::atomExists(Z)) {
             m_filtrationMaterials[Z] = std::abs(mm);
-            m_hasCachedHVL = false;
+            m_hasCachedSpecterCalculations = false;
             return true;
         }
         return false;
@@ -115,13 +115,13 @@ public:
     void clearFiltrationMaterials()
     {
         m_filtrationMaterials.clear();
-        m_hasCachedHVL = false;
+        m_hasCachedSpecterCalculations = false;
     }
 
     void setEnergyResolution(double energyResolution)
     {
         m_energyResolution = std::clamp(energyResolution, 0.1, 10.0);
-        m_hasCachedHVL = false;
+        m_hasCachedSpecterCalculations = false;
     }
 
     double energyResolution() const { return m_energyResolution; }
@@ -175,22 +175,46 @@ public:
 
     double mmAlHalfValueLayer()
     {
-        if (!m_hasCachedHVL) {
-            m_cachedHVL = calculatemmAlHalfValueLayer();
-            m_hasCachedHVL = true;
+        if (!m_hasCachedSpecterCalculations) {
+            const auto res = calculateSpecterValues();
+            m_cachedHVL = res.HVL;
+            m_cachedMeanEnergy = res.meanEnergy;
+            m_hasCachedSpecterCalculations = true;
         }
         return m_cachedHVL;
     }
 
     [[nodiscard]] double mmAlHalfValueLayer() const
     {
-        if (!m_hasCachedHVL) {
-            return calculatemmAlHalfValueLayer();
+        if (!m_hasCachedSpecterCalculations) {
+            return calculateSpecterValues().HVL;
         }
         return m_cachedHVL;
     }
 
+    double meanSpecterEnergy()
+    {
+        if (!m_hasCachedSpecterCalculations) {
+            const auto res = calculateSpecterValues();
+            m_cachedHVL = res.HVL;
+            m_cachedMeanEnergy = res.meanEnergy;
+            m_hasCachedSpecterCalculations = true;
+        }
+        return m_cachedMeanEnergy;
+    }
+
+    [[nodiscard]] double meanSpecterEnergy() const
+    {
+        if (!m_hasCachedSpecterCalculations) {
+            return calculateSpecterValues().meanEnergy;
+        }
+        return m_cachedMeanEnergy;
+    }
+
 protected:
+    struct SpecterCalculatedValues {
+        double HVL, meanEnergy;
+    };
     void addCharacteristicEnergy(const std::vector<double>& energy, std::vector<double>& specter) const
     {
         auto energyBegin = energy.begin();
@@ -239,11 +263,17 @@ protected:
         std::for_each(std::execution::par_unseq, specter.begin(), specter.end(), [sum](auto& n) { n = n / sum; });
     }
 
-    double calculatemmAlHalfValueLayer() const
+    [[nodiscard]] SpecterCalculatedValues calculateSpecterValues() const
     {
         const auto energy = getEnergy();
-        const auto specter = getSpecter(energy);
+        const auto specter = getSpecter(energy, true);
 
+        SpecterCalculatedValues res;
+
+        // Mean energy
+        res.meanEnergy = std::transform_reduce(std::execution::par_unseq, energy.cbegin(), energy.cend(), specter.cbegin(), double { 0 }, std::plus {}, std::multiplies {});
+
+        // HVL
         const auto& Al = AtomHandler::Atom(13);
 
         const auto photo = interpolate(Al.photoel, energy);
@@ -266,7 +296,8 @@ protected:
             step = (g - 0.5) * std::max(5 - iter, 1);
         } while ((std::abs(g - 0.5) > 0.005 && iter++ < 10));
 
-        return x * 10; // cm -> mm
+        res.HVL = x * 10; // cm -> mm
+        return res;
     }
 
 private:
@@ -274,7 +305,8 @@ private:
     double m_energyResolution = 1;
     double m_anodeAngle = 0.21; // about 12 degrees
     double m_cachedHVL = 0;
+    double m_cachedMeanEnergy = 0;
     std::map<std::size_t, double> m_filtrationMaterials;
-    bool m_hasCachedHVL = false;
+    bool m_hasCachedSpecterCalculations = false;
 };
 }
