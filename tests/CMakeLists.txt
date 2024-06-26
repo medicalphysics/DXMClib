@@ -18,6 +18,7 @@ set(TEST_SOURCES
     "testtransport.cpp"
     "testvectormath.cpp"
     "testworldsphere.cpp"
+    "testmassenergytransfer.cpp"
 )
 
 
