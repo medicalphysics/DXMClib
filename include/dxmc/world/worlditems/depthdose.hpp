@@ -47,6 +47,9 @@ public:
         m_dose.resize(resolution);
     }
 
+    double length() const { return m_cylinder.half_height * 2; }
+    double radius() const { return m_cylinder.radius; }
+
     std::size_t resolution() const
     {
         return m_energyScored.size();
