@@ -52,7 +52,7 @@ public:
 
     auto relativeUncertainty() const
     {
-        return 1.96 * standardDeviation() / dose();
+        return m_nEvents > 0 ? 1.96 * standardDeviation() / dose() : 0.0;
     }
 
     std::uint64_t numberOfEvents() const
