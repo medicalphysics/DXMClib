@@ -88,8 +88,8 @@ struct VisualizationBuffer {
 
 template <typename U>
 concept WorldType = requires(const U world, Particle p) {
-    world.intersect(p);
     world.getItemPointers();
+    world.intersectVisualization(p);
 };
 
 template <WorldItemType... Us>
@@ -107,6 +107,29 @@ public:
         m_world_aabb = world.AABB();
         suggestFOV();
         updateColorsFromWorld(world);
+    }
+
+    template <typename U>
+        requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
+    void setColorOfItem(const std::variant<Us...>* item, const std::array<U, 3>& color)
+    {
+        if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
+            const auto index = search->second;
+            if constexpr (std::is_same<U, std::uint8_t>::value) {
+                constexpr double sc = 1.0 / 255.0;
+                const std::array<double, 3> d_c = { color[0] * sc, color[1] * sc, color[2] * sc };
+                m_colors_char[index] = color;
+                m_colors_float[index] = d_c;
+            } else {
+                const std::array<std::uint8_t, 3> d_c = {
+                    static_cast<std::uint8_t>(color[0] * 255),
+                    static_cast<std::uint8_t>(color[1] * 255),
+                    static_cast<std::uint8_t>(color[2] * 255)
+                };
+                m_colors_float[index] = color;
+                m_colors_char[index] = d_c;
+            }
+        }
     }
 
     template <typename U>
@@ -463,18 +486,22 @@ protected:
 
     template <typename U = std::uint8_t>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
-    std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const auto* item) const
+    std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const auto* item, double normal_scaling = 0.4, ) const
     {
         if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
-            const auto scaling = 0.8 + 0.2 * vectormath::dot(p.dir, normal);
+            const auto normal_size = -vectormath::dot(p.dir, normal);
+            const auto scaling = std::clamp(normal_size, normal_scaling, 1.0);
             const auto index = search->second;
             if constexpr (std::is_same<U, std::uint8_t>::value) {
                 auto c = m_colors_char[index];
                 for (auto& cp : c)
-                    cp = static_cast<std::uint8_t>(cp * scaling);
+                    cp = std::clamp(static_cast<std::uint8_t>(cp * scaling), std::uint8_t { 0 }, std::uint8_t { 255 });
                 return c;
             } else {
-                return vectormath::scale(m_colors_float[index], scaling);
+                auto c = vectormath::scale(m_colors_float[index], scaling);
+                for (auto& cp : c)
+                    cp = std::clamp(cp, 0.0, 1.0);
+                return c;
             }
         } else {
             if constexpr (std::is_same<U, std::uint8_t>::value)

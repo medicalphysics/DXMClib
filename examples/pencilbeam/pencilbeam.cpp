@@ -44,8 +44,8 @@ void example()
 
     // Define a radiation source
     dxmc::PencilBeam<> beam({ 0, 0, -10 } /* position */, { 0, 0, 1 } /* direction */);
-    beam.setNumberOfExposures(64); // number of parallell jobs
-    beam.setNumberOfParticlesPerExposure(10000); // histories per job
+    beam.setNumberOfExposures(4); // number of parallell jobs
+    beam.setNumberOfParticlesPerExposure(10); // histories per job
 
     // Lunch simulation
     auto nThreads = std::max(std::thread::hardware_concurrency(), std::uint32_t { 1 });
@@ -73,11 +73,11 @@ void example()
     viz.setAzimuthalAngleDeg(90);
     viz.setPolarAngleDeg(30);
     viz.suggestFOV(2); // zoom = 2
-
+    viz.setColorOfItem<std::uint8_t>(world.getItemPointers()[0], { 255, 192, 203 }); // making it pink
     viz.generate(world, buffer);
     viz.savePNG("cylinder.png", buffer);
 
-    viz.setColorByValueMinMax(-0.01, max_dose);
+    viz.setColorByValueMinMax(-0.01, max_dose); // color by dose value
     viz.addColorByValueItem(world.getItemPointers()[0]);
     viz.generate(world, buffer);
     viz.savePNG("cylinder_dose.png", buffer);
