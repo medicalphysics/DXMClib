@@ -44,8 +44,8 @@ void example()
 
     // Define a radiation source
     dxmc::PencilBeam<> beam({ 0, 0, -10 } /* position */, { 0, 0, 1 } /* direction */);
-    beam.setNumberOfExposures(4); // number of parallell jobs
-    beam.setNumberOfParticlesPerExposure(10); // histories per job
+    beam.setNumberOfExposures(64); // number of jobs
+    beam.setNumberOfParticlesPerExposure(1000000); // histories per job
 
     // Lunch simulation
     auto nThreads = std::max(std::thread::hardware_concurrency(), std::uint32_t { 1 });

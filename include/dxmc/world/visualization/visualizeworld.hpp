@@ -486,7 +486,7 @@ protected:
 
     template <typename U = std::uint8_t>
         requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
-    std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const auto* item, double normal_scaling = 0.4, ) const
+    std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const auto* item, double normal_scaling = 0.4) const
     {
         if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
             const auto normal_size = -vectormath::dot(p.dir, normal);
