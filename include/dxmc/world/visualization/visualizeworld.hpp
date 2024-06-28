@@ -489,7 +489,7 @@ protected:
     std::array<U, 3> colorOfItem(const Particle& p, const std::array<double, 3>& normal, const auto* item, double normal_scaling = 0.4) const
     {
         if (auto search = m_colorIndex.find(item); search != m_colorIndex.end()) {
-            const auto normal_size = -vectormath::dot(p.dir, normal);
+            const auto normal_size = std::abs(-vectormath::dot(p.dir, normal)); // remove abs when all normals are correct
             const auto scaling = std::clamp(normal_size, normal_scaling, 1.0);
             const auto index = search->second;
             if constexpr (std::is_same<U, std::uint8_t>::value) {
