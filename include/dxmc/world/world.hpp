@@ -29,6 +29,8 @@ Copyright 2023 Erlend Andersen
 
 #include <array>
 #include <concepts>
+#include <string>
+#include <string_view>
 #include <variant>
 #include <vector>
 
@@ -83,6 +85,15 @@ public:
     auto& addItem(U& item)
     {
         m_items.push_back(item);
+        std::string name = "Item " + std::to_string(m_items.size());
+        m_item_names.push_back(name);
+        return std::get<U>(m_items.back());
+    }
+    template <AnyWorldItemType<Us...> U>
+    auto& addItem(U& item, std::string_view name)
+    {
+        m_items.push_back(item);
+        m_item_names.push_back(std::string(name));
         return std::get<U>(m_items.back());
     }
 
@@ -90,6 +101,15 @@ public:
     auto& addItem(U&& item)
     {
         m_items.push_back(std::move(item));
+        std::string name = "Item " + std::to_string(m_items.size());
+        m_item_names.push_back(name);
+        return std::get<U>(m_items.back());
+    }
+    template <AnyWorldItemType<Us...> U>
+    auto& addItem(U&& item, std::string_view name)
+    {
+        m_items.push_back(std::move(item));
+        m_item_names.push_back(std::string(name));
         return std::get<U>(m_items.back());
     }
 
@@ -98,6 +118,16 @@ public:
     {
         U item;
         m_items.push_back(std::move(item));
+        std::string name = "Item " + std::to_string(m_items.size());
+        m_item_names.push_back(name);
+        return std::get<U>(m_items.back());
+    }
+    template <AnyWorldItemType<Us...> U>
+    auto& addItem(std::string_view name)
+    {
+        U item;
+        m_items.push_back(std::move(item));
+        m_item_names.push_back(std::string(name));
         return std::get<U>(m_items.back());
     }
 
@@ -109,6 +139,15 @@ public:
     auto& items()
     {
         return m_items;
+    }
+
+    const auto& item_names() const
+    {
+        return m_item_names;
+    }
+    auto& item_names()
+    {
+        return m_item_names;
     }
 
     std::vector<std::variant<Us...>*> getItemPointers()
@@ -127,6 +166,26 @@ public:
             return &v;
         });
         return ptrs;
+    }
+
+    std::variant<Us...>* getItemPointerFromName(std::string_view name)
+    {
+        for (std::size_t i = 0; i < m_item_names.size(); ++i) {
+            if (m_item_names[i].compare(name) == 0) {
+                return &m_items[i];
+            }
+        }
+        return nullptr;
+    }
+
+    const std::variant<Us...>* getItemPointerFromName(std::string_view name) const
+    {
+        for (std::size_t i = 0; i < m_item_names.size(); ++i) {
+            if (m_item_names[i].compare(name) == 0) {
+                return &m_items[i];
+            }
+        }
+        return nullptr;
     }
 
     void clearEnergyScored()
@@ -270,5 +329,6 @@ private:
     MaterialType m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;
+    std::vector<std::string> m_item_names;
 };
 }

@@ -28,7 +28,7 @@ void example()
     world.reserveNumberOfItems(1);
 
     // Adding a depthdose object
-    auto& cylinder = world.template addItem<Cylinder>({ 1 /* radius */, 10 /* lenght */ });
+    auto& cylinder = world.template addItem<Cylinder>({ 1 /* radius */, 10 /* lenght */ }, "Cylinder");
     // Set material and density
     auto aluminium = dxmc::Material<N_ATOMIC_SHELLS>::byZ(13).value();
     cylinder.setMaterial(aluminium, 2.27 /* g/cm3 */);
@@ -72,13 +72,13 @@ void example()
     viz.setDistance(60);
     viz.setAzimuthalAngleDeg(90);
     viz.setPolarAngleDeg(30);
-    viz.suggestFOV(2); // zoom = 2
-    viz.setColorOfItem<std::uint8_t>(world.getItemPointers()[0], { 255, 192, 203 }); // making it pink
+    viz.suggestFOV(2); // zoom = 2    
+    viz.setColorOfItem<std::uint8_t>(world.getItemPointerFromName("Cylinder"), { 255, 192, 203 }); // making it pink
     viz.generate(world, buffer);
     viz.savePNG("cylinder.png", buffer);
 
-    viz.setColorByValueMinMax(-0.01, max_dose); // color by dose value
-    viz.addColorByValueItem(world.getItemPointers()[0]);
+    viz.setColorByValueMinMax(-0.01, max_dose); // color by dose value    
+    viz.addColorByValueItem(world.getItemPointerFromName("Cylinder"));
     viz.generate(world, buffer);
     viz.savePNG("cylinder_dose.png", buffer);
 }
