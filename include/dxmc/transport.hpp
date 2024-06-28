@@ -49,11 +49,14 @@ public:
     }
 
     template <BeamType B, WorldItemType... Ws>
-    static auto runConsole(World<Ws...>& world, const B& beam, std::uint64_t nThreads = 1, bool useBeamCalibration = true, std::uint32_t update_ms = 2000)
+    static auto runConsole(World<Ws...>& world, const B& beam, std::uint64_t nThreads = 0, bool useBeamCalibration = true, std::uint32_t update_ms = 2000)
     {
         dxmc::TransportProgress progress;
 
         bool running = true;
+        if (nThreads == 0)
+            nThreads = std::max(std::uint64_t { std::thread::hardware_concurrency() }, 1);
+
         std::thread job([&]() {
             Transport::run<B, Ws...>(world, beam, nThreads, &progress, useBeamCalibration);
             running = false;
