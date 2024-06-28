@@ -55,7 +55,7 @@ public:
 
         bool running = true;
         if (nThreads == 0)
-            nThreads = std::max(int { std::thread::hardware_concurrency() }, 1);
+            nThreads = std::thread::hardware_concurrency();
 
         std::thread job([&]() {
             Transport::run<B, Ws...>(world, beam, nThreads, &progress, useBeamCalibration);
