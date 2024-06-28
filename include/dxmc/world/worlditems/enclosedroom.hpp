@@ -41,32 +41,6 @@ public:
         m_density = NISTMaterials::density("Air, Dry (near sea level)");
     }
 
-    EnclosedRoom(double wallthickness = 10, const std::array<double, 3>& inner_room_size = { 2, 2, 2 })
-        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-    {
-        std::array<double, 6> inner_aabb;
-        for (std::size_t i = 0; i < 3; ++i) {
-            inner_aabb[i] = -inner_room_size[i] * 0.5;
-            inner_aabb[i + 3] = inner_room_size[i] * 0.5;
-        }
-        m_wallThickness = std::max(std::abs(wallthickness), 0.001);
-        setInnerRoomAABB(inner_aabb);
-        m_density = NISTMaterials::density("Air, Dry (near sea level)");
-    }
-
-    EnclosedRoom(double wallthickness = 10, double inner_room_size = 2)
-        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-    {
-        std::array<double, 6> inner_aabb;
-        for (std::size_t i = 0; i < 3; ++i) {
-            inner_aabb[i] = -inner_room_size * 0.5;
-            inner_aabb[i + 3] = inner_room_size * 0.5;
-        }
-        m_wallThickness = std::max(std::abs(wallthickness), 0.001);
-        setInnerRoomAABB(inner_aabb);
-        m_density = NISTMaterials::density("Air, Dry (near sea level)");
-    }
-
     void setWallThickness(double cm)
     {
         m_wallThickness = std::max(std::abs(cm), 0.001);
