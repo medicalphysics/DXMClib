@@ -91,3 +91,13 @@ function(dxmclib_add_physics_list func_target)
                 "$<TARGET_FILE_DIR:${func_target}>/physicslist.bin"            
         )        
 endfunction()
+
+# Function to copy icrp145 organ data to target binary directory
+function(dxmclib_add_icrp145_organ_data func_target)
+        add_custom_command(
+            TARGET ${func_target} POST_BUILD
+            COMMAND ${CMAKE_COMMAND} -E copy_if_different
+                "${CMAKE_CURRENT_SOURCE_DIR}/phantomdata/icrp145/icrp145organs.csv"
+                "$<TARGET_FILE_DIR:${func_target}>/icrp145organs.csv"            
+        )        
+endfunction()
