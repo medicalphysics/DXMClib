@@ -6,6 +6,7 @@
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/enclosedroom.hpp"
 
 #include <algorithm>
 #include <iostream>
@@ -17,25 +18,30 @@ void example()
     std::cout << "Example Pencilbeam\nTransport of monoenergetic photons in a thin long aluminium cylinder\n";
 
     // Start creating a depthscore cylinder
-    constexpr int N_ATOMIC_SHELLS = 5; // Number of atomic shells to consider binding energies.
+    constexpr int N_ATOMIC_SHELLS = 5; // Number of atomic shells to consider binding energies for (5 is more than sufficient).
     constexpr int LOW_ENERGY_CORRECTION = 1; /* 0: No binding energy correction, 1: Livermore corection, 2; impulse approx. correction*/
 
     using Cylinder = dxmc::DepthDose<N_ATOMIC_SHELLS, LOW_ENERGY_CORRECTION>;
+    using Room = dxmc::EnclosedRoom<N_ATOMIC_SHELLS, LOW_ENERGY_CORRECTION>;
 
     // Create a world that can consist of one or more depthdose objects
-    dxmc::World<Cylinder> world;
-    // Reserve number of items in world, not nessecary here but it's good practice.
-    world.reserveNumberOfItems(1);
+    dxmc::World<Cylinder, Room> world;
+    // Reserve number of items in world.
+    world.reserveNumberOfItems(2);
 
     // Adding a depthdose object
-    auto& cylinder = world.template addItem<Cylinder>({ 1 /* radius */, 10 /* lenght */ }, "Cylinder");
+    auto& cylinder = world.template addItem<Cylinder>({ 1 /* cm radius */, 10 /* cm lenght */ }, "Cylinder");
     // Set material and density
     auto aluminium = dxmc::Material<N_ATOMIC_SHELLS>::byZ(13).value();
     cylinder.setMaterial(aluminium, 2.27 /* g/cm3 */);
-    // Example for constructing other materials
-    //    auto concrete = dxmc::Material<5>::byNistName("Concrete, Ordinary").value();
-    //    auto concrete_density = dxmc::NISTMaterials::density("Concrete, Ordinary");
-    //    cylinder.setMaterial(concrete, concrete_density);
+
+    // Adding room with walls of concrete
+    auto& room = world.template addItem<Room>({ 2 /*cm wall thickness*/, { 100, 200, 300 } /*cm inner walls sizes*/ }, "Room");
+    auto concrete = dxmc::Material<N_ATOMIC_SHELLS>::byNistName("Concrete, Ordinary").value();
+    auto concrete_density = dxmc::NISTMaterials::density("Concrete, Ordinary");
+    room.setMaterial(concrete, concrete_density);
+    //    Example for constructing other materials
+    //    auto water = dxmc::Material<N_ATOMIC_SHELLS>::byChemicalFormula("H2O").value;
 
     std::cout << "with radius " << cylinder.radius() << " cm and height " << cylinder.length() << " cm\n";
 
@@ -72,12 +78,12 @@ void example()
     viz.setDistance(60);
     viz.setAzimuthalAngleDeg(90);
     viz.setPolarAngleDeg(30);
-    viz.suggestFOV(2); // zoom = 2    
+    viz.suggestFOV(2); // zoom = 2
     viz.setColorOfItem<std::uint8_t>(world.getItemPointerFromName("Cylinder"), { 255, 192, 203 }); // making it pink
     viz.generate(world, buffer);
     viz.savePNG("cylinder.png", buffer);
 
-    viz.setColorByValueMinMax(-0.01, max_dose); // color by dose value    
+    viz.setColorByValueMinMax(0.0, max_dose); // color by dose value
     viz.addColorByValueItem(world.getItemPointerFromName("Cylinder"));
     viz.generate(world, buffer);
     viz.savePNG("cylinder_dose.png", buffer);
@@ -86,5 +92,5 @@ void example()
 int main(int argc, char* argv[])
 {
     example();
-    return 1;
+    return EXIT_SUCCESS;
 }
