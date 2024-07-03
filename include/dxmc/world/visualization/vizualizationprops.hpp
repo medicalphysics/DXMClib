@@ -51,40 +51,31 @@ namespace visualizationprops {
 
         std::optional<std::pair<double, std::array<double, 3>>> intersect(const Particle& p) const noexcept override
         {
-            const auto aabb = AABB();
-            const auto inter = basicshape::AABB::intersect(p, aabb);
-            if (!inter.valid())
+            const auto v1v2 = vectormath::dot(p.dir, m_dir);
+            const auto p1v1 = vectormath::dot(p.pos, p.dir);
+            const auto p2v1 = vectormath::dot(m_pos, p.dir);
+            const auto p1v2 = vectormath::dot(p.pos, m_dir);
+            const auto p2v2 = vectormath::dot(m_pos, m_dir);
+
+            const auto t1 = ((p2v2 + p1v2) * v1v2 - p2v1 + p1v1) / (v1v2 * v1v2 - 1);
+
+            if (t1 < 0.0)
                 return std::nullopt;
 
-            const auto n = vectormath::cross(p.dir, m_dir);
-            const auto n_length = vectormath::length(n);
-            if (std::abs(n_length) < GEOMETRIC_ERROR()) { // lines are parallell
-                return std::nullopt;
-            }
-            const auto n_invlength = 1 / n_length;
-            const auto distance = std::abs(vectormath::dot(n, vectormath::subtract(m_pos, p.pos)) * n_invlength);
+            const auto t2 = v1v2 * t1 - p2v2 - p1v2;
 
-            if (distance > m_radii) { // intersection is larger than radii
-                return std::nullopt;
-            }
-
-            // shiftling line aling normal to both lines to find intersection point at radi
-            const auto s_pos = vectormath::add(m_pos, vectormath::scale(n, m_radii * n_invlength));
-
-            const auto n2 = vectormath::cross(m_dir, n);
-            const auto t1 = vectormath::dot(vectormath::subtract(s_pos, p.pos), n2) / vectormath::dot(n2, p.dir);
-
-            //  intersection pos
-            const auto p_int = vectormath::add(p.pos, vectormath::scale(p.dir, t1));
-            // distance from intpos to start
-            const auto int_distance = vectormath::dot(vectormath::subtract(p_int, m_pos), m_dir);
-            if (int_distance < 0 || int_distance > m_length)
+            if ((t2 < 0.0) || (t2 > m_length))
                 return std::nullopt;
 
-            auto d = vectormath::subtract(p_int, p.pos);
-            d = vectormath::subtract(d, vectormath::scale(m_dir, vectormath::dot(d, m_dir)));
-            vectormath::normalize(d);
-            return std::make_optional(std::make_pair(t1, d));
+            const auto c1 = vectormath::add(p.pos, vectormath::scale(p.dir, t1));
+            const auto c2 = vectormath::add(m_pos, vectormath::scale(m_dir, t2));
+            const auto d = vectormath::subtract(c1, c2);
+
+            const auto l = vectormath::length(d);
+            if (l < m_radii)
+                return std::nullopt;
+            const auto n = vectormath::scale(d, 1 / l);
+            return std::make_optional(std::make_pair(t1, n));
         }
 
         std::array<double, 6> AABB() const
