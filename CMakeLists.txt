@@ -168,7 +168,7 @@ option(DXMCLIB_USE_LOADPNG "Use thirdparty loadpng library for writing png files
 add_subdirectory(thirdparty)
 
 # Testing
-if(BUILD_TESTING)
+if(BUILD_TESTING OR CMAKE_PROJECT_NAME STREQUAL PROJECT_NAME)
     add_subdirectory(tests)
 endif()
 

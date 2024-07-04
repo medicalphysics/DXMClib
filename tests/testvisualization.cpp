@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
+#include "dxmc/world/worlditems/ctdiphantom.hpp"
 #include "dxmc/world/worlditems/worldcylinder.hpp"
 
 #include <iostream>
@@ -86,57 +87,28 @@ std::vector<T> generateEdges(const std::array<std::size_t, 3>& dim, const std::a
     return d;
 }
 
-bool testGeometryColor()
+bool testCTDIPhantom()
 {
-    std::array<std::size_t, 3> dim = { 128, 128, 128 };
-    std::array spacing = { .1, .1, .1 };
-
-    using Grid = dxmc::AAVoxelGrid<5, 2, 0>;
-    using Cylinder = dxmc::WorldCylinder<5, 2>;
-    using World = dxmc::World<Grid, Cylinder>;
-
-    World world;
-    auto& grid = world.addItem<Grid>({});
-    auto& cylinder = world.addItem<Cylinder>({});
-    cylinder.setRadius(1);
-    cylinder.setHeight(5);
-
-    auto air = dxmc::Material<5>::byNistName("Air, Dry (near sea level)").value();
-    auto pmma = dxmc::Material<5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value();
-    const auto air_dens = dxmc::NISTMaterials::density("Air, Dry (near sea level)");
-    const auto pmma_dens = dxmc::NISTMaterials::density("Polymethyl Methacralate (Lucite, Perspex)");
-
-    const auto matIdx = generateDonut<std::uint8_t>(dim, spacing);
-    // const auto matIdx = generateEdges<std::uint8_t>(dim, spacing);
-    std::vector<double> dens(matIdx.size(), 0);
-    std::transform(std::execution::par_unseq, matIdx.cbegin(), matIdx.cend(), dens.begin(), [=](const auto i) { return i == 0 ? air_dens : pmma_dens; });
-
-    std::vector<dxmc::Material<>> materials;
-    materials.push_back(air);
-    materials.push_back(pmma);
-
-    grid.setData(dim, dens, matIdx, materials);
-    grid.setSpacing(spacing);
-
+    dxmc::World<dxmc::CTDIPhantom<>> world;
+    world.addItem<dxmc::CTDIPhantom<>>();
     world.build();
 
     dxmc::VisualizeWorld viz(world);
-    viz.setPolarAngle(std::numbers::pi_v<double> / 4);
-    viz.setAzimuthalAngle((std::numbers::pi_v<double> * 2) / 4 + 0.1);
-    int height = 1024;
-    int width = 1024;
-    std::vector<double> buffer(height * width * 4, 1);
-    viz.generate(world, buffer, width, height);
-
-    writeImage(buffer, "color.bin");
-    return false;
+    viz.setPolarAngleDeg(60);
+    viz.setAzimuthalAngleDeg(30);
+    viz.setDistance(100);
+    viz.suggestFOV(2);
+    auto buffer = viz.createBuffer(2048, 2048);
+    viz.generate(world, buffer);
+    viz.savePNG("ctdi.png", buffer);
+    return true;
 }
 
 int main()
 {
 
-    bool success = false;
-    testGeometryColor();
+    bool success = true;
+    success = success && testCTDIPhantom();
     // testGeometryColor();
     // testGeometryDistance();
 

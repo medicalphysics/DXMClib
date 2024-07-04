@@ -97,87 +97,72 @@ namespace basicshape {
             return false;
         }
 
-        static constexpr std::optional<double> intersectDisc(const ParticleType auto& p, const std::array<double, 3>& center, const std::array<double, 3>& normal, double radius)
-        {
-            const auto D = vectormath::dot(p.dir, normal);
-            constexpr double minOrt = GEOMETRIC_ERROR();
-            if (D < minOrt && D > -minOrt)
-                return std::nullopt; // dir and normal is orthogonal, we exits
-            auto t = vectormath::dot(vectormath::subtract(center, p.pos), normal) / D;
-
-            // intersection point
-            const auto p_int = vectormath::add(p.pos, vectormath::scale(p.dir, t));
-
-            // distance from center
-            const auto c_dist = vectormath::subtract(center, p_int);
-            // check if distance from center is less than radius
-            if (vectormath::dot(c_dist, c_dist) <= radius * radius) {
-                return t;
-            }
-            return std::nullopt;
-        }
-
         static std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
-            // return line segment cylinder wall intersection
-            // intersection may be behind line start
-            const auto e = vectormath::scale(cylinder.direction, cylinder.half_height);
-            const auto p0 = vectormath::subtract(cylinder.center, e);
-            const auto p1 = vectormath::add(cylinder.center, e);
+            // infinite cylinder wall
+            std::array<double, 2> t = { 0, 0 };
+            const auto oc = vectormath::subtract(p.pos, cylinder.center);
+            const auto ococ = vectormath::length_sqr(oc);
+            const auto card = vectormath::dot(cylinder.direction, p.dir);
+            const auto a = 1 - card * card;
 
-            std::optional<double> tplane0;
-            {
-                const auto center0 = vectormath::add(cylinder.center, vectormath::scale(cylinder.direction, cylinder.half_height));
-                const auto center1 = vectormath::add(cylinder.center, vectormath::scale(cylinder.direction, -cylinder.half_height));
-                tplane0 = intersectDisc(p, center0, cylinder.direction, cylinder.radius);
-                if (!tplane0) {
-                    tplane0 = intersectDisc(p, center1, cylinder.direction, cylinder.radius);
-                } else {
-                    std::optional<double> tplane1 = intersectDisc(p, center1, cylinder.direction, cylinder.radius);
-                    if (tplane0 && tplane1) {
-                        // early exit
-                        const auto [mi, ma] = std::minmax(*tplane0, *tplane1);
-                        return std::make_optional<std::array<double, 2>>({ mi, ma });
-                    }
-                }
+            const auto caoc = vectormath::dot(cylinder.direction, oc);
+
+            const auto b = vectormath::dot(oc, p.dir) - caoc * card;
+            const auto c = ococ - caoc * caoc - cylinder.radius * cylinder.radius;
+            const auto h2 = b * b - a * c;
+
+            if (h2 < 0.0) // no intersection on wall or cap
+                return std::nullopt;
+
+            const auto card_inv = 1 / card;
+            if (a < GEOMETRIC_ERROR<double>()) { // parallell ray, no wall intersect
+                // we do an easy cap test
+                const auto tc_1 = (-caoc + cylinder.half_height) * card_inv;
+                const auto tc_2 = (-caoc - cylinder.half_height) * card_inv;
+                t[0] = std::min(tc_1, tc_2);
+                t[1] = std::max(tc_1, tc_2);
+                return t[1] > 0.0 ? std::make_optional(t) : std::nullopt;
             }
 
-            { // testing cylinder wall
-                const auto v0 = vectormath::cross(vectormath::subtract(p.pos, cylinder.center), cylinder.direction);
-                const auto v1 = vectormath::cross(p.dir, cylinder.direction);
+            const auto h = std::sqrt(h2);
+            const auto a_inv = 1 / a;
+            t[0] = (-b - h) * a_inv;
+            t[1] = (-b + h) * a_inv;
 
-                const auto a = vectormath::dot(v1, v1);
-                if (a > GEOMETRIC_ERROR()) {
-                    const auto b = 2 * vectormath::dot(v0, v1);
-                    const auto c = vectormath::dot(v0, v0) - cylinder.radius * cylinder.radius;
-                    const auto den = b * b - 4 * a * c;
-                    if (den > 0) {
-                        const auto den_s = std::sqrt(den);
-                        const auto a2inv = 1 / (2 * a);
-                        std::array t_wall = { (-b - den_s) * a2inv, (-b + den_s) * a2inv };
-                        // we have intersections on infinite cylinder wall, testing intersection points inside cylinder
-                        // intersection points
-                        const auto pt0 = vectormath::add(p.pos, vectormath::scale(p.dir, t_wall[0]));
-                        const auto pt1 = vectormath::add(p.pos, vectormath::scale(p.dir, t_wall[1]));
-                        if (!isOverPlane(p0, cylinder.direction, pt0) || isOverPlane(p1, cylinder.direction, pt0)) {
-                            // we miss valid cylinder wall
-                            if (tplane0) {
-                                t_wall[0] = tplane0.value();
-                                tplane0.reset();
-                            } else { // no valid intersection
-                                return std::nullopt;
-                            }
-                        }
-                        if (!isOverPlane(p0, cylinder.direction, pt1) || isOverPlane(p1, cylinder.direction, pt1)) {
-                            // we miss valid cylinder wall
-                            if (tplane0) {
-                                t_wall[1] = tplane0.value();
-                            } else { // no valid intersection
-                                return std::nullopt;
-                            }
-                        }
-                        return std::make_optional(t_wall);
-                    }
+            const auto y0 = caoc + card * t[0];
+            const auto y1 = caoc + card * t[1];
+            if (-cylinder.half_height <= y0 && y0 <= cylinder.half_height) {
+                if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height)
+                    // Both hits are walls
+                    return std::make_optional(t);
+                else {
+                    // y1 failed
+                    if (y1 > 0.0) // upper plane
+                        t[1] = (-caoc + cylinder.half_height) * card_inv;
+                    else // lower plane
+                        t[1] = (-caoc - cylinder.half_height) * card_inv;
+                    return std::make_optional(t);
+                }
+            } else {
+                if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height) {
+                    // y0 failed
+                    if (y0 > 0.0) // upper plane
+                        t[0] = (-caoc + cylinder.half_height) * card_inv;
+                    else // lower plane
+                        t[0] = (-caoc - cylinder.half_height) * card_inv;
+                    return std::make_optional(t);
+                } else {
+                    // both failed, we most likely miss
+                    const auto tc1 = (-caoc - cylinder.half_height) * card_inv;
+                    if (tc1 < t[0] || tc1 > t[1])
+                        return std::nullopt;
+                    const auto tc2 = (-caoc + cylinder.half_height) * card_inv;
+                    if (tc2 < t[0] || tc2 > t[1])
+                        return std::nullopt;
+                    t[0] = std::min(tc1, tc2);
+                    t[1] = std::max(tc1, tc2);
+                    return std::make_optional(t);
                 }
             }
             return std::nullopt;
@@ -210,6 +195,27 @@ namespace basicshape {
             return res;
         }
 
+        static std::array<double, 3> normalOnPoint(const std::array<double, 3>& pos, const Cylinder& cylinder)
+        {
+            // finding normal
+            const auto pa = vectormath::subtract(pos, cylinder.center);
+            const auto ns = vectormath::dot(pa, cylinder.direction);
+            const auto d = vectormath::subtract(pa, vectormath::scale(cylinder.direction, ns));
+            const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR());
+            std::array<double, 3> normal;
+            if (vectormath::length_sqr(d) < r * r) {
+                // we hit plane
+                if (vectormath::dot(pa, cylinder.direction) < 0) {
+                    normal = vectormath::scale(cylinder.direction, -1.0);
+                } else {
+                    normal = cylinder.direction;
+                }
+            } else {
+                normal = vectormath::normalized(d);
+            }
+            return normal;
+        }
+
         template <typename U>
         VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p, const Cylinder& cylinder)
         {
@@ -224,21 +230,7 @@ namespace basicshape {
 
                     // finding normal
                     const auto p0 = vectormath::add(p.pos, vectormath::scale(p.dir, res.intersection));
-                    const auto pa = vectormath::subtract(p0, cylinder.center);
-                    const auto ns = vectormath::dot(pa, cylinder.direction);
-                    const auto d = vectormath::subtract(pa, vectormath::scale(cylinder.direction, ns));
-                    const auto r = cylinder.radius * (1 - GEOMETRIC_ERROR());
-                    if (vectormath::length_sqr(d) < r * r) {
-                        // we hit plane
-                        if (vectormath::dot(pa, cylinder.direction) < 0) {
-                            res.normal = vectormath::scale(cylinder.direction, -1.0);
-                        } else {
-                            res.normal = cylinder.direction;
-                        }
-                    } else {
-                        res.normal = d;
-                        vectormath::normalize(res.normal);
-                    }
+                    res.normal = normalOnPoint(p0, cylinder);
                     if (res.rayOriginIsInsideItem) {
                         res.normal = vectormath::scale(res.normal, -1.0);
                     }
