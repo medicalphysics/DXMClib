@@ -141,11 +141,12 @@ public:
         return m_items;
     }
 
-    const auto& item_names() const
+    const auto& itemNames() const
     {
         return m_item_names;
     }
-    auto& item_names()
+
+    auto& itemNames()
     {
         return m_item_names;
     }
