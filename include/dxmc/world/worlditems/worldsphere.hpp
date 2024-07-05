@@ -149,7 +149,7 @@ public:
         m_dose.clear();
     }
 
-    const ParticleTracker& getTracker() const
+    const ParticleTracker& particleTracker() const
     {
         return m_tracker;
     }
