@@ -91,13 +91,31 @@ public:
     {
         m_cylinder.radius = std::abs(r);
     }
+    double radius() const
+    {
+        return m_cylinder.radius;
+    }
 
     void setHeight(double h)
     {
         m_cylinder.half_height = std::abs(h / 2);
     }
+    double height() const
+    {
+        return m_cylinder.half_height * 2;
+    }
 
-    WorldIntersectionResult intersect(const ParticleType auto& p) const noexcept
+    void setDirection(const std::array<double, 3>& dir)
+    {
+        m_cylinder.direction = vectormath::normalized(dir);
+    }
+    const std::array<double, 3>& direction() const
+    {
+        return m_cylinder.direction;
+    }
+
+    WorldIntersectionResult
+    intersect(const ParticleType auto& p) const noexcept
     {
         return basicshape::cylinder::intersect(p, m_cylinder);
     }
