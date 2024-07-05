@@ -240,6 +240,11 @@ public:
                 res.normal = { 0, 0, 0 };
                 voxelIntersect<VisualizationIntersectionResult<U>, TRANSPARENTVOXELS>(p, res);
             }
+        } else {
+            if (res.valid()) {
+                res.normal = { 0, 0, 0 };
+                voxelIntersect<VisualizationIntersectionResult<U>, 0>(p, res);
+            }
         }
         return res;
     }
