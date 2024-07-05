@@ -153,6 +153,11 @@ public:
     {
         return m_tracker;
     }
+    
+    ParticleTracker& particleTracker()
+    {
+        return m_tracker;
+    }
 
 protected:
     void transportRandom(ParticleType auto& p, RandomState& state) noexcept
