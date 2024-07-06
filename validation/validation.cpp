@@ -38,7 +38,7 @@ Copyright 2023 Erlend Andersen
 using namespace dxmc;
 
 // Set this to true for a reduced number of photons (for testing)
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 struct ResultKeys {
     std::string rCase = "unknown";
