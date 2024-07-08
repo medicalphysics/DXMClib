@@ -31,7 +31,7 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class WorldBoxGrid {
 public:
     WorldBoxGrid(const std::array<double, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
@@ -174,7 +174,7 @@ public:
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 const auto scoreIdx = gridIndex(p.pos);
                 m_energyScored[scoreIdx].scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
