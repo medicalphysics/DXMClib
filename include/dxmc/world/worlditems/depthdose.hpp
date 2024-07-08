@@ -203,7 +203,7 @@ protected:
     template <bool BOUNDS_CHECK = true>
     std::size_t cylinderIndex(const std::array<double, 3>& pos) const
     {
-        const auto cstart = vectormath::subtract(m_cylinder.center, vectormath::scale(m_cylinder.direction, -m_cylinder.half_height));
+        const auto cstart = vectormath::subtract(m_cylinder.center, vectormath::scale(m_cylinder.direction, m_cylinder.half_height));
         const auto cdelta = vectormath::subtract(pos, cstart);
         const auto dz = vectormath::dot(cdelta, m_cylinder.direction);
         if constexpr (BOUNDS_CHECK) {
@@ -251,7 +251,19 @@ protected:
     {
         bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
         while (cont) {
-            const auto intLen = intersect(p).intersection; // this must be valid
+            const auto inter = intersect(p);
+            auto intLen = inter.intersection; // this must be valid
+
+            // do we hit a seperating plane
+            {
+                const auto p_cyl_proj = vectormath::dot(m_cylinder.direction, p.dir);
+                if (std::abs(p_cyl_proj) > GEOMETRIC_ERROR<>()) {
+                    const auto cind = cylinderIndex<true>(p.pos) + (p_cyl_proj > 0.0 ? 1 : 0);
+                    const auto p_pos = vectormath::add(m_cylinder.center, vectormath::scale(m_cylinder.direction, m_cylinder.half_height * ((2.0 * cind) / m_energyScored.size() - 1.0)));
+                    const auto t_plane = vectormath::dot(vectormath::subtract(p_pos, p.pos), m_cylinder.direction) / p_cyl_proj;
+                    intLen = std::min(intLen, t_plane);
+                }
+            }
             const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, m_materialDensity, p, m_material, state);
 
             const auto ind = cylinderIndex<true>(p.pos);
