@@ -22,6 +22,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/interactions.hpp"
 #include "dxmc/material/material.hpp"
 #include "dxmc/particle.hpp"
+#include "dxmc/particletracker.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/basicshapes/cylinder.hpp"
@@ -31,7 +32,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCEINTERACTIONS = false>
 class DepthDose {
 public:
     DepthDose(double radius = 16, double height = 10, std::size_t resolution = 100, const std::array<double, 3>& pos = { 0, 0, 0 })
@@ -131,37 +132,16 @@ public:
         return inter;
     }
 
-    void transport(ParticleType auto& p, RandomState& state)
+    template <ParticleType P>
+    void transport(P& p, RandomState& state) noexcept
     {
-        bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
-        bool updateAtt = false;
-        auto att = m_material.attenuationValues(p.energy);
-        auto attSumInv = 1 / (att.sum() * m_materialDensity);
-        while (cont) {
-            if (updateAtt) {
-                att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_materialDensity);
-                updateAtt = false;
-            }
-            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
-            const auto intLen = intersect(p).intersection; // this can not be nullopt
-
-            if (stepLen < intLen) {
-                // interaction happends
-                p.translate(stepLen);
-                const auto intRes = interactions::template interact<NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
-                updateAtt = intRes.particleEnergyChanged;
-                cont = intRes.particleAlive;
-
-                const auto dose_ind_f = (p.pos[2] - (m_cylinder.center[2] - m_cylinder.half_height)) * m_energyScored.size() / (m_cylinder.half_height * 2);
-                const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_energyScored.size() - 1);
-                m_energyScored[ind].scoreEnergy(intRes.energyImparted);
-            } else {
-                // transport to border
-                p.border_translate(intLen);
-                cont = false;
-            }
+        if constexpr (std::is_same<P, ParticleTrack>::value) {
+            m_tracker.registerParticle(p);
         }
+        if constexpr (FORCEINTERACTIONS)
+            transportForced(p, state);
+        else
+            transportRandom(p, state);
     }
 
     const std::vector<std::pair<double, EnergyScore>> depthEnergyScored() const
@@ -210,10 +190,59 @@ public:
         }
     }
 
+protected:
+    void transportRandom(ParticleType auto& p, RandomState& state)
+    {
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
+        bool updateAtt = false;
+        auto att = m_material.attenuationValues(p.energy);
+        auto attSumInv = 1 / (att.sum() * m_materialDensity);
+        while (cont) {
+            if (updateAtt) {
+                att = m_material.attenuationValues(p.energy);
+                attSumInv = 1 / (att.sum() * m_materialDensity);
+                updateAtt = false;
+            }
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
+            const auto intLen = intersect(p).intersection; // this can not be nullopt
+
+            if (stepLen < intLen) {
+                // interaction happends
+                p.translate(stepLen);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                updateAtt = intRes.particleEnergyChanged;
+                cont = intRes.particleAlive;
+
+                const auto dose_ind_f = (p.pos[2] - (m_cylinder.center[2] - m_cylinder.half_height)) * m_energyScored.size() / (m_cylinder.half_height * 2);
+                const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_energyScored.size() - 1);
+                m_energyScored[ind].scoreEnergy(intRes.energyImparted);
+            } else {
+                // transport to border
+                p.border_translate(intLen);
+                cont = false;
+            }
+        }
+    }
+
+    void transportForced(ParticleType auto& p, RandomState& state) noexcept
+    {
+        bool cont = basicshape::cylinder::pointInside(p.pos, m_cylinder);
+        while (cont) {
+            const auto intLen = intersect(p).intersection; // this must be valid
+            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, m_materialDensity, p, m_material, state);
+
+            const auto dose_ind_f = (p.pos[2] - (m_cylinder.center[2] - m_cylinder.half_height)) * m_energyScored.size() / (m_cylinder.half_height * 2);
+            const auto ind = std::clamp(static_cast<std::size_t>(dose_ind_f), std::size_t { 0 }, m_energyScored.size() - 1);
+            m_energyScored[ind].scoreEnergy(intRes.energyImparted);
+            cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
+        }
+    }
+
 private:
     dxmc::basicshape::cylinder::Cylinder m_cylinder;
     double m_materialDensity = 1;
     Material<NMaterialShells> m_material;
+    ParticleTracker m_tracker;
     std::vector<EnergyScore> m_energyScored;
     std::vector<DoseScore> m_dose;
 };
