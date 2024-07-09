@@ -337,6 +337,8 @@ public:
         for (auto& thread : threads) {
             thread.join();
         }
+        if (m_colorByValue.size() > 0)
+            addColorBar(buffer, width, height);
     }
 
 protected:
@@ -555,6 +557,38 @@ protected:
             return b;
     }
 
+    template <typename U = std::uint8_t>
+        requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
+    static constexpr void addColorBar(std::vector<U>& buffer, int width, int height)
+    {
+        const int cwidth = width / 40;
+        const int cheight = height / 4;
+
+        const auto lw = width - (cwidth * 3) / 2;
+        const auto lh = height / 2 - cheight / 2;
+
+        const auto cmap = turboColorMap<U>();
+
+        for (int h = 0; h < cheight; ++h) {
+            for (int w = 0; w < cwidth; ++w) {
+                const auto x = lw + w;
+                const auto y = lh + h;
+                const auto bufferIdx = (x + y * width) * 4;
+                const auto cIdx = 255 - (h * 256) / cheight;
+                const auto& color = cmap[cIdx];
+                for (int c = 0; c < 3; ++c)
+                    buffer[bufferIdx + c] = color[c];
+            }
+        }
+    }
+
+    template <typename U = std::uint8_t>
+        requires(std::same_as<U, double> || std::same_as<U, std::uint8_t>)
+    static void addColorBar(const VisualizationBuffer<U>& buffer)
+    {
+        addColorBar(buffer.buffer, buffer.width, buffer.height);
+    }
+
 private:
     std::array<double, 6> m_world_aabb;
     std::array<double, 3> m_center = { 0, 0, 0 };
@@ -568,5 +602,6 @@ private:
     std::array<std::uint8_t, 3> m_backgroundColor = { 255, 255, 255 };
     std::set<const std::variant<Us...>*> m_colorByValue;
     std::array<double, 2> m_colorByValueClamp = { 0, 1 };
+    bool m_add_dose_colorbar = false;
 };
 }
