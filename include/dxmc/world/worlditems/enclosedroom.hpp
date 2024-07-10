@@ -67,6 +67,11 @@ public:
         m_density = NISTMaterials::density("Air, Dry (near sea level)");
     }
 
+    const double wallThickness() const
+    {
+        return m_wallThickness;
+    }
+
     void setWallThickness(double cm)
     {
         m_wallThickness = std::max(std::abs(cm), 0.001);
