@@ -47,7 +47,7 @@ bool testTracker()
 
     dxmc::VisualizeWorld viz(w);
 
-    const auto& tracker = sphere.getTracker();
+    const auto& tracker = sphere.particleTracker();
     viz.addParticleTracks(tracker, 0.02);
     /*for (std::size_t i = 0; i < tracker.numberOfParticles(); ++i) {
         const auto track = tracker.track(i);

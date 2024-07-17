@@ -61,7 +61,7 @@ public:
     {
         m_D = other.m_D;
         m_plane = other.m_plane;
-        m_triangles = std::move(other.m_triangles);
+        m_trianglesIdx = std::move(other.m_trianglesIdx);
         if (other.m_left) {
             m_left = std::unique_ptr(std::move(other.m_left));
         }
@@ -72,12 +72,26 @@ public:
 
     MeshKDTree(const std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
-        setData(triangles, max_depth);
+        std::vector<std::uint32_t> idx(triangles.size());
+        std::iota(idx.begin(), idx.end(), 0);
+        setData(triangles, idx, max_depth);
+    }
+
+    MeshKDTree(const std::vector<U>& triangles, const std::vector<std::uint32_t>& idx, const std::size_t max_depth = 8)
+    {
+        setData(triangles, idx, max_depth);
     }
 
     void setData(const std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
-        if (triangles.size() == 0)
+        std::vector<std::uint32_t> idx(triangles.size());
+        std::iota(idx.begin(), idx.end(), 0);
+        setData(triangles, idx, max_depth);
+    }
+
+    void setData(const std::vector<U>& triangles, const std::vector<std::uint32_t>& idx, const std::size_t max_depth = 8)
+    {
+        if (idx.size() == 0)
             return;
         // finding aabb
         std::array<double, 6> aabb {
@@ -89,7 +103,9 @@ public:
             std::numeric_limits<double>::lowest(),
         };
 
-        for (const auto& tri : triangles) {
+        for (const auto tidx : idx) {
+            // for (const auto& tri : triangles) {
+            const auto& tri = triangles[tidx];
             const auto aabb_tri = tri.AABB();
 
             for (std::size_t i = 0; i < 3; ++i) {
@@ -103,42 +119,30 @@ public:
 
         m_D = vectormath::argmax3<std::uint_fast32_t, double>(extent);
 
-        const auto split = planeSplit(triangles);
+        const auto split = planeSplit(triangles, idx);
 
-        const auto fom = figureOfMerit(triangles, split);
+        const auto fom = figureOfMerit(triangles, idx, split);
 
-        if (fom == triangles.size() || max_depth <= 1 || triangles.size() <= 1) {
-            m_triangles = triangles;
+        if (fom == idx.size() || max_depth <= 1 || idx.size() <= 1) {
+            m_trianglesIdx = idx;
             m_left = nullptr;
             m_right = nullptr;
         } else {
             m_plane = split;
-            std::vector<U> left;
-            std::vector<U> right;
-            for (const auto& triangle : triangles) {
+            std::vector<std::uint32_t> left;
+            std::vector<std::uint32_t> right;
+            for (const auto tidx : idx) {
+                const auto& triangle = triangles[tidx];
+                // for (const auto& triangle : triangles) {
                 const auto side = planeSide(triangle, m_plane, m_D);
                 if (side <= 0)
-                    left.push_back(triangle);
+                    left.push_back(tidx);
                 if (side >= 0)
-                    right.push_back(triangle);
+                    right.push_back(tidx);
             }
-            m_left = std::make_unique<MeshKDTree<U>>(left, max_depth - 1);
-            m_right = std::make_unique<MeshKDTree<U>>(right, max_depth - 1);
+            m_left = std::make_unique<MeshKDTree<U>>(triangles, left, max_depth - 1);
+            m_right = std::make_unique<MeshKDTree<U>>(triangles, right, max_depth - 1);
         }
-    }
-
-    std::array<double, 6> AABB() const
-    {
-        std::array aabb {
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-        };
-        AABB_iterator(aabb);
-        return aabb;
     }
 
     std::size_t depth() const
@@ -148,26 +152,12 @@ public:
         return teller;
     }
 
-    std::vector<U> items() const
-    {
-        std::vector<U> all;
-        item_iterator(all);
-        std::sort(all.begin(), all.end());
-        auto last = std::unique(all.begin(), all.end());
-        all.erase(last, all.end());
-        return all;
-    }
-
     void translate(const std::array<double, 3>& dist)
     {
         m_plane += dist[m_D];
         if (m_left) {
             m_left->translate(dist);
             m_right->translate(dist);
-        } else {
-            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-                tri.translate(dist);
-            });
         }
     }
 
@@ -177,10 +167,6 @@ public:
         if (m_left) {
             m_left->scale(s);
             m_right->scale(s);
-        } else {
-            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-                tri.scale(s);
-            });
         }
     }
 
@@ -190,10 +176,6 @@ public:
         if (m_left) {
             m_left->mirror(point);
             m_right->mirror(point);
-        } else {
-            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-                tri.mirror(point);
-            });
         }
     }
 
@@ -204,28 +186,26 @@ public:
         if (m_left) {
             m_left->mirror(value, dim);
             m_right->mirror(value, dim);
-        } else {
-            std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-                tri.mirror(value, dim);
-            });
         }
     }
 
-    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::vector<U>& triangles, const std::array<double, 6>& aabb) const
     {
         const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<const U> {};
+        return inter ? intersect(particle, triangles, *inter) : KDTreeIntersectionResult<const U> {};
     }
 
 protected:
-    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::vector<U>& triangles, const std::array<double, 2>& tbox) const
     {
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
             KDTreeIntersectionResult<const U> res;
             res.intersection = std::numeric_limits<double>::max();
 
-            for (const U& triangle : m_triangles) {
+            for (const auto triIdx : m_trianglesIdx) {
+                // for (const U& triangle : m_triangles) {
+                const auto& triangle = triangles[triIdx];
                 const auto t_cand = triangle.intersect(particle);
                 if (t_cand) {
                     if (0 <= *t_cand && *t_cand < res.intersection) {
@@ -242,8 +222,8 @@ protected:
 
         // test for parallell beam
         if (std::abs(particle.dir[m_D]) <= std::numeric_limits<double>::epsilon()) {
-            auto hit_left = m_left->intersect(particle, tbox);
-            auto hit_right = m_right->intersect(particle, tbox);
+            auto hit_left = m_left->intersect(particle, triangles, tbox);
+            auto hit_right = m_right->intersect(particle, triangles, tbox);
             if (hit_left.valid() && hit_right.valid())
                 return hit_left.intersection > hit_right.intersection ? hit_right : hit_left;
             if (hit_right.valid())
@@ -258,31 +238,32 @@ protected:
 
         if (t <= tbox[0]) {
             // back only
-            return back->intersect(particle, tbox);
+            return back->intersect(particle, triangles, tbox);
         } else if (t >= tbox[1]) {
             // front only
-            return front->intersect(particle, tbox);
+            return front->intersect(particle, triangles, tbox);
         }
 
         // both directions (start with front)
         const std::array<double, 2> t_front { tbox[0], t };
-        auto hit = front->intersect(particle, t_front);
+        auto hit = front->intersect(particle, triangles, t_front);
         if (hit.valid()) {
             if (hit.intersection <= t) {
                 return hit;
             }
         }
         const std::array<double, 2> t_back { t, tbox[1] };
-        return back->intersect(particle, t_back);
+        return back->intersect(particle, triangles, t_back);
     }
 
-    double planeSplit(const std::vector<U>& triangles) const
+    double planeSplit(const std::vector<U>& triangles, const std::vector<std::uint32_t>& idx) const
     {
-        const auto N = triangles.size();
+        const auto N = idx.size();
         std::vector<double> vals;
         vals.reserve(N);
 
-        for (const auto& triangle : triangles) {
+        for (const auto triIdx : idx) {
+            const auto& triangle = triangles[triIdx];
             const auto v = triangle.center()[m_D];
             vals.push_back(v);
         }
@@ -295,11 +276,12 @@ protected:
         }
     }
 
-    int figureOfMerit(const std::vector<U>& triangles, const double planesep) const
+    int figureOfMerit(const std::vector<U>& triangles, const std::vector<std::uint32_t>& idx, const double planesep) const
     {
         int fom = 0;
         int shared = 0;
-        for (const auto& triangle : triangles) {
+        for (const auto triIdx : idx) {
+            const auto& triangle = triangles[triIdx];
             const auto side = planeSide(triangle, planesep, m_D);
             fom += side;
             if (side == 0) {
@@ -334,34 +316,6 @@ protected:
             m_left->depth_iterator(teller);
     }
 
-    void item_iterator(std::vector<U>& all) const
-    {
-        if (m_left) {
-            m_left->item_iterator(all);
-            m_right->item_iterator(all);
-        } else {
-            std::copy(m_triangles.cbegin(), m_triangles.cend(), std::back_inserter(all));
-        }
-    }
-
-    void AABB_iterator(std::array<double, 6>& aabb) const
-    {
-        if (!m_left) {
-            for (const auto& tri : m_triangles) {
-                const auto aabb_tri = tri.AABB();
-                for (std::size_t i = 0; i < 3; ++i) {
-                    aabb[i] = std::min(aabb[i], aabb_tri[i]);
-                }
-                for (std::size_t i = 3; i < 6; ++i) {
-                    aabb[i] = std::max(aabb[i], aabb_tri[i]);
-                }
-            }
-        } else {
-            m_left->AABB_iterator(aabb);
-            m_right->AABB_iterator(aabb);
-        }
-    }
-
     constexpr static double epsilon()
     {
         // Huristic epsilon for triangle intersections
@@ -378,11 +332,11 @@ protected:
     }
 
 private:
-    std::uint_fast32_t m_D = 0;
     double m_plane = 0;
-    std::vector<U> m_triangles;
     std::unique_ptr<MeshKDTree<U>> m_left = nullptr;
     std::unique_ptr<MeshKDTree<U>> m_right = nullptr;
+    std::vector<std::uint32_t> m_trianglesIdx;
+    std::uint_fast32_t m_D = 0;
 };
 
 }

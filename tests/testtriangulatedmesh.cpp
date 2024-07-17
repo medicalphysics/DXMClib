@@ -125,9 +125,9 @@ void testMeshVisualization()
 
     int option;
     option = 0; // Box
-    option = 1; // Triangle
-    option = 2; // Bunny
-    option = 3; // bunny_low
+    // option = 1; // Triangle
+    // option = 2; // Bunny
+    // option = 3; // bunny_low
     // option = 4; // duck
 
     if (option == 0) {
@@ -188,7 +188,7 @@ void testMeshPlaneVisualization()
 
     const auto tri = getPlane(5);
     world.reserveNumberOfItems(1);
-    auto& plane = world.addItem<Plane>({ tri });
+    auto& plane = world.template addItem<Plane>({ tri });
     plane.setMaterial(water);
 
     world.build();
@@ -261,7 +261,7 @@ int main(int argc, char* argv[])
 {
     std::cout << "Testing tetrahedal mesh\n";
     testMeshPlaneVisualization();
-    // testMeshVisualization();
+    testMeshVisualization();
 
     /*
         std::cout << "Testing dose scoring of mesh\n";

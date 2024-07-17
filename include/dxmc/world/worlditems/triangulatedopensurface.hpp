@@ -100,9 +100,9 @@ public:
         return m_kdtree;
     }
 
-    std::vector<Triangle> getTriangles() const
+    const std::vector<Triangle>& getTriangles() const
     {
-        return m_kdtree.items();
+        return m_triangles;
     }
 
     void translate(const std::array<double, 3>& dist)
@@ -124,20 +124,22 @@ public:
     void mirror(const std::array<double, 3>& point)
     {
         m_kdtree.mirror(point);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        calculateAABB();
     }
 
     void mirror(const double value, const std::uint_fast32_t dim)
     {
         m_kdtree.mirror(value, dim);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        calculateAABB();
     }
 
     void setData(const std::vector<Triangle>& triangles, double surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
     {
+
         m_thickness = std::abs(surfaceThickness);
-        m_kdtree.setData(triangles, max_tree_dept);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        m_triangles = triangles;
+        m_kdtree.setData(m_triangles, max_tree_dept);
+        calculateAABB();
     }
 
     std::array<double, 3> center() const
@@ -158,14 +160,14 @@ public:
 
     WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
-        const auto res = m_kdtree.intersect(p, m_aabb);
+        const auto res = m_kdtree.intersect(p, m_triangles, m_aabb);
         return WorldIntersectionResult { .intersection = res.intersection, .rayOriginIsInsideItem = false, .intersectionValid = res.item != nullptr };
     }
 
     template <typename U>
     VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
-        const auto res = m_kdtree.intersect(p, m_aabb);
+        const auto res = m_kdtree.intersect(p, m_triangles, m_aabb);
         VisualizationIntersectionResult<U> res_int;
         if (res.valid()) {
             res_int.normal = vectormath::normalized(res.item->planeVector());
@@ -188,7 +190,7 @@ public:
         // The particle is transported right behind this plane, we correct this
         p.translate(-2 * GEOMETRIC_ERROR());
 
-        const auto intersection = m_kdtree.intersect(p, m_aabb);
+        const auto intersection = m_kdtree.intersect(p, m_triangles, m_aabb);
         const auto normal = intersection.item->planeVector();
         const auto length_scale = std::abs(vectormath::dot(p.dir, normal));
         const auto length = m_thickness / length_scale;
@@ -214,8 +216,7 @@ public:
 
     void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
-        const auto triangles = getTriangles();
-        const auto volume = calculateVolume(triangles, m_thickness);
+        const auto volume = calculateVolume(m_triangles, m_thickness);
         m_dose.addScoredEnergy(m_energyScored, volume, m_materialDensity, calibration_factor);
     }
 
@@ -235,14 +236,34 @@ public:
     }
 
 protected:
-    static std::array<double, 6> expandAABB(std::array<double, 6> aabb)
+    void calculateAABB()
     {
-        // note we take copy of aabb
+        std::array<double, 6> aabb {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+        };
+
+        for (const auto& tri : m_triangles) {
+            const auto aabb_tri = tri.AABB();
+
+            for (std::size_t i = 0; i < 3; ++i) {
+                aabb[i] = std::min(aabb[i], aabb_tri[i]);
+            }
+            for (std::size_t i = 3; i < 6; ++i) {
+                aabb[i] = std::max(aabb[i], aabb_tri[i]);
+            }
+        }
+
+        // Extending AABB
         for (std::size_t i = 0; i < 3; ++i) {
             aabb[i] -= GEOMETRIC_ERROR();
             aabb[i + 3] += GEOMETRIC_ERROR();
         }
-        return aabb;
+        m_aabb = aabb;
     }
 
     static double calculateVolume(const std::vector<Triangle>& triangles, double thickness)
@@ -260,6 +281,7 @@ private:
     EnergyScore m_energyScored;
     DoseScore m_dose;
     MeshKDTree<Triangle> m_kdtree;
+    std::vector<Triangle> m_triangles;
     Material<NMaterialShells> m_material;
 };
 }

@@ -46,8 +46,10 @@ public:
     TriangulatedMesh(const std::vector<Triangle>& triangles, const std::size_t max_tree_dept = 8)
         : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
+        , m_triangles(triangles)
     {
-        setData(triangles, max_tree_dept);
+        m_kdtree.setData(m_triangles, max_tree_dept);
+        calculateAABB();
     }
 
     TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
@@ -55,20 +57,22 @@ public:
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader reader;
-        auto triangles = reader(path);
-        setData(triangles, max_tree_dept);
+        m_triangles = reader(path);
+        m_kdtree.setData(m_triangles, max_tree_dept);
+        calculateAABB();
     }
 
     TriangulatedMesh(const std::string& path, double scale, const std::size_t max_tree_dept = 8)
-        : m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
-        , m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
+        , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
         STLReader reader;
-        auto triangles = reader(path);
-        std::for_each(std::execution::par_unseq, triangles.begin(), triangles.end(), [=](auto& tri) {
+        m_triangles = reader(path);
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [=](auto& tri) {
             tri.scale(scale);
         });
-        setData(triangles, max_tree_dept);
+        m_kdtree.setData(m_triangles, max_tree_dept);
+        calculateAABB();
     }
 
     void setMaterial(const Material<NMaterialShells>& mat)
@@ -78,7 +82,7 @@ public:
 
     void setMaterialDensity(double dens)
     {
-        m_materialDensity = std::abs(dens);
+        m_materialDensity = std::max(std::abs(dens), 0.00000001);
     }
 
     void setMaterial(const Material<NMaterialShells>& mat, double dens)
@@ -103,13 +107,17 @@ public:
         return m_kdtree;
     }
 
-    std::vector<Triangle> getTriangles() const
+    const std::vector<Triangle>& getTriangles() const
     {
-        return m_kdtree.items();
+        return m_triangles;
     }
 
     void translate(const std::array<double, 3>& dist)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.translate(dist);
+        });
+
         m_kdtree.translate(dist);
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -119,56 +127,66 @@ public:
 
     void scale(double s)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.scale(s);
+        });
+
         m_kdtree.scale(s);
-        for (auto& e : m_aabb)
+        for (auto& e : m_aabb) {
             e *= s;
+        }
     }
 
     void mirror(const std::array<double, 3>& point)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.mirror(point);
+        });
         m_kdtree.mirror(point);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        calculateAABB();
     }
 
     void mirror(const double value, const std::uint_fast32_t dim)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.mirror(value, dim);
+        });
         m_kdtree.mirror(value, dim);
-        m_aabb = expandAABB(m_kdtree.AABB());
+        calculateAABB();
     }
 
     void setData(const std::vector<Triangle>& triangles, const std::size_t max_tree_dept = 8)
     {
-        m_kdtree.setData(triangles, max_tree_dept);
-        m_aabb = expandAABB(m_kdtree.AABB());
-        m_volume = calculateVolume(triangles, m_aabb);
+        m_triangles = triangles;
+        m_kdtree.setData(m_triangles, max_tree_dept);
+        calculateAABB();
     }
 
     std::array<double, 3> center() const
     {
         std::array<double, 3> center { 0, 0, 0 };
-        const auto triangles = getTriangles();
-        std::for_each(std::execution::unseq, triangles.cbegin(), triangles.cend(), [&](const auto& tri) {
+        std::for_each(std::execution::unseq, m_triangles.cbegin(), m_triangles.cend(), [&](const auto& tri) {
             const auto c = tri.center();
             for (std::size_t i = 0; i < 3; ++i) {
                 center[i] += c[i];
             }
         });
         for (std::size_t i = 0; i < 3; ++i) {
-            center[i] /= triangles.size();
+            center[i] /= m_triangles.size();
         }
         return center;
     }
 
     WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
-        const auto res = m_kdtree.intersect(p, m_aabb);
+        const auto res = m_kdtree.intersect(p, m_triangles, m_aabb);
         return WorldIntersectionResult { .intersection = res.intersection, .rayOriginIsInsideItem = res.rayOriginIsInsideItem, .intersectionValid = res.item != nullptr };
     }
 
     template <typename U>
     VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p) const noexcept
     {
-        const auto res = m_kdtree.intersect(p, m_aabb);
+        const auto res = m_kdtree.intersect(p, m_triangles, m_aabb);
         VisualizationIntersectionResult<U> res_int;
         if (res.valid()) {
             res_int.normal = vectormath::normalized(res.item->planeVector());
@@ -224,7 +242,8 @@ public:
     void addEnergyScoredToDoseScore(double calibration_factor = 1)
     {
         // not defined for fleunce counter
-        m_dose.addScoredEnergy(m_energyScored, m_volume, m_materialDensity, calibration_factor);
+        const auto vol = volume();
+        m_dose.addScoredEnergy(m_energyScored, vol, m_materialDensity, calibration_factor);
     }
 
     const DoseScore& doseScored(std::size_t index = 0) const
@@ -242,18 +261,7 @@ public:
         return m_aabb;
     }
 
-protected:
-    static std::array<double, 6> expandAABB(std::array<double, 6> aabb)
-    {
-        // note we take copy of aabb
-        for (std::size_t i = 0; i < 3; ++i) {
-            aabb[i] -= GEOMETRIC_ERROR();
-            aabb[i + 3] += GEOMETRIC_ERROR();
-        }
-        return aabb;
-    }
-
-    static double calculateVolume(const std::vector<Triangle>& triangles, const std::array<double, 6>& aabb)
+    [[nodiscard]] double volume() const
     {
         // using signed volume of a thetrahedron by a point and the three vertices (Gauss theorem of divergence)
         // sign_vol = v1 * (v2 x v3) / 6 for three vectors defining a triangle, i.e triple product
@@ -261,27 +269,58 @@ protected:
 
         // finding a neat reference point instead of {0,0,0}
         const std::array center = {
-            (aabb[0] + aabb[3]) / 2,
-            (aabb[1] + aabb[4]) / 2,
-            (aabb[2] + aabb[5]) / 2
+            (m_aabb[0] + m_aabb[3]) / 2,
+            (m_aabb[1] + m_aabb[4]) / 2,
+            (m_aabb[2] + m_aabb[5]) / 2
         };
 
-        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), 0.0, std::plus<>(), [&center](const auto& tri) {
+        const auto vol = std::transform_reduce(std::execution::par_unseq, m_triangles.cbegin(), m_triangles.cend(), 0.0, std::plus<>(), [&center](const auto& tri) {
             const auto& v = tri.vertices();
             const auto v1 = vectormath::subtract(v[0], center);
             const auto v2 = vectormath::subtract(v[1], center);
             const auto v3 = vectormath::subtract(v[2], center);
             return vectormath::tripleProduct(v1, v2, v3);
         });
-        return std::abs(volume) / 6;
+        return std::abs(vol) / 6;
+    }
+
+protected:
+    void calculateAABB()
+    {
+        std::array<double, 6> aabb {
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::max(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+            std::numeric_limits<double>::lowest(),
+        };
+
+        for (const auto& tri : m_triangles) {
+            const auto aabb_tri = tri.AABB();
+
+            for (std::size_t i = 0; i < 3; ++i) {
+                aabb[i] = std::min(aabb[i], aabb_tri[i]);
+            }
+            for (std::size_t i = 3; i < 6; ++i) {
+                aabb[i] = std::max(aabb[i], aabb_tri[i]);
+            }
+        }
+
+        // Extending AABB
+        for (std::size_t i = 0; i < 3; ++i) {
+            aabb[i] -= GEOMETRIC_ERROR();
+            aabb[i + 3] += GEOMETRIC_ERROR();
+        }
+        m_aabb = aabb;
     }
 
 private:
     double m_materialDensity = 1;
-    double m_volume = 0; // cm3
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     EnergyScore m_energyScored;
     DoseScore m_dose;
+    std::vector<Triangle> m_triangles;
     MeshKDTree<Triangle> m_kdtree;
     Material<NMaterialShells> m_material;
 };
