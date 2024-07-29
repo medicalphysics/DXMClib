@@ -36,7 +36,7 @@ set(DXMCLIB_MIN_TABLE_ENERGY_KEV "1.0")
 add_executable(EPICSparser         
     EPICSParser/atomicelementhandler.cpp 
     EPICSParser/epicsparser.cpp 
-    EPICSParser/epicsparcermain.cpp        
+    EPICSParser/epicsparsermain.cpp        
 )
 
 target_compile_definitions(EPICSparser PUBLIC DXMCLIB_MAXENERGY="${DXMCLIB_MAX_ENERGY_KEV}")
