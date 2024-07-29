@@ -120,6 +120,11 @@ public:
         return m_outerAABB;
     }
 
+    const std::array<double, 6>& innerRoomAABB() const
+    {
+        return m_innerAABB;
+    }
+
     WorldIntersectionResult intersect(const ParticleType auto& p) const
     {
         const bool is_inside_inner = basicshape::AABB::pointInside(p.pos, m_innerAABB);
