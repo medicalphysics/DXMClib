@@ -52,6 +52,12 @@ public:
         m_materialDensity = NISTMaterials::density("Air, Dry (near sea level)");
     }
 
+    void setAABB(const std::array<double, 6>& aabb)
+    {
+        m_aabb = aabb;
+        correctAABB();
+    }
+
     void setMaterial(const Material<NMaterialShells>& material)
     {
         m_material = material;
