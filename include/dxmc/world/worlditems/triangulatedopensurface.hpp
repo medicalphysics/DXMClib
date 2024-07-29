@@ -167,7 +167,7 @@ public:
             }
         });
         for (std::size_t i = 0; i < 3; ++i) {
-            center[i] /= triangles.size();
+            center[i] /= m_triangles.size();
         }
         return center;
     }
