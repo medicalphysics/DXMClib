@@ -189,9 +189,11 @@ public:
         const auto res = m_kdtree.intersect(p, m_triangles, m_aabb);
         VisualizationIntersectionResult<U> res_int;
         if (res.valid()) {
-            res_int.normal = vectormath::normalized(res.item->planeVector());
+            res_int.normal = res.item->planeVector();
             res_int.intersection = res.intersection;
             res_int.rayOriginIsInsideItem = res.rayOriginIsInsideItem;
+            if (res_int.rayOriginIsInsideItem)
+                res_int.normal = vectormath::scale(res_int.normal, -1.0);
             res_int.intersectionValid = true;
             res_int.value = m_dose.dose();
         }

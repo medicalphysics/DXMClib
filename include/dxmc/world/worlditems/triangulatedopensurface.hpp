@@ -107,6 +107,10 @@ public:
 
     void translate(const std::array<double, 3>& dist)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.translate(dist);
+        });
+
         m_kdtree.translate(dist);
         for (std::size_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
@@ -116,19 +120,30 @@ public:
 
     void scale(double s)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.scale(s);
+        });
+
         m_kdtree.scale(s);
-        for (auto& e : m_aabb)
+        for (auto& e : m_aabb) {
             e *= s;
+        }
     }
 
     void mirror(const std::array<double, 3>& point)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.mirror(point);
+        });
         m_kdtree.mirror(point);
         calculateAABB();
     }
 
     void mirror(const double value, const std::uint_fast32_t dim)
     {
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.mirror(value, dim);
+        });
         m_kdtree.mirror(value, dim);
         calculateAABB();
     }
@@ -145,8 +160,7 @@ public:
     std::array<double, 3> center() const
     {
         std::array<double, 3> center { 0, 0, 0 };
-        const auto triangles = getTriangles();
-        std::for_each(std::execution::unseq, triangles.cbegin(), triangles.cend(), [&](const auto& tri) {
+        std::for_each(std::execution::unseq, m_triangles.cbegin(), m_triangles.cend(), [&](const auto& tri) {
             const auto c = tri.center();
             for (std::size_t i = 0; i < 3; ++i) {
                 center[i] += c[i];
@@ -170,8 +184,8 @@ public:
         const auto res = m_kdtree.intersect(p, m_triangles, m_aabb);
         VisualizationIntersectionResult<U> res_int;
         if (res.valid()) {
-            res_int.normal = vectormath::normalized(res.item->planeVector());
-            if (res.rayOriginIsInsideItem) // fix normal vector
+            res_int.normal = res.item->planeVector();
+            if (vectormath::dot(p.dir, res_int.normal) > 0.0) // fix normal vector
                 res_int.normal = vectormath::scale(res_int.normal, -1.0);
             res_int.intersection = res.intersection;
             res_int.rayOriginIsInsideItem = false;
@@ -268,10 +282,10 @@ protected:
 
     static double calculateVolume(const std::vector<Triangle>& triangles, double thickness)
     {
-        const auto volume = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), 0.0, std::plus<>(), [thickness](const auto& tri) {
-            return tri.area() * thickness;
+        const auto area = std::transform_reduce(std::execution::par_unseq, triangles.cbegin(), triangles.cend(), 0.0, std::plus<>(), [](const auto& tri) {
+            return tri.area();
         });
-        return volume;
+        return area * thickness;
     }
 
 private:
