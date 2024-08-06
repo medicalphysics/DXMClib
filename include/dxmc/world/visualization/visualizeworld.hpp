@@ -82,6 +82,7 @@ struct VisualizationBuffer {
         else
             std::fill(begin(), end(), T { 1 });
     }
+
     auto begin() { return buffer.begin(); }
     auto end() { return buffer.end(); }
 };
@@ -240,8 +241,19 @@ public:
 
     void setColorByValueMinMax(double min, double max)
     {
-        m_colorByValueClamp[0] = std::min(min, max);
-        m_colorByValueClamp[1] = std::max(min, max);
+        m_colorByValueClamp[0] = std::max(std::min(min, max), 0.0);
+        m_colorByValueClamp[1] = std::max(std::max(min, max), 0.0);
+        m_colorByValueClampLog[0] = m_colorByValueClamp[0] <= 0 ? -12 : std::log10(m_colorByValueClamp[0]);
+        m_colorByValueClampLog[1] = m_colorByValueClamp[1] <= 0 ? -6 : std::log10(m_colorByValueClamp[1]);
+    }
+
+    bool colorByValueLogScale() const
+    {
+        return m_colorByValueLogScale;
+    }
+    void setColorByValueLogScale(bool value)
+    {
+        m_colorByValueLogScale = value;
     }
 
     template <typename B>
@@ -389,11 +401,20 @@ protected:
 
             if (res.valid() && res.intersection < line_intersection) {
                 if (m_colorByValue.contains(res.item)) {
-                    const auto val = (res.value - m_colorByValueClamp[0]) / (m_colorByValueClamp[1] - m_colorByValueClamp[0]);
-                    const auto cind = static_cast<std::uint8_t>(255 * std::clamp(val, 0.0, 1.0));
-                    const auto color = turboColorMap<U>()[cind];
-                    for (std::size_t i = 0; i < 3; ++i)
-                        buffer[ind + i] = color[i];
+                    if (m_colorByValueLogScale) {
+                        const auto logval = res.value >= 0 ? std::log10(res.value) : -12;
+                        const auto val = (logval - m_colorByValueClampLog[0]) / (m_colorByValueClampLog[1] - m_colorByValueClampLog[0]);
+                        const auto cind = static_cast<std::uint8_t>(255 * std::clamp(val, 0.0, 1.0));
+                        const auto color = turboColorMap<U>()[cind];
+                        for (std::size_t i = 0; i < 3; ++i)
+                            buffer[ind + i] = color[i];
+                    } else {
+                        const auto val = (res.value - m_colorByValueClamp[0]) / (m_colorByValueClamp[1] - m_colorByValueClamp[0]);
+                        const auto cind = static_cast<std::uint8_t>(255 * std::clamp(val, 0.0, 1.0));
+                        const auto color = turboColorMap<U>()[cind];
+                        for (std::size_t i = 0; i < 3; ++i)
+                            buffer[ind + i] = color[i];
+                    }
                 } else {
                     const auto color = colorOfItem<U>(p, res.normal, res.item);
                     for (std::size_t i = 0; i < 3; ++i) {
@@ -568,5 +589,7 @@ private:
     std::array<std::uint8_t, 3> m_backgroundColor = { 255, 255, 255 };
     std::set<const std::variant<Us...>*> m_colorByValue;
     std::array<double, 2> m_colorByValueClamp = { 0, 1 };
+    std::array<double, 2> m_colorByValueClampLog = { -12, 0 };
+    bool m_colorByValueLogScale = false;
 };
 }
