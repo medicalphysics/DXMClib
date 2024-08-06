@@ -404,7 +404,7 @@ protected:
             if (res.valid() && res.intersection < line_intersection) {
                 if (m_colorByValue.contains(res.item)) {
                     if (m_colorByValueLogScale) {
-                        const auto logval = res.value >= 0 ? std::log10(res.value) : -12;
+                        const auto logval = res.value >= 0 ? std::log10(res.value) : m_colorByValueClampLog[0];
                         const auto val = (logval - m_colorByValueClampLog[0]) / (m_colorByValueClampLog[1] - m_colorByValueClampLog[0]);
                         const auto cind = static_cast<std::uint8_t>(255 * std::clamp(val, 0.0, 1.0));
                         const auto color = turboColorMap<U>()[cind];
