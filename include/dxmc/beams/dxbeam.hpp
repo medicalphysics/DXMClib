@@ -147,7 +147,7 @@ public:
     void setDAPvalue(double dap) { m_measuredDAP = std::abs(dap); }
 
     const Tube& tube() const { return m_tube; }
-    void setTube(const Tube&& tube)
+    void setTube(const Tube& tube)
     {
         m_tube = tube;
         tubeChanged();

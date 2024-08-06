@@ -36,7 +36,7 @@ void example()
     cylinder.setMaterial(aluminium, 2.27 /* g/cm3 */);
 
     // Adding room with walls of concrete
-    auto& room = world.template addItem<Room>({ 2 /*cm wall thickness*/, { 100, 200, 300 } /*cm inner walls sizes*/ }, "Room");
+    auto& room = world.template addItem<Room>({ 2 /*cm wall thickness*/, 200 /*cm inner walls sizes*/ }, "Room");
     auto concrete = dxmc::Material<N_ATOMIC_SHELLS>::byNistName("Concrete, Ordinary").value();
     auto concrete_density = dxmc::NISTMaterials::density("Concrete, Ordinary");
     room.setMaterial(concrete, concrete_density);

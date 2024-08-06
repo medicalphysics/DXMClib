@@ -125,9 +125,9 @@ void testMeshVisualization()
 
     int option;
     option = 0; // Box
-    option = 1; // Triangle
-    option = 2; // Bunny
-    option = 3; // bunny_low
+    // option = 1; // Triangle
+    // option = 2; // Bunny
+    // option = 3; // bunny_low
     // option = 4; // duck
 
     if (option == 0) {
@@ -188,7 +188,7 @@ void testMeshPlaneVisualization()
 
     const auto tri = getPlane(5);
     world.reserveNumberOfItems(1);
-    auto& plane = world.addItem<Plane>({ tri });
+    auto& plane = world.template addItem<Plane>({ tri });
     plane.setMaterial(water);
 
     world.build();
@@ -257,10 +257,62 @@ double testScoring()
     return 0;
 }
 
+bool testOpenSurface()
+{
+    std::vector<dxmc::Triangle> tris;
+    tris.push_back({ { -0.3333333, -1, 0.5743564 },
+        { 0.33333337, -1, 0 },
+        { 0.33333337, 0, -0.5099079 } });
+    tris.push_back({ { -0.3333333, -1, 0.5743564 },
+        { 0.33333337, 0, -0.5099079 },
+        { -0.3333333, 0, 0 } });
+
+    tris.push_back({ { 0.33333337, -1, 0 },
+        { 1, -1, 0.65487117 },
+        { 1, 0, 0 } });
+    tris.push_back({ { 0.33333337, -1, 0 },
+        { 1, 0, 0 },
+        { 0.33333337, 0, -0.5099079 } });
+    tris.push_back({ { -0.3333333, 0, 0 },
+        { 0.33333337, 0, -0.5099079 },
+        { 0.33333337, 1, 0 } });
+    tris.push_back({ { -0.3333333, 0, 0 },
+        { 0.33333337, 1, 0 },
+        { -0.3333333, 1, 0.6040865 } });
+    tris.push_back({ { 0.33333337, 0, -0.5099079 },
+        { 1, 0, 0 },
+        { 1, 1, 0.63710684 } });
+    tris.push_back({ { 0.33333337, 0, -0.5099079 },
+        { 1, 1, 0.63710684 },
+        { 0.33333337, 1, 0 } });
+
+    dxmc::World<dxmc::TriangulatedOpenSurface<>> world;
+
+    world.template addItem<dxmc::TriangulatedOpenSurface<>>(tris);
+    world.build(0);
+
+    dxmc::VisualizeWorld viz(world);
+    auto buffer = viz.createBuffer();
+
+    for (std::size_t i = 0; i < 180; i += 30) {
+        viz.setDistance(500);
+        viz.setPolarAngleDeg(60);
+        viz.setAzimuthalAngleDeg(i);
+
+        viz.suggestFOV();
+        viz.generate(world, buffer);
+        std::string name = "surf_" + std::to_string(i) + ".png";
+        viz.savePNG(name, buffer);
+        // writeImage(buffer, name);
+    }
+    return false;
+}
+
 int main(int argc, char* argv[])
 {
     std::cout << "Testing tetrahedal mesh\n";
-    testMeshPlaneVisualization();
+    testOpenSurface();
+    // testMeshPlaneVisualization();
     // testMeshVisualization();
 
     /*

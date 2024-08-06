@@ -30,7 +30,7 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-template <std::size_t NMaterialShells = 5, int Lowenergycorrection = 2>
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
 class EnclosedRoom {
 public:
     EnclosedRoom(double wallthickness, const std::array<double, 6>& inner_aabb)
@@ -65,6 +65,11 @@ public:
         m_wallThickness = std::max(std::abs(wallthickness), 0.001);
         setInnerRoomAABB(inner_aabb);
         m_density = NISTMaterials::density("Air, Dry (near sea level)");
+    }
+
+    const double wallThickness() const
+    {
+        return m_wallThickness;
     }
 
     void setWallThickness(double cm)
@@ -113,6 +118,11 @@ public:
     const std::array<double, 6>& AABB() const
     {
         return m_outerAABB;
+    }
+
+    const std::array<double, 6>& innerRoomAABB() const
+    {
+        return m_innerAABB;
     }
 
     WorldIntersectionResult intersect(const ParticleType auto& p) const
@@ -208,7 +218,7 @@ public:
             if (stepLen < intLen) {
                 // interaction happends
                 p.translate(stepLen);
-                const auto intRes = interactions::template interact<NMaterialShells, Lowenergycorrection>(att, p, m_material, state);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
                 m_energyScore.scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;

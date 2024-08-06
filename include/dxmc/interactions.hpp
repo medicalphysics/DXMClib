@@ -37,14 +37,14 @@ namespace interactions {
         return 0.1;
     }
 
-    template <std::size_t Nshells, int Lowenergycorrection = 2, ParticleType P = Particle>
+    template <std::size_t Nshells, int LOWENERGYCORRECTION = 2, ParticleType P = Particle>
     void rayleightScatter(P& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (std::is_same_v<P, ParticleTrack>) {
             particle.registerPosition();
         }
 
-        if constexpr (Lowenergycorrection == 0) {
+        if constexpr (LOWENERGYCORRECTION == 0) {
             bool reject;
             double theta;
             do {
@@ -181,7 +181,7 @@ namespace interactions {
         return Ei;
     }
 
-    template <std::size_t Nshells, int Lowenergycorrection = 2, ParticleType P = Particle>
+    template <std::size_t Nshells, int LOWENERGYCORRECTION = 2, ParticleType P = Particle>
     auto comptonScatter(P& particle, const Material<Nshells>& material, RandomState& state) noexcept
     // see http://geant4-userdoc.web.cern.ch/geant4-userdoc/UsersGuides/PhysicsReferenceManual/fo/PhysicsReferenceManual.pdf
     // and
@@ -191,7 +191,7 @@ namespace interactions {
             particle.registerPosition();
         }
 
-        if constexpr (Lowenergycorrection == 2) {
+        if constexpr (LOWENERGYCORRECTION == 2) {
             return comptonScatterIA(particle, material, state);
         } else {
             const auto k = particle.energy / ELECTRON_REST_MASS();
@@ -207,7 +207,7 @@ namespace interactions {
                 cosTheta = 1 - t;
                 const auto sinThetaSqr = 1 - cosTheta * cosTheta;
                 const auto g = (1 / e + e - sinThetaSqr) * gmaxInv;
-                if constexpr (Lowenergycorrection == 0) {
+                if constexpr (LOWENERGYCORRECTION == 0) {
                     rejected = state.randomUniform() > g;
                 } else { // Livermore
                     const auto q = material.momentumTransferCosAngle(particle.energy, cosTheta);
@@ -265,14 +265,14 @@ namespace interactions {
         return E;
     }
 
-    template <int Nshells, int Lowenergycorrection = 2, ParticleType P = Particle>
+    template <int Nshells, int LOWENERGYCORRECTION = 2, ParticleType P = Particle>
     auto photoelectricEffect(const double totalPhotoCrossSection, P& particle, const Material<Nshells>& material, RandomState& state) noexcept
     {
         if constexpr (std::is_same_v<P, ParticleTrack>) {
             particle.registerPosition();
         }
 
-        if constexpr (Lowenergycorrection == 2) {
+        if constexpr (LOWENERGYCORRECTION == 2) {
             return photoelectricEffectIA(totalPhotoCrossSection, particle, material, state);
         } else {
             const auto E = particle.energy * particle.weight;
@@ -288,22 +288,22 @@ namespace interactions {
         bool particleDirectionChanged = false;
     };
 
-    template <std::size_t Nshells, int Lowenergycorrection = 2>
+    template <std::size_t Nshells, int LOWENERGYCORRECTION = 2>
     InteractionResult interact(const AttenuationValues& attenuation, ParticleType auto& particle, const Material<Nshells>& material, RandomState& state)
     {
         InteractionResult res;
         const auto r2 = state.randomUniform(attenuation.sum());
         if (r2 < attenuation.photoelectric) {
-            const auto Ei = interactions::photoelectricEffect<Nshells, Lowenergycorrection>(attenuation.photoelectric, particle, material, state);
+            const auto Ei = interactions::photoelectricEffect<Nshells, LOWENERGYCORRECTION>(attenuation.photoelectric, particle, material, state);
             res.energyImparted = Ei;
             res.particleEnergyChanged = true;
         } else if (r2 < (attenuation.photoelectric + attenuation.incoherent)) {
-            const auto Ei = interactions::comptonScatter<Nshells, Lowenergycorrection>(particle, material, state);
+            const auto Ei = interactions::comptonScatter<Nshells, LOWENERGYCORRECTION>(particle, material, state);
             res.energyImparted = Ei;
             res.particleEnergyChanged = true;
             res.particleDirectionChanged = true;
         } else {
-            interactions::rayleightScatter<Nshells, Lowenergycorrection>(particle, material, state);
+            interactions::rayleightScatter<Nshells, LOWENERGYCORRECTION>(particle, material, state);
             res.particleDirectionChanged = true;
         }
         if (particle.energy < MIN_ENERGY()) {
@@ -382,11 +382,11 @@ namespace interactions {
         return intRes;
     }
 
-    template <std::size_t Nshells, int Lowenergycorrection = 2>
+    template <std::size_t Nshells, int LOWENERGYCORRECTION = 2>
     InteractionResult interactForced(double maxStepLenght, double density, ParticleType auto& particle, const Material<Nshells>& material, RandomState& state)
     {
         const auto attenuation = material.attenuationValues(particle.energy);
-        return interactForced<Nshells, Lowenergycorrection>(maxStepLenght, density, attenuation, particle, material, state);
+        return interactForced<Nshells, LOWENERGYCORRECTION>(maxStepLenght, density, attenuation, particle, material, state);
     }
 
 }
