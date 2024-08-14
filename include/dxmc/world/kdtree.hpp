@@ -39,7 +39,6 @@ Copyright 2022 Erlend Andersen
 
 namespace dxmc {
 
-// TODO: move from baseclass to stdvariant template
 template <WorldItemType... Us>
 class KDTree {
 public:
@@ -114,7 +113,6 @@ public:
         return teller;
     }
 
-    
     void translate(const std::array<double, 3>& dist)
     {
         m_plane += dist[m_D];

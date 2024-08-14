@@ -93,6 +93,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/energyscore.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/statickdtree.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtree.hpp"
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtreeflat.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/kdtreeintersectionresult.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/visualization/visualizeworld.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/visualization/vizualizationprops.hpp"
