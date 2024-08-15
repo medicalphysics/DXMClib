@@ -84,11 +84,28 @@ public:
     KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb)
     {
         const auto& inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<std::variant<Us...>> {};
+        return inter ? intersect(particle, *inter, 0) : KDTreeIntersectionResult<std::variant<Us...>> {};
     }
 
-    KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox)
+    KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 2>& tbox, std::uint32_t node_idx)
     {
+        // if leaf
+        if (m_nodes[node_idx].dim == 4) {
+            KDTreeIntersectionResult<std::variant<Us...>> res = { .item = nullptr, .intersection = std::numeric_limits<double>::max() };
+            while (m_nodes[node_idx].index >= 0) {
+                const auto item = nm_nodes[node_idx].data.element;
+                const auto t_cand = std::visit([&particle](const auto& it) { return it.intersect(particle); }, *item);
+                if (t_cand.intersection + border_delta < res.intersection) {
+                    if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                        res.intersection = t_cand.intersection;
+                        res.item = item;
+                        res.rayOriginIsInsideItem = t_cand.rayOriginIsInsideItem;
+                    }
+                }
+            }
+            return res;
+        }
+
         if (!m_left) { // this is a leaf
             // intersect triangles between tbox and return;
 
