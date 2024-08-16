@@ -30,7 +30,7 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2>
+template <std::size_t NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FORCE_INTERACTIONS = false>
 class WorldBox {
 public:
     WorldBox(const std::array<double, 6>& aabb = { -1, -1, -1, 1, 1, 1 })
@@ -124,31 +124,10 @@ public:
 
     void transport(ParticleType auto& p, RandomState& state) noexcept
     {
-        bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
-        bool updateAtt = true;
-        AttenuationValues att;
-        double attSumInv;
-        while (cont) {
-            if (updateAtt) {
-                att = m_material.attenuationValues(p.energy);
-                attSumInv = 1 / (att.sum() * m_materialDensity);
-                updateAtt = false;
-            }
-            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
-            const auto intLen = intersect(p).intersection; // this can not be nullopt
-
-            if (stepLen < intLen) {
-                // interaction happends
-                p.translate(stepLen);
-                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                m_energyScored.scoreEnergy(intRes.energyImparted);
-                cont = intRes.particleAlive;
-                updateAtt = intRes.particleEnergyChanged;
-            } else {
-                // transport to border
-                p.border_translate(intLen);
-                cont = false;
-            }
+        if constexpr (FORCE_INTERACTIONS) {
+            transportForced(p, state);
+        } else {
+            transportRandom(p, state);
         }
     }
 
@@ -182,6 +161,47 @@ public:
     }
 
 protected:
+    void transportForced(ParticleType auto& p, RandomState& state) noexcept
+    {
+
+        bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
+        while (cont) {
+            const auto intLen = intersect(p).intersection; // this must be valid
+            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, m_materialDensity, p, m_material, state);
+            m_energyScored.scoreEnergy(intRes.energyImparted);
+            cont = intRes.particleAlive && basicshape::AABB::pointInside(p.pos, m_aabb);
+        }
+    }
+    void transportRandom(ParticleType auto& p, RandomState& state) noexcept
+    {
+        bool cont = basicshape::AABB::pointInside(p.pos, m_aabb);
+        bool updateAtt = true;
+        AttenuationValues att;
+        double attSumInv;
+        while (cont) {
+            if (updateAtt) {
+                att = m_material.attenuationValues(p.energy);
+                attSumInv = 1 / (att.sum() * m_materialDensity);
+                updateAtt = false;
+            }
+            const auto stepLen = -std::log(state.randomUniform()) * attSumInv; // cm
+            const auto intLen = intersect(p).intersection; // this can not be nullopt
+
+            if (stepLen < intLen) {
+                // interaction happends
+                p.translate(stepLen);
+                const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
+                m_energyScored.scoreEnergy(intRes.energyImparted);
+                cont = intRes.particleAlive;
+                updateAtt = intRes.particleEnergyChanged;
+            } else {
+                // transport to border
+                p.border_translate(intLen);
+                cont = false;
+            }
+        }
+    }
+
     void correctAABB()
     {
         auto test = [](const auto& aabb) -> bool {
