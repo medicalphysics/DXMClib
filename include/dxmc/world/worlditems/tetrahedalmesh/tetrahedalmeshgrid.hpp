@@ -119,7 +119,7 @@ public:
 
     void translate(const std::array<double, 3>& dist)
     {
-        for (std::size_t i = 0; i < 3; ++i) {
+        for (std::uint_fast32_t i = 0; i < 3; ++i) {
             m_aabb[i] += dist[i];
             m_aabb[i + 3] += dist[i];
         }
@@ -280,13 +280,13 @@ protected:
         };
         for (const auto& tet : m_tets) {
             for (const auto& v : tet.vertices()) {
-                for (std::size_t i = 0; i < 3; ++i) {
+                for (std::uint_fast32_t i = 0; i < 3; ++i) {
                     m_aabb[i] = std::min(m_aabb[i], v[i]);
                     m_aabb[i + 3] = std::max(m_aabb[i + 3], v[i]);
                 }
             }
         }
-        for (std::size_t i = 0; i < 3; ++i)
+        for (std::uint_fast32_t i = 0; i < 3; ++i)
             m_spacing[i] = (m_aabb[i + 3] - m_aabb[i]) / m_N[i];
     }
 
@@ -306,7 +306,7 @@ protected:
             return vi;
         };
         const std::array<double, 3> inv_spacing = { 1 / m_spacing[0], 1 / m_spacing[1], 1 / m_spacing[2] };
-        for (std::size_t i = 0; i < m_tets.size(); ++i) {
+        for (std::uint_fast32_t i = 0; i < m_tets.size(); ++i) {
             const auto tet_aabb = m_tets[i].AABB();
             const auto [tet_start, tet_stop] = vectormath::splice(tet_aabb);
             const auto start_ind = caster(vectormath::scale(vectormath::subtract(tet_start, start), inv_spacing));
@@ -324,7 +324,7 @@ protected:
 private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::array<double, 3> m_spacing = { 1, 1, 1 };
-    std::vector<std::vector<std::size_t>> m_grid;
+    std::vector<std::vector<std::uint_fast32_t>> m_grid;
     std::vector<Tetrahedron> m_tets;
     std::array<int, 3> m_N = { 8, 8, 8 };
 };
