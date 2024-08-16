@@ -192,6 +192,10 @@ public:
     {
         return m_grid.tetrahedrons();
     }
+    std::size_t maxThetrahedronsVoxelCount() const
+    {
+        return m_grid.maxThetrahedronsVoxelCount();
+    }
 
     void setMaterial(const Material<NMaterialShells>& material, std::size_t index)
     {
