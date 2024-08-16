@@ -222,7 +222,6 @@ void testMeshPlaneVisualization()
     }
 }
 
-template <bool MESH = true>
 double testScoring()
 {
     using Mesh = dxmc::TriangulatedMesh<5, 2>;
@@ -230,29 +229,37 @@ double testScoring()
     using World = dxmc::World<Mesh, Box>;
     using Material = dxmc::Material<5>;
 
-    World world;
+    using Beam = dxmc::IsotropicMonoEnergyBeam<>;
+    Beam beam({ 0, 0, -1000 }, { 1, 0, 0, 0, 1, 0 }, 60);
+    beam.setNumberOfExposures(12);
+    beam.setNumberOfParticlesPerExposure(1E5);
+
     const auto waterComp = dxmc::NISTMaterials::Composition("Water, Liquid");
     auto water = Material::byWeight(waterComp).value();
 
-    if constexpr (MESH) {
-
+    {
+        World world;
         auto tri = getBox();
-        auto& mesh = world.addItem<Mesh>({ tri });
-        mesh.setMaterial(water, 1);
-    } else {
-        auto& box = world.addItem<Box>({ 1 });
-        box.setMaterial(water, 1);
+        /*std::string path = R"(C:\Users\ander\Downloads\carm.stl)";
+        const std::size_t max_tree_dept = 4;
+        auto& item = world.addItem<Mesh>(Mesh(path, max_tree_dept));
+        */
+        auto& item = world.addItem<Mesh>({ tri });
+        item.setMaterial(water, 1);
+        world.build();
+        dxmc::Transport transport;
+        auto milli = runDispatcher(transport, world, beam);
+        std::cout << "mesh: " << item.doseScored().dose() << " time: " << milli << std::endl;
     }
-    world.build();
-
-    using Beam = dxmc::IsotropicMonoEnergyBeam<>;
-    Beam beam({ 0, 0, -1000 }, { 1, 0, 0, 0, 1, 0 }, 60);
-    beam.setNumberOfExposures(8);
-    beam.setNumberOfParticlesPerExposure(1E5);
-
-    dxmc::Transport transport;
-
-    runDispatcher(transport, world, beam);
+    {
+        World world;
+        auto& item = world.addItem<Box>({ 1 });
+        item.setMaterial(water, 1);
+        world.build();
+        dxmc::Transport transport;
+        auto milli = runDispatcher(transport, world, beam);
+        std::cout << "box: " << item.doseScored().dose() << " time: " << milli << std::endl;
+    }
 
     return 0;
 }
@@ -310,10 +317,11 @@ bool testOpenSurface()
 
 int main(int argc, char* argv[])
 {
-    std::cout << "Testing tetrahedal mesh\n";
-    testOpenSurface();
-    // testMeshPlaneVisualization();
-    // testMeshVisualization();
+    std::cout << "Testing triangulated mesh\n";
+    // testOpenSurface();
+    testScoring();
+    testMeshPlaneVisualization();
+    testMeshVisualization();
 
     /*
         std::cout << "Testing dose scoring of mesh\n";

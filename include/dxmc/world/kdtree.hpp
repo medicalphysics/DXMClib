@@ -119,10 +119,6 @@ public:
         if (m_left) {
             m_left->translate(dist);
             m_right->translate(dist);
-        } else {
-            std::for_each(std::execution::par_unseq, m_items.begin(), m_items.end(), [&](auto& tri) {
-                tri->translate(dist);
-            });
         }
     }
 

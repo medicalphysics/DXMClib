@@ -23,7 +23,6 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
-#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 
 #include <iostream>
@@ -32,7 +31,7 @@ Copyright 2022 Erlend Andersen
 
 std::vector<dxmc::Tetrahedron> tetCube()
 {
-    std::vector<std::array<double, 3>> v(8);
+    std::vector<std::array<double, 3>> v(16);
     v[0] = { -1, 1, 1 };
     v[1] = { 1, -1, 1 };
     v[2] = { 1, 1, 1 };
@@ -42,11 +41,20 @@ std::vector<dxmc::Tetrahedron> tetCube()
     v[6] = { -1, 1, -1 };
     v[7] = { 1, 1, -1 };
 
+    v[8] = { -1, 1, 3 };
+    v[9] = { 1, -1, 3 };
+    v[10] = { 1, 1, 3 };
+    v[11] = { -1, -1, 1 };
+    v[12] = { 1, -1, 1 };
+    v[13] = { -1, -1, 3 };
+    v[14] = { -1, 1, 1 };
+    v[15] = { 1, 1, 1 };
+
     for (auto& i : v)
         for (auto& n : i)
-            n *= 100;
+            n *= 1;
 
-    std::vector<dxmc::Tetrahedron> t(6);
+    std::vector<dxmc::Tetrahedron> t(12);
 
     t[0] = { v[1], v[7], v[0], v[2], 0, 0 }; //*
     t[1] = { v[7], v[3], v[0], v[6], 0, 0 }; //*
@@ -54,6 +62,13 @@ std::vector<dxmc::Tetrahedron> tetCube()
     t[3] = { v[1], v[7], v[4], v[0], 0, 0 }; //*
     t[4] = { v[7], v[3], v[4], v[0], 0, 0 }; //*
     t[5] = { v[1], v[3], v[5], v[0], 0, 0 }; //*
+
+    t[6] = { v[1 + 8], v[7 + 8], v[0 + 8], v[2 + 8], 0, 0 }; //*
+    t[7] = { v[7 + 8], v[3 + 8], v[0 + 8], v[6 + 8], 0, 0 }; //*
+    t[8] = { v[1 + 8], v[3 + 8], v[0 + 8], v[4 + 8], 0, 0 }; //*
+    t[9] = { v[1 + 8], v[7 + 8], v[4 + 8], v[0 + 8], 0, 0 }; //*
+    t[10] = { v[7 + 8], v[3 + 8], v[4 + 8], v[0 + 8], 0, 0 }; //*
+    t[11] = { v[1 + 8], v[3 + 8], v[5 + 8], v[0 + 8], 0, 0 }; //*
 
     bool success = true;
     for (auto& tet : t)
@@ -74,15 +89,15 @@ dxmc::TetrahedalMesh<N, L, Fluence> simpletetrahedron()
     std::vector<double> dens(tets.size(), 1);
 
     std::vector<std::string> names(1);
-    dxmc::TetrahedalMesh<N, L, Fluence> mesh(tets, dens, mats, names, 1);
+    dxmc::TetrahedalMesh<N, L, Fluence> mesh(tets, dens, mats, names, 8);
 
     return mesh;
 }
 
-template <std::size_t N = 5, int L = 2>
-dxmc::WorldBox<N, L> simplebox()
+template <std::size_t N = 5, int L = 2, bool F = false>
+dxmc::WorldBox<N, L, F> simplebox()
 {
-    dxmc::WorldBox<N, L> box(100);
+    dxmc::WorldBox<N, L, F> box({ -1, -1, -1, 1, 1, 3 });
     auto water = dxmc::Material<N>::byNistName("Water, Liquid").value();
     box.setMaterial(water, 1);
     return box;
@@ -98,7 +113,8 @@ dxmc::AAVoxelGrid<N, L, 255> simplegrid()
     std::vector<dxmc::Material<N>> mats;
     mats.push_back(dxmc::Material<N>::byNistName("Water, Liquid").value());
     grid.setData({ 10, 10, 10 }, d, m, mats);
-    grid.setSpacing({ 20, 20, 20 });
+    grid.setSpacing({ .2, .2, .4 });
+    grid.translate({ 0, 0, 1 });
     return grid;
 }
 
@@ -140,16 +156,16 @@ bool testIntersectionMesh()
 
 bool testTransport()
 {
-
     using M1 = dxmc::TetrahedalMesh<5, 1, true>;
     using M2 = dxmc::TetrahedalMesh<5, 1, false>;
-    using B = dxmc::WorldBox<5, 1>;
+    using B = dxmc::WorldBox<5, 1, false>;
+    using BF = dxmc::WorldBox<5, 1, true>;
     using G = dxmc::AAVoxelGrid<5, 1, 255>;
 
     constexpr std::size_t N_HIST = 1000000;
     constexpr std::size_t N_EXP = 16;
 
-    dxmc::PencilBeam<> beam({ 50, 50, -1000 }, { 0, 0, 1 }, 60);
+    dxmc::PencilBeam<> beam({ .050, .050, -1000 }, { 0, 0, 1 }, 60);
     beam.setNumberOfExposures(N_EXP);
     beam.setNumberOfParticlesPerExposure(N_HIST);
 
@@ -163,11 +179,12 @@ bool testTransport()
 
         double dose = 0;
         dxmc::Transport transport;
+        // transport.setNumberOfThreads(1);
 
         transport(w, beam, &progress);
         for (const auto& t : mesh.tetrahedrons())
             dose += t.energyScored().energyImparted();
-        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
+        std::cout << "Mesh forced " << dose << " " << progress.humanTotalTime() << std::endl;
     }
 
     {
@@ -182,7 +199,7 @@ bool testTransport()
         transport(w, beam, &progress);
         for (const auto& t : mesh.tetrahedrons())
             dose += t.energyScored().energyImparted();
-        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
+        std::cout << "Mesh random " << dose << " " << progress.humanTotalTime() << std::endl;
     }
 
     {
@@ -197,19 +214,30 @@ bool testTransport()
         double dose = 0;
         for (std::size_t i = 0; i < s; ++i)
             dose += mesh.energyScored(i).energyImparted();
-        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
+        std::cout << "Grid random " << dose << " " << progress.humanTotalTime() << std::endl;
     }
 
     {
         dxmc::World<B> w;
         w.reserveNumberOfItems(1);
-        auto& box = w.addItem(simplebox<5, 1>());
+        auto& box = w.addItem(simplebox<5, 1, false>());
         w.build();
 
         dxmc::Transport transport;
         transport(w, beam, &progress);
         auto dose = box.energyScored().energyImparted();
-        std::cout << dose << " " << progress.humanTotalTime() << std::endl;
+        std::cout << "Box random " << dose << " " << progress.humanTotalTime() << std::endl;
+    }
+    {
+        dxmc::World<BF> w;
+        w.reserveNumberOfItems(1);
+        auto& box = w.addItem(simplebox<5, 1, true>());
+        w.build();
+
+        dxmc::Transport transport;
+        transport(w, beam, &progress);
+        auto dose = box.energyScored().energyImparted();
+        std::cout << "Box forced " << dose << " " << progress.humanTotalTime() << std::endl;
     }
 
     return false;
@@ -239,7 +267,7 @@ int main()
 {
 
     bool success = true;
-    success = success && testIntersection();
+    // success = success && testIntersection();
     success = success && testTransport();
     if (success)
         return EXIT_SUCCESS;

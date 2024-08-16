@@ -279,7 +279,7 @@ protected:
             p.translate(steplen);
 
             // finding current tet
-            const auto currentTet = m_grid.pointInside(p.pos);
+            auto* currentTet = m_grid.pointInside(p.pos);
 
             if (currentTet) { // is interaction virtual?
                 const auto materialIdx = currentTet->materialIndex();
@@ -308,32 +308,14 @@ protected:
     void transportSiddonForced(ParticleType auto& p, RandomState& state)
     {
         Tetrahedron* tet = m_grid.pointInside(p.pos);
-        std::uint16_t currentCollection;
-        bool updateAtt = true;
-        AttenuationValues att;
 
         while (tet) {
-            if (updateAtt) {
-                currentCollection = tet->collection();
-                att = m_materials[tet->materialIndex()].attenuationValues(p.energy);
-                updateAtt = false;
-            }
-            const auto intLen = tet->intersect(p).intersection;
-
             const auto& material = m_materials[tet->materialIndex()];
-            const auto& density = m_collections[currentCollection].density;
-            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, density, att, p, material, state);
+            const auto& density = m_collections[tet->collection()].density;
+            const auto intLen = tet->intersect(p).intersection; // this must be valid
+            const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, density, p, material, state);
             tet->scoreEnergy(intRes.energyImparted);
-            if (intRes.particleAlive) {
-                updateAtt = intRes.particleEnergyChanged;
-                tet = m_grid.pointInside(p.pos);
-                if (tet) {
-                    // We might have changed density or material
-                    updateAtt = currentCollection != tet->collection();
-                }
-            } else {
-                tet = nullptr;
-            }
+            tet = intRes.particleAlive ? m_grid.pointInside(p.pos) : nullptr;
         }
     }
 
