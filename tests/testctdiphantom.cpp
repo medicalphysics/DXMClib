@@ -43,7 +43,7 @@ bool testTracker()
     beam.setNumberOfParticlesPerExposure(1e4);
 
     dxmc::Transport transport;    
-    transport(w, beam);
+    transport.runConsole(w, beam);
 
     dxmc::VisualizeWorld viz(w);
 
