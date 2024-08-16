@@ -106,6 +106,14 @@ public:
         assignGrid();
     }
 
+    std::size_t maxThetrahedronsVoxelCount() const
+    {
+        std::size_t c = 0;
+        for (const auto& v : m_grid)
+            c = std::max(c, v.size());
+        return c;
+    }
+
     const std::array<double, 6>& AABB() const
     {
         return m_aabb;
