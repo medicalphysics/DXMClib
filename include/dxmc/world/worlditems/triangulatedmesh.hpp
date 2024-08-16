@@ -43,7 +43,7 @@ public:
     {
     }
 
-    TriangulatedMesh(const std::vector<Triangle>& triangles, const std::size_t max_tree_dept = 8)
+    TriangulatedMesh(const std::vector<Triangle>& triangles, const std::size_t max_tree_dept = 4)
         : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
         , m_triangles(triangles)
@@ -52,7 +52,7 @@ public:
         calculateAABB();
     }
 
-    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 8)
+    TriangulatedMesh(const std::string& path, const std::size_t max_tree_dept = 4)
         : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
@@ -62,7 +62,7 @@ public:
         calculateAABB();
     }
 
-    TriangulatedMesh(const std::string& path, double scale, const std::size_t max_tree_dept = 8)
+    TriangulatedMesh(const std::string& path, double scale, const std::size_t max_tree_dept = 4)
         : m_materialDensity(NISTMaterials::density("Air, Dry (near sea level)"))
         , m_material(Material<NMaterialShells>::byNistName("Air, Dry (near sea level)").value())
     {
