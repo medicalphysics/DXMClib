@@ -115,14 +115,14 @@ namespace basicshape {
             if (h2 < 0.0) // no intersection on wall or cap
                 return std::nullopt;
 
-            const auto card_inv = 1 / card;
             if (a < GEOMETRIC_ERROR<double>()) { // parallell ray, no wall intersect
                 // we do an easy cap test
-                const auto tc_1 = (-caoc + cylinder.half_height) * card_inv;
-                const auto tc_2 = (-caoc - cylinder.half_height) * card_inv;
-                t[0] = std::min(tc_1, tc_2);
-                t[1] = std::max(tc_1, tc_2);
-                return t[1] > 0.0 ? std::make_optional(t) : std::nullopt;
+                const auto card_inv = 1 / card;
+                const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
+                const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
+                t[0] = card < 0 ? tc_1 : tc_2;
+                t[1] = card < 0 ? tc_2 : tc_1;
+                return t;
             }
 
             const auto h = std::sqrt(h2);
@@ -130,42 +130,42 @@ namespace basicshape {
             t[0] = (-b - h) * a_inv;
             t[1] = (-b + h) * a_inv;
 
+            if (t[0] > t[1])
+                std::swap(t[0], t[1]);
+
             const auto y0 = caoc + card * t[0];
             const auto y1 = caoc + card * t[1];
+
             if (-cylinder.half_height <= y0 && y0 <= cylinder.half_height) {
-                if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height)
-                    // Both hits are walls
-                    return std::make_optional(t);
-                else {
-                    // y1 failed
-                    if (y1 > 0.0) // upper plane
-                        t[1] = (-caoc + cylinder.half_height) * card_inv;
-                    else // lower plane
-                        t[1] = (-caoc - cylinder.half_height) * card_inv;
-                    return std::make_optional(t);
+                // t0 ok
+                if (-cylinder.half_height >= y1 && y1 >= cylinder.half_height) {
+                    // t1 not ok, fix t1
+                    const auto card_inv = 1 / card;
+                    const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
+                    const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
+                    t[1] = card < 0 ? tc_2 : tc_1;
                 }
+            } else if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height) {
+                // t1 ok and t0 not ok
+                const auto card_inv = 1 / card;
+                const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
+                const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
+                t[0] = card < 0 ? tc_1 : tc_2;
+
             } else {
-                if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height) {
-                    // y0 failed
-                    if (y0 > 0.0) // upper plane
-                        t[0] = (-caoc + cylinder.half_height) * card_inv;
-                    else // lower plane
-                        t[0] = (-caoc - cylinder.half_height) * card_inv;
-                    return std::make_optional(t);
+                if ((-cylinder.half_height > y0 && y1 > cylinder.half_height) || (-cylinder.half_height > y1 && y0 > cylinder.half_height)) {
+                    // we intersect cylinder only on caps
+                    const auto card_inv = 1 / card;
+                    const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
+                    const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
+                    t[0] = card < 0 ? tc_1 : tc_2;
+                    t[1] = card < 0 ? tc_2 : tc_1;
                 } else {
-                    // both failed, we most likely miss
-                    const auto tc1 = (-caoc - cylinder.half_height) * card_inv;
-                    if (tc1 < t[0] || tc1 > t[1])
-                        return std::nullopt;
-                    const auto tc2 = (-caoc + cylinder.half_height) * card_inv;
-                    if (tc2 < t[0] || tc2 > t[1])
-                        return std::nullopt;
-                    t[0] = std::min(tc1, tc2);
-                    t[1] = std::max(tc1, tc2);
-                    return std::make_optional(t);
+                    return std::nullopt;
                 }
             }
-            return std::nullopt;
+
+            return t;
         }
 
         static std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)

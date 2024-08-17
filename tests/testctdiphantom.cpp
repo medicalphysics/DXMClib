@@ -34,35 +34,21 @@ bool testTracker()
 
     World w;
     w.reserveNumberOfItems(2);
-    auto& ctdi = w.addItem<CTDI>({ 8 });
-    auto& sphere = w.addItem<Sphere>({ 2, { 0, 0, 15 } });
+    auto& ctdi = w.addItem<CTDI>({ 16, 15 });
+    auto& sphere = w.addItem<Sphere>({ 3, { 0, 0, 15 } });
     w.build();
 
     dxmc::PencilBeam<true> beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
     beam.setNumberOfExposures(16);
     beam.setNumberOfParticlesPerExposure(1e4);
 
-    dxmc::Transport transport;    
+    dxmc::Transport transport;
     transport.runConsole(w, beam);
 
     dxmc::VisualizeWorld viz(w);
 
     const auto& tracker = sphere.particleTracker();
     viz.addParticleTracks(tracker, 0.02);
-    /*for (std::size_t i = 0; i < tracker.numberOfParticles(); ++i) {
-        const auto track = tracker.track(i);
-        constexpr double radii = 0.02;
-
-        if (track.size() > 0) {
-            int teller = 0;
-            while (teller < track.size() - 1) {
-                const auto first = track[teller];
-                const auto second = track[teller + 1];
-                viz.addLineSegment(first, second, radii);
-                ++teller;
-            }
-        }
-    }*/
 
     auto buffer = viz.createBuffer(2048, 2048);
     viz.setAzimuthalAngleDeg(60);
