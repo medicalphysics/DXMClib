@@ -36,7 +36,7 @@ bool testTracker()
     w.reserveNumberOfItems(2);
     auto& ctdi = w.addItem<CTDI>({ 16, 15 });
     auto& sphere = w.addItem<Sphere>({ 3, { 0, 0, 15 } });
-    w.build();
+    w.build(100);
 
     dxmc::PencilBeam<true> beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
     beam.setNumberOfExposures(16);
@@ -54,7 +54,7 @@ bool testTracker()
     viz.setAzimuthalAngleDeg(60);
     viz.setPolarAngleDeg(0);
     viz.setDistance(100);
-    viz.suggestFOV(1.0);
+    viz.suggestFOV(5.0);
     viz.generate(w, buffer);
     viz.savePNG("test.png", buffer);
 
