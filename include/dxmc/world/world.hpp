@@ -43,7 +43,8 @@ concept WorldItemType = (std::derived_from<U, WorldItemBase>);
 template <typename U, typename... Us>
 concept AnyWorldItemType = (... or std::same_as<U, Us>);
 
-template <WorldItemType... Us>
+// Template for at least one type of items
+template <WorldItemType F, WorldItemType... Us>
 class World {
     using MaterialType = Material<5>;
 
@@ -81,7 +82,7 @@ public:
         m_items.reserve(size);
     }
 
-    template <AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<F, Us...> U>
     auto& addItem(U& item)
     {
         m_items.push_back(item);
@@ -89,7 +90,7 @@ public:
         m_item_names.push_back(name);
         return std::get<U>(m_items.back());
     }
-    template <AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<F, Us...> U>
     auto& addItem(U& item, std::string_view name)
     {
         m_items.push_back(item);
@@ -97,7 +98,7 @@ public:
         return std::get<U>(m_items.back());
     }
 
-    template <AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<F, Us...> U>
     auto& addItem(U&& item)
     {
         m_items.push_back(std::move(item));
@@ -105,7 +106,7 @@ public:
         m_item_names.push_back(name);
         return std::get<U>(m_items.back());
     }
-    template <AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<F, Us...> U>
     auto& addItem(U&& item, std::string_view name)
     {
         m_items.push_back(std::move(item));
@@ -113,7 +114,7 @@ public:
         return std::get<U>(m_items.back());
     }
 
-    template <AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<F, Us...> U>
     auto& addItem()
     {
         U item;
@@ -122,7 +123,7 @@ public:
         m_item_names.push_back(name);
         return std::get<U>(m_items.back());
     }
-    template <AnyWorldItemType<Us...> U>
+    template <AnyWorldItemType<F, Us...> U>
     auto& addItem(std::string_view name)
     {
         U item;
@@ -151,18 +152,18 @@ public:
         return m_item_names;
     }
 
-    std::vector<std::variant<Us...>*> getItemPointers()
+    std::vector<std::variant<F, Us...>*> getItemPointers()
     {
-        std::vector<std::variant<Us...>*> ptrs(m_items.size());
+        std::vector<std::variant<F, Us...>*> ptrs(m_items.size());
         std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
             return &v;
         });
         return ptrs;
     }
 
-    std::vector<const std::variant<Us...>*> getItemPointers() const
+    std::vector<const std::variant<F, Us...>*> getItemPointers() const
     {
-        std::vector<const std::variant<Us...>*> ptrs(m_items.size());
+        std::vector<const std::variant<F, Us...>*> ptrs(m_items.size());
         std::transform(m_items.begin(), m_items.end(), ptrs.begin(), [](auto& v) {
             return &v;
         });
@@ -179,7 +180,7 @@ public:
         return nullptr;
     }
 
-    const std::variant<Us...>* getItemPointerFromName(std::string_view name) const
+    const std::variant<F, Us...>* getItemPointerFromName(std::string_view name) const
     {
         for (std::size_t i = 0; i < m_item_names.size(); ++i) {
             if (m_item_names[i].compare(name) == 0) {
@@ -325,11 +326,245 @@ public:
 
 private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
-    std::vector<std::variant<Us...>> m_items;
-    KDTree<Us...> m_kdtree;
+    std::vector<std::variant<F, Us...>> m_items;
+    KDTree<F, Us...> m_kdtree;
     MaterialType m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;
     std::vector<std::string> m_item_names;
+};
+
+// Template for one item
+template <WorldItemType U>
+class SimpleWorld {
+    using MaterialType = Material<5>;
+
+public:
+    SimpleWorld()
+        : m_fillMaterial(MaterialType::byNistName("Air, Dry (near sea level)").value())
+    {
+    }
+
+    void setMaterial(const MaterialType& mat)
+    {
+        m_fillMaterial = mat;
+    }
+    void setMaterial(const MaterialType& mat, double dens)
+    {
+        m_fillMaterial = mat;
+        m_fillMaterialDensity = std::abs(dens);
+    }
+    void setMaterialDensity(double dens)
+    {
+        m_fillMaterialDensity = std::abs(dens);
+    }
+
+    const MaterialType& fillMaterial() const { return m_fillMaterial; }
+    double fillMaterialDensity() const { return m_fillMaterialDensity; }
+
+    auto& addItem(U& item)
+    {
+        m_item = item;
+        m_item_name = "Item 1";
+        return m_item;
+    }
+
+    auto& addItem(U& item, std::string_view name)
+    {
+        m_item = item;
+        m_item_name = std::string(name);
+        return m_item;
+    }
+
+    auto& addItem(U&& item)
+    {
+        m_item = std::move(item);
+        std::string name = "Item 1";
+        m_item_name = name;
+        return m_item;
+    }
+
+    auto& addItem(U&& item, std::string_view name)
+    {
+        m_item = std::move(item);
+        m_item_name = std::string(name);
+        return m_item;
+    }
+
+    const auto& item() const
+    {
+        return m_item;
+    }
+
+    auto& item()
+    {
+        return m_item;
+    }
+
+    const auto& itemName() const
+    {
+        return m_item_name;
+    }
+
+    auto& itemName()
+    {
+        return m_item_name;
+    }
+
+    std::vector<const U*> getItemPointers() const
+    {
+        std::vector<const U*> ptrs(1);
+        ptrs[0] = &m_item;
+        return ptrs;
+    }
+
+    U* getItemPointerFromName(std::string_view name)
+    {
+        if (m_item_name.compare(name) == 0) {
+            return &m_item;
+        }
+        return nullptr;
+    }
+
+    const U* getItemPointerFromName(std::string_view name) const
+    {
+        if (m_item_name.compare(name) == 0) {
+            return &m_item;
+        }
+        return nullptr;
+    }
+
+    void clearEnergyScored()
+    {
+        m_energyScored.clear();
+        m_item.clearEnergyScored();
+    }
+
+    void clearDoseScored()
+    {
+        m_item.clearDoseScored();
+    }
+
+    void addEnergyScoredToDoseScore(double calibration_factor = 1)
+    {
+        m_item.addEnergyScoredToDoseScore(calibration_factor);
+    }
+
+    void build(double AABB_padding = 10)
+    {
+        m_aabb = m_item.AABB();
+
+        // adding padding
+        const auto padding = std::max(AABB_padding, 0.1); // always at least 1 mm padding
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] = m_aabb[i] - padding;
+            m_aabb[i + 3] = m_aabb[i + 3] + padding;
+        }
+    }
+
+    const std::array<double, 6>& AABB() const
+    {
+        return m_aabb;
+    }
+
+    std::array<double, 3> center() const
+    {
+        const auto [l, r] = vectormath::splice(m_aabb);
+        return vectormath::scale(0.5, vectormath::add(l, r));
+    }
+
+    void translate(const std::array<double, 3> dist)
+    {
+
+        m_item.translate(dist);
+
+        for (std::size_t i = 0; i < 3; ++i) {
+            m_aabb[i] += dist[i];
+            m_aabb[i + 3] += dist[i];
+        }
+    }
+
+    inline auto intersect(const ParticleType auto& p)
+    {
+        return m_item.intersect(p, m_aabb);
+    }
+
+    inline auto intersectVisualization(const ParticleType auto& p) const
+    {
+        return m_item.intersectVisualization(p, m_aabb);
+    }
+
+    inline bool transportParticleToWorld(ParticleType auto& p) const
+    {
+        if (!basicshape::AABB::pointInside(p.pos, m_aabb)) {
+            const auto t = basicshape::AABB::intersect(p, m_aabb);
+            if (t.valid()) {
+                p.border_translate(t.intersection);
+                return true;
+            } else {
+                return false;
+            }
+        }
+        return true;
+    }
+
+    void transport(ParticleType auto& p, RandomState& state)
+    {
+        bool continueSampling = transportParticleToWorld(p);
+        bool updateAttenuation = true;
+
+        double attenuationTotalInv;
+        AttenuationValues att;
+        while (continueSampling) {
+            if (updateAttenuation) {
+                att = m_fillMaterial.attenuationValues(p.energy);
+                attenuationTotalInv = 1 / (att.sum() * m_fillMaterialDensity);
+                updateAttenuation = false;
+            }
+
+            const auto r1 = state.randomUniform();
+            const auto stepLength = -std::log(r1) * attenuationTotalInv; // cm
+
+            // where do we hit an object
+            const auto intersection = m_item.intersect(p, m_aabb);
+
+            if (intersection.valid()) { // Do we intersect anything?
+                if (intersection.intersection < stepLength) {
+                    // Object is closer than free path.
+                    if (!intersection.rayOriginIsInsideItem) { // if we are not already inside the object (we seldom are)
+                        p.border_translate(intersection.intersection);
+                    }
+
+                    // intersection.item->transport(p, state);
+                    m_item.transport(p, state);
+                    continueSampling = p.energy > 0;
+                } else { // Free path is closer than object, we interact in the world empty space
+                    p.translate(stepLength);
+                    const auto interactionResult = interactions::template interact<5, 1>(att, p, m_fillMaterial, state);
+                    updateAttenuation = interactionResult.particleEnergyChanged;
+                    continueSampling = interactionResult.particleAlive;
+                    m_energyScored.scoreEnergy(interactionResult.energyImparted);
+                }
+            } else { // We do not intersect any object
+                p.translate(stepLength);
+                if (basicshape::AABB::pointInside(p.pos, m_aabb)) { // Are we still inside world?
+                    const auto interactionResult = interactions::template interact<5, 1>(att, p, m_fillMaterial, state);
+                    updateAttenuation = interactionResult.particleEnergyChanged;
+                    continueSampling = interactionResult.particleAlive;
+                    m_energyScored.scoreEnergy(interactionResult.energyImparted);
+                } else {
+                    continueSampling = false;
+                }
+            }
+        }
+    }
+
+private:
+    std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
+    U m_item;
+    MaterialType m_fillMaterial;
+    double m_fillMaterialDensity = 0.001225;
+    EnergyScore m_energyScored;
+    std::string m_item_name;
 };
 }
