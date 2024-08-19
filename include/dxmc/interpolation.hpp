@@ -880,7 +880,7 @@ public:
         }
         return y;
     }
-    std::vector<T> solve(const std::vector<T>& bvalues) const
+    std::optional<std::vector<T>> solve(const std::vector<T>& bvalues) const
     {
         // gaussian ellim
 
@@ -890,9 +890,7 @@ public:
         for (std::size_t k = 0; k < m_r; ++k) {
             auto imax = A.find_row_argmax(k);
             if (std::abs(A(imax, k)) <= std::numeric_limits<T>::epsilon()) {
-                // we have a singular matrix return nans
-                std::fill(b.begin(), b.end(), std::numeric_limits<T>::quiet_NaN());
-                return b;
+                return std::nullopt;
             }
             A.swapRows(k, imax);
             std::swap(b[k], b[imax]);
@@ -1303,10 +1301,10 @@ protected:
         std::copy(D.begin(), D.end(), bval.begin());
         std::copy(G.begin(), G.end(), bval.begin() + N + 1);
 
-        auto res = sol.solve(bval);
-        if (std::isnan(res.front()))
+        auto res_opt = sol.solve(bval);
+        if (!res_opt)
             return std::nullopt;
-
+        auto& res = res_opt.value();
         std::vector<T> m_p(N + 1);
         std::vector<T> m_pz(N + 1);
 
