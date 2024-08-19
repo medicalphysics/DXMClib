@@ -170,7 +170,7 @@ public:
         return ptrs;
     }
 
-    std::variant<Us...>* getItemPointerFromName(std::string_view name)
+    std::variant<F, Us...>* getItemPointerFromName(std::string_view name)
     {
         for (std::size_t i = 0; i < m_item_names.size(); ++i) {
             if (m_item_names[i].compare(name) == 0) {
