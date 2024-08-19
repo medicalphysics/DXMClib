@@ -72,11 +72,6 @@ namespace basicshape {
             return aabb;
         }
 
-        static constexpr bool isOverPlane(const std::array<double, 3>& planepoint, const std::array<double, 3>& planenormal, const std::array<double, 3>& point) noexcept
-        {
-            return vectormath::dot(vectormath::subtract(point, planepoint), planenormal) >= 0;
-        }
-
         static constexpr bool pointInside(const std::array<double, 3>& pos, const Cylinder& cylinder)
         {
             const auto d = vectormath::cross(cylinder.direction, vectormath::subtract(pos, cylinder.center));
@@ -141,17 +136,20 @@ namespace basicshape {
                 if (-cylinder.half_height >= y1 && y1 >= cylinder.half_height) {
                     // t1 not ok, fix t1
                     const auto card_inv = 1 / card;
-                    const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
-                    const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
-                    t[1] = card < 0 ? tc_2 : tc_1;
+                    if (card < 0) {
+                        t[1] = -(caoc + cylinder.half_height) * card_inv;
+                    } else {
+                        t[1] = -(caoc - cylinder.half_height) * card_inv;
+                    }
                 }
             } else if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height) {
                 // t1 ok and t0 not ok
                 const auto card_inv = 1 / card;
-                const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
-                const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
-                t[0] = card < 0 ? tc_1 : tc_2;
-
+                if (card < 0) {
+                    t[0] = -(caoc - cylinder.half_height) * card_inv;
+                } else {
+                    t[0] = -(caoc + cylinder.half_height) * card_inv;
+                }
             } else {
                 if ((-cylinder.half_height > y0 && y1 > cylinder.half_height) || (-cylinder.half_height > y1 && y0 > cylinder.half_height)) {
                     // we intersect cylinder only on caps
