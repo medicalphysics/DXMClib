@@ -2,6 +2,7 @@ include(CTest)
 ENABLE_TESTING()
 
 set(TEST_SOURCES 
+    "testmaterials.cpp"
     "testworld.cpp"
     "testbeams.cpp"
     "testctdiphantom.cpp"

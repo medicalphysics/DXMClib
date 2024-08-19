@@ -411,7 +411,8 @@ protected:
         if (loglog) {
             // removing zero and negative items
             auto last = std::remove_if(arr.begin(), arr.end(), [](const auto& pair) -> bool {
-                return pair.first <= 0 || pair.second <= 0;
+                constexpr auto e = std::numeric_limits<double>::epsilon() * 5;
+                return pair.first <= e || pair.second <= e;
             });
             arr.erase(last, arr.end());
 
@@ -440,11 +441,13 @@ protected:
         if (std::distance(erase_from, arr.end()) != 0)
             arr.erase(erase_from, arr.end());
 
+        /* This should not happen, std:isfinite is disabled anyway for fast-math
         // we may encounter nan numbers, remove them:
         auto last = std::remove_if(arr.begin(), arr.end(), [](const auto& pair) -> bool {
             return !(std::isfinite(pair.first) && std::isfinite(pair.second));
         });
         arr.erase(last, arr.end());
+        */
 
         auto interpolator = CubicLSInterpolator(arr, nknots, true);
         return interpolator;
