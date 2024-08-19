@@ -157,30 +157,7 @@ public:
 
     void rotate(const double angle, const std::array<double, 3>& axis)
     {
-        const auto depth = m_kdtree.depth();
-        const std::array offset = {
-            0.5 * (m_aabb[3] - m_aabb[0]),
-            0.5 * (m_aabb[4] - m_aabb[1]),
-            0.5 * (m_aabb[5] - m_aabb[2])
-        };
-        const std::array offset_neg = { -offset[0], -offset[1], -offset[2] };
-
-        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
-            tri.translate(offset_neg);
-            tri.rotate(angle, axis);
-            tri.translate(offset);
-        });
-        m_kdtree.setData(m_triangles, depth);
-        calculateAABB();
-    }
-
-    void rotate(const double angle, const std::array<double, 3>& axis)
-    {
-        const std::array offset = {
-            0.5 * (m_aabb[3] - m_aabb[0]),
-            0.5 * (m_aabb[4] - m_aabb[1]),
-            0.5 * (m_aabb[5] - m_aabb[2])
-        };
+        const std::array offset = center();
         rotate(angle, axis, offset);
     }
 
