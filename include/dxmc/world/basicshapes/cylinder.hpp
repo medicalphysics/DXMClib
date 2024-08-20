@@ -94,76 +94,52 @@ namespace basicshape {
 
         static std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
-            // infinite cylinder wall
             std::array<double, 2> t = { 0, 0 };
-            const auto oc = vectormath::subtract(p.pos, cylinder.center);
-            const auto ococ = vectormath::length_sqr(oc);
-            const auto card = vectormath::dot(cylinder.direction, p.dir);
-            const auto a = 1 - card * card;
+            const auto ba = vectormath::scale(cylinder.direction, -cylinder.half_height * 2); // vec3 ba = b - a;
+            const auto a = vectormath::subtract(cylinder.center, vectormath::scale(cylinder.direction, -cylinder.half_height));
+            const auto oc = vectormath::subtract(p.pos, a); // vec3 oc = ro - a;
+            const auto baba = vectormath::dot(ba, ba);
+            const auto bard = vectormath::dot(ba, p.dir);
+            const auto baoc = vectormath::dot(ba, oc);
+            const auto k2 = baba - bard * bard;
+            const auto k1 = baba * vectormath::dot(oc, p.dir) - baoc * bard;
+            const auto k0 = baba * vectormath::dot(oc, oc) - baoc * baoc - cylinder.radius * cylinder.radius * baba;
+            const auto h2 = k1 * k1 - k2 * k0;
+            if (h2 < 0.0)
+                return std::nullopt; // no intersection
+            const auto h = sqrt(h2);
+            t[0] = (-k1 - h) / k2;
+            t[1] = (-k1 + h) / k2;
+            //if (t[0] > t[1])
+            //    std::swap(t[0], t[1]);
+            // body
+            const std::array<double, 2> y = { baoc + t[0] * bard, baoc + t[1] * bard };
 
-            const auto caoc = vectormath::dot(cylinder.direction, oc);
-
-            const auto b = vectormath::dot(oc, p.dir) - caoc * card;
-            const auto c = ococ - caoc * caoc - cylinder.radius * cylinder.radius;
-            const auto h2 = b * b - a * c;
-
-            if (h2 < 0.0) // no intersection on wall or cap
-                return std::nullopt;
-
-            if (a < GEOMETRIC_ERROR<double>()) { // parallell ray, no wall intersect
-                // we do an easy cap test
-                const auto card_inv = 1 / card;
-                const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
-                const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
-                t[0] = card < 0 ? tc_1 : tc_2;
-                t[1] = card < 0 ? tc_2 : tc_1;
+            if (y[0] > 0.0 && y[0] < baba && y[1] > 0.0 && y[1] < baba) {
                 return t;
-            }
-
-            const auto h = std::sqrt(h2);
-            const auto a_inv = 1 / a;
-            t[0] = (-b - h) * a_inv;
-            t[1] = (-b + h) * a_inv;
-
-            if (t[0] > t[1])
-                std::swap(t[0], t[1]);
-
-            const auto y0 = caoc + card * t[0];
-            const auto y1 = caoc + card * t[1];
-
-            if (-cylinder.half_height <= y0 && y0 <= cylinder.half_height) {
-                // t0 ok
-                if (-cylinder.half_height >= y1 && y1 >= cylinder.half_height) {
-                    // t1 not ok, fix t1
-                    const auto card_inv = 1 / card;
-                    if (card < 0) {
-                        t[1] = -(caoc + cylinder.half_height) * card_inv;
-                    } else {
-                        t[1] = -(caoc - cylinder.half_height) * card_inv;
-                    }
-                }
-            } else if (-cylinder.half_height <= y1 && y1 <= cylinder.half_height) {
-                // t1 ok and t0 not ok
-                const auto card_inv = 1 / card;
-                if (card < 0) {
-                    t[0] = -(caoc - cylinder.half_height) * card_inv;
-                } else {
-                    t[0] = -(caoc + cylinder.half_height) * card_inv;
-                }
-            } else {
-                if ((-cylinder.half_height > y0 && y1 > cylinder.half_height) || (-cylinder.half_height > y1 && y0 > cylinder.half_height)) {
-                    // we intersect cylinder only on caps
-                    const auto card_inv = 1 / card;
-                    const auto tc_1 = -(caoc - cylinder.half_height) * card_inv;
-                    const auto tc_2 = -(caoc + cylinder.half_height) * card_inv;
-                    t[0] = card < 0 ? tc_1 : tc_2;
-                    t[1] = card < 0 ? tc_2 : tc_1;
-                } else {
+                // caps
+            } else if (y[0] > 0.0 && y[0] < baba) {
+                // test cap 1
+                t[1] = (((y[1] < 0.0) ? 0.0 : baba) - baoc) / bard;
+                if (abs(k1 + k2 * t[1]) < h)
+                    return t;
+                else
                     return std::nullopt;
-                }
+            } else if (y[1] > 0.0 && y[1] < baba) {
+                // test cap 0
+                t[0] = (((y[0] < 0.0) ? 0.0 : baba) - baoc) / bard;
+                if (abs(k1 + k2 * t[0]) < h)
+                    return t;
+                else
+                    return std::nullopt;
+            } else {
+                // both caps
+                t[0] = (((y[0] < 0.0) ? 0.0 : baba) - baoc) / bard;
+                t[1] = (((y[1] < 0.0) ? 0.0 : baba) - baoc) / bard;
+                if (abs(k1 + k2 * t[0]) < h && abs(k1 + k2 * t[1]) < h)
+                    return t;
             }
-
-            return t;
+            return std::nullopt;
         }
 
         static std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
