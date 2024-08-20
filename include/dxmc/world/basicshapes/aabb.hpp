@@ -45,6 +45,40 @@ namespace basicshape {
         }
 
         template <bool FORWARD = true>
+        std::optional<std::array<double, 2>> intersectForwardInterval2(const ParticleType auto& p, const std::array<double, 6>& aabb)
+        {
+            // new suggestion
+            const std::array aabb_center = { (aabb[3] + aabb[0]) * .5, (aabb[4] + aabb[1]) * .5, (aabb[5] + aabb[2]) * .5 };
+            const std::array aabb_size = { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
+
+            const std::array m = {
+                1 / p.dir[0],
+                1 / p.dir[1],
+                1 / p.dir[2]
+            };
+
+            const std::array k = {
+                std::abs(m[0]) * aabb_size[0],
+                std::abs(m[1]) * aabb_size[1],
+                std::abs(m[2]) * aabb_size[2]
+            };
+            const auto ro = vectormath::subtract(p.pos, aabb_center);
+            const auto n = vectormath::scale(m, ro);
+
+            const auto t1 = vectormath::subtract(vectormath::scale(n, -1.0), k);
+            const auto t2 = vectormath::subtract(k, n);
+
+            std::array<double, 2> t = {
+                std::max(std::max(t1[0], t1[1]), t1[2]),
+                std::min(std::min(t2[0], t2[1]), t2[2])
+            };
+            if constexpr (FORWARD) {
+                t[0] = std::max(t[0], 0.0);
+            }
+            return t[0] > t[1] ? std::nullopt : t;
+        }
+
+        template <bool FORWARD = true>
         std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             const std::array<double, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
