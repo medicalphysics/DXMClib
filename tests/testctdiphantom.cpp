@@ -35,14 +35,15 @@ bool testTracker()
     World w;
     w.reserveNumberOfItems(2);
     auto& ctdi = w.addItem<CTDI>({ 16, 15 });
-    auto& sphere = w.addItem<Sphere>({ 3, { 0, 0, 15 } });
+    auto& sphere = w.addItem<Sphere>({ 3, { 0, 0, 15+3.01 } });
     w.build(100);
 
-    dxmc::PencilBeam<true> beam({ -25, -25, 0 }, { 1, 1, 0 }, 60);
+    dxmc::PencilBeam<true> beam({ -25, -25, -15 }, { 1, 1, 0.5 }, 60);
     beam.setNumberOfExposures(16);
     beam.setNumberOfParticlesPerExposure(1e4);
 
     dxmc::Transport transport;
+    //transport.setNumberOfThreads(1);
     transport.runConsole(w, beam);
 
     dxmc::VisualizeWorld viz(w);
@@ -54,7 +55,7 @@ bool testTracker()
     viz.setAzimuthalAngleDeg(60);
     viz.setPolarAngleDeg(0);
     viz.setDistance(100);
-    viz.suggestFOV(5.0);
+    viz.suggestFOV(2.0);
     viz.generate(w, buffer);
     viz.savePNG("test.png", buffer);
 
