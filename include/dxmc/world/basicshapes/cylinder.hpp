@@ -98,7 +98,7 @@ namespace basicshape {
             const auto ba = vectormath::scale(cylinder.direction, -cylinder.half_height * 2); // vec3 ba = b - a;
             const auto a = vectormath::subtract(cylinder.center, vectormath::scale(cylinder.direction, -cylinder.half_height));
             const auto oc = vectormath::subtract(p.pos, a); // vec3 oc = ro - a;
-            const auto baba = vectormath::dot(ba, ba);
+            const auto baba = cylinder.half_height * cylinder.half_height * 4; // vectormath::dot(ba, ba);
             const auto bard = vectormath::dot(ba, p.dir);
             const auto baoc = vectormath::dot(ba, oc);
             const auto k2 = baba - bard * bard;
@@ -110,8 +110,7 @@ namespace basicshape {
             const auto h = sqrt(h2);
             t[0] = (-k1 - h) / k2;
             t[1] = (-k1 + h) / k2;
-            //if (t[0] > t[1])
-            //    std::swap(t[0], t[1]);
+
             // body
             const std::array<double, 2> y = { baoc + t[0] * bard, baoc + t[1] * bard };
 

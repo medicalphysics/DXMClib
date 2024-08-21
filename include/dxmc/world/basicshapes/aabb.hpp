@@ -45,7 +45,7 @@ namespace basicshape {
         }
 
         template <bool FORWARD = true>
-        std::optional<std::array<double, 2>> intersectForwardInterval2(const ParticleType auto& p, const std::array<double, 6>& aabb)
+        std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             // new suggestion
             const std::array aabb_center = { (aabb[3] + aabb[0]) * .5, (aabb[4] + aabb[1]) * .5, (aabb[5] + aabb[2]) * .5 };
@@ -75,9 +75,9 @@ namespace basicshape {
             if constexpr (FORWARD) {
                 t[0] = std::max(t[0], 0.0);
             }
-            return t[0] > t[1] ? std::nullopt : t;
+            return t[0] > t[1] ? std::nullopt : std::make_optional(t);
         }
-
+        /*
         template <bool FORWARD = true>
         std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
@@ -98,7 +98,7 @@ namespace basicshape {
                 tm[0] = std::max(tm[0], 0.0);
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
-
+        */
         static constexpr WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             WorldIntersectionResult res;
