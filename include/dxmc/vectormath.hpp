@@ -123,7 +123,7 @@ namespace vectormath {
     }
 
     template <Floating T>
-    inline constexpr std::array<T, 3> normalized(const std::array<T, 3>& vec) noexcept
+    [[nodiscard]] inline constexpr std::array<T, 3> normalized(const std::array<T, 3>& vec) noexcept
     {
         const T lsqr = vec[0] * vec[0] + vec[1] * vec[1] + vec[2] * vec[2];
         const T norm = T { 1 } / std::sqrt(lsqr);
