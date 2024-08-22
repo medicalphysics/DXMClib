@@ -47,18 +47,28 @@ namespace basicshape {
         template <bool FORWARD = true>
         std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
-            const std::array<double, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
-            double t1 = (aabb[0] - p.pos[0]) * pdir_inv[0];
-            double t2 = (aabb[3] - p.pos[0]) * pdir_inv[0];
+            const std::array<bool, 3> valid = {
+                std::abs(p.dir[0]) > std::numeric_limits<double>::epsilon(),
+                std::abs(p.dir[1]) > std::numeric_limits<double>::epsilon(),
+                std::abs(p.dir[2]) > std::numeric_limits<double>::epsilon(),
+            };
 
-            std::array<double, 2> tm = { std::min(t1, t2), std::max(t1, t2) };
+            const std::array<double, 3> pdir_inv = {
+                valid[0] ? 1.0 / p.dir[0] : 0.0,
+                valid[1] ? 1.0 / p.dir[1] : 0.0,
+                valid[2] ? 1.0 / p.dir[2] : 0.0
+            };
 
-            for (int i = 1; i < 3; ++i) {
-                t1 = (aabb[i] - p.pos[i]) * pdir_inv[i];
-                t2 = (aabb[i + 3] - p.pos[i]) * pdir_inv[i];
+            std::array<double, 2> tm = { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max() };
 
-                tm[0] = std::max(tm[0], std::min(std::min(t1, t2), tm[1]));
-                tm[1] = std::min(tm[1], std::max(std::max(t1, t2), tm[0]));
+            for (int i = 0; i < 3; ++i) {
+                if (valid[i]) {
+                    const auto t1 = (aabb[i] - p.pos[i]) * pdir_inv[i];
+                    const auto t2 = (aabb[i + 3] - p.pos[i]) * pdir_inv[i];
+
+                    tm[0] = std::max(tm[0], std::min(std::min(t1, t2), tm[1]));
+                    tm[1] = std::min(tm[1], std::max(std::max(t1, t2), tm[0]));
+                }
             }
             if constexpr (FORWARD)
                 tm[0] = std::max(tm[0], 0.0);
