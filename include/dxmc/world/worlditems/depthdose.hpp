@@ -253,20 +253,19 @@ protected:
         while (cont) {
             const auto inter = intersect(p);
             auto intLen = inter.intersection; // this must be valid
+            const auto ind = cylinderIndex<true>(p.pos);
 
-            // do we hit a seperating plane
+            // do we hit a seperating plane?
             {
                 const auto p_cyl_proj = vectormath::dot(m_cylinder.direction, p.dir);
                 if (std::abs(p_cyl_proj) > GEOMETRIC_ERROR<>()) {
-                    const auto cind = cylinderIndex<true>(p.pos) + (p_cyl_proj > 0.0 ? 1 : 0);
-                    const auto p_pos = vectormath::add(m_cylinder.center, vectormath::scale(m_cylinder.direction, m_cylinder.half_height * ((2.0 * cind) / m_energyScored.size() - 1.0)));
-                    const auto t_plane = vectormath::dot(vectormath::subtract(p_pos, p.pos), m_cylinder.direction) / p_cyl_proj;
+                    const auto plane_point = vectormath::add(m_cylinder.center, vectormath::scale(m_cylinder.direction, m_cylinder.half_height * (2.0 * (ind + (p_cyl_proj > 0.0 ? 1 : 0)) / resolution() - 1.0)));
+                    const auto t_plane = vectormath::dot(vectormath::subtract(plane_point, p.pos), m_cylinder.direction) / p_cyl_proj;
                     intLen = std::min(intLen, t_plane);
                 }
             }
             const auto intRes = interactions::template interactForced<NMaterialShells, LOWENERGYCORRECTION>(intLen, m_materialDensity, p, m_material, state);
 
-            const auto ind = cylinderIndex<true>(p.pos);
             m_energyScored[ind].scoreEnergy(intRes.energyImparted);
             cont = intRes.particleAlive && basicshape::cylinder::pointInside(p.pos, m_cylinder);
         }
