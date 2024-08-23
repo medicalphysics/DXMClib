@@ -204,7 +204,7 @@ protected:
     std::size_t cylinderIndex(const std::array<double, 3>& pos) const
     {
         const auto cstart = vectormath::subtract(m_cylinder.center, vectormath::scale(m_cylinder.direction, m_cylinder.half_height));
-        const auto cdelta = vectormath::subtract(cstart, pos);
+        const auto cdelta = vectormath::subtract(pos, cstart);
         const auto dz = vectormath::dot(cdelta, m_cylinder.direction);
         if constexpr (BOUNDS_CHECK) {
             const auto ind_f = std::clamp(dz * m_energyScored.size() / (2 * m_cylinder.half_height), 0.0, static_cast<double>(m_energyScored.size() - 1));
