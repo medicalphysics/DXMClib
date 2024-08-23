@@ -47,58 +47,34 @@ namespace basicshape {
         template <bool FORWARD = true>
         std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
-            // new suggestion
-            const std::array aabb_center = { (aabb[3] + aabb[0]) * .5, (aabb[4] + aabb[1]) * .5, (aabb[5] + aabb[2]) * .5 };
-            const std::array aabb_size = { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
-
-            const std::array m = {
-                1 / p.dir[0],
-                1 / p.dir[1],
-                1 / p.dir[2]
+            const std::array<bool, 3> valid = {
+                std::abs(p.dir[0]) > std::numeric_limits<double>::epsilon(),
+                std::abs(p.dir[1]) > std::numeric_limits<double>::epsilon(),
+                std::abs(p.dir[2]) > std::numeric_limits<double>::epsilon(),
             };
 
-            const std::array k = {
-                std::abs(m[0]) * aabb_size[0],
-                std::abs(m[1]) * aabb_size[1],
-                std::abs(m[2]) * aabb_size[2]
+            const std::array<double, 3> pdir_inv = {
+                valid[0] ? 1.0 / p.dir[0] : 0.0,
+                valid[1] ? 1.0 / p.dir[1] : 0.0,
+                valid[2] ? 1.0 / p.dir[2] : 0.0
             };
-            const auto ro = vectormath::subtract(p.pos, aabb_center);
-            const auto n = vectormath::scale(m, ro);
 
-            const auto t1 = vectormath::subtract(vectormath::scale(n, -1.0), k);
-            const auto t2 = vectormath::subtract(k, n);
+            std::array<double, 2> tm = { std::numeric_limits<double>::lowest(), std::numeric_limits<double>::max() };
 
-            std::array<double, 2> t = {
-                std::max(std::max(t1[0], t1[1]), t1[2]),
-                std::min(std::min(t2[0], t2[1]), t2[2])
-            };
-            if constexpr (FORWARD) {
-                t[0] = std::max(t[0], 0.0);
-            }
-            return t[0] > t[1] ? std::nullopt : std::make_optional(t);
-        }
-        /*
-        template <bool FORWARD = true>
-        std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const std::array<double, 6>& aabb)
-        {
-            const std::array<double, 3> pdir_inv = { 1 / p.dir[0], 1 / p.dir[1], 1 / p.dir[2] };
-            double t1 = (aabb[0] - p.pos[0]) * pdir_inv[0];
-            double t2 = (aabb[3] - p.pos[0]) * pdir_inv[0];
+            for (int i = 0; i < 3; ++i) {
+                if (valid[i]) {
+                    const auto t1 = (aabb[i] - p.pos[i]) * pdir_inv[i];
+                    const auto t2 = (aabb[i + 3] - p.pos[i]) * pdir_inv[i];
 
-            std::array<double, 2> tm = { std::min(t1, t2), std::max(t1, t2) };
-
-            for (int i = 1; i < 3; ++i) {
-                t1 = (aabb[i] - p.pos[i]) * pdir_inv[i];
-                t2 = (aabb[i + 3] - p.pos[i]) * pdir_inv[i];
-
-                tm[0] = std::max(tm[0], std::min(std::min(t1, t2), tm[1]));
-                tm[1] = std::min(tm[1], std::max(std::max(t1, t2), tm[0]));
+                    tm[0] = std::max(tm[0], std::min(std::min(t1, t2), tm[1]));
+                    tm[1] = std::min(tm[1], std::max(std::max(t1, t2), tm[0]));
+                }
             }
             if constexpr (FORWARD)
                 tm[0] = std::max(tm[0], 0.0);
             return tm[1] > tm[0] ? std::make_optional(tm) : std::nullopt;
         }
-        */
+
         static constexpr WorldIntersectionResult intersect(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             WorldIntersectionResult res;
