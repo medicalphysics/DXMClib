@@ -108,9 +108,9 @@ public:
 
     std::size_t maxThetrahedronsVoxelCount() const
     {
-        std::size_t c = 0;
-        for (const auto& v : m_grid)
-            c = std::max(c, v.size());
+        std::uint32_t c = 0;
+        for (const auto v : m_gridIndices)
+            c = std::max(c, v.end - v.begin);
         return c;
     }
 
@@ -145,8 +145,9 @@ public:
 
     const Tetrahedron* pointInside(const std::array<double, 3>& pos) const
     {
-        const auto idx_flat = getIndicesFlat<true>(pos);
-        for (const auto tet_idx : m_grid[idx_flat]) {
+        const auto idx_flat = m_gridIndices[getIndicesFlat<true>(pos)];
+        for (auto gidx = idx_flat.begin; gidx < idx_flat.end; ++gidx) {
+            const auto tet_idx = m_tetIndices[gidx];
             const auto& tet = m_tets[tet_idx];
             if (tet.pointInside(pos)) {
                 return &tet;
@@ -157,8 +158,9 @@ public:
 
     Tetrahedron* pointInside(const std::array<double, 3>& pos)
     {
-        const auto idx_flat = getIndicesFlat<true>(pos);
-        for (const auto tet_idx : m_grid[idx_flat]) {
+        const auto idx_flat = m_gridIndices[getIndicesFlat<true>(pos)];
+        for (auto gidx = idx_flat.begin; gidx < idx_flat.end; ++gidx) {
+            const auto tet_idx = m_tetIndices[gidx];
             auto& tet = m_tets[tet_idx];
             if (tet.pointInside(pos)) {
                 return &tet;
@@ -236,9 +238,9 @@ protected:
         bool cont = true;
         while (cont) {
             // we have a valid voxel, check intersections
-            const auto voxel_ind = getIndicesFlat(idx);
-            for (const auto& tetIdx : m_grid[voxel_ind]) {
-                const auto& tet = m_tets[tetIdx];
+            const auto grid_ind = m_gridIndices[getIndicesFlat(idx)];
+            for (auto flat_idx = grid_ind.begin; flat_idx < grid_ind.end; ++flat_idx) {
+                const auto& tet = m_tets[m_tetIndices[flat_idx]];
                 if constexpr (COLLECTION == 65535) {
                     const auto res_cand = tet.intersect(p);
                     if (res_cand.valid() && res_cand.intersection <= tmax[dimension] && res_cand.intersection < res.intersection) {
@@ -302,7 +304,7 @@ protected:
     {
         const auto [start, stop] = vectormath::splice(m_aabb);
         const auto size = std::reduce(m_N.cbegin(), m_N.cend(), 1, std::multiplies {});
-        m_grid.resize(size);
+        std::vector<std::vector<std::uint32_t>> grid(size);
 
         const std::array<int, 3> N = { m_N[0] - 1, m_N[1] - 1, m_N[2] - 1 };
         auto caster = [N](const std::array<double, 3>& v) -> std::array<int, 3> {
@@ -323,17 +325,41 @@ protected:
                 for (int y = start_ind[1]; y <= stop_ind[1]; ++y)
                     for (int x = start_ind[0]; x <= stop_ind[0]; ++x) {
                         const int idx = getIndicesFlat(x, y, z);
-                        m_grid[idx].push_back(i);
+                        grid[idx].push_back(i);
                     }
         }
-        std::for_each(std::execution::par_unseq, m_grid.begin(), m_grid.end(), [](auto& v) { v.shrink_to_fit(); });
+        std::for_each(std::execution::par_unseq, grid.begin(), grid.end(), [](auto& v) { v.shrink_to_fit(); });
+
+        // assigning indices
+        std::uint32_t begin = 0;
+        std::uint32_t end = 0;
+        m_gridIndices.resize(grid.size());
+        for (std::size_t gIdx = 0; gIdx < grid.size(); ++gIdx) {
+            const auto& gVec = grid[gIdx];
+            end = begin + static_cast<std::uint32_t>(gVec.size());
+            m_gridIndices[gIdx] = { .begin = begin, .end = end };
+            for (auto i : gVec)
+                m_tetIndices.push_back(i);
+            begin = end;
+            grid[gIdx].clear();
+            grid[gIdx].shrink_to_fit();
+        }
+        // sorting indices
+        for (const auto& gIdx : m_gridIndices) {
+            std::sort(&m_tetIndices[gIdx.begin], &m_tetIndices[gIdx.end]);
+        }
+        m_tetIndices.shrink_to_fit();
     }
 
 private:
+    struct GridIdx {
+        std::uint32_t begin, end;
+    };
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::array<double, 3> m_spacing = { 1, 1, 1 };
-    std::vector<std::vector<std::uint_fast32_t>> m_grid;
-    std::vector<Tetrahedron> m_tets;
     std::array<int, 3> m_N = { 8, 8, 8 };
+    std::vector<GridIdx> m_gridIndices; // same size as grid
+    std::vector<std::uint32_t> m_tetIndices;
+    std::vector<Tetrahedron> m_tets;
 };
 }
