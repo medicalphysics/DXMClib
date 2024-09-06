@@ -37,6 +37,14 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
+template <int NMaterialShells = 5>
+struct TetrahedalMeshCollection {
+    double density = 0;
+    double volume = 0;
+    double dose = 0;
+    std::string name;
+};
+
 template <int NMaterialShells = 5, int LOWENERGYCORRECTION = 2, bool FLUENCESCORING = true>
 class TetrahedalMesh {
 public:
@@ -195,6 +203,31 @@ public:
     std::size_t maxThetrahedronsVoxelCount() const
     {
         return m_grid.maxThetrahedronsVoxelCount();
+    }
+
+    std::vector<TetrahedalMeshCollection<NMaterialShells>> collectionData() const
+    {
+        std::vector<TetrahedalMeshCollection<NMaterialShells>> data(m_collections.size());
+        const auto& tets = m_grid.tetrahedrons();
+        for (std::size_t i = 0; i < m_collections.size(); ++i) {
+            data[i].density = m_collections[i].density;
+            data[i].name = m_collectionNames[i];
+            const auto collectionIdx = std::static_cast<std::uint16_t>(i);
+            data[i].volume = std::transform_reduce(std::execution::par_unseq, tets.cbegin(), tets.cend(), 0.0, std::plus {}, [collectionIdx](const auto& t) -> double {
+                return tet.collection() == collectionIdx ? tet.volume() : 0.0;
+            });
+            const auto cdens = data[i].density;
+            data[i].dose = std::transform_reduce(std::execution::par_unseq, tets.cbegin(), tets.cend(), 0.0, std::plus {}, [collectionIdx, cdens](const auto& t) -> double {
+                if (tet.collection() == collectionIdx) {
+                    const auto tetmass = t.volume() * cdens;
+                    const auto energyImparted = t.doseScored().dose() * tetmass;
+                    return energyImparted;
+                } else
+                    return 0.0;
+            });
+            data[i].dose /= data[i].density * data[i].volume;
+        }
+        return data;
     }
 
     void setMaterial(const Material<NMaterialShells>& material, std::size_t index)
