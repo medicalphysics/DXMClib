@@ -37,7 +37,6 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-
 struct TetrahedalMeshCollection {
     double density = 0;
     double volume = 0;
@@ -212,13 +211,13 @@ public:
         for (std::size_t i = 0; i < m_collections.size(); ++i) {
             data[i].density = m_collections[i].density;
             data[i].name = m_collectionNames[i];
-            const auto collectionIdx = std::static_cast<std::uint16_t>(i);
+            const auto collectionIdx = static_cast<std::uint16_t>(i);
             data[i].volume = std::transform_reduce(std::execution::par_unseq, tets.cbegin(), tets.cend(), 0.0, std::plus {}, [collectionIdx](const auto& t) -> double {
-                return tet.collection() == collectionIdx ? tet.volume() : 0.0;
+                return t.collection() == collectionIdx ? t.volume() : 0.0;
             });
             const auto cdens = data[i].density;
             data[i].dose = std::transform_reduce(std::execution::par_unseq, tets.cbegin(), tets.cend(), 0.0, std::plus {}, [collectionIdx, cdens](const auto& t) -> double {
-                if (tet.collection() == collectionIdx) {
+                if (t.collection() == collectionIdx) {
                     const auto tetmass = t.volume() * cdens;
                     const auto energyImparted = t.doseScored().dose() * tetmass;
                     return energyImparted;
