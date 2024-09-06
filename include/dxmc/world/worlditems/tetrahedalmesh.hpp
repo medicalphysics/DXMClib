@@ -37,7 +37,7 @@ Copyright 2023 Erlend Andersen
 
 namespace dxmc {
 
-template <int NMaterialShells = 5>
+
 struct TetrahedalMeshCollection {
     double density = 0;
     double volume = 0;
@@ -205,9 +205,9 @@ public:
         return m_grid.maxThetrahedronsVoxelCount();
     }
 
-    std::vector<TetrahedalMeshCollection<NMaterialShells>> collectionData() const
+    std::vector<TetrahedalMeshCollection> collectionData() const
     {
-        std::vector<TetrahedalMeshCollection<NMaterialShells>> data(m_collections.size());
+        std::vector<TetrahedalMeshCollection> data(m_collections.size());
         const auto& tets = m_grid.tetrahedrons();
         for (std::size_t i = 0; i < m_collections.size(); ++i) {
             data[i].density = m_collections[i].density;
