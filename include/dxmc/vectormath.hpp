@@ -74,13 +74,11 @@ namespace vectormath {
     }
 
     template <Floating T>
-    [[nodiscard]] inline constexpr auto add(std::array<T, 3> v1, T v2) noexcept
+    [[nodiscard]] inline constexpr auto add(const std::array<T, 3>& v1, T v2) noexcept
     {
-        v1[0] += v2;
-        v1[1] += v2;
-        v1[2] += v2;
-        return v1;
+        return std::array { v1[0] + v2, v1[1] + v2, v1[2] + v2 };
     }
+    
     template <Floating T>
     [[nodiscard]] inline constexpr auto add(T v2, const std::array<T, 3>& v1) noexcept
     {
