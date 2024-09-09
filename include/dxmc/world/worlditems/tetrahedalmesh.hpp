@@ -216,15 +216,19 @@ public:
                 return t.collection() == collectionIdx ? t.volume() : 0.0;
             });
             const auto cdens = data[i].density;
-            data[i].dose = std::transform_reduce(std::execution::par_unseq, tets.cbegin(), tets.cend(), 0.0, std::plus {}, [collectionIdx, cdens](const auto& t) -> double {
-                if (t.collection() == collectionIdx) {
-                    const auto tetmass = t.volume() * cdens;
-                    const auto energyImparted = t.doseScored().dose() * tetmass;
-                    return energyImparted;
-                } else
-                    return 0.0;
-            });
-            data[i].dose /= data[i].density * data[i].volume;
+            if (data[i].density * data[i].volume > 0.0) {
+                data[i].dose = std::transform_reduce(std::execution::par_unseq, tets.cbegin(), tets.cend(), 0.0, std::plus {}, [collectionIdx, cdens](const auto& t) -> double {
+                    if (t.collection() == collectionIdx) {
+                        const auto tetmass = t.volume() * cdens;
+                        const auto energyImparted = t.doseScored().dose() * tetmass;
+                        return energyImparted;
+                    } else
+                        return 0.0;
+                });
+                data[i].dose /= data[i].density * data[i].volume;
+            } else {
+                data[i].dose = 0;
+            }
         }
         return data;
     }
