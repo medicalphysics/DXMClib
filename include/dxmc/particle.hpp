@@ -22,6 +22,7 @@ Copyright 2019 Erlend Andersen
 
 #include <array>
 #include <concepts>
+#include <cstdint>
 
 namespace dxmc {
 
