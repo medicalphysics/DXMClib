@@ -48,12 +48,8 @@ public:
         setData(items, max_depth);
     }
 
-    void setData(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
-    {
-        m_nodes.reserve(items.size()); // left nodes
-        auto split_dim = splitAxis(items);
-        auto split_val = splitPlane(items, split_dim);
-        build(items, m_nodes, max_depth, split_val, split_dim);
+    void setData(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8) {
+
     };
 
     std::array<double, 6> calculateAABB() const
@@ -66,18 +62,7 @@ public:
             std::numeric_limits<double>::lowest(),
             std::numeric_limits<double>::lowest(),
         };
-        for (const auto& node : m_nodes) {
-            if (node.dimension == 4) {
-                auto item = node.data.element;
-                const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
-                for (int i = 0; i < 3; ++i) {
-                    aabb[i] = std::min(aabb[i], aabb_tri[i]);
-                }
-                for (int i = 3; i < 6; ++i) {
-                    aabb[i] = std::max(aabb[i], aabb_tri[i]);
-                }
-            }
-        }
+
         return aabb;
     }
 
@@ -164,7 +149,51 @@ public:
     }
 
 protected:
-    static std::uint8_t splitAxis(const std::vector<std::variant<Us...>*>& items)
+    void build(std::vector<std::uint32_t>& indices, int max_depth = 8)
+    {
+        struct NodeTemplate {
+            Node node;
+            std::vector<std::uint32_t> indices;
+        };
+
+        std::vector<NodeTemplate> nodes(1);
+        nodes.reserve(indices.size());
+
+        nodes[0].indices = indices;
+        std::size_t currentNodeIdx = 0;
+
+        while (currentNodeIdx < m_nodes.size()) {
+            auto& cnode = nodes[currentNodeIdx].node;
+            auto& cind = nodes[currentNodeIdx].indices;
+            auto split_dim = splitAxis(cind);
+            auto split_val = splitPlane(cind, split_dim);
+            auto fom = figureOfMerit(cind, split_dim, split_val);
+            if (fom != cind.size()) {
+                // leaf
+                cnode.setLeaf();
+                cnode.split_nelements.nelements = static_cast<std::uint32_t>(cind.size());
+                cnode.setOffset(static_cast<std::uint32_t>(m_indices.size());
+                for (auto i :cind)
+                    m_indices.push_back(i);
+                cind.clear();
+                cind.shrink_to_fit();
+            } else {
+                // branch
+                cnode.setDim(split_dim);
+                cnode.split_nelements.split = split_val;
+                cnode.setOffset(nodes.size());
+                NodeTemplate left, right;
+                populate left right;
+                nodes.push_back(left);
+                nodes.push_back(right);
+            }
+            ++currentNodeIdx;
+        }
+
+        // copy nodes;
+    }
+
+    std::uint32_t splitAxis(const std::vector<std::uint32_t>& indices)
     {
         // finding aabb
         std::array<double, 6> aabb {
@@ -175,7 +204,9 @@ protected:
             std::numeric_limits<double>::lowest(),
             std::numeric_limits<double>::lowest(),
         };
-        for (const auto& item : items) {
+
+        for (auto idx : indices) {
+            auto* item = m_items[idx];
             const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(aabb[i], aabb_tri[i]);
@@ -185,18 +216,19 @@ protected:
             }
         }
         const std::array<double, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
-        return vectormath::argmax3<std::uint8_t>(extent);
+        return vectormath::argmax3<std::uint32_t>(extent);
     }
 
-    static double splitPlane(const std::vector<std::variant<Us...>*>& items, const std::uint8_t dim)
+    float splitPlane(const std::vector<std::uint32_t>& indices, const std::uint32_t dim)
     {
         const auto N = items.size();
-        std::vector<double> vals;
+        std::vector<float> vals;
         vals.reserve(N);
 
-        for (const auto& item : items) {
+        for (auto idx : indices) {
+            auto* item = m_items[idx];
             const auto v = std::visit([](const auto& it) { return it.center(); }, *item);
-            vals.push_back(v[dim]);
+            vals.push_back(static_cast<float>(v[dim]));
         }
 
         std::sort(vals.begin(), vals.end());
@@ -204,25 +236,11 @@ protected:
         if (N % 2 == 1) {
             return vals[N / 2];
         } else {
-            return (vals[N / 2] + vals[N / 2 - 1]) * 0.5;
+            return (vals[N / 2] + vals[N / 2 - 1]) / 2;
         }
     }
 
-    static int figureOfMerit(const std::vector<std::variant<Us...>*>& items, const double planesep, const std::uint8_t dim)
-    {
-        int fom = 0;
-        int shared = 0;
-        for (const auto& item : items) {
-            const auto side = planeSide(item, planesep, dim);
-            fom += side;
-            if (side == 0) {
-                shared++;
-            }
-        }
-        return std::abs(fom) + shared;
-    }
-
-    static int planeSide(std::variant<Us...>* item, const double plane, const std::uint8_t D)
+    int planeSide(std::variant<Us...>* item, const std::uint32_t D, const float plane)
     {
         auto max = std::numeric_limits<double>::lowest();
         auto min = std::numeric_limits<double>::max();
@@ -240,6 +258,22 @@ protected:
             return 1;
         return 0;
     }
+
+    int figureOfMerit(const std::vector<std::uint32_t>& indices, const std::uint32_t dim, const float planesep)
+    {
+        int fom = 0;
+        int shared = 0;
+        for (auto idx : indices) {
+            auto* item = m_items[idx];
+            const auto side = planeSide(item, planesep, dim);
+            fom += side;
+            if (side == 0) {
+                shared++;
+            }
+        }
+        return std::abs(fom) + shared;
+    }
+
     constexpr static double epsilon()
     {
         // Huristic epsilon
@@ -257,60 +291,54 @@ protected:
 
 private:
     struct Node {
-        union data {
-            double split;
-            std::variant<Us...>* element;
-        };
-        // if dim == 4 this is a leaf and index n remaining elements, else this is a node and index is offset to right branch, left branch is next node
-        std::uint32_t index = 0;
-        std::uint8_t dimension = 4;
-    };
+        struct {
+            std::uint32_t dim : 2; // dimensjon for branch
+            std::uint32_t offset : 29; // offset to first child (branch) or to first element (leaf)
+            std::uint32_t flag : 1; // Node is leaf (1) or branch (0)
+        } dim_offset_flag;
 
-    static void build(const std::vector<std::variant<Us...>*>& items, std::vector<Node>& nodes, const std::size_t depth, double split_val, std::uint8_t split_dim)
-    {
+        union {
+            float split = 0; // Union split is for branches
+            std::uint32_t nelements; // Union nelements is for number of items
+        } split_nelements;
 
-        const int fom = figureOfMerit(items, split_val, split_dim);
+        Node()
+        {
+            dim_offset_flag.dim = 0;
+            dim_offset_flag.offset = 0;
+            dim_offset_flag.flag = 0;
+        }
 
-        if (depth == 0 || fom == items.size() || items.size() < 2) {
-            for (std::uint32_t i = items.size(); i > 0; --i) {
-                Node node;
-                node.data.element = items[i];
-                node.dimension = 4;
-                node.index = i - 1;
-                nodes.push_back(node);
-            }
-        } else {
-            // construct node
-            const std::uint32_t current_Idx = static_cast<std::uint32_t>(nodes.size());
-            Node node;
-            node.dimension = split_dim;
-            node.data.split = split_value;
-            nodes.push_back(node);
+        std::uint32_t dim()
+        {
+            return dim_offset_flag.dim;
+        }
+        void setDim(std::uint32_t dim)
+        {
+            dim_offset_flag.dim = dim;
+        }
 
-            std::vector<std::variant<Us...>*> left, right;
-            for (auto item : items) {
-                const auto side = planeSide(item, split_val, split_dim);
-                if (side <= 0)
-                    left.push_back(item);
-                if (side >= 0)
-                    right.push_back(item);
-            }
+        void setLeaf()
+        {
+            dim_offset_flag.flag = std::uint32_t { 1 };
+        }
+        std::uint32_t isLeaf()
+        {
+            return dim_offset_flag.flag;
+        }
 
-            // construct left side
-            split_dim = splitAxis(left);
-            split_val = splitPlane(left, split_dim);
-            build(left, nodes, depth - 1, split_val, split_dim);
-            // adding offset index to parent
-            nodes[current_Idx].index = static_cast<std::uint32_t>(nodes.size()) - current_Idx;
-
-            // construct right side
-            split_dim = splitAxis(right);
-            split_val = splitPlane(right, split_dim);
-            build(right, nodes, depth - 1, split_val, split_dim);
+        void setOffset(std::uint32_t offset)
+        {
+            dim_offset_flag.offset = offset;
+        }
+        std::uint32_t offset()
+        {
+            return dim_offset_flag.offset;
         }
     };
 
+    std::vector<std::uint32_t> m_indices;
+    std::vector<std::variant<Us...>*> m_items;
     std::vector<Node> m_nodes;
 };
-
 }
