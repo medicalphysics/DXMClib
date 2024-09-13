@@ -23,5 +23,13 @@ int main()
     dxmc::KDTreeFlat<dxmc::WorldSphere<>> tree;
     tree.setData(itemptrs);
 
+    const auto aabb = tree.calculateAABB();
+
+    dxmc::Particle p;
+    p.pos = { 0, -100, 0 };
+    p.dir = { 0, 1, 0 };
+    auto t = tree.intersect(p, aabb);
+    auto tv = tree.intersectVisualization(p, aabb);
+
     return 0;
 }

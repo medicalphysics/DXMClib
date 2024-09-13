@@ -112,6 +112,8 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh.hpp"    
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangulatedmeshstlreader.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtree.hpp"    
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtreeflat.hpp" 
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtreetype.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh.hpp"        
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"    

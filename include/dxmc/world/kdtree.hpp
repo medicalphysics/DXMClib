@@ -16,6 +16,8 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+// DEPRICATED
+
 #pragma once
 
 #include "dxmc/particle.hpp"
@@ -42,9 +44,16 @@ namespace dxmc {
 template <WorldItemType... Us>
 class KDTree {
 public:
-    KDTree() {};
+    KDTree() { }
     KDTree(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
     {
+        setData(items, max_depth);
+    }
+    void setData(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
+    {
+        m_items.clear();
+        m_left = nullptr;
+        m_right = nullptr;
         if (items.size() < 2) {
             for (const auto& item : items)
                 m_items.push_back(item);

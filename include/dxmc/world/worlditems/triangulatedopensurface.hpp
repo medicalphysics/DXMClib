@@ -24,7 +24,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangle.hpp"
-#include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtree.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtreeflat.hpp"
 #include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshstlreader.hpp"
 
 #include <array>
@@ -95,7 +95,7 @@ public:
         return false;
     }
 
-    const MeshKDTree<Triangle>& kdtree() const
+    const MeshKDTreeFlat<Triangle>& kdtree() const
     {
         return m_kdtree;
     }
@@ -294,7 +294,7 @@ private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     EnergyScore m_energyScored;
     DoseScore m_dose;
-    MeshKDTree<Triangle> m_kdtree;
+    MeshKDTreeFlat<Triangle> m_kdtree;
     std::vector<Triangle> m_triangles;
     Material<NMaterialShells> m_material;
 };

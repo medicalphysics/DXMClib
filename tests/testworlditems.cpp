@@ -32,10 +32,10 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/worlditems/worldcylinder.hpp"
 #include "dxmc/world/worlditems/worldsphere.hpp"
 
-template < typename U>   
+template <typename U>
 bool testItem()
 {
-    dxmc::World< U> world;
+    dxmc::World<U> world;
     world.reserveNumberOfItems(1);
     auto& item = world.template addItem<U>({});
 
@@ -100,7 +100,7 @@ bool testItem()
     auto aabb = item.AABB();
     dxmc::Particle p { .pos = { 0, 0, 0 }, .dir = { 0, 0, 1 } };
     auto intersection = item.intersect(p);
-    auto intersectionViz = item.intersectVisualization<U>(p);
+    auto intersectionViz = item.template intersectVisualization<U>(p);
 
     world.build();
     dxmc::PencilBeam<> beam;

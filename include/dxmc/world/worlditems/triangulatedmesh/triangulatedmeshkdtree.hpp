@@ -16,11 +16,14 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2023 Erlend Andersen
 */
 
+// DEPRECATED
+
 #pragma once
 
 #include "dxmc/particle.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtreetype.hpp"
 
 #include <algorithm>
 #include <array>
@@ -30,25 +33,6 @@ Copyright 2023 Erlend Andersen
 #include <vector>
 
 namespace dxmc {
-
-template <typename U>
-concept MeshKDTreeType = requires(U u, Particle p, std::array<double, 3> vec, double scale) {
-    u <=> u;
-    u.translate(vec);
-    u.scale(scale);
-    {
-        u.intersect(p)
-    } -> std::same_as<std::optional<double>>;
-    {
-        u.center()
-    } -> std::convertible_to<std::array<double, 3>>;
-    {
-        u.AABB()
-    } -> std::convertible_to<std::array<double, 6>>;
-    {
-        u.planeVector()
-    } -> std::convertible_to<std::array<double, 3>>;
-};
 
 template <MeshKDTreeType U>
 class MeshKDTree {

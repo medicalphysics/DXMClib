@@ -68,7 +68,8 @@ public:
             hole.cylinder.center[1] += y * (radius - holeEdgeDistance());
             holes.push_back(hole);
         }
-        m_kdtree = StaticKDTree<3, CTDIAirHole>(holes);
+        m_kdtree.setData(holes);
+        return;
     }
 
     void translate(const std::array<double, 3>& dist)
@@ -280,7 +281,7 @@ private:
     double m_air_density = 0;
     std::array<EnergyScore, 6> m_energyScore;
     std::array<DoseScore, 6> m_dose;
-    StaticKDTree<3, CTDIAirHole> m_kdtree;
+    StaticKDTree<CTDIAirHole> m_kdtree;
     Material<NMaterialShells> m_pmma;
     Material<NMaterialShells> m_air;
 };

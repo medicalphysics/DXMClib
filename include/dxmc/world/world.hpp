@@ -24,7 +24,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/particle.hpp"
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
-#include "dxmc/world/kdtree.hpp"
+#include "dxmc/world/kdtreeflat.hpp"
 #include "dxmc/world/worlditems/worlditemtype.hpp"
 
 #include <array>
@@ -211,7 +211,7 @@ public:
     void build(double AABB_padding = 10)
     {
         auto ptrs = getItemPointers();
-        m_kdtree = KDTree(ptrs);
+        m_kdtree.setData(ptrs);
         m_aabb = m_kdtree.AABB();
 
         // adding padding
@@ -322,7 +322,7 @@ public:
 private:
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::vector<std::variant<F, Us...>> m_items;
-    KDTree<F, Us...> m_kdtree;
+    KDTreeFlat<F, Us...> m_kdtree;
     MaterialType m_fillMaterial;
     double m_fillMaterialDensity = 0.001225;
     EnergyScore m_energyScored;

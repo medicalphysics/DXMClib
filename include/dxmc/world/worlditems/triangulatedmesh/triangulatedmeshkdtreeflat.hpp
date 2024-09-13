@@ -13,79 +13,83 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2024 Erlend Andersen
 */
 
 #pragma once
-
 #include "dxmc/particle.hpp"
-#include "dxmc/vectormath.hpp"
 #include "dxmc/world/basicshapes/aabb.hpp"
 #include "dxmc/world/kdtreeintersectionresult.hpp"
-#include "dxmc/world/visualizationintersectionresult.hpp"
-#include "dxmc/world/worlditems/worlditemtype.hpp"
+#include "dxmc/world/worlditems/triangulatedmesh/triangulatedmeshkdtreetype.hpp"
 
 #include <algorithm>
 #include <array>
-#include <cmath>
-#include <concepts>
 #include <execution>
-#include <iterator>
 #include <memory>
-#include <numeric>
 #include <optional>
-#include <variant>
 #include <vector>
 
 namespace dxmc {
 
-template <WorldItemType... Us>
-class KDTreeFlat {
+template <MeshKDTreeType U>
+class MeshKDTreeFlat {
 public:
-    KDTreeFlat() {};
-    KDTreeFlat(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
+    MeshKDTreeFlat() {};
+    MeshKDTreeFlat(const std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
-        setData(items, max_depth);
+        setData(triangles, max_depth);
     }
-
-    void setData(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
+    void setData(const std::vector<U>& triangles, const std::size_t max_depth = 8)
     {
-        std::vector<std::uint32_t> indices(items.size());
-        std::iota(indices.begin(), indices.end(), 0);
-        m_items = items;
         m_indices.clear();
         m_nodes.clear();
-        build(indices, max_depth);
-    };
+        build(triangles, max_depth);
+    }
 
-    std::array<double, 6> AABB() const
+    void translate(const std::array<double, 3>& dist)
     {
-        std::array<double, 6> aabb {
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-        };
-
-        for (const auto* item : m_items) {
-            const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
-            for (std::size_t i = 0; i < 3; ++i) {
-                aabb[i] = std::min(aabb[i], aabb_tri[i]);
-                aabb[i + 3] = std::max(aabb[i + 3], aabb_tri[i + 3]);
+        for (auto& node : m_nodes) {
+            if (node.isLeaf()) {
+                const auto dim = node.dim();
+                node.split_nelements.split += dist[dim];
             }
         }
-        return aabb;
     }
-
-    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const ParticleType auto& particle, const std::array<double, 6>& aabb) const
+    void scale(double s)
     {
-        const auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersectVisualization(particle, *inter) : VisualizationIntersectionResult<std::variant<Us...>> {};
+        for (auto& node : m_nodes) {
+            if (node.isLeaf()) {
+                node.split_nelements.split *= s;
+            }
+        }
+    }
+    void mirror(const std::array<double, 3>& point)
+    {
+        for (auto& node : m_nodes) {
+            if (node.isLeaf()) {
+                const auto dim = node.dim();
+                node.split_nelements.split += -2 * (node.split_nelements.split - point[dim]);
+            }
+        }
+    }
+    void mirror(const double value, const std::uint32_t dim_mirror)
+    {
+        for (auto& node : m_nodes) {
+            if (node.isLeaf()) {
+                const auto dim = node.dim();
+                if (dim == dim_mirror)
+                    node.split_nelements.split += -2 * (node.split_nelements.split - value);
+            }
+        }
     }
 
-    VisualizationIntersectionResult<std::variant<Us...>> intersectVisualization(const ParticleType auto& particle, const std::array<double, 2>& tboxAABB) const
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::vector<U>& triangles, const std::array<double, 6>& aabb) const
+    {
+        auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
+        return inter ? intersect(particle, triangles, *inter) : KDTreeIntersectionResult<const U> {};
+    }
+
+    KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::vector<U>& items, const std::array<double, 2>& tboxAABB) const
     {
         struct Stack {
             struct Element {
@@ -122,7 +126,7 @@ public:
         };
 
         Stack stack(m_nodes[0], tboxAABB);
-        VisualizationIntersectionResult<std::variant<Us...>> res;
+        KDTreeIntersectionResult<const U> res;
         res.intersection = std::numeric_limits<double>::max();
         Node node;
         std::array<double, 2> tbox;
@@ -160,111 +164,14 @@ public:
             const auto startIdx = node.offset();
             const auto stopIdx = startIdx + node.split_nelements.nelements;
             for (auto idx = startIdx; idx < stopIdx; ++idx) {
-                const auto* item = m_items[m_indices[idx]];
-                auto t_cand = std::visit([&particle](const auto& it) { return it.template intersectVisualization<std::variant<Us...>>(particle); }, *item);
-                if (t_cand.valid()) {
-                    if (t_cand.intersection <= res.intersection) {
-                        if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
-                            res = t_cand;
-                            res.item = item;
-                        }
-                    }
-                }
-            }
-            if (res.valid())
-                stack.clear();
-        }
-        return res;
-    }
-
-    KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb)
-    {
-        auto inter = basicshape::AABB::intersectForwardInterval(particle, aabb);
-        return inter ? intersect(particle, *inter) : KDTreeIntersectionResult<std::variant<Us...>> {};
-    }
-
-    KDTreeIntersectionResult<std::variant<Us...>> intersect(const ParticleType auto& particle, const std::array<double, 2>& tboxAABB)
-    {
-        struct Stack {
-            struct Element {
-                Node node;
-                std::array<double, 2> tbox;
-            };
-            std::array<Element, 32> items;
-            std::uint32_t n_items = 0;
-
-            Stack(const Node& node, const std::array<double, 2>& tbox)
-            {
-                addItem(node, tbox[0], tbox[1]);
-            }
-            void takeItem(Node& node, std::array<double, 2>& tbox)
-            {
-                node = items[n_items - 1].node;
-                tbox = items[n_items - 1].tbox;
-                --n_items;
-            }
-            void addItem(const Node& node, double tmin, double tmax)
-            {
-                items[n_items].node = node;
-                items[n_items].tbox = { tmin, tmax };
-                ++n_items;
-            }
-            bool isEmpty() const
-            {
-                return n_items == 0;
-            }
-            void clear()
-            {
-                n_items = 0;
-            }
-        };
-
-        Stack stack(m_nodes[0], tboxAABB);
-        KDTreeIntersectionResult<std::variant<Us...>> res = { .item = nullptr, .intersection = std::numeric_limits<double>::max() };
-        Node node;
-        std::array<double, 2> tbox;
-        while (!stack.isEmpty()) {
-            stack.takeItem(node, tbox);
-            while (!node.isLeaf()) {
-                const auto dim = node.dim();
-                const auto split = node.split_nelements.split;
-
-                const auto left_offset = node.offset();
-                const auto right_offset = node.offset() + 1;
-
-                // test for parallell beam
-                if (std::abs(particle.dir[dim]) <= std::numeric_limits<double>::epsilon()) {
-                    node = m_nodes[left_offset];
-                    stack.addItem(m_nodes[right_offset], tbox[0], tbox[1]);
-                } else {
-                    const auto d = (split - particle.pos[dim]) / particle.dir[dim];
-                    auto frontchild = particle.dir[dim] > 0 ? m_nodes[left_offset] : m_nodes[right_offset];
-                    auto backchild = particle.dir[dim] > 0 ? m_nodes[right_offset] : m_nodes[left_offset];
-
-                    if (d <= tbox[0]) {
-                        // find back node
-                        node = backchild;
-                    } else if (d >= tbox[1]) { // find front node
-                        node = frontchild;
-                    } else {
-                        stack.addItem(backchild, d, tbox[1]);
-                        tbox[1] = d;
-                        node = frontchild;
-                    }
-                }
-            }
-            // we have a leaf
-            const auto startIdx = node.offset();
-            const auto stopIdx = startIdx + node.split_nelements.nelements;
-            for (auto idx = startIdx; idx < stopIdx; ++idx) {
-                auto* item = m_items[m_indices[idx]];
-                auto t_cand = std::visit([&particle](const auto& it) { return it.intersect(particle); }, *item);
-                if (t_cand.valid()) {
-                    if (t_cand.intersection <= res.intersection) {
-                        if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
-                            res.intersection = t_cand.intersection;
-                            res.item = item;
-                            res.rayOriginIsInsideItem = t_cand.rayOriginIsInsideItem;
+                const auto& item = items[m_indices[idx]];
+                auto t_cand = item.intersect(particle);
+                if (t_cand) {
+                    if (0 <= *t_cand && *t_cand < res.intersection) {
+                        if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
+                            res.intersection = *t_cand;
+                            res.item = &item;
+                            res.rayOriginIsInsideItem = vectormath::dot(particle.dir, item.planeVector()) > 0;
                         }
                     }
                 }
@@ -276,8 +183,11 @@ public:
     }
 
 protected:
-    void build(std::vector<std::uint32_t>& indices, int max_depth = 8)
+    void build(const std::vector<U>& items, int max_depth = 8)
     {
+        std::vector<std::uint32_t> indices(items.size());
+        std::iota(indices.begin(), indices.end(), 0);
+
         struct NodeTemplate {
             Node node;
             std::vector<std::uint32_t> indices;
@@ -295,9 +205,9 @@ protected:
         while (currentNodeIdx < nodes.size()) {
             auto& cnode = nodes[currentNodeIdx].node;
             auto& cind = nodes[currentNodeIdx].indices;
-            auto split_dim = splitAxis(cind);
-            auto split_val = splitPlane(cind, split_dim);
-            auto fom = figureOfMerit(cind, split_dim, split_val);
+            auto split_dim = splitAxis(items, cind);
+            auto split_val = splitPlane(items, cind, split_dim);
+            auto fom = figureOfMerit(items, cind, split_dim, split_val);
             if (fom == cind.size() || cind.size() < 2 || number_of_leafs >= max_leafs_number) {
                 // leaf
                 cnode.setLeaf();
@@ -315,7 +225,7 @@ protected:
                 cnode.setOffset(nodes.size());
                 NodeTemplate left, right;
                 for (auto idx : cind) {
-                    auto* item = m_items[idx];
+                    const auto& item = items[idx];
                     auto side = planeSide(item, split_dim, split_val);
                     if (side <= 0)
                         left.indices.push_back(idx);
@@ -336,7 +246,7 @@ protected:
             m_nodes.push_back(n.node);
     }
 
-    std::uint32_t splitAxis(const std::vector<std::uint32_t>& indices)
+    std::uint32_t splitAxis(const std::vector<U>& items, const std::vector<std::uint32_t>& indices)
     {
         // finding aabb
         std::array<double, 6> aabb {
@@ -349,8 +259,8 @@ protected:
         };
 
         for (auto idx : indices) {
-            auto* item = m_items[idx];
-            const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
+            const auto& item = items[idx];
+            const auto aabb_tri = item.AABB();
             for (std::size_t i = 0; i < 3; ++i) {
                 aabb[i] = std::min(aabb[i], aabb_tri[i]);
             }
@@ -362,15 +272,15 @@ protected:
         return vectormath::argmax3<std::uint32_t>(extent);
     }
 
-    float splitPlane(const std::vector<std::uint32_t>& indices, const std::uint32_t dim)
+    float splitPlane(const std::vector<U>& items, const std::vector<std::uint32_t>& indices, const std::uint32_t dim)
     {
         const auto N = indices.size();
         std::vector<float> vals;
         vals.reserve(N);
 
         for (auto idx : indices) {
-            auto* item = m_items[idx];
-            const auto v = std::visit([](const auto& it) { return it.center(); }, *item);
+            const auto& item = items[idx];
+            const auto v = item.center();
             vals.push_back(static_cast<float>(v[dim]));
         }
 
@@ -383,12 +293,12 @@ protected:
         }
     }
 
-    int planeSide(std::variant<Us...>* item, const std::uint32_t D, const float plane)
+    int planeSide(const U& item, const std::uint32_t D, const float plane)
     {
         auto max = std::numeric_limits<double>::lowest();
         auto min = std::numeric_limits<double>::max();
 
-        const auto aabb = std::visit([](const auto& it) { return it.AABB(); }, *item);
+        const auto aabb = item.AABB();
 
         min = aabb[D];
         max = aabb[D + 3];
@@ -402,12 +312,12 @@ protected:
         return 0;
     }
 
-    int figureOfMerit(const std::vector<std::uint32_t>& indices, const std::uint32_t dim, const float planesep)
+    int figureOfMerit(const std::vector<U>& items, const std::vector<std::uint32_t>& indices, const std::uint32_t dim, const float planesep)
     {
         int fom = 0;
         int shared = 0;
         for (auto idx : indices) {
-            auto* item = m_items[idx];
+            const auto& item = items[idx];
             const auto side = planeSide(item, dim, planesep);
             fom += side;
             if (side == 0) {
@@ -481,7 +391,7 @@ private:
     };
 
     std::vector<std::uint32_t> m_indices;
-    std::vector<std::variant<Us...>*> m_items;
+    std::vector<U> m_items;
     std::vector<Node> m_nodes;
 };
 }
