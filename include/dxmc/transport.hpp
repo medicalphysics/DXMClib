@@ -103,9 +103,6 @@ public:
             const auto beamCalibrationFactor = beam.calibrationFactor(progress);
             world.addEnergyScoredToDoseScore(beamCalibrationFactor);
             world.clearEnergyScored();
-        } else {
-            world.addEnergyScoredToDoseScore();
-            world.clearEnergyScored();
         }
     }
 
