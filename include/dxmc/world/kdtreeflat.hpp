@@ -43,12 +43,17 @@ template <WorldItemType... Us>
 class KDTreeFlat {
 public:
     KDTreeFlat() {};
-    KDTreeFlat(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
+    KDTreeFlat(std::vector<std::variant<Us...>*>& items, std::uint32_t max_depth = 8)
     {
         setData(items, max_depth);
     }
 
-    void setData(std::vector<std::variant<Us...>*>& items, const std::size_t max_depth = 8)
+    std::uint32_t maxDepth() const
+    {
+        return m_max_depth;
+    }
+
+    void setData(std::vector<std::variant<Us...>*>& items, std::uint32_t max_depth = 8)
     {
         std::vector<std::uint32_t> indices(items.size());
         std::iota(indices.begin(), indices.end(), 0);
@@ -276,8 +281,9 @@ public:
     }
 
 protected:
-    void build(std::vector<std::uint32_t>& indices, int max_depth = 8)
+    void build(std::vector<std::uint32_t>& indices, std::uint32_t max_depth = 8)
     {
+        m_max_depth = max_depth;
         struct NodeTemplate {
             Node node;
             std::vector<std::uint32_t> indices;
@@ -502,6 +508,7 @@ private:
         }
     };
 
+    std::uint32_t m_max_depth = 8;
     std::vector<std::uint32_t> m_indices;
     std::vector<std::variant<Us...>*> m_items;
     std::vector<Node> m_nodes;

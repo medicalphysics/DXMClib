@@ -50,11 +50,17 @@ template <StaticKDTreeType U>
 class StaticKDTree {
 public:
     StaticKDTree() { }
-    StaticKDTree(const std::vector<U>& items, const std::size_t max_depth = 8)
+    StaticKDTree(const std::vector<U>& items, std::uint32_t max_depth = 8)
     {
         setData(items, max_depth);
     }
-    void setData(const std::vector<U>& items, const std::size_t max_depth = 8)
+
+    std::uint32_t maxDepth() const
+    {
+        return m_max_depth;
+    }
+
+    void setData(const std::vector<U>& items, std::uint32_t max_depth = 8)
     {
         m_items = items;
         m_indices.clear();
@@ -74,6 +80,7 @@ public:
             }
         }
     }
+
     std::array<double, 6> AABB() const
     {
         std::array<double, 6> aabb = { 0, 0, 0, 0, 0, 0 };
@@ -89,11 +96,13 @@ public:
         }
         return aabb;
     }
+
     KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 6>& aabb) const
     {
         const auto tbox = basicshape::AABB::intersectForwardInterval(particle, aabb);
         return tbox ? intersect(particle, *tbox) : KDTreeIntersectionResult<const U> {};
     }
+
     KDTreeIntersectionResult<const U> intersect(const ParticleType auto& particle, const std::array<double, 2>& tboxAABB) const
     {
         struct Stack {
@@ -188,8 +197,9 @@ public:
     }
 
 protected:
-    void build(int max_depth = 8)
+    void build(std::uint32_t max_depth = 8)
     {
+        m_max_depth = max_depth;
         std::vector<std::uint32_t> indices(m_items.size());
         std::iota(indices.begin(), indices.end(), 0);
 
@@ -419,6 +429,7 @@ private:
         }
     };
 
+    std::uint32_t m_max_depth = 8;
     std::vector<std::uint32_t> m_indices;
     std::vector<U> m_items;
     std::vector<Node> m_nodes;
