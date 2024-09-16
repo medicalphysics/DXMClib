@@ -163,7 +163,7 @@ public:
 
     void rotate(const double angle, const std::array<double, 3>& axis, const std::array<double, 3>& point)
     {
-        const auto depth = m_kdtree.depth();
+        const auto depth = m_kdtree.maxDepth();
 
         const std::array point_neg = { -point[0], -point[1], -point[2] };
 

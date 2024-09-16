@@ -148,6 +148,21 @@ public:
         calculateAABB();
     }
 
+    void rotate(const double angle, const std::array<double, 3>& axis, const std::array<double, 3>& point)
+    {
+        const auto depth = m_kdtree.maxDepth();
+
+        const std::array point_neg = { -point[0], -point[1], -point[2] };
+
+        std::for_each(std::execution::par_unseq, m_triangles.begin(), m_triangles.end(), [&](auto& tri) {
+            tri.translate(point_neg);
+            tri.rotate(angle, axis);
+            tri.translate(point);
+        });
+        m_kdtree.setData(m_triangles, depth);
+        calculateAABB();
+    }
+
     void setData(const std::vector<Triangle>& triangles, double surfaceThickness = 0.035, const std::size_t max_tree_dept = 8)
     {
 

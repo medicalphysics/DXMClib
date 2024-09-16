@@ -35,15 +35,20 @@ template <MeshKDTreeType U>
 class MeshKDTreeFlat {
 public:
     MeshKDTreeFlat() {};
-    MeshKDTreeFlat(const std::vector<U>& triangles, const std::size_t max_depth = 8)
+    MeshKDTreeFlat(const std::vector<U>& triangles, std::uint32_t max_depth = 8)
     {
         setData(triangles, max_depth);
     }
-    void setData(const std::vector<U>& triangles, const std::size_t max_depth = 8)
+    void setData(const std::vector<U>& triangles, std::uint32_t max_depth = 8)
     {
         m_indices.clear();
         m_nodes.clear();
         build(triangles, max_depth);
+    }
+
+    std::uint32_t maxDepth() const
+    {
+        return m_max_depth;
     }
 
     void translate(const std::array<double, 3>& dist)
@@ -183,8 +188,9 @@ public:
     }
 
 protected:
-    void build(const std::vector<U>& items, int max_depth = 8)
+    void build(const std::vector<U>& items, std::uint32_t max_depth = 8)
     {
+        m_max_depth = max_depth;
         std::vector<std::uint32_t> indices(items.size());
         std::iota(indices.begin(), indices.end(), 0);
 
@@ -389,7 +395,7 @@ private:
             return dim_offset_flag.offset;
         }
     };
-
+    std::uint32_t m_max_depth = 8;
     std::vector<std::uint32_t> m_indices;
     std::vector<U> m_items;
     std::vector<Node> m_nodes;
