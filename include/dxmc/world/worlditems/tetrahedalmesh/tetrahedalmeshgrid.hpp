@@ -316,7 +316,7 @@ protected:
             return vi;
         };
         const std::array<double, 3> inv_spacing = { 1 / m_spacing[0], 1 / m_spacing[1], 1 / m_spacing[2] };
-        for (std::uint_fast32_t i = 0; i < m_tets.size(); ++i) {
+        for (std::uint32_t i = 0; i < m_tets.size(); ++i) {
             const auto tet_aabb = m_tets[i].AABB();
             const auto [tet_start, tet_stop] = vectormath::splice(tet_aabb);
             const auto start_ind = caster(vectormath::scale(vectormath::subtract(tet_start, start), inv_spacing));
