@@ -286,7 +286,7 @@ auto runDispatcher(T& transport, W& world, const B& beam)
 
     bool running = true;
     std::thread job([&]() {
-        transport(world, beam, &progress);
+        transport(world, beam, &progress, false);
         running = false;
     });
     std::string message;
@@ -393,9 +393,9 @@ bool TG195Case2AbsorbedEnergy(bool tomo = false)
 
     if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeam<>>) {
         if (tomo) {
-            saveImageOfWorld("Case2worldTomo.png", world, beam, 110, 120, 200, 3);
+            saveImageOfWorld("Case2worldTomo.png", world, beam, 110, 120, 400, 2);
         } else {
-            saveImageOfWorld("Case2world.png", world, beam, 110, 120, 200, 3);
+            saveImageOfWorld("Case2world.png", world, beam, 110, 120, 400, 2);
         }
     }
 
