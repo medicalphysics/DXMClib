@@ -345,7 +345,7 @@ protected:
         std::array<std::vector<std::pair<float, float>>, 3> segs;
         for (auto idx : indices) {
             const auto& u = m_items[idx];
-            const auto aabb = u.AABB();
+            const auto aabb = std::visit([](const auto& item) { return item.AABB(); }, *u);
             for (std::uint32_t i = 0; i < 3; ++i) {
                 const auto seg = std::make_pair(static_cast<float>(aabb[i]), static_cast<float>(aabb[i + 3]));
                 segs[i].push_back(seg);
