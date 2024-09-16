@@ -256,14 +256,16 @@ protected:
 
     std::pair<std::uint32_t, float> splitAxisPlane(const std::vector<std::uint32_t>& indices)
     {
-        // split where we find best separation between objects
+        if (indices.size() == 0)
+            return std::make_pair(std::uint32_t { 0 }, float { 0 });
 
+        // split where we find best separation between objects
         // finding AA segments
         std::array<std::vector<std::pair<float, float>>, 3> segs;
         for (auto idx : indices) {
             const auto& u = m_items[idx];
             const auto aabb = u.AABB();
-            for (std::size_t i = 0; i < 3; ++i) {
+            for (std::uint32_t i = 0; i < 3; ++i) {
                 const auto seg = std::make_pair(static_cast<float>(aabb[i]), static_cast<float>(aabb[i + 3]));
                 segs[i].push_back(seg);
             }
@@ -276,6 +278,8 @@ protected:
 
         for (std::uint32_t i = 0; i < 3; ++i) {
             std::sort(segs[i].begin(), segs[i].end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+            float max = std::numeric_limits<float>::lowest();
+            float min = std::numeric_limits<float>::max();
             if (segs[i].size() > 1) {
                 for (std::size_t idx = 0; idx < segs[i].size() - 1; ++idx) {
                     auto left = segs[i][idx].second;
@@ -291,9 +295,23 @@ protected:
                         best_plane = plane;
                         best_dim = i;
                     }
+                    max = std::max(max, right);
+                    min = std::min(min, left);
                 }
             } else {
+                max = std::max(segs[i][0].first, segs[i][0].second);
+                min = std::min(segs[i][0].first, segs[i][0].second);
                 float plane = (segs[i][0].first + segs[i][0].second) / 2;
+                auto cfom = figureOfMerit(indices, i, plane);
+                if (cfom < best_fom) {
+                    best_fom = cfom;
+                    best_plane = plane;
+                    best_dim = i;
+                }
+            }
+            if (best_fom > 0) {
+                // lets also test the naive middle point
+                float plane = (max + min) / 2;
                 auto cfom = figureOfMerit(indices, i, plane);
                 if (cfom < best_fom) {
                     best_fom = cfom;
@@ -322,6 +340,7 @@ protected:
             return 1;
         return 0;
     }
+
     int figureOfMerit(const std::vector<std::uint32_t>& indices, const std::uint32_t dim, const float planesep)
     {
         int fom = 0;

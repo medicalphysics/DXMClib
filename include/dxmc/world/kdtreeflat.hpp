@@ -295,8 +295,7 @@ protected:
         while (currentNodeIdx < nodes.size()) {
             auto& cnode = nodes[currentNodeIdx].node;
             auto& cind = nodes[currentNodeIdx].indices;
-            auto split_dim = splitAxis(cind);
-            auto split_val = splitPlane(cind, split_dim);
+            const auto [split_dim, split_val] = splitAxisPlane(cind);
             auto fom = figureOfMerit(cind, split_dim, split_val);
             if (fom == cind.size() || cind.size() < 2 || number_of_leafs >= max_leafs_number) {
                 // leaf
@@ -336,51 +335,74 @@ protected:
             m_nodes.push_back(n.node);
     }
 
-    std::uint32_t splitAxis(const std::vector<std::uint32_t>& indices)
+    std::pair<std::uint32_t, float> splitAxisPlane(const std::vector<std::uint32_t>& indices)
     {
-        // finding aabb
-        std::array<double, 6> aabb {
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-        };
+        if (indices.size() == 0)
+            return std::make_pair(std::uint32_t { 0 }, float { 0 });
 
+        // split where we find best separation between objects
+        // finding AA segments
+        std::array<std::vector<std::pair<float, float>>, 3> segs;
         for (auto idx : indices) {
-            auto* item = m_items[idx];
-            const auto aabb_tri = std::visit([](const auto& it) { return it.AABB(); }, *item);
-            for (std::size_t i = 0; i < 3; ++i) {
-                aabb[i] = std::min(aabb[i], aabb_tri[i]);
-            }
-            for (std::size_t i = 3; i < 6; ++i) {
-                aabb[i] = std::max(aabb[i], aabb_tri[i]);
+            const auto& u = m_items[idx];
+            const auto aabb = u.AABB();
+            for (std::uint32_t i = 0; i < 3; ++i) {
+                const auto seg = std::make_pair(static_cast<float>(aabb[i]), static_cast<float>(aabb[i + 3]));
+                segs[i].push_back(seg);
             }
         }
-        const std::array<double, 3> extent { aabb[3] - aabb[0], aabb[4] - aabb[1], aabb[5] - aabb[2] };
-        return vectormath::argmax3<std::uint32_t>(extent);
-    }
 
-    float splitPlane(const std::vector<std::uint32_t>& indices, const std::uint32_t dim)
-    {
-        const auto N = indices.size();
-        std::vector<float> vals;
-        vals.reserve(N);
+        // sorting segments
+        std::uint32_t best_dim = 0;
+        float best_plane = 0;
+        int best_fom = static_cast<int>(indices.size());
 
-        for (auto idx : indices) {
-            auto* item = m_items[idx];
-            const auto v = std::visit([](const auto& it) { return it.center(); }, *item);
-            vals.push_back(static_cast<float>(v[dim]));
+        for (std::uint32_t i = 0; i < 3; ++i) {
+            std::sort(segs[i].begin(), segs[i].end(), [](const auto& lh, const auto& rh) { return lh.first < rh.first; });
+            float max = std::numeric_limits<float>::lowest();
+            float min = std::numeric_limits<float>::max();
+            if (segs[i].size() > 1) {
+                for (std::size_t idx = 0; idx < segs[i].size() - 1; ++idx) {
+                    auto left = segs[i][idx].second;
+                    auto right = segs[i][idx + 1].first;
+                    if (left > right) {
+                        left = segs[i][idx].first;
+                        right = segs[i][idx + 1].second;
+                    }
+                    auto plane = (left + right) / 2;
+                    auto cfom = figureOfMerit(indices, i, plane);
+                    if (cfom < best_fom) {
+                        best_fom = cfom;
+                        best_plane = plane;
+                        best_dim = i;
+                    }
+                    max = std::max(max, right);
+                    min = std::min(min, left);
+                }
+            } else {
+                max = std::max(segs[i][0].first, segs[i][0].second);
+                min = std::min(segs[i][0].first, segs[i][0].second);
+                float plane = (segs[i][0].first + segs[i][0].second) / 2;
+                auto cfom = figureOfMerit(indices, i, plane);
+                if (cfom < best_fom) {
+                    best_fom = cfom;
+                    best_plane = plane;
+                    best_dim = i;
+                }
+            }
+            if (best_fom > 0) {
+                // lets also test the naive middle point
+                float plane = (max + min) / 2;
+                auto cfom = figureOfMerit(indices, i, plane);
+                if (cfom < best_fom) {
+                    best_fom = cfom;
+                    best_plane = plane;
+                    best_dim = i;
+                }
+            }
         }
 
-        std::sort(vals.begin(), vals.end());
-
-        if (N % 2 == 1) {
-            return vals[N / 2];
-        } else {
-            return (vals[N / 2] + vals[N / 2 - 1]) / 2;
-        }
+        return std::make_pair(best_dim, best_plane);
     }
 
     int planeSide(std::variant<Us...>* item, const std::uint32_t D, const float plane)
