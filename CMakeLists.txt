@@ -29,6 +29,12 @@ endfunction()
 #enable_cxx_compiler_flag_if_supported("-Wextra")
 #enable_cxx_compiler_flag_if_supported("-pedantic")
 
+#MSVC fix for heavy templated code
+if(MSVC)        
+    MESSAGE("-- Building with /bigobj flag")
+    enable_cxx_compiler_flag_if_supported("/bigobj")  
+endif()
+
 option(DXMCLIB_USE_FAST_MATH "Build with -fast-math or /fp:fast" ON)
 if(DXMCLIB_USE_FAST_MATH)
     if(MSVC)        
