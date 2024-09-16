@@ -344,10 +344,7 @@ protected:
             grid[gIdx].clear();
             grid[gIdx].shrink_to_fit();
         }
-        // sorting indices
-        for (const auto& gIdx : m_gridIndices) {
-            std::sort(&m_tetIndices[gIdx.begin], &m_tetIndices[gIdx.end]);
-        }
+
         m_tetIndices.shrink_to_fit();
     }
 
