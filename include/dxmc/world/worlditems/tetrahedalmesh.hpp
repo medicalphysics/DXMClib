@@ -29,6 +29,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp"
 
 #include <array>
 #include <string>

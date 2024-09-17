@@ -124,6 +124,7 @@ set(HEADER_LIST
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh.hpp"        
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"    
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"    
+    "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp" 
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"     
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/aabb.hpp"
     "${dxmclib_SOURCE_DIR}/include/dxmc/world/basicshapes/cylinder.hpp"
