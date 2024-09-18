@@ -29,7 +29,6 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/vectormath.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh/tetrahedron.hpp"
-#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshkdtree.hpp"
 
 #include <array>
 #include <string>
@@ -172,7 +171,7 @@ public:
 
     const DoseScore& doseScored(std::size_t index = 0) const
     {
-        const auto tets = m_grid.tetrahedrons();
+        const auto& tets = m_grid.tetrahedrons();
         return tets.at(index).doseScored();
     }
 

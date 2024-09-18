@@ -16,6 +16,7 @@ along with DXMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
+#include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/transportprogress.hpp"
@@ -23,6 +24,7 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/tetrahedalmesh.hpp"
+#include "dxmc/world/worlditems/tetrahedalmesh/tetrahedalmeshreader.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 
 #include <iostream>
@@ -263,11 +265,84 @@ bool testIntersection()
     return success;
 }
 
+template <bool FluenceScore>
+static dxmc::TetrahedalMesh<5, 1, FluenceScore> readICRP145Phantom(std::uint32_t depth = 8, bool female = true)
+{
+    const std::string name = female ? "MRCP_AF" : "MRCP_AM";
+    const std::string elefile = name + ".ele";
+    const std::string nodefile = name + ".node";
+    const std::string mediafile = name + "_media.dat";
+    const std::string organfile = "icrp145organs.csv";
+
+    dxmc::TetrahedalmeshReader<5, 1, FluenceScore> reader(nodefile, elefile, mediafile, organfile);
+    reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
+    return reader.getMesh(depth);
+}
+
+template <bool FluenceScore>
+static dxmc::TetrahedalMesh<5, 1, FluenceScore> readICRP145Phantom(const std::array<int, 3> depth = { 8, 8, 8 }, bool female = true)
+{
+    const std::string name = female ? "MRCP_AF" : "MRCP_AM";
+    const std::string elefile = name + ".ele";
+    const std::string nodefile = name + ".node";
+    const std::string mediafile = name + "_media.dat";
+    const std::string organfile = "icrp145organs.csv";
+
+    dxmc::TetrahedalmeshReader<5, 1, FluenceScore> reader(nodefile, elefile, mediafile, organfile);
+    reader.rotate({ 0, 0, 1 }, std::numbers::pi_v<double>);
+    return reader.getMesh(depth);
+}
+
+void testICRP145Phantom()
+{
+    constexpr bool FLUENCE = true;
+    using TetMesh = dxmc::TetrahedalMesh<5, 1, FLUENCE>;
+    using World = dxmc::World<TetMesh>;
+
+    World world;
+
+    auto& doctor = world.template addItem<TetMesh>(readICRP145Phantom<FLUENCE>({ 128, 128, 256 }, true), "Doctor");
+    world.build();
+
+    using Beam = dxmc::DXBeam<>;
+    const std::array<double, 3> source_pos = { 0, 100, 0 };
+    Beam beam(source_pos);
+    beam.setDirectionCosines({ 1, 0, 0 }, { 0, 0, 1 });
+    beam.setBeamSize(20, 100, 100);
+    beam.setNumberOfExposures(48);
+    beam.setNumberOfParticlesPerExposure(100000);
+
+    std::cout << "Max node count: " << doctor.maxThetrahedronsVoxelCount() << std::endl;
+
+    dxmc::Transport transport;
+    auto time = transport.runConsole(world, beam, 0, true);
+    std::cout << "Time: " << time << std::endl;
+
+    constexpr int resy = 1024;
+    constexpr int resx = (resy * 3) / 2;
+    dxmc::VisualizeWorld viz(world);
+    viz.addColorByValueItem(world.getItemPointerFromName("Doctor"));
+    double max_dose = 0;
+    for (std::size_t i = 0; i < doctor.numberOfTetrahedra(); ++i)
+        max_dose = std::max(max_dose, doctor.doseScored(i).dose());
+    viz.setColorByValueMinMax(0, max_dose * .1);
+    viz.setDistance(600);
+    auto buffer = viz.template createBuffer<double>(resx, resy);
+    viz.addLineProp(beam, 100, 0.5);
+    viz.setAzimuthalAngleDeg(90);
+    viz.setPolarAngleDeg(45 + 180);
+    viz.suggestFOV(1);
+    viz.generate(world, buffer);
+    viz.savePNG("testmesh.png", buffer);
+}
+
 int main()
 {
 
+    // testICRP145Phantom();
+
     bool success = true;
-    // success = success && testIntersection();
+    success = success && testIntersection();
     success = success && testTransport();
     if (success)
         return EXIT_SUCCESS;

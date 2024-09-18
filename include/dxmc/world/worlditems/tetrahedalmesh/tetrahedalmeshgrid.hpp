@@ -345,12 +345,11 @@ protected:
             grid[gIdx].shrink_to_fit();
         }
 
-        auto* indices = &m_tetIndices;
-        std::for_each(std::execution::par_unseq, m_gridIndices.cbegin(), m_gridIndices.cend(), [indices](const auto& gIdx) {
+        std::for_each(std::execution::par_unseq, m_gridIndices.cbegin(), m_gridIndices.cend(), [this](const auto& gIdx) {
             if (gIdx.begin < gIdx.end) {
-                auto b = indices->begin() + gIdx.begin;
-                auto e = b + gIdx.end;
-                std::sort(b, e);
+                auto begin = m_tetIndices.begin() + gIdx.begin;
+                auto end = m_tetIndices.begin() + gIdx.end;
+                std::sort(begin, end);
             }
         });
 

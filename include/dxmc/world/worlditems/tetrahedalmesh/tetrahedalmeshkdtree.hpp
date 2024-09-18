@@ -30,12 +30,20 @@ Copyright 2024 Erlend Andersen
 
 namespace dxmc {
 
+// This is far worse in terms of speed than a structured grid structure
+
 class TetrahedralMeshKDTree {
 public:
     TetrahedralMeshKDTree() {};
-    TetrahedralMeshKDTree(std::vector<Tetrahedron>& tets, std::uint32_t max_depth = 8)
+    TetrahedralMeshKDTree(const std::vector<Tetrahedron>& tets, std::uint32_t max_depth = 8)
         : m_items(tets)
     {
+        build(max_depth);
+    }
+
+    void setData(const std::vector<Tetrahedron>& tets, std::uint32_t max_depth = 8)
+    {
+        m_items = tets;
         build(max_depth);
     }
 
@@ -68,6 +76,20 @@ public:
         return m_max_depth;
     }
 
+    std::size_t maxThetrahedronsVoxelCount() const
+    {
+        std::size_t max = 0;
+        auto it = std::max_element(m_nodes.cbegin(), m_nodes.cend(), [](const auto& lh, const auto& rh) {
+            if (lh.isLeaf() && rh.isLeaf())
+                return lh.split_nelements.nelements < lh.split_nelements.nelements;
+            else if (!lh.isLeaf() && !rh.isLeaf())
+                return false;
+            else
+                return rh.isLeaf() ? true : false;
+        });
+        return static_cast<std::size_t>(it->split_nelements.nelements);
+    }
+
     const std::array<double, 6>& AABB() const
     {
         return m_aabb;
@@ -89,7 +111,7 @@ public:
     template <std::uint16_t COLLECTION = 65535>
     KDTreeIntersectionResult<const Tetrahedron> intersect(const ParticleType auto& particle) const
     {
-        const auto inter = basicshape::AABB::intersectForwardInterval<false>(particle, m_aabb);
+        const auto inter = basicshape::AABB::intersectForwardInterval<true>(particle, m_aabb);
         return inter ? intersect<COLLECTION>(particle, *inter) : KDTreeIntersectionResult<const Tetrahedron> {};
     }
 
@@ -172,10 +194,10 @@ public:
                 const auto& item = m_items[m_indices[idx]];
                 if constexpr (COLLECTION == 65535) {
                     auto t_cand = item.intersect(particle);
-                    if (t_cand) {
-                        if (0 <= *t_cand && *t_cand < res.intersection) {
-                            if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
-                                res.intersection = *t_cand;
+                    if (t_cand.valid()) {
+                        if (t_cand.intersection < res.intersection) {
+                            if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                                res.intersection = t_cand.intersection;
                                 res.item = &item;
                                 res.rayOriginIsInsideItem = t_cand.rayOriginIsInsideItem;
                                 if (res.rayOriginIsInsideItem) // early exit if we are inside tet
@@ -186,10 +208,10 @@ public:
                 } else {
                     if (item.collection() == COLLECTION) {
                         auto t_cand = item.intersect(particle);
-                        if (t_cand) {
-                            if (0 <= *t_cand && *t_cand < res.intersection) {
-                                if (tbox[0] <= *t_cand && *t_cand <= tbox[1]) {
-                                    res.intersection = *t_cand;
+                        if (t_cand.valid()) {
+                            if (t_cand.intersection < res.intersection) {
+                                if (tbox[0] <= t_cand.intersection && t_cand.intersection <= tbox[1]) {
+                                    res.intersection = t_cand.intersection;
                                     res.item = &item;
                                     res.rayOriginIsInsideItem = t_cand.rayOriginIsInsideItem;
                                     if (res.rayOriginIsInsideItem) // early exit if we are inside tet
@@ -206,20 +228,27 @@ public:
         return res;
     }
 
-    const Tetrahedron* pointInside(const std::array<double, 3>& pos) const
-    {
-        const auto idx = pointInsideIndex(pos);
-        constexpr auto nullIdx = std::numeric_limits<std::uint32_t>::max();
-        return idx != nullIdx ? &(m_items[idx]) : nullptr;
-    }
     Tetrahedron* pointInside(const std::array<double, 3>& pos)
     {
-        const auto idx = pointInsideIndex(pos);
-        constexpr auto nullIdx = std::numeric_limits<std::uint32_t>::max();
-        return idx != nullIdx ? &(m_items[idx]) : nullptr;
+        Node node = m_nodes[0];
+        while (!node.isLeaf()) {
+            const auto dim = node.dim();
+            const auto split = node.split_nelements.split;
+            node = pos[dim] <= split ? m_nodes[node.offset()] : m_nodes[node.offset() + 1];
+        }
+        // we have a leaf
+        // test all leaf tets
+        const auto startIdx = node.offset();
+        const auto stopIdx = startIdx + node.split_nelements.nelements;
+        for (auto idx = startIdx; idx < stopIdx; ++idx) {
+            auto& item = m_items[m_indices[idx]];
+            if (item.pointInside(pos)) {
+                return &item;
+            }
+        }
+        return nullptr;
     }
 
-protected:
     std::uint32_t pointInsideIndex(const std::array<double, 3>& pos) const
     {
         Node node = m_nodes[0];
@@ -241,42 +270,54 @@ protected:
         return std::numeric_limits<std::uint32_t>::max();
     }
 
-    void calculateAABB()
+protected:
+    void sortTetrahedrons()
     {
-        m_aabb = {
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest()
-        };
-        for (const auto& tet : m_items) {
-            for (const auto& v : tet.vertices()) {
-                for (std::uint_fast32_t i = 0; i < 3; ++i) {
-                    m_aabb[i] = std::min(m_aabb[i], v[i]);
-                    m_aabb[i + 3] = std::max(m_aabb[i + 3], v[i]);
-                }
-            }
+        std::sort(std::execution::par_unseq, m_items.begin(), m_items.end(), [](const auto& lh, const auto& rh) {
+            constexpr std::array<double, 3> v = { 1, 1, 1 };
+            const auto l = vectormath::dot(lh.center(), v);
+            const auto r = vectormath::dot(rh.center(), v);
+            return l < r;
+        });
+    }
+
+    std::array<double, 6> calculateAABB(const std::vector<std::uint32_t>& indices) const
+    {
+
+        std::array<double, 6> aabb = { 0, 0, 0, 0, 0, 0 };
+
+        for (std::size_t i = 0; i < 3; ++i) {
+            aabb[i] = std::transform_reduce(std::execution::par_unseq, indices.cbegin(), indices.cend(), std::numeric_limits<double>::max(), [](const auto& lh, const auto& rh) { return std::min(lh, rh); }, [i, this](const auto& t) {                
+                const auto& v = this->m_items[t].vertices();
+                return std::min({ v[0][i], v[1][i], v[2][i], v[3][i] }); });
+            aabb[i + 3] = std::transform_reduce(std::execution::par_unseq, indices.cbegin(), indices.cend(), std::numeric_limits<double>::lowest(), [](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [i, this](const auto& t) {                
+                const auto& v = this->m_items[t].vertices();
+                return std::max({ v[0][i], v[1][i], v[2][i], v[3][i] }); });
         }
+        return aabb;
     }
 
     void build(std::uint32_t max_depth = 8)
     {
-
+        sortTetrahedrons();
+        m_indices.clear();
         m_max_depth = max_depth;
-        std::vector<std::uint32_t> indices(m_items.size());
-        std::iota(indices.begin(), indices.end(), 0);
 
         struct NodeTemplate {
             Node node;
             std::vector<std::uint32_t> indices;
         };
 
-        std::vector<NodeTemplate> nodes(1);
-        nodes.reserve(indices.size());
+        // init nodes
+        std::vector<NodeTemplate> nodes;
+        nodes.reserve(m_items.size());
+        nodes.push_back({});
+        nodes[0].indices.resize(m_items.size());
+        std::iota(nodes[0].indices.begin(), nodes[0].indices.end(), 0);
 
-        nodes[0].indices = indices;
+        // calculate aabb
+        m_aabb = calculateAABB(nodes[0].indices);
+
         std::size_t currentNodeIdx = 0;
 
         const auto max_leafs_number = ((1 << (max_depth + 1)) + 1) / 2; // 2^(max_depth + 1)
@@ -285,9 +326,8 @@ protected:
         while (currentNodeIdx < nodes.size()) {
             auto& cnode = nodes[currentNodeIdx].node;
             auto& cind = nodes[currentNodeIdx].indices;
-            auto split_dim = splitAxis(m_items, cind);
-            auto split_val = splitPlane(m_items, cind, split_dim);
-            auto fom = figureOfMerit(m_items, cind, split_dim, split_val);
+            auto fom = splitNode(cnode, cind);
+
             if (fom == cind.size() || cind.size() < 2 || number_of_leafs >= max_leafs_number) {
                 // leaf
                 cnode.setLeaf();
@@ -299,14 +339,11 @@ protected:
                 cind.shrink_to_fit();
                 ++number_of_leafs;
             } else {
-                // branch
-                cnode.setDim(split_dim);
-                cnode.split_nelements.split = split_val;
                 cnode.setOffset(nodes.size());
                 NodeTemplate left, right;
                 for (auto idx : cind) {
                     const auto& item = m_items[idx];
-                    auto side = planeSide(item, split_dim, split_val);
+                    auto side = planeSide(item, cnode.dim(), cnode.split_nelements.split);
                     if (side <= 0)
                         left.indices.push_back(idx);
                     if (side >= 0)
@@ -320,10 +357,12 @@ protected:
             }
             ++currentNodeIdx;
         }
+        m_indices.shrink_to_fit();
         m_nodes.clear();
-        m_nodes.reserve(nodes.size());
-        for (const auto& n : nodes)
-            m_nodes.push_back(n.node);
+        m_nodes.resize(nodes.size());
+        std::transform(std::execution::par_unseq, nodes.cbegin(), nodes.cend(), m_nodes.begin(), [](const auto& nr) {
+            return nr.node;
+        });
     }
 
     std::uint32_t splitAxis(const std::vector<Tetrahedron>& items, const std::vector<std::uint32_t>& indices)
@@ -373,23 +412,16 @@ protected:
         }
     }
 
-    int planeSide(const Tetrahedron& item, const std::uint32_t D, const float plane)
+    static int planeSide(const Tetrahedron& item, const std::uint32_t D, const float plane)
     {
-        auto max = std::numeric_limits<double>::lowest();
-        auto min = std::numeric_limits<double>::max();
-
         const auto aabb = item.AABB();
+        const auto min = aabb[D];
+        const auto max = aabb[D + 3];
 
-        min = aabb[D];
-        max = aabb[D + 3];
-
-        if (lessOrEqual(max, plane))
-            // if (max - plane <= epsilon())
-            return -1;
-        if (greaterOrEqual(min, plane))
-            // if (plane - min <= epsilon())
-            return 1;
-        return 0;
+        int res = 0;
+        res += max > plane;
+        res -= min < plane;
+        return res;
     }
 
     int figureOfMerit(const std::vector<Tetrahedron>& items, const std::vector<std::uint32_t>& indices, const std::uint32_t dim, const float planesep)
@@ -442,7 +474,7 @@ private:
             dim_offset_flag.flag = 0;
         }
 
-        std::uint32_t dim()
+        std::uint32_t dim() const
         {
             return dim_offset_flag.dim;
         }
@@ -455,7 +487,7 @@ private:
         {
             dim_offset_flag.flag = std::uint32_t { 1 };
         }
-        std::uint32_t isLeaf()
+        std::uint32_t isLeaf() const
         {
             return dim_offset_flag.flag;
         }
@@ -464,11 +496,53 @@ private:
         {
             dim_offset_flag.offset = offset;
         }
-        std::uint32_t offset()
+        std::uint32_t offset() const
         {
             return dim_offset_flag.offset;
         }
     };
+
+    int splitNode(Node& node, const std::vector<std::uint32_t>& indices) const
+    {
+
+        const auto aabb = calculateAABB(indices);
+        const std::array<double, 3> extent = {
+            aabb[3] - aabb[0],
+            aabb[4] - aabb[1],
+            aabb[5] - aabb[2],
+        };
+        const auto split_axis = vectormath::argmax3<std::uint32_t>(extent);
+        node.setDim(split_axis);
+
+        // split value
+        std::vector<float> vals(indices.size());
+        std::transform(std::execution::par_unseq, indices.cbegin(), indices.cend(), vals.begin(), [this, split_axis](auto i) {
+            const auto& item = this->m_items[i];
+            return static_cast<float>(item.vertices()[0][split_axis]);
+        });
+        std::sort(std::execution::par_unseq, vals.begin(), vals.end());
+        const auto N = vals.size();
+        float split_val = 0;
+        if (N % 2 == 1)
+            split_val = vals[N / 2];
+        else
+            split_val = (vals[N / 2] + vals[N / 2 - 1]) * 0.5;
+
+        node.split_nelements.split = split_val;
+
+        std::atomic<int> shared = 0;
+        std::atomic<int> side = 0;
+        std::for_each(std::execution::par_unseq, indices.cbegin(), indices.cend(), [this, &shared, &side, split_axis, split_val](const auto idx) {
+            const auto& item = m_items[idx];
+            const auto s = planeSide(item, split_axis, split_val);
+            side += s;
+            if (s == 0)
+                shared++;
+        });
+        int fom = shared + std::abs(side);
+        return fom;
+    }
+
     std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     std::uint32_t m_max_depth = 8;
     std::vector<std::uint32_t> m_indices;
