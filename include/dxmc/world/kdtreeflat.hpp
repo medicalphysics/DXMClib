@@ -421,11 +421,9 @@ protected:
         min = aabb[D];
         max = aabb[D + 3];
 
-        if (lessOrEqual(max, plane))
-            // if (max - plane <= epsilon())
+        if (max - plane < -epsilon())
             return -1;
-        if (greaterOrEqual(min, plane))
-            // if (plane - min <= epsilon())
+        if (min - plane > epsilon())
             return 1;
         return 0;
     }
@@ -449,15 +447,6 @@ protected:
     {
         // Huristic epsilon
         return 11 * std::numeric_limits<double>::epsilon();
-    }
-
-    constexpr static bool lessOrEqual(double a, double b)
-    {
-        return a - b <= epsilon() * a;
-    }
-    constexpr static bool greaterOrEqual(double a, double b)
-    {
-        return b - a <= epsilon() * a;
     }
 
 private:

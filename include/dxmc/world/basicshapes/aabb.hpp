@@ -66,8 +66,8 @@ namespace basicshape {
                     const auto t1 = (aabb[i] - p.pos[i]) * pdir_inv[i];
                     const auto t2 = (aabb[i + 3] - p.pos[i]) * pdir_inv[i];
 
-                    tm[0] = std::max(tm[0], std::min(std::min(t1, t2), tm[1]));
-                    tm[1] = std::min(tm[1], std::max(std::max(t1, t2), tm[0]));
+                    tm[0] = std::max(tm[0], std::min(t1, t2));
+                    tm[1] = std::min(tm[1], std::max(t1, t2));
                 }
             }
             if constexpr (FORWARD)
@@ -91,7 +91,8 @@ namespace basicshape {
         VisualizationIntersectionResult<U> intersectVisualization(const ParticleType auto& p, const std::array<double, 6>& aabb)
         {
             VisualizationIntersectionResult<U> res;
-            if (const auto t_cand = intersectForwardInterval<true>(p, aabb); t_cand) {
+            const auto t_cand = intersectForwardInterval<false>(p, aabb);
+            if (t_cand) {
                 const auto& t = *t_cand;
                 res.rayOriginIsInsideItem = t[0] <= 0;
                 res.intersection = res.rayOriginIsInsideItem ? t[1] : t[0];

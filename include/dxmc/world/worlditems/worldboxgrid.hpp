@@ -107,12 +107,20 @@ public:
         return m_voxelSize;
     }
 
+    template <bool BOUNDSCHECK = true>
     std::uint_fast32_t gridIndex(const std::array<double, 3>& pos) const noexcept
     {
-        const auto x = static_cast<std::uint_fast32_t>(std::clamp((pos[0] - m_aabb[0]) * m_voxelSizeInv[0], double { 0 }, static_cast<double>(m_voxelDim[0] - 1)));
-        const auto y = static_cast<std::uint_fast32_t>(std::clamp((pos[1] - m_aabb[1]) * m_voxelSizeInv[1], double { 0 }, static_cast<double>(m_voxelDim[1] - 1)));
-        const auto z = static_cast<std::uint_fast32_t>(std::clamp((pos[2] - m_aabb[2]) * m_voxelSizeInv[2], double { 0 }, static_cast<double>(m_voxelDim[2] - 1)));
-        return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
+        if constexpr (BOUNDSCHECK) {
+            const auto x = static_cast<std::uint_fast32_t>(std::clamp((pos[0] - m_aabb[0]) * m_voxelSizeInv[0], double { 0 }, static_cast<double>(m_voxelDim[0] - 1)));
+            const auto y = static_cast<std::uint_fast32_t>(std::clamp((pos[1] - m_aabb[1]) * m_voxelSizeInv[1], double { 0 }, static_cast<double>(m_voxelDim[1] - 1)));
+            const auto z = static_cast<std::uint_fast32_t>(std::clamp((pos[2] - m_aabb[2]) * m_voxelSizeInv[2], double { 0 }, static_cast<double>(m_voxelDim[2] - 1)));
+            return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
+        } else {
+            const auto x = static_cast<std::uint_fast32_t>((pos[0] - m_aabb[0]) * m_voxelSizeInv[0]);
+            const auto y = static_cast<std::uint_fast32_t>((pos[1] - m_aabb[1]) * m_voxelSizeInv[1]);
+            const auto z = static_cast<std::uint_fast32_t>((pos[2] - m_aabb[2]) * m_voxelSizeInv[2]);
+            return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
+        }
     }
 
     void translate(const std::array<double, 3>& dist) noexcept
@@ -175,7 +183,7 @@ public:
                 // interaction happends
                 p.translate(stepLen);
                 const auto intRes = interactions::template interact<NMaterialShells, LOWENERGYCORRECTION>(att, p, m_material, state);
-                const auto scoreIdx = gridIndex(p.pos);
+                const auto scoreIdx = gridIndex<false>(p.pos);
                 m_energyScored[scoreIdx].scoreEnergy(intRes.energyImparted);
                 cont = intRes.particleAlive;
                 updateAtt = intRes.particleEnergyChanged;
@@ -230,7 +238,10 @@ protected:
         };
         if (!test(m_aabb)) {
             for (std::size_t i = 0; i < 3; ++i) {
-                if (m_aabb[i] == m_aabb[i + 3]) {
+                if (std::abs(m_aabb[i] - m_aabb[i + 3]) < GEOMETRIC_ERROR()) {
+                    if (m_aabb[i] > m_aabb[i + 3]) {
+                        std::swap(m_aabb[i], m_aabb[i + 3]);
+                    }
                     m_aabb[i] -= GEOMETRIC_ERROR();
                     m_aabb[i + 3] += GEOMETRIC_ERROR();
                 } else if (m_aabb[i] > m_aabb[i + 3]) {

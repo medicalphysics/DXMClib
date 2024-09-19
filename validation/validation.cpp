@@ -23,10 +23,8 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
-#include "dxmc/world/worlditems/fluencescore.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
-#include "dxmc/world/worlditems/worldcylinder.hpp"
 
 #include "tg195world3breast.hpp"
 #include "tg195world42.hpp"

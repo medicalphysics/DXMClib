@@ -287,10 +287,12 @@ protected:
         std::array<double, 6> aabb = { 0, 0, 0, 0, 0, 0 };
 
         for (std::size_t i = 0; i < 3; ++i) {
-            aabb[i] = std::transform_reduce(std::execution::par_unseq, indices.cbegin(), indices.cend(), std::numeric_limits<double>::max(), [](const auto& lh, const auto& rh) { return std::min(lh, rh); }, [i, this](const auto& t) {                
+            aabb[i] = std::transform_reduce(
+                std::execution::par_unseq, indices.cbegin(), indices.cend(), std::numeric_limits<double>::max(), [](const auto& lh, const auto& rh) { return std::min(lh, rh); }, [i, this](const auto& t) {                
                 const auto& v = this->m_items[t].vertices();
                 return std::min({ v[0][i], v[1][i], v[2][i], v[3][i] }); });
-            aabb[i + 3] = std::transform_reduce(std::execution::par_unseq, indices.cbegin(), indices.cend(), std::numeric_limits<double>::lowest(), [](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [i, this](const auto& t) {                
+            aabb[i + 3] = std::transform_reduce(
+                std::execution::par_unseq, indices.cbegin(), indices.cend(), std::numeric_limits<double>::lowest(), [](const auto& lh, const auto& rh) { return std::max(lh, rh); }, [i, this](const auto& t) {                
                 const auto& v = this->m_items[t].vertices();
                 return std::max({ v[0][i], v[1][i], v[2][i], v[3][i] }); });
         }
@@ -418,10 +420,11 @@ protected:
         const auto min = aabb[D];
         const auto max = aabb[D + 3];
 
-        int res = 0;
-        res += max > plane;
-        res -= min < plane;
-        return res;
+        if (max - plane < -epsilon())
+            return -1;
+        if (min - plane > epsilon())
+            return 1;
+        return 0;
     }
 
     int figureOfMerit(const std::vector<Tetrahedron>& items, const std::vector<std::uint32_t>& indices, const std::uint32_t dim, const float planesep)
@@ -443,15 +446,6 @@ protected:
     {
         // Huristic epsilon
         return 11 * std::numeric_limits<double>::epsilon();
-    }
-
-    constexpr static bool lessOrEqual(double a, double b)
-    {
-        return a - b <= epsilon() * a;
-    }
-    constexpr static bool greaterOrEqual(double a, double b)
-    {
-        return b - a <= epsilon() * a;
     }
 
 private:
