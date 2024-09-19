@@ -78,26 +78,28 @@ public:
         return false;
     }
 
-    void setVoxelDimensions(const std::array<std::size_t, 3>& dim)
+    void setVoxelDimensions(const std::array<std::uint_fast32_t, 3>& dim)
     {
-        for (std::size_t i = 0; i < 3; ++i) {
-            m_voxelDim[i] = std::max(std::size_t { 1 }, dim[i]);
-        }
+        for (std::size_t i = 0; i < 3; ++i) 
+            m_voxelDim[i] = std::min(std::max(std::uint_fast32_t { 1 }, dim[i]), std::uint_fast32_t { 1000 });
+
+        
 
         for (std::size_t i = 0; i < 3; ++i) {
             m_voxelSize[i] = (m_aabb[i + 3] - m_aabb[i]) / m_voxelDim[i];
+            m_voxelSizeInv[i] = 1.0 / m_voxelSize[i];
         }
         const auto ndim = m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
         m_energyScored.resize(ndim);
         m_dose.resize(ndim);
     }
 
-    std::size_t totalNumberOfVoxels() const
+    std::uint_fast32_t totalNumberOfVoxels() const
     {
         return m_voxelDim[0] * m_voxelDim[1] * m_voxelDim[2];
     }
 
-    const std::array<std::size_t, 3>& voxelDimensions() const
+    const std::array<std::uint_fast32_t, 3>& voxelDimensions() const
     {
         return m_voxelDim;
     }
@@ -107,11 +109,11 @@ public:
         return m_voxelSize;
     }
 
-    std::size_t gridIndex(const std::array<double, 3>& pos) const noexcept
+    std::uint_fast32_t gridIndex(const std::array<double, 3>& pos) const noexcept
     {
-        const auto x = static_cast<std::size_t>(std::clamp((pos[0] - m_aabb[0]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[0] - 1)));
-        const auto y = static_cast<std::size_t>(std::clamp((pos[1] - m_aabb[1]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[1] - 1)));
-        const auto z = static_cast<std::size_t>(std::clamp((pos[2] - m_aabb[2]) / m_voxelSize[0], double { 0 }, static_cast<double>(m_voxelDim[2] - 1)));
+        const auto x = static_cast<std::uint_fast32_t>(std::clamp((pos[0] - m_aabb[0]) * m_voxelSizeInv[0], double { 0 }, static_cast<double>(m_voxelDim[0] - 1)));
+        const auto y = static_cast<std::uint_fast32_t>(std::clamp((pos[1] - m_aabb[1]) * m_voxelSizeInv[1], double { 0 }, static_cast<double>(m_voxelDim[1] - 1)));
+        const auto z = static_cast<std::uint_fast32_t>(std::clamp((pos[2] - m_aabb[2]) * m_voxelSizeInv[2], double { 0 }, static_cast<double>(m_voxelDim[2] - 1)));
         return x + (y + z * m_voxelDim[1]) * m_voxelDim[0];
     }
 
@@ -244,7 +246,8 @@ private:
     std::array<double, 6> m_aabb;
     double m_materialDensity = 1;
     std::array<double, 3> m_voxelSize = { 1, 1, 1 };
-    std::array<std::size_t, 3> m_voxelDim = { 1, 1, 1 };
+    std::array<double, 3> m_voxelSizeInv = { 1, 1, 1 };
+    std::array<std::uint_fast32_t, 3> m_voxelDim = { 1, 1, 1 };
     Material<NMaterialShells> m_material;
     std::vector<EnergyScore> m_energyScored;
     std::vector<DoseScore> m_dose;
