@@ -80,10 +80,8 @@ public:
 
     void setVoxelDimensions(const std::array<std::uint_fast32_t, 3>& dim)
     {
-        for (std::size_t i = 0; i < 3; ++i) 
+        for (std::size_t i = 0; i < 3; ++i)
             m_voxelDim[i] = std::min(std::max(std::uint_fast32_t { 1 }, dim[i]), std::uint_fast32_t { 1000 });
-
-        
 
         for (std::size_t i = 0; i < 3; ++i) {
             m_voxelSize[i] = (m_aabb[i + 3] - m_aabb[i]) / m_voxelDim[i];
