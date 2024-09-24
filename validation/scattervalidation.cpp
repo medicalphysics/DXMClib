@@ -19,14 +19,17 @@ Copyright 2024 Erlend Andersen
 #include "dxmc/interactions.hpp"
 
 #include <algorithm>
+#include <atomic>
 #include <fstream>
+#include <functional>
 #include <iostream>
+#include <thread>
 
 struct Histogram {
     double start = 0;
     double stop = 1;
     int N = 100;
-    std::vector<std::size_t> intensity;
+    std::vector<std::uint64_t> intensity;
     Histogram(int n = 100, double start_val = 0, double stop_val = 1)
     {
         N = std::clamp(n, 2, 1000);
@@ -98,29 +101,36 @@ public:
     }
     void header()
     {
-        m_myfile << "Model,InteractionType,x,y\n";
+        m_myfile << "Model;InteractionType;x;y;Energy;Material\n";
     }
-    void operator()(const std::string& model, const std::string& type, double x, double y)
+    void operator()(const std::string& model, const std::string& type, double x, double y, double energy, const std::string& matname = "")
     {
-        m_myfile << model << ",";
-        m_myfile << type << ",";
-        m_myfile << x << ",";
-        m_myfile << y << '\n';
+        const std::lock_guard<std::mutex> lock(m_mutex);
+        m_myfile << model << ";";
+        m_myfile << type << ";";
+        m_myfile << x << ";";
+        m_myfile << y << ";";
+        m_myfile << energy << ";";
+        m_myfile << matname << '\n';
     }
-    void operator()(const Histogram& hist, const std::string& model, const std::string& type)
+    void operator()(const Histogram& hist, const std::string& model, const std::string& type, double energy, const std::string& matname = "")
     {
         const auto b = hist.getBins();
         const auto v = hist.getValues();
+        const std::lock_guard<std::mutex> lock(m_mutex);
         for (std::size_t i = 0; i < v.size(); ++i) {
-            m_myfile << model << ',';
-            m_myfile << type << ',';
-            m_myfile << b[i] << ',';
-            m_myfile << v[i] << '\n';
+            m_myfile << model << ';';
+            m_myfile << type << ';';
+            m_myfile << b[i] << ';';
+            m_myfile << v[i] << ';';
+            m_myfile << energy << ';';
+            m_myfile << matname << '\n';
         }
     }
 
 private:
     std::ofstream m_myfile;
+    std::mutex m_mutex;
 };
 
 template <int Model = 1>
@@ -141,7 +151,7 @@ template <int Model = 1>
 Histogram comptonScatterEnergy(const dxmc::Material<5>& material, double energy, std::size_t N = 1e6)
 {
     dxmc::RandomState state;
-    Histogram h(100, .9 / (1 + energy / dxmc::ELECTRON_REST_MASS() * 2), 1);
+    Histogram h(1000, .9 / (1 + energy / dxmc::ELECTRON_REST_MASS() * 2), 1);
     for (std::size_t i = 0; i < N; ++i) {
         dxmc::Particle p { .pos = { 0, 0, 0 }, .dir = { 0, 0, 1 }, .energy = energy, .weight = 1 };
         dxmc::interactions::comptonScatter<5, Model>(p, material, state);
@@ -165,31 +175,53 @@ Histogram rayleightScatterAngle(const dxmc::Material<5>& material, double energy
 }
 
 template <int I = 0>
-void saveHist(ResultPrint& p, const auto& material, double energy)
+void saveHist(ResultPrint& p, const dxmc::Material<5>& material, double energy, const std::string& matname)
 {
-    auto h_ang = comptonScatterAngle<I>(material, energy, 1000000);
-    auto h_en = comptonScatterEnergy<I>(material, energy, 1000000);
-    auto hr_ang = rayleightScatterAngle<I>(material, energy, 1000000);
-    std::string model = "None";
+    constexpr std::size_t N = 1E8;
+    auto h_ang = comptonScatterAngle<I>(material, energy, N);
+    auto h_en = comptonScatterEnergy<I>(material, energy, N);
+    auto hr_ang = rayleightScatterAngle<I>(material, energy, N);
+    std::string model = "NoneLC";
     if (I == 1)
         model = "Livermore";
     if (I == 2)
         model = "IA";
 
-    p(h_ang, model, "ComptonAngle");
-    p(h_en, model, "ComptonEnergy");
-    p(hr_ang, model, "RayleighAngle");
+    p(h_ang, model, "ComptonAngle", energy, matname);
+    p(h_en, model, "ComptonEnergy", energy, matname);
+    p(hr_ang, model, "RayleighAngle", energy, matname);
 }
 
 int main()
 {
-    auto material = dxmc::Material<5>::byNistName("Water, Liquid").value();
 
     ResultPrint p;
     p.header();
-    saveHist<0>(p, material, 60.0);
-    saveHist<1>(p, material, 60.0);
-    saveHist<2>(p, material, 60.0);
+
+    std::array<double, 3> energies = { 15, 30, 90 };
+    std::array<std::string, 3> material_names = {
+        "Water, Liquid",
+        "Polymethyl Methacralate (Lucite, Perspex)",
+        "Lead"
+    };
+    std::array<dxmc::Material<5>, 3> materials = {
+        dxmc::Material<5>::byNistName("Water, Liquid").value(),
+        dxmc::Material<5>::byNistName("Polymethyl Methacralate (Lucite, Perspex)").value(),
+        dxmc::Material<5>::byZ(82).value()
+    };
+
+    std::vector<std::jthread> threads;
+    threads.reserve(materials.size() * energies.size());
+
+    for (std::size_t i = 0; i < materials.size(); ++i) {
+        const auto& material_name = material_names[i];
+        const auto& material = materials[i];
+        for (auto energy : energies) {
+            threads.emplace_back(saveHist<0>, std::ref(p), std::cref(material), energy, std::cref(material_name));
+            threads.emplace_back(saveHist<1>, std::ref(p), std::cref(material), energy, std::cref(material_name));
+            threads.emplace_back(saveHist<2>, std::ref(p), std::cref(material), energy, std::cref(material_name));
+        }
+    }
 
     return 0;
 }

@@ -38,3 +38,11 @@ add_custom_command(TARGET validation POST_BUILD
     COMMAND ${CMAKE_COMMAND} -E copy ${PLOTSCRIPT_PATH} validationPlots.py
 	WORKING_DIRECTORY $<TARGET_FILE_DIR:validation>
 	)
+
+set(PLOTSCRIPTSCATTER_PATH "${CMAKE_CURRENT_SOURCE_DIR}/scatterPlots.py")
+add_custom_command(TARGET scattervalidation POST_BUILD
+	COMMENT "Copying plotting script ${PLOTSCRIPTSCATTER_PATH}."
+	DEPENDS ${PLOTSCRIPTSCATTER_PATH}
+    COMMAND ${CMAKE_COMMAND} -E copy ${PLOTSCRIPTSCATTER_PATH} scatterPlots.py
+	WORKING_DIRECTORY $<TARGET_FILE_DIR:scattervalidation>
+	)
