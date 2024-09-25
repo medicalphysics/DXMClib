@@ -48,7 +48,13 @@ def readData():
         dm[key] = [0 for _ in dm[key]]
 
     df = pd.concat([dt, dm], ignore_index=True)
-    return df.sort_values(by=["Model"])
+
+    # adding errors for seaborn
+    df_max = df[df["Model"] != "TG195"].copy()
+    df_max["Result"] += 1.96 * df_max["Stddev"]
+    df_min = df[df["Model"] != "TG195"].copy()
+    df_min["Result"] -= 1.96 * df_max["Stddev"]
+    return pd.concat([df, df_min, df_max], ignore_index=True)
 
 
 def fix_axis(fg, rotate_labels=True, ylabel="Energy [eV/history]", set_y0=True):
@@ -81,6 +87,7 @@ def plotCase2(dt_full, kind="strip", show=False):
         hue_order=HUE_ORDER,
         data=dt_vol,
         kind=kind,
+        errorbar=lambda x: (x.min(), x.max()),
     )
 
     fix_axis(g)
@@ -100,6 +107,7 @@ def plotCase2(dt_full, kind="strip", show=False):
         hue_order=HUE_ORDER,
         data=dt_tot,
         kind=kind,
+        errorbar=lambda x: (x.min(), x.max()),
     )
     fix_axis(g, False)
     plt.savefig("plots/Case2_total_body.png", dpi=300)
@@ -128,6 +136,7 @@ def plotCase3(dt_full, kind="strip", show=False):
         hue_order=HUE_ORDER,
         data=dt_vol,
         kind=kind,
+        errorbar=lambda x: (x.min(), x.max()),
     )
 
     fix_axis(g)
@@ -151,6 +160,7 @@ def plotCase3(dt_full, kind="strip", show=False):
         hue_order=HUE_ORDER,
         data=dt_tot,
         kind=kind,
+        errorbar=lambda x: (x.min(), x.max()),
     )
     fix_axis(g, False)
     plt.savefig("plots/Case3_total_body.png", dpi=300)
@@ -178,6 +188,7 @@ def plotCase41(dt_full, kind="strip", show=False):
         hue_order=HUE_ORDER,
         data=dt,
         kind=kind,
+        errorbar=lambda x: (x.min(), x.max()),
     )
     fix_axis(g, False)
     plt.savefig("plots/Case41.png", dpi=300)
@@ -248,6 +259,7 @@ def plotCase5(dt_full, kind="strip", show=False):
             hue_order=HUE_ORDER,
             data=dtm,
             kind=kind,
+            errorbar=lambda x: (x.min(), x.max()),
         )
         fix_axis(g)
         plt.savefig("plots/Case5_{}.png".format(m), dpi=300)
@@ -273,7 +285,7 @@ def plotRuntimes(dt, kind="strip", show=False):
             data=dff,
             kind=kind,
             order=labels,
-            hue_order=HUE_ORDER,
+            hue_order=HUE_ORDER[:-1],
         )
         fix_axis(g, ylabel="Simulation time [ms]", set_y0=False)
         plt.savefig("plots/Runtimes_{}.png".format(cas), dpi=300)

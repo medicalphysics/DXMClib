@@ -23,7 +23,9 @@ Copyright 2022 Erlend Andersen
 #include "dxmc/beams/ctspiraldualenergybeam.hpp"
 #include "dxmc/beams/dxbeam.hpp"
 #include "dxmc/beams/isotropicbeam.hpp"
+#include "dxmc/beams/isotropicbeamcircle.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
+#include "dxmc/beams/isotropicmonoenergybeamcircle.hpp"
 #include "dxmc/beams/pencilbeam.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/vectormath.hpp"
@@ -37,6 +39,31 @@ bool initiateBeam(B& beam)
     dxmc::RandomState state;
     auto p = e.sampleParticle(state);
     return true;
+}
+
+bool testIsotropicBeamCircle()
+{
+    dxmc::IsotropicBeamCircle<> beam;
+
+    constexpr double angle = 10.0 * std::numbers::pi_v<double> / 180.0;
+
+    beam.setCollimationAngle(angle);
+
+    dxmc::Tube tube;
+    auto specter = tube.getSpecter();
+    beam.setEnergySpecter(specter);
+    return initiateBeam(beam);
+}
+
+bool testIsotropicMonoEnergyBeamCircle()
+{
+    dxmc::IsotropicMonoEnergyBeamCircle<> beam;
+
+    constexpr double angle = 10.0 * std::numbers::pi_v<double> / 180.0;
+
+    beam.setCollimationAngle(angle);
+
+    return initiateBeam(beam);
 }
 
 bool testDXBeam()
@@ -108,8 +135,9 @@ int main()
     std::cout << "Testing beams\n";
 
     bool success = true;
+    success = success && testIsotropicMonoEnergyBeamCircle();
+    success = success && testIsotropicBeamCircle();
     success = success && testDXBeam();
-
     success = success && testIsotropicMonoEnergyBeam();
     success = success && testpencilbeam();
     success = success && testCTSpiralBeam();

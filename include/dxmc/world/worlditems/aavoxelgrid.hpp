@@ -514,10 +514,11 @@ protected:
             auto e = std::log(MIN_ENERGY());
             const auto emax = std::log(MAX_ENERGY());
             const auto estep = (emax - e) / 10;
-            while (e <= emax) {
+            while (e < emax) {
                 energy.push_back(e);
                 e += estep;
             }
+            energy.push_back(emax);
         }
         // adding edges;
         for (const auto& mat : m_materials) {
