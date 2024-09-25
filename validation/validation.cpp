@@ -36,7 +36,7 @@ Copyright 2023 Erlend Andersen
 using namespace dxmc;
 
 // Set this to true for a reduced number of photons (for testing)
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 struct ResultKeys {
     std::string rCase = "unknown";
@@ -1117,29 +1117,29 @@ template <int LOWENERGYCORRECTION>
 bool runAll()
 {
     auto success = true;
-    /*
-        success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
-        success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
-        success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
-        success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-        success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
-        success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
-        success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
-        success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
-        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
-        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
-        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-        success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
-        success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
-        success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
-        success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
+    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
 
-        success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>();
-        */
+    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
+
+    success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>();
+
     success = success && TG195Case5AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>();
 
     return success;
