@@ -40,7 +40,7 @@ Copyright 2023 Erlend Andersen
 using namespace dxmc;
 
 // Set this to true for a reduced number of photons (for testing)
-constexpr bool SAMPLE_RUN = true;
+constexpr bool SAMPLE_RUN = false;
 
 struct ResultKeys {
     std::string rCase = "unknown";
@@ -321,7 +321,7 @@ template <BeamType Beam, int LOWENERGYCORRECTION = 2>
 bool TG195Case1Fluence(bool mammo = false)
 {
     constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 64 : 1024;
-    constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000 : 1000000;
+    constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
 
     constexpr std::size_t NShells = 5;
     using Filter = WorldCylinder<NShells, LOWENERGYCORRECTION>;
@@ -391,16 +391,11 @@ bool TG195Case1Fluence(bool mammo = false)
     std::cout << "TG195 Case 1 for " << res.modus << res.specter << " photons with low en model: " << res.model << std::endl;
 
     Transport transport;
-    transport.setNumberOfThreads(1);
+    // transport.setNumberOfThreads(1);
 
     auto time_elapsed1 = runDispatcher(transport, world, beam);
     const auto fluenceNoFilter = scoring.energyScored();
     const auto fluenceNoFilterSpecter = scoring.getSpecter();
-    std::uint64_t n_hits = 0;
-    for (auto& i : fluenceNoFilterSpecter) {
-        n_hits += i.second;
-    }
-    std::cout << n_hits << std::endl;
     world.clearDoseScored();
 
     auto aluminum = Mat::byZ(13).value();
@@ -409,7 +404,7 @@ bool TG195Case1Fluence(bool mammo = false)
     filter.setMaterial(aluminum, aluminum_dens);
 
     filter.setHeight(filter_thickness[0]);
-    filter.setCenter({ 0, 0, -100 - filter_thickness[0] / 2 });
+    filter.setCenter({ 0, 0, -10 - filter_thickness[0] / 2 });
     world.build(200);
     auto time_elapsed2 = runDispatcher(transport, world, beam);
     const auto fluenceHVLFilter = scoring.energyScored();
@@ -417,9 +412,9 @@ bool TG195Case1Fluence(bool mammo = false)
     world.clearDoseScored();
 
     filter.setHeight(filter_thickness[1]);
-    filter.setCenter({ 0, 0, -100 - filter_thickness[1] / 2 });
+    filter.setCenter({ 0, 0, -10 - filter_thickness[1] / 2 });
     world.build(200);
-    //auto time_elapsed3 = runDispatcher(transport, world, beam);
+    auto time_elapsed3 = runDispatcher(transport, world, beam);
     const auto fluenceQVLFilter = scoring.energyScored();
     const auto fluenceQVLFilterSpecter = scoring.getSpecter();
     world.clearDoseScored();
@@ -430,9 +425,8 @@ bool TG195Case1Fluence(bool mammo = false)
         for (std::size_t i = 0; i < u.size(); ++i) {
             kerma += u[i].second * spec[i].second;
         }
-        // constexpr double discArea = std::numbers::pi_v<double> * 0.5 * 0.5;
-        // return kerma / discArea;
-        return kerma;
+        constexpr double discArea = std::numbers::pi_v<double> * 0.5 * 0.5;
+        return kerma / discArea;
     };
 
     const auto airKermaNoFilter = AirKerma(fluenceNoFilterSpecter);
@@ -444,7 +438,7 @@ bool TG195Case1Fluence(bool mammo = false)
 
     std::cout << time_elapsed1.count() << " " << fluenceNoFilter.energyImparted() << " " << airKermaNoFilter << std::endl;
     std::cout << time_elapsed2.count() << " " << fluenceHVLFilter.energyImparted() << " " << airKermaHVLFilter << std::endl;
-    //std::cout << time_elapsed3.count() << " " << fluenceQVLFilter.energyImparted() << " " << airKermaQVLFilter << std::endl;
+    std::cout << time_elapsed3.count() << " " << fluenceQVLFilter.energyImparted() << " " << airKermaQVLFilter << std::endl;
 
     std::cout << "R3: " << R3 << " R4: " << R4 << std::endl;
 
