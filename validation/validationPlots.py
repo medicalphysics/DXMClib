@@ -50,7 +50,7 @@ def readData():
     df = pd.concat([dt, dm], ignore_index=True)
 
     # adding errors for seaborn
-    df_max = df[df["Model"] != "TG195"].copy()
+    df_max = df[df["Model"] != "TG195"][df["Case"] != "Case 4.2"].copy()
     df_max["Result"] += 1.96 * df_max["Stddev"]
     df_min = df[df["Model"] != "TG195"].copy()
     df_min["Result"] -= 1.96 * df_max["Stddev"]

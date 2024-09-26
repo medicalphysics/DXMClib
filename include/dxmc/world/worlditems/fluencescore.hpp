@@ -51,6 +51,16 @@ public:
         std::fill(m_intensity.begin(), m_intensity.end(), 0);
     }
 
+    void setCenter(const std::array<double, 3>& c)
+    {
+        m_center = c;
+    }
+
+    void setRadius(double r)
+    {
+        m_radius = std::max(std::abs(r), 0.00001);
+    }
+
     void translate(const std::array<double, 3>& dist)
     {
         for (std::size_t i = 0; i < 3; ++i) {
@@ -81,7 +91,7 @@ public:
     {
         std::vector<std::pair<double, std::uint64_t>> spec(m_intensity.size());
         for (std::size_t i = 0; i < m_intensity.size(); ++i) {
-            spec[i] = std::make_pair(m_energy_step * i, m_intensity[i]);
+            spec[i] = std::make_pair(m_energy_step * i + m_energy_step / 2, m_intensity[i]);
         }
         return spec;
     }
@@ -113,8 +123,7 @@ public:
 
     void clearEnergyScored()
     {
-        m_energyScored.clear();
-        std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
+        return;
     }
 
     void addEnergyScoredToDoseScore(double calibration_factor = 1)
@@ -123,13 +132,15 @@ public:
         return;
     }
 
-    const DoseScore& doseScored(std::size_t index = 0) const
+    const DoseScore doseScored(std::size_t index = 0) const
     {
-        return m_dummyDose;
+        return DoseScore {};
     }
 
     void clearDoseScored()
     {
+        m_energyScored.clear();
+        std::fill(m_intensity.begin(), m_intensity.end(), std::uint64_t { 0 });
         return;
     }
 
@@ -212,6 +223,5 @@ private:
     std::array<double, 6> m_aabb;
     std::vector<std::uint64_t> m_intensity;
     EnergyScore m_energyScored;
-    DoseScore m_dummyDose;
 };
 }

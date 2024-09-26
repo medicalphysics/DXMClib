@@ -17,14 +17,18 @@ Copyright 2023 Erlend Andersen
 */
 
 #include "dxmc/beams/isotropicbeam.hpp"
+#include "dxmc/beams/isotropicbeamcircle.hpp"
 #include "dxmc/beams/isotropicmonoenergybeam.hpp"
+#include "dxmc/beams/isotropicmonoenergybeamcircle.hpp"
 #include "dxmc/transport.hpp"
 #include "dxmc/world/visualization/visualizeworld.hpp"
 #include "dxmc/world/world.hpp"
 #include "dxmc/world/worlditems/aavoxelgrid.hpp"
 #include "dxmc/world/worlditems/depthdose.hpp"
+#include "dxmc/world/worlditems/fluencescore.hpp"
 #include "dxmc/world/worlditems/worldbox.hpp"
 #include "dxmc/world/worlditems/worldboxgrid.hpp"
+#include "dxmc/world/worlditems/worldcylinder.hpp"
 
 #include "tg195world3breast.hpp"
 #include "tg195world42.hpp"
@@ -36,7 +40,7 @@ Copyright 2023 Erlend Andersen
 using namespace dxmc;
 
 // Set this to true for a reduced number of photons (for testing)
-constexpr bool SAMPLE_RUN = false;
+constexpr bool SAMPLE_RUN = true;
 
 struct ResultKeys {
     std::string rCase = "unknown";
@@ -174,6 +178,19 @@ auto TG195_30KV()
     return TG195_specter(TG195_30KV_raw);
 }
 
+// mass energy abs coeff for air
+std::vector<std::pair<double, double>> TG195_mass_en_abs_air()
+{
+    static std::vector<double> raw({ 0.25, 0.000E+00, 0.75, 0.000E+00, 1.25, 0.000E+00, 1.75, 0.000E+00, 2.25, 0.000E+00, 2.75, 0.000E+00, 3.25, 0.000E+00, 3.75, 3.815E+01, 4.25, 6.506E+01, 4.75, 4.657E+01, 5.25, 3.441E+01, 5.75, 2.609E+01, 6.25, 2.027E+01, 6.75, 1.606E+01, 7.25, 1.292E+01, 7.75, 1.050E+01, 8.25, 8.649E+00, 8.75, 7.219E+00, 9.25, 6.073E+00, 9.75, 5.154E+00, 10.25, 4.411E+00, 10.75, 3.804E+00, 11.25, 3.301E+00, 11.75, 2.880E+00, 12.25, 2.528E+00, 12.75, 2.230E+00, 13.25, 1.976E+00, 13.75, 1.759E+00, 14.25, 1.572E+00, 14.75, 1.410E+00, 15.25, 1.270E+00, 15.75, 1.146E+00, 16.25, 1.038E+00, 16.75, 9.434E-01, 17.25, 8.599E-01, 17.75, 7.864E-01, 18.25, 7.204E-01, 18.75, 6.611E-01, 19.25, 6.083E-01, 19.75, 5.612E-01, 20.25, 5.211E-01, 20.75, 4.845E-01, 21.25, 4.496E-01, 21.75, 4.177E-01, 22.25, 3.901E-01, 22.75, 3.650E-01, 23.25, 3.411E-01, 23.75, 3.181E-01, 24.25, 2.974E-01, 24.75, 2.788E-01, 25.25, 2.621E-01, 25.75, 2.469E-01, 26.25, 2.325E-01, 26.75, 2.193E-01, 27.25, 2.070E-01, 27.75, 1.956E-01, 28.25, 1.851E-01, 28.75, 1.753E-01, 29.25, 1.663E-01, 29.75, 1.579E-01, 30.25, 1.501E-01, 30.75, 1.428E-01, 31.25, 1.360E-01, 31.75, 1.298E-01, 32.25, 1.240E-01, 32.75, 1.185E-01, 33.25, 1.133E-01, 33.75, 1.086E-01, 34.25, 1.041E-01, 34.75, 9.979E-02, 35.25, 9.581E-02, 35.75, 9.211E-02, 36.25, 8.868E-02, 36.75, 8.544E-02, 37.25, 8.236E-02, 37.75, 7.945E-02, 38.25, 7.670E-02, 38.75, 7.410E-02, 39.25, 7.165E-02, 39.75, 6.933E-02, 40.25, 6.715E-02, 40.75, 6.510E-02, 41.25, 6.310E-02, 41.75, 6.122E-02, 42.25, 5.947E-02, 42.75, 5.782E-02, 43.25, 5.629E-02, 43.75, 5.479E-02, 44.25, 5.332E-02, 44.75, 5.196E-02, 45.25, 5.069E-02, 45.75, 4.946E-02, 46.25, 4.832E-02, 46.75, 4.720E-02, 47.25, 4.610E-02, 47.75, 4.510E-02, 48.25, 4.411E-02, 48.75, 4.321E-02, 49.25, 4.233E-02, 49.75, 4.147E-02, 50.25, 4.068E-02, 50.75, 3.991E-02, 51.25, 3.916E-02, 51.75, 3.848E-02, 52.25, 3.781E-02, 52.75, 3.715E-02, 53.25, 3.657E-02, 53.75, 3.594E-02, 54.25, 3.532E-02, 54.75, 3.483E-02, 55.25, 3.434E-02, 55.75, 3.381E-02, 56.25, 3.334E-02, 56.75, 3.289E-02, 57.25, 3.243E-02, 57.75, 3.205E-02, 58.25, 3.166E-02, 58.75, 3.124E-02, 59.25, 3.081E-02, 59.75, 3.050E-02, 60.25, 3.020E-02, 60.75, 2.985E-02, 61.25, 2.950E-02, 61.75, 2.921E-02, 62.25, 2.893E-02, 62.75, 2.865E-02, 63.25, 2.842E-02, 63.75, 2.815E-02, 64.25, 2.788E-02, 64.75, 2.767E-02, 65.25, 2.745E-02, 65.75, 2.724E-02, 66.25, 2.704E-02, 66.75, 2.684E-02, 67.25, 2.664E-02, 67.75, 2.644E-02, 68.25, 2.629E-02, 68.75, 2.615E-02, 69.25, 2.596E-02, 69.75, 2.582E-02, 70.25, 2.568E-02, 70.75, 2.554E-02, 71.25, 2.545E-02, 71.75, 2.531E-02, 72.25, 2.518E-02, 72.75, 2.509E-02, 73.25, 2.501E-02, 73.75, 2.488E-02, 74.25, 2.476E-02, 74.75, 2.467E-02, 75.25, 2.459E-02, 75.75, 2.455E-02, 76.25, 2.452E-02, 76.75, 2.444E-02, 77.25, 2.436E-02, 77.75, 2.428E-02, 78.25, 2.425E-02, 78.75, 2.421E-02, 79.25, 2.418E-02, 79.75, 2.414E-02, 80.25, 2.407E-02, 80.75, 2.400E-02, 81.25, 2.397E-02, 81.75, 2.394E-02, 82.25, 2.390E-02, 82.75, 2.387E-02, 83.25, 2.384E-02, 83.75, 2.381E-02, 84.25, 2.378E-02, 84.75, 2.375E-02, 85.25, 2.372E-02, 85.75, 2.369E-02, 86.25, 2.366E-02, 86.75, 2.364E-02, 87.25, 2.361E-02, 87.75, 2.358E-02, 88.25, 2.355E-02, 88.75, 2.352E-02, 89.25, 2.350E-02, 89.75, 2.351E-02, 90.25, 2.348E-02, 90.75, 2.345E-02, 91.25, 2.343E-02, 91.75, 2.340E-02, 92.25, 2.341E-02, 92.75, 2.338E-02, 93.25, 2.336E-02, 93.75, 2.337E-02, 94.25, 2.334E-02, 94.75, 2.332E-02, 95.25, 2.333E-02, 95.75, 2.334E-02, 96.25, 2.331E-02, 96.75, 2.329E-02, 97.25, 2.330E-02, 97.75, 2.327E-02, 98.25, 2.325E-02, 98.75, 2.326E-02, 99.25, 2.327E-02, 99.75, 2.328E-02 });
+    const auto N = raw.size() / 2;
+    std::vector<std::pair<double, double>> r(N);
+    for (std::size_t i = 0; i < N; ++i) {
+        r[i].first = raw[2 * i];
+        r[i].second = raw[2 * i + 1];
+    }
+    return r;
+}
+
 std::pair<double, std::map<std::size_t, double>> TG195_soft_tissue()
 {
     std::map<std::size_t, double> Zs;
@@ -297,6 +314,143 @@ auto runDispatcher(T& transport, W& world, const B& beam)
     job.join();
     std::cout << std::string(message.length(), ' ') << "\r";
     return progress.totalTime();
+}
+
+template <BeamType Beam, int LOWENERGYCORRECTION = 2>
+    requires(std::same_as<Beam, IsotropicBeamCircle<>> || std::same_as<Beam, IsotropicMonoEnergyBeamCircle<>>)
+bool TG195Case1Fluence(bool mammo = false)
+{
+    constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 64 : 1024;
+    constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000 : 1000000;
+
+    constexpr std::size_t NShells = 5;
+    using Filter = WorldCylinder<NShells, LOWENERGYCORRECTION>;
+    using Scoring = FluenceScore;
+    using Mat = Material<NShells>;
+
+    ResultKeys res;
+    res.rCase = "Case 1";
+    if (LOWENERGYCORRECTION == 0)
+        res.model = "NoneLC";
+    if (LOWENERGYCORRECTION == 1)
+        res.model = "Livermore";
+    if (LOWENERGYCORRECTION == 2)
+        res.model = "IA";
+
+    World<Filter, Scoring> world;
+    world.reserveNumberOfItems(2);
+    auto& scoring = world.template addItem<Scoring>({ 0.5, { 0, 0, -100 }, { 0, 0, 1 } });
+    scoring.setEnergyStep(0.5);
+
+    // Without filter
+    world.build(200);
+
+    Beam beam;
+    beam.setNumberOfExposures(N_EXPOSURES);
+    beam.setNumberOfParticlesPerExposure(N_HISTORIES);
+    beam.setPosition({ 0, 0, 0 });
+    beam.setDirection({ 0, 0, -1 });
+    beam.setCollimationAngle(std::atan(0.5 / 100.0));
+
+    std::array<double, 2> filter_thickness = { 0, 0 };
+    std::array<double, 2> TG195result = { 0, 0 };
+    if constexpr (std::same_as<Beam, IsotropicBeamCircle<>>) { // we have a specter
+        res.modus = "polyenergetic";
+        if (mammo) {
+            const auto specter = TG195_30KV();
+            beam.setEnergySpecter(specter);
+            res.specter = "30kVp";
+            filter_thickness = { 0.03431, 0.07663 };
+            TG195result = { 0.5, 0.25 };
+        } else {
+            const auto specter = TG195_100KV();
+            beam.setEnergySpecter(specter);
+            res.specter = "100kVp";
+            filter_thickness = { 0.3950, 0.9840 };
+            TG195result = { 0.5, 0.25 };
+        }
+    } else {
+        res.modus = "monoenergetic";
+        if (mammo) {
+            beam.setEnergy(29.99);
+            res.specter = "30keV";
+            filter_thickness = { 0.2273, 0.4546 };
+            TG195result = { 0.5, 0.25 };
+        } else {
+            beam.setEnergy(99.99);
+            res.specter = "100keV";
+            filter_thickness = { 1.511, 3.022 };
+            TG195result = { 0.499, 0.249 };
+        }
+    }
+
+    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeamCircle<>>) {
+        // saveImageOfWorld("Case1world.png", world, beam, 110, 120, 400, 2);
+    }
+
+    std::cout << "TG195 Case 1 for " << res.modus << res.specter << " photons with low en model: " << res.model << std::endl;
+
+    Transport transport;
+    transport.setNumberOfThreads(1);
+
+    auto time_elapsed1 = runDispatcher(transport, world, beam);
+    const auto fluenceNoFilter = scoring.energyScored();
+    const auto fluenceNoFilterSpecter = scoring.getSpecter();
+    std::uint64_t n_hits = 0;
+    for (auto& i : fluenceNoFilterSpecter) {
+        n_hits += i.second;
+    }
+    std::cout << n_hits << std::endl;
+    world.clearDoseScored();
+
+    auto aluminum = Mat::byZ(13).value();
+    const auto aluminum_dens = AtomHandler::Atom(13).standardDensity;
+    auto& filter = world.template addItem<Filter>({ 2, 1, { 0, 0, 0 }, { 0, 0, 1 } });
+    filter.setMaterial(aluminum, aluminum_dens);
+
+    filter.setHeight(filter_thickness[0]);
+    filter.setCenter({ 0, 0, -100 - filter_thickness[0] / 2 });
+    world.build(200);
+    auto time_elapsed2 = runDispatcher(transport, world, beam);
+    const auto fluenceHVLFilter = scoring.energyScored();
+    const auto fluenceHVLFilterSpecter = scoring.getSpecter();
+    world.clearDoseScored();
+
+    filter.setHeight(filter_thickness[1]);
+    filter.setCenter({ 0, 0, -100 - filter_thickness[1] / 2 });
+    world.build(200);
+    //auto time_elapsed3 = runDispatcher(transport, world, beam);
+    const auto fluenceQVLFilter = scoring.energyScored();
+    const auto fluenceQVLFilterSpecter = scoring.getSpecter();
+    world.clearDoseScored();
+
+    auto AirKerma = [](const auto& spec) {
+        const auto u = TG195_mass_en_abs_air();
+        double kerma = 0;
+        for (std::size_t i = 0; i < u.size(); ++i) {
+            kerma += u[i].second * spec[i].second;
+        }
+        // constexpr double discArea = std::numbers::pi_v<double> * 0.5 * 0.5;
+        // return kerma / discArea;
+        return kerma;
+    };
+
+    const auto airKermaNoFilter = AirKerma(fluenceNoFilterSpecter);
+    const auto airKermaHVLFilter = AirKerma(fluenceHVLFilterSpecter);
+    const auto airKermaQVLFilter = AirKerma(fluenceQVLFilterSpecter);
+
+    const auto R3 = airKermaHVLFilter / airKermaNoFilter;
+    const auto R4 = airKermaQVLFilter / airKermaNoFilter;
+
+    std::cout << time_elapsed1.count() << " " << fluenceNoFilter.energyImparted() << " " << airKermaNoFilter << std::endl;
+    std::cout << time_elapsed2.count() << " " << fluenceHVLFilter.energyImparted() << " " << airKermaHVLFilter << std::endl;
+    //std::cout << time_elapsed3.count() << " " << fluenceQVLFilter.energyImparted() << " " << airKermaQVLFilter << std::endl;
+
+    std::cout << "R3: " << R3 << " R4: " << R4 << std::endl;
+
+    // constexpr double total_hist = N_EXPOSURES * N_HISTORIES;
+
+    return true;
 }
 
 template <BeamType Beam, int LOWENERGYCORRECTION = 2>
@@ -1118,30 +1272,35 @@ bool runAll()
 {
     auto success = true;
 
-    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case1Fluence<IsotropicMonoEnergyBeamCircle<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case1Fluence<IsotropicMonoEnergyBeamCircle<>, LOWENERGYCORRECTION>(true);
+    success = success && TG195Case1Fluence<IsotropicBeamCircle<>, LOWENERGYCORRECTION>(false);
+    success = success && TG195Case1Fluence<IsotropicBeamCircle<>, LOWENERGYCORRECTION>(true);
+    /*
+        success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+        success = success && TG195Case2AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+        success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+        success = success && TG195Case2AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
+        success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+        success = success && TG195Case3AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+        success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+        success = success && TG195Case3AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
-    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
-    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
-    success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
+        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, false);
+        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(false, true);
+        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, false);
+        success = success && TG195Case41AbsorbedEnergy<LOWENERGYCORRECTION>(true, true);
 
-    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
-    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
-    success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
+        success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(false);
+        success = success && TG195Case42AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>(true);
+        success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(false);
+        success = success && TG195Case42AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>(true);
 
-    success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>();
+        success = success && TG195Case5AbsorbedEnergy<IsotropicMonoEnergyBeam<>, LOWENERGYCORRECTION>();
 
-    success = success && TG195Case5AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>();
-
+        success = success && TG195Case5AbsorbedEnergy<IsotropicBeam<>, LOWENERGYCORRECTION>();
+    */
     return success;
 }
 

@@ -43,7 +43,7 @@ public:
 
     void setCollimationAngle(double angle)
     {
-        m_r = std::sin(std::abs(angle));
+        m_r = std::tan(std::abs(angle));
     }
 
     void setSpecterDistribution(const SpecterDistribution<double>& s)

@@ -75,6 +75,7 @@ public:
     void translate(const std::array<double, 3>& dist)
     {
         m_cylinder.center = vectormath::add(m_cylinder.center, dist);
+        updateAABB();
     }
 
     const std::array<double, 3>& center() const
@@ -82,14 +83,21 @@ public:
         return m_cylinder.center;
     }
 
-    std::array<double, 6> AABB() const
+    void setCenter(const std::array<double, 3>& c)
     {
-        return basicshape::cylinder::cylinderAABB(m_cylinder);
+        m_cylinder.center = c;
+        updateAABB();
+    }
+
+    const std::array<double, 6>& AABB() const
+    {
+        return m_aabb;
     }
 
     void setRadius(double r)
     {
         m_cylinder.radius = std::abs(r);
+        updateAABB();
     }
     double radius() const
     {
@@ -99,6 +107,7 @@ public:
     void setHeight(double h)
     {
         m_cylinder.half_height = std::abs(h / 2);
+        updateAABB();
     }
     double height() const
     {
@@ -108,7 +117,9 @@ public:
     void setDirection(const std::array<double, 3>& dir)
     {
         m_cylinder.direction = vectormath::normalized(dir);
+        updateAABB();
     }
+
     const std::array<double, 3>& direction() const
     {
         return m_cylinder.direction;
@@ -185,8 +196,14 @@ public:
     }
 
 protected:
+    void updateAABB()
+    {
+        m_aabb = basicshape::cylinder::cylinderAABB(m_cylinder);
+    }
+
 private:
     basicshape::cylinder::Cylinder m_cylinder;
+    std::array<double, 6> m_aabb = { 0, 0, 0, 0, 0, 0 };
     double m_materialDensity = 1;
     Material<NMaterialShells> m_material;
     EnergyScore m_energyScored;
