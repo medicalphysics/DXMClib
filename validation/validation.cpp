@@ -110,7 +110,24 @@ void saveImageOfWorld(const std::string& name, W& world, B& beam, double polarAn
     viz.setDistance(dist);
     viz.suggestFOV(zoom);
     auto buffer = viz.template createBuffer<double>(2048 * 2, 2048 * 2);
-    viz.addLineProp(beam, linelenght, linethick);
+    if constexpr (std::is_same_v<B, dxmc::IsotropicMonoEnergyBeamCircle<false>> || std::is_same_v<B, dxmc::IsotropicBeamCircle<false>>) {
+        const auto& p = beam.position();
+        const auto& d = beam.direction();
+        const auto a = beam.collimationAngle();
+        const auto x = [&d, a]() {
+            const auto ind = dxmc::vectormath::argmin3<std::size_t>(d);
+            std::array<double, 3> nr = { 0, 0, 0 };
+            nr[ind] = 1;
+            return dxmc::vectormath::scale(dxmc::vectormath::normalized(dxmc::vectormath::cross(d, nr)), std::atan(a));
+        }();
+        for (int ang = 0; ang < 360; ang = ang + 30) {
+            const auto xa = dxmc::vectormath::rotate(x, d, static_cast<double>(ang));
+            const auto dir = dxmc::vectormath::normalized(dxmc::vectormath::add(d, xa));
+            viz.addLineProp(p, dir, linelenght, linethick);
+        }
+    } else {
+        viz.addLineProp(beam, linelenght, linethick);
+    }
     viz.generate(world, buffer);
     viz.savePNG(name, buffer);
     return;
@@ -385,10 +402,6 @@ bool TG195Case1Fluence(bool mammo = false)
         }
     }
 
-    if constexpr (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeamCircle<>>) {
-        // saveImageOfWorld("Case1world.png", world, beam, 110, 120, 400, 2);
-    }
-
     auto AirKerma = [](const auto& spec) {
         const auto u = TG195_mass_en_abs_air();
         double kerma = 0;
@@ -451,6 +464,10 @@ bool TG195Case1Fluence(bool mammo = false)
     res.nMilliseconds = time_elapsed3.count();
     world.clearDoseScored();
     print(res, true, "Kerma/mm");
+
+    if (LOWENERGYCORRECTION == 1 && std::same_as<Beam, IsotropicMonoEnergyBeamCircle<>> && !mammo) {
+        saveImageOfWorld("Case1world.png", world, beam, 60, 120, 300, 5, 100, 0.05);
+    }
 
     return true;
 }
