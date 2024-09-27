@@ -73,12 +73,12 @@ public:
         m_myfile << "Case, Volume, Specter, Model, Mode, TG195Result, Result, Stddev, nEvents, SimulationTime\n";
     }
 
-    void operator()(const ResultKeys& r, bool terminal = true)
+    void operator()(const ResultKeys& r, bool terminal = true, const std::string& units = "ev/hist")
     {
-        print(r, terminal);
+        print(r, terminal, units);
     }
 
-    void print(const ResultKeys& r, bool terminal = true)
+    void print(const ResultKeys& r, bool terminal = true, const std::string& units = "ev/hist")
     {
         m_myfile << r.rCase << ", ";
         m_myfile << r.volume << ", ";
@@ -94,7 +94,7 @@ public:
 
         if (terminal) {
             std::cout << "VOI: " << r.volume;
-            std::cout << " ev/hist: " << r.result;
+            std::cout << " " << units << ": " << r.result;
             std::cout << " TG195: " << r.TG195Result;
             std::cout << " difference[%]: " << (r.result / r.TG195Result - 1) * 100 << std::endl;
         }
@@ -320,8 +320,9 @@ template <BeamType Beam, int LOWENERGYCORRECTION = 2>
     requires(std::same_as<Beam, IsotropicBeamCircle<>> || std::same_as<Beam, IsotropicMonoEnergyBeamCircle<>>)
 bool TG195Case1Fluence(bool mammo = false)
 {
-    constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 64 : 1024;
-    constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 10000 : 1000000;
+    constexpr std::uint64_t N_EXPOSURES = SAMPLE_RUN ? 32 : 256;
+    constexpr std::uint64_t N_HISTORIES = SAMPLE_RUN ? 1000000 : 1000000;
+    constexpr std::uint64_t TOTAL_HIST = N_EXPOSURES * N_HISTORIES;
 
     constexpr std::size_t NShells = 5;
     using Filter = WorldCylinder<NShells, LOWENERGYCORRECTION>;
@@ -353,7 +354,7 @@ bool TG195Case1Fluence(bool mammo = false)
     beam.setCollimationAngle(std::atan(0.5 / 100.0));
 
     std::array<double, 2> filter_thickness = { 0, 0 };
-    std::array<double, 2> TG195result = { 0, 0 };
+    std::array<double, 3> TG195result = { 0, 0, 0 };
     if constexpr (std::same_as<Beam, IsotropicBeamCircle<>>) { // we have a specter
         res.modus = "polyenergetic";
         if (mammo) {
@@ -361,13 +362,13 @@ bool TG195Case1Fluence(bool mammo = false)
             beam.setEnergySpecter(specter);
             res.specter = "30kVp";
             filter_thickness = { 0.03431, 0.07663 };
-            TG195result = { 0.5, 0.25 };
+            TG195result = { 1.858E-01, 9.282E-02, 4.642E-02 };
         } else {
             const auto specter = TG195_100KV();
             beam.setEnergySpecter(specter);
             res.specter = "100kVp";
             filter_thickness = { 0.3950, 0.9840 };
-            TG195result = { 0.5, 0.25 };
+            TG195result = { 3.452E-02, 1.725E-02, 8.621E-03 };
         }
     } else {
         res.modus = "monoenergetic";
@@ -375,12 +376,12 @@ bool TG195Case1Fluence(bool mammo = false)
             beam.setEnergy(29.99);
             res.specter = "30keV";
             filter_thickness = { 0.2273, 0.4546 };
-            TG195result = { 0.5, 0.25 };
+            TG195result = { 5.733E-02, 2.868E-02, 1.436E-02 };
         } else {
             beam.setEnergy(99.99);
             res.specter = "100keV";
             filter_thickness = { 1.511, 3.022 };
-            TG195result = { 0.499, 0.249 };
+            TG195result = { 2.902E-02, 1.448E-02, 7.227E-03 };
         }
     }
 
@@ -388,61 +389,68 @@ bool TG195Case1Fluence(bool mammo = false)
         // saveImageOfWorld("Case1world.png", world, beam, 110, 120, 400, 2);
     }
 
-    std::cout << "TG195 Case 1 for " << res.modus << res.specter << " photons with low en model: " << res.model << std::endl;
+    auto AirKerma = [](const auto& spec) {
+        const auto u = TG195_mass_en_abs_air();
+        double kerma = 0;
+        for (std::size_t i = 0; i < u.size(); ++i) {
+            kerma += u[i].first * u[i].second * spec[i].second / 100;
+        }
+        return kerma;
+    };
 
+    std::cout << "TG195 Case 1 for " << res.modus << " " << res.specter << " photons with low en model: " << res.model << std::endl;
+
+    ResultPrint print;
     Transport transport;
-    // transport.setNumberOfThreads(1);
 
+    // None Filter
     auto time_elapsed1 = runDispatcher(transport, world, beam);
-    const auto fluenceNoFilter = scoring.energyScored();
-    const auto fluenceNoFilterSpecter = scoring.getSpecter();
-    world.clearDoseScored();
+    auto fluenceNone = scoring.getFluenceSpecter(TOTAL_HIST);
 
+    res.volume = "NoneFilter";
+    res.result = AirKerma(fluenceNone);
+    res.result_std = 0;
+    res.TG195Result = TG195result[0];
+    res.nEvents = scoring.energyScored().numberOfEvents();
+    res.nMilliseconds = time_elapsed1.count();
+    world.clearDoseScored();
+    print(res, true, "Kerma/mm");
+
+    // adding filter
     auto aluminum = Mat::byZ(13).value();
     const auto aluminum_dens = AtomHandler::Atom(13).standardDensity;
     auto& filter = world.template addItem<Filter>({ 2, 1, { 0, 0, 0 }, { 0, 0, 1 } });
     filter.setMaterial(aluminum, aluminum_dens);
 
+    // HVL filter
     filter.setHeight(filter_thickness[0]);
     filter.setCenter({ 0, 0, -10 - filter_thickness[0] / 2 });
     world.build(200);
     auto time_elapsed2 = runDispatcher(transport, world, beam);
-    const auto fluenceHVLFilter = scoring.energyScored();
-    const auto fluenceHVLFilterSpecter = scoring.getSpecter();
+    auto fluenceHVL = scoring.getFluenceSpecter(TOTAL_HIST);
+    res.volume = "HVLFilter";
+    res.result = AirKerma(fluenceHVL);
+    res.result_std = 0;
+    res.TG195Result = TG195result[1];
+    res.nEvents = scoring.energyScored().numberOfEvents();
+    res.nMilliseconds = time_elapsed2.count();
     world.clearDoseScored();
+    print(res, true, "Kerma/mm");
 
+    // QVL filter
     filter.setHeight(filter_thickness[1]);
     filter.setCenter({ 0, 0, -10 - filter_thickness[1] / 2 });
     world.build(200);
     auto time_elapsed3 = runDispatcher(transport, world, beam);
-    const auto fluenceQVLFilter = scoring.energyScored();
-    const auto fluenceQVLFilterSpecter = scoring.getSpecter();
+    auto fluenceQVL = scoring.getFluenceSpecter(TOTAL_HIST);
+    res.volume = "QVLFilter";
+    res.result = AirKerma(fluenceQVL);
+    res.result_std = 0;
+    res.TG195Result = TG195result[2];
+    res.nEvents = scoring.energyScored().numberOfEvents();
+    res.nMilliseconds = time_elapsed3.count();
     world.clearDoseScored();
-
-    auto AirKerma = [](const auto& spec) {
-        const auto u = TG195_mass_en_abs_air();
-        double kerma = 0;
-        for (std::size_t i = 0; i < u.size(); ++i) {
-            kerma += u[i].second * spec[i].second;
-        }
-        constexpr double discArea = std::numbers::pi_v<double> * 0.5 * 0.5;
-        return kerma / discArea;
-    };
-
-    const auto airKermaNoFilter = AirKerma(fluenceNoFilterSpecter);
-    const auto airKermaHVLFilter = AirKerma(fluenceHVLFilterSpecter);
-    const auto airKermaQVLFilter = AirKerma(fluenceQVLFilterSpecter);
-
-    const auto R3 = airKermaHVLFilter / airKermaNoFilter;
-    const auto R4 = airKermaQVLFilter / airKermaNoFilter;
-
-    std::cout << time_elapsed1.count() << " " << fluenceNoFilter.energyImparted() << " " << airKermaNoFilter << std::endl;
-    std::cout << time_elapsed2.count() << " " << fluenceHVLFilter.energyImparted() << " " << airKermaHVLFilter << std::endl;
-    std::cout << time_elapsed3.count() << " " << fluenceQVLFilter.energyImparted() << " " << airKermaQVLFilter << std::endl;
-
-    std::cout << "R3: " << R3 << " R4: " << R4 << std::endl;
-
-    // constexpr double total_hist = N_EXPOSURES * N_HISTORIES;
+    print(res, true, "Kerma/mm");
 
     return true;
 }

@@ -68,6 +68,36 @@ def fix_axis(fg, rotate_labels=True, ylabel="Energy [eV/history]", set_y0=True):
     fg.tight_layout()
 
 
+def plotCase1(dt_full, kind="strip", show=False):
+    dt = dt_full[dt_full["Case"] == "Case 1"]
+    if dt.size == 0:
+        return
+
+    labels = ["NoneFilter", "HVLFilter", "QVLFilter"]
+
+    for m in ["monoenergetic", "polyenergetic"]:
+        dtt = dt[dt["Mode"] == m]
+        g = sns.catplot(
+            x="Volume",
+            y="Result",
+            hue="Model",
+            col="Specter",
+            order=labels,
+            hue_order=HUE_ORDER,
+            data=dtt,
+            kind=kind,
+            errorbar=lambda x: (x.min(), x.max()),
+        )
+
+        fix_axis(g, ylabel="KERMA per history")
+
+        plt.savefig("plots/Case1_{}.png".format(m), dpi=300)
+        if show:
+            plt.show()
+        plt.clf()
+        plt.close()
+
+
 def plotCase2(dt_full, kind="strip", show=False):
     dt = dt_full[dt_full["Case"] == "Case 2"]
     if dt.size == 0:
@@ -307,6 +337,7 @@ if __name__ == "__main__":
         pass
 
     kind = "bar"
+    plotCase1(dt, kind=kind)
     plotCase2(dt, kind=kind)
     plotCase3(dt, kind=kind)
     plotCase41(dt, kind=kind)
