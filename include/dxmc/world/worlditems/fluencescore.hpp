@@ -61,6 +61,11 @@ public:
         m_radius = std::max(std::abs(r), 0.00001);
     }
 
+    double area() const
+    {
+        return std::numbers::pi_v<double> * m_radius * m_radius;
+    }
+
     void translate(const std::array<double, 3>& dist)
     {
         for (std::size_t i = 0; i < 3; ++i) {
@@ -94,6 +99,19 @@ public:
             spec[i] = std::make_pair(m_energy_step * i + m_energy_step / 2, m_intensity[i]);
         }
         return spec;
+    }
+
+    std::vector<std::pair<double, double>> getFluenceSpecter(std::uint64_t N_primaries = 1) const
+    {
+        const auto specter = getSpecter();
+        std::vector<std::pair<double, double>> fluence(specter.size());
+        const auto a = area();
+        const auto norm = N_primaries > 0 ? static_cast<double>(N_primaries) : 0.0;
+        const auto norm_inv = 1.0 / norm;
+        std::transform(std::execution::par_unseq, specter.cbegin(), specter.cend(), fluence.begin(), [a, norm_inv](const auto& s) {
+            return std::make_pair(s.first, s.second * norm_inv / a);
+        });
+        return fluence;
     }
 
     WorldIntersectionResult intersect(const ParticleType auto& p) const
