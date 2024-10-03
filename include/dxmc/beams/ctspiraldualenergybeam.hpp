@@ -352,6 +352,8 @@ public:
         CTDIBeam beamB(m_stepAngle, m_SDD, collimationAnglesB, m_particlesPerExposure, m_specterB, m_bowtieFilterB, m_weightB);
         transport(world, beamB, progress, false);
 
+        world.addEnergyScoredToDoseScore();
+
         const auto ctdiw_calc = (ctdi.centerDoseScored() + 2 * ctdi.pheriferyDoseScored()) * 10.0 / (3 * m_collimation);
 
         const auto ctdiw_beam = m_CTDIvol * m_pitch;
