@@ -14,7 +14,7 @@ set(TEST_SOURCES
     "testtube.cpp"
     "testvisualization.cpp"
     "testfluencescore.cpp"
-    "testbowtiefilter.cpp"   
+    "testbeamfilters.cpp"   
     "testrandom.cpp"
     "testtransport.cpp"
     "testvectormath.cpp"

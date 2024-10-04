@@ -17,6 +17,7 @@ Copyright 2023 Erlend Andersen
 */
 
 #include "dxmc/beams/filters/bowtiefilter.hpp"
+#include "dxmc/beams/filters/ctorganaecfilter.hpp"
 #include "dxmc/dxmcrandom.hpp"
 
 #include <iostream>
@@ -199,11 +200,39 @@ bool testBowtie()
     return success;
 }
 
+bool testOrganAECfilter()
+{
+
+    dxmc::CTOrganAECFilter f;
+
+    const auto deg45 = std::numbers::pi_v<double> / 4;
+    const auto deg10 = dxmc::DEG_TO_RAD<double>() * 10;
+    f.setLowWeightFactor(0.25);
+    f.setStartStopAngles(-deg45, deg45);
+    f.setRampAngle(deg10);
+
+    constexpr std::size_t N = 1E6;
+
+    double acc = 0;
+    dxmc::RandomState state;
+    for (std::size_t i = 0; i < N; ++i) {
+        const auto ang = state.randomUniform(-std::numbers::pi_v<double> * 1, std ::numbers::pi_v<double> * 1);
+        acc += f(ang);
+    }
+    const auto mean = acc / N;
+    const auto max = f.maxWeight();
+
+    if (std::abs(mean - 1) < 1E-3)
+        return true;
+
+    return false;
+}
+
 int main()
 {
 
     bool success = true;
-
+    success = success && testOrganAECfilter();
     success = success && testBowtie();
     if (success) {
         return EXIT_SUCCESS;
