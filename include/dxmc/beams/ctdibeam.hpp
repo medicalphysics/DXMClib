@@ -19,6 +19,7 @@ Copyright 2023 Erlend Andersen
 #pragma once
 
 #include "dxmc/beams/filters/bowtiefilter.hpp"
+#include "dxmc/beams/filters/ctorganaecfilter.hpp"
 #include "dxmc/constants.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/particle.hpp"
@@ -108,6 +109,18 @@ private:
 template <bool ENABLETRACKING = false>
 class CTDIBeam {
 public:
+    CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, const& CTOrganAECFilter organFilter, double weight = 1)
+        : m_angleStep(angleStep)
+        , m_sdd(SDD)
+        , m_weight(weight)
+        , m_collimationAngles(collimationAngles)
+        , m_particlesPerExposure(particlesPerExposure)
+        , m_specter(specter)
+        , m_bowtieFilter(bowtie)
+        , m_organFilter(organFilter)
+    {
+    }
+
     CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, double weight = 1)
         : m_angleStep(angleStep)
         , m_sdd(SDD)
@@ -130,7 +143,8 @@ public:
     CTDIBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
         const auto angle = i * m_angleStep;
-        return CTDIBeamExposure<ENABLETRACKING>(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter, &m_bowtieFilter, m_weight);
+        const auto organWeight = m_organFilter.useFilter() ? m_organFilter(angle) : 1.0;
+        return CTDIBeamExposure<ENABLETRACKING>(angle, m_sdd, m_particlesPerExposure, m_collimationAngles, &m_specter, &m_bowtieFilter, m_weight * organWeight);
     }
 
     double calibrationFactor(TransportProgress* progress = nullptr) const
@@ -146,5 +160,6 @@ private:
     std::uint64_t m_particlesPerExposure = 1;
     SpecterDistribution<double> m_specter;
     BowtieFilter m_bowtieFilter;
+    CTOrganAECFilter m_organFilter;
 };
 }

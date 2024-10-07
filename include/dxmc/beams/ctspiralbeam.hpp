@@ -21,6 +21,7 @@ Copyright 2023 Erlend Andersen
 #include "dxmc/beams/ctdibeam.hpp"
 #include "dxmc/beams/filters/bowtiefilter.hpp"
 #include "dxmc/beams/filters/ctaecfilter.hpp"
+#include "dxmc/beams/filters/ctorganaecfilter.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
@@ -293,6 +294,15 @@ public:
         return m_aecFilter;
     }
 
+    CTOrganAECFilter& organAECFilter()
+    {
+        return m_organFilter;
+    }
+    const CTOrganAECFilter& organAECFilter() const
+    {
+        return m_organFilter;
+    }
+
     CTSpiralBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
         constexpr auto pi2 = PI_VAL() * 2;
@@ -320,7 +330,9 @@ public:
 
         std::array<double, 2> angles = { angx, angy };
 
-        const auto weight = m_weight * m_aecFilter(pos);
+        const auto organWeight = m_organFilter.useFilter() ? m_organFilter(angle) : 1.0;
+
+        const auto weight = m_weight * m_aecFilter(pos) * organWeight;
 
         CTSpiralBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, weight, angles, &m_specter, &m_bowtieFilter);
         return exp;
@@ -339,7 +351,7 @@ public:
         const auto angx = std::atan(m_FOV / m_SDD);
         const auto angy = std::atan(0.5 * m_collimation / m_SDD);
         const std::array<double, 2> collimationAngles = { angx, angy };
-        CTDIBeam beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter);
+        CTDIBeam beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter, m_organFilter);
 
         Transport transport;
 
@@ -376,5 +388,6 @@ private:
     SpecterDistribution<double> m_specter;
     CTAECFilter m_aecFilter;
     BowtieFilter m_bowtieFilter;
+    CTOrganAECFilter m_organFilter;
 };
 }

@@ -21,6 +21,7 @@ Copyright 2024 Erlend Andersen
 #include "dxmc/beams/ctdibeam.hpp"
 #include "dxmc/beams/filters/bowtiefilter.hpp"
 #include "dxmc/beams/filters/ctaecfilter.hpp"
+#include "dxmc/beams/filters/ctorganaecfilter.hpp"
 #include "dxmc/beams/tube/tube.hpp"
 #include "dxmc/dxmcrandom.hpp"
 #include "dxmc/floating.hpp"
@@ -70,8 +71,10 @@ public:
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
+        const auto or
 
-        if constexpr (ENABLETRACKING) {
+            if constexpr (ENABLETRACKING)
+        {
             ParticleTrack p = {
                 .pos = m_pos,
                 .dir = particleDirection(angx, angy),
@@ -80,7 +83,9 @@ public:
             };
             p.registerPosition();
             return p;
-        } else {
+        }
+        else
+        {
             Particle p = {
                 .pos = m_pos,
                 .dir = particleDirection(angx, angy),
@@ -278,6 +283,15 @@ public:
         tubeChanged();
     }
 
+    CTOrganAECFilter& organAECFilter()
+    {
+        return m_organFilter;
+    }
+    const CTOrganAECFilter& organAECFilter() const
+    {
+        return m_organFilter;
+    }
+
     CTSequentialBeamExposure<ENABLETRACKING> exposure(std::size_t i) const noexcept
     {
         constexpr auto pi2 = PI_VAL() * 2;
@@ -303,7 +317,9 @@ public:
 
         std::array<double, 2> angles = { angx, angy };
 
-        CTSequentialBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, m_weight, angles, &m_specter, &m_bowtieFilter);
+        const auto organWeight = m_organFilter.useFilter() ? m_organFilter(angle) : 1.0;
+
+        CTSequentialBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, m_weight * organWeight, angles, &m_specter, &m_bowtieFilter);
         return exp;
     }
 
@@ -320,7 +336,7 @@ public:
         const auto angx = std::atan(m_FOV / m_SDD);
         const auto angy = std::atan(0.5 * m_collimation / m_SDD);
         const std::array<double, 2> collimationAngles = { angx, angy };
-        CTDIBeam beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter);
+        CTDIBeam beam(m_stepAngle, m_SDD, collimationAngles, m_particlesPerExposure, m_specter, m_bowtieFilter, m_organFilter);
 
         Transport transport;
 
@@ -356,5 +372,6 @@ private:
     Tube m_tube;
     SpecterDistribution<double> m_specter;
     BowtieFilter m_bowtieFilter;
+    CTOrganAECFilter m_organFilter;
 };
 }

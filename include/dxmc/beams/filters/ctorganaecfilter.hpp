@@ -58,6 +58,13 @@ public:
         }
     }
 
+    void setUseFilter(bool on)
+    {
+        m_useFilter = on;
+    }
+
+    bool useFilter() const { return m_useFilter; }
+
     void setCompensateOutside(bool on)
     {
         m_compensate_outside = on;
@@ -68,21 +75,47 @@ public:
         return m_compensate_outside;
     }
 
+    void setStartAngle(double ang)
+    {
+        m_start_angle = normalize_angle(ang);
+    }
+    void setStartAngleDeg(double ang)
+    {
+        m_start_angle = normalize_angle(ang * DEG_TO_RAD<double>());
+    }
+
+    void setStopAngle(double ang)
+    {
+        m_stop_angle = normalize_angle(ang);
+    }
+    void setStopAngleDeg(double ang)
+    {
+        m_stop_angle = normalize_angle(ang * DEG_TO_RAD<double>());
+    }
+    double stopAngle() const { return m_stop_angle; }
+    double startAngle() const { return m_start_angle; }
+    double stopAngleDeg() const { return m_stop_angle * RAD_TO_DEG<double>(); }
+    double startAngleDeg() const { return m_start_angle * RAD_TO_DEG<double>(); }
+
     void setStartStopAngles(double min, double max)
     {
-        m_start_angle = normalize_angle(min);
-        m_stop_angle = normalize_angle(max);
+        setStartAngle(min);
+        setStopAngle(max);
     }
 
     void setRampAngle(double ang)
     {
         m_ramp_angle = std::clamp(std::abs(ang), 0.0, std::numbers::pi_v<double> / 4.0);
     }
+    void setRampAngleDeg(double ang) { setRampAngle(ang * DEG_TO_RAD<double>()); }
+    double rampAngle() const { return m_ramp_angle; }
+    double rampAngleDeg() const { return m_ramp_angle * RAD_TO_DEG<double>(); }
 
     void setLowWeightFactor(double w)
     {
         m_weight_factor = std::clamp(std::abs(w), 0.001, 1.0);
     }
+    double lowWeight() const { return m_weight_factor; }
 
     double maxWeight() const
     {
@@ -114,5 +147,6 @@ private:
     double m_ramp_angle = 0;
     double m_weight_factor = 0.6;
     bool m_compensate_outside = true;
+    bool m_useFilter = false;
 };
 }
