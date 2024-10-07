@@ -109,7 +109,7 @@ private:
 template <bool ENABLETRACKING = false>
 class CTDIBeam {
 public:
-    CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, const& CTOrganAECFilter organFilter, double weight = 1)
+    CTDIBeam(double angleStep, double SDD, const std::array<double, 2>& collimationAngles, std::uint64_t particlesPerExposure, const SpecterDistribution<double>& specter, const BowtieFilter& bowtie, const CTOrganAECFilter& organFilter, double weight = 1)
         : m_angleStep(angleStep)
         , m_sdd(SDD)
         , m_weight(weight)

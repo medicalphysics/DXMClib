@@ -71,10 +71,8 @@ public:
         const auto angy = state.randomUniform(-m_collimationAngles[1], m_collimationAngles[1]);
 
         const auto bowtie_weight = m_bowtieFilter->operator()(angx);
-        const auto or
 
-            if constexpr (ENABLETRACKING)
-        {
+        if constexpr (ENABLETRACKING) {
             ParticleTrack p = {
                 .pos = m_pos,
                 .dir = particleDirection(angx, angy),
@@ -83,9 +81,7 @@ public:
             };
             p.registerPosition();
             return p;
-        }
-        else
-        {
+        } else {
             Particle p = {
                 .pos = m_pos,
                 .dir = particleDirection(angx, angy),
