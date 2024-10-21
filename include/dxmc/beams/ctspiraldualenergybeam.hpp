@@ -291,6 +291,15 @@ public:
         return m_relativeMasB;
     }
 
+    CTOrganAECFilter& organAECFilter()
+    {
+        return m_organFilter;
+    }
+    const CTOrganAECFilter& organAECFilter() const
+    {
+        return m_organFilter;
+    }
+
     CTSpiralBeamExposure<ENABLETRACKING> exposure(std::size_t dualExposureIndex) const noexcept
     {
         const std::size_t i = dualExposureIndex / 2;
@@ -324,6 +333,8 @@ public:
 
         auto weight = isTubeB ? m_weightB : m_weightA;
         weight *= m_aecFilter(pos);
+        if (m_organFilter.useFilter())
+            weight *= m_organFilter(angle);
         const SpecterDistribution<double>* const specter = isTubeB ? &m_specterB : &m_specterA;
         const BowtieFilter* const bowtie = isTubeB ? &m_bowtieFilterB : &m_bowtieFilterA;
         CTSpiralBeamExposure<ENABLETRACKING> exp(pos, cosines, m_particlesPerExposure, weight, angles, specter, bowtie);
@@ -343,13 +354,13 @@ public:
         const auto angxA = std::atan(m_FOVA / m_SDD);
         const auto angy = std::atan(0.5 * m_collimation / m_SDD);
         const std::array<double, 2> collimationAnglesA = { angxA, angy };
-        CTDIBeam beamA(m_stepAngle, m_SDD, collimationAnglesA, m_particlesPerExposure, m_specterA, m_bowtieFilterA, m_weightA);
+        CTDIBeam beamA(m_stepAngle, m_SDD, collimationAnglesA, m_particlesPerExposure, m_specterA, m_bowtieFilterA, m_organFilter, m_weightA);
         Transport transport;
         transport(world, beamA, progress, false);
 
         const auto angxB = std::atan(m_FOVB / m_SDD);
         const std::array collimationAnglesB = { angxB, angy };
-        CTDIBeam beamB(m_stepAngle, m_SDD, collimationAnglesB, m_particlesPerExposure, m_specterB, m_bowtieFilterB, m_weightB);
+        CTDIBeam beamB(m_stepAngle, m_SDD, collimationAnglesB, m_particlesPerExposure, m_specterB, m_bowtieFilterB, m_organFilter, m_weightB);
         transport(world, beamB, progress, false);
 
         world.addEnergyScoredToDoseScore();
@@ -402,5 +413,6 @@ private:
     CTAECFilter m_aecFilter;
     BowtieFilter m_bowtieFilterA;
     BowtieFilter m_bowtieFilterB;
+    CTOrganAECFilter m_organFilter;
 };
 }
