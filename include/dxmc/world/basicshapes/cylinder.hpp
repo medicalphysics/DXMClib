@@ -177,51 +177,61 @@ namespace basicshape {
 
         static std::optional<std::array<double, 2>> intersectInterval(const ParticleType auto& p, const Cylinder& cylinder)
         {
-            std::array<double, 2> t = { 0, 0 };
-            const auto ba = vectormath::scale(cylinder.direction, -cylinder.half_height * 2); // vec3 ba = b - a;
-            const auto a = vectormath::subtract(cylinder.center, vectormath::scale(cylinder.direction, -cylinder.half_height));
-            const auto oc = vectormath::subtract(p.pos, a); // vec3 oc = ro - a;
-            const auto baba = cylinder.half_height * cylinder.half_height * 4; // vectormath::dot(ba, ba);
-            const auto bard = vectormath::dot(ba, p.dir);
-            const auto baoc = vectormath::dot(ba, oc);
-            const auto k2 = baba - bard * bard;
-            const auto k1 = baba * vectormath::dot(oc, p.dir) - baoc * bard;
-            const auto k0 = baba * vectormath::dot(oc, oc) - baoc * baoc - cylinder.radius * cylinder.radius * baba;
-            const auto h2 = k1 * k1 - k2 * k0;
-            if (h2 < 0.0)
-                return std::nullopt; // no intersection
-            const auto h = sqrt(h2);
-            t[0] = (-k1 - h) / k2;
-            t[1] = (-k1 + h) / k2;
+            const auto b = vectormath::subtract(cylinder.center, p.pos);
+            const auto na = vectormath::cross(p.dir, cylinder.direction);
+            const auto nana = vectormath::length_sqr(na);
+            const auto r2 = cylinder.radius * cylinder.radius;
+            if (nana < GEOMETRIC_ERROR<double>()) {
+                std::array<double, 2> t;
 
-            // body
-            const std::array<double, 2> y = { baoc + t[0] * bard, baoc + t[1] * bard };
-
-            if (y[0] > 0.0 && y[0] < baba && y[1] > 0.0 && y[1] < baba) {
-                return t;
-                // caps
-            } else if (y[0] > 0.0 && y[0] < baba) {
-                // test cap 1
-                t[1] = (((y[1] < 0.0) ? 0.0 : baba) - baoc) / bard;
-                if (abs(k1 + k2 * t[1]) < h)
-                    return t;
-                else
-                    return std::nullopt;
-            } else if (y[1] > 0.0 && y[1] < baba) {
-                // test cap 0
-                t[0] = (((y[0] < 0.0) ? 0.0 : baba) - baoc) / bard;
-                if (abs(k1 + k2 * t[0]) < h)
-                    return t;
-                else
-                    return std::nullopt;
+                const auto c1 = vectormath::add(b, vectormath::scale(cylinder.direction, -cylinder.half_height));
+                t[0] = vectormath::dot(cylinder.direction, c1) / vectormath::dot(cylinder.direction, p.dir);
+                const auto ndc1 = vectormath::subtract(vectormath::scale(p.dir, t[0]), c1);
+                if (vectormath::dot(ndc1, ndc1) < r2) {
+                    const auto c2 = vectormath::add(b, vectormath::scale(cylinder.direction, cylinder.half_height));
+                    t[1] = vectormath::dot(cylinder.direction, c2) / vectormath::dot(cylinder.direction, p.dir);
+                    const auto ndc2 = vectormath::subtract(vectormath::scale(p.dir, t[1]), c2);
+                    if (vectormath::dot(ndc2, ndc2) < r2)
+                        return t;
+                }
+                return std::nullopt;
+                // endpoints only
             } else {
-                // both caps
-                t[0] = (((y[0] < 0.0) ? 0.0 : baba) - baoc) / bard;
-                t[1] = (((y[1] < 0.0) ? 0.0 : baba) - baoc) / bard;
-                if (abs(k1 + k2 * t[0]) < h && abs(k1 + k2 * t[1]) < h)
+                const auto bna = vectormath::dot(b, na);
+                const auto broot = nana * r2 - bna * bna;
+                if (broot <= 0.0) {
+                    // no intersection at all
+                    return std::nullopt;
+                }
+                const auto naba = vectormath::dot(na, vectormath::cross(b, cylinder.direction));
+                std::array<double, 2> t = {
+                    (naba - broot) / nana,
+                    (naba + broot) / nana
+                };
+
+                const std::array<double, 2> y = {
+                    vectormath::dot(cylinder.direction, vectormath::subtract(vectormath::scale(p.dir, t[0]), b)),
+                    vectormath::dot(cylinder.direction, vectormath::subtract(vectormath::scale(p.dir, t[1]), b))
+                };
+                if (-cylinder.half_height <= y[0] && y[0] <= cylinder.half_height && -cylinder.half_height <= y[1] && y[1] <= cylinder.half_height) {
+                    // we are inside cylinder
                     return t;
+                } else if (-cylinder.half_height <= y[0] && y[0] <= cylinder.half_height) {
+                    // cap upper
+                    if (std::abs(vectormath::dot(cylinder.direction, p.dir)) > GEOMETRIC_ERROR<double>()) {
+                        const auto c = vectormath::add(b, vectormath::scale(cylinder.direction, cylinder.half_height));
+                        t[1] = vectormath::dot(cylinder.direction, c) / vectormath::dot(cylinder.direction, p.dir);
+                        return t;
+                    }
+                } else if (-cylinder.half_height <= y[1] && y[1] <= cylinder.half_height) {
+                    if (std::abs(vectormath::dot(cylinder.direction, p.dir)) > GEOMETRIC_ERROR<double>()) {
+                        const auto c = vectormath::add(b, vectormath::scale(cylinder.direction, -cylinder.half_height));
+                        t[0] = vectormath::dot(cylinder.direction, c) / vectormath::dot(cylinder.direction, p.dir);
+                        return t;
+                    }
+                }
+                return std::nullopt;
             }
-            return std::nullopt;
         }
 
         static std::optional<std::array<double, 2>> intersectForwardInterval(const ParticleType auto& p, const Cylinder& cylinder)
