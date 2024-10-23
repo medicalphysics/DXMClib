@@ -204,9 +204,10 @@ namespace basicshape {
                     return std::nullopt;
                 }
                 const auto naba = vectormath::dot(na, vectormath::cross(b, cylinder.direction));
+                const auto broot_r = std::sqrt(broot);
                 std::array<double, 2> t = {
-                    (naba - broot) / nana,
-                    (naba + broot) / nana
+                    (naba - broot_r) / nana,
+                    (naba + broot_r) / nana
                 };
 
                 const std::array<double, 2> y = {
