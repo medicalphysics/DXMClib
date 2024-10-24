@@ -33,12 +33,13 @@ void example()
     auto& cylinder = world.template addItem<Cylinder>({ 1 /* cm radius */, 10 /* cm lenght */ }, "Cylinder");
 
     // Set material and density
-    // Optional aluminum material
-    // auto aluminium = dxmc::Material<N_ATOMIC_SHELLS>::byZ(13).value();
-    // cylinder.setMaterial(aluminium, 2.27 /* g/cm3 */);
 
-    auto water = dxmc::Material<N_ATOMIC_SHELLS>::byChemicalFormula("H2O").value();
-    cylinder.setMaterial(water, 1.0);
+    auto aluminium = dxmc::Material<N_ATOMIC_SHELLS>::byZ(13).value();
+    cylinder.setMaterial(aluminium, 2.27 /* g/cm3 */);
+
+    // Optional set cylinder material to water
+    // auto water = dxmc::Material<N_ATOMIC_SHELLS>::byChemicalFormula("H2O").value();
+    // cylinder.setMaterial(water, 1.0);
 
     // Adding room with walls of concrete
     auto& room = world.template addItem<Room>({ 2 /*cm wall thickness*/, 200 /*cm inner walls sizes*/ }, "Room");
@@ -58,7 +59,7 @@ void example()
     beam.setNumberOfExposures(64); // number of jobs
     beam.setNumberOfParticlesPerExposure(1000000); // histories per job
 
-    // Lunch simulation
+    // Run simulation
     auto nThreads = std::max(std::thread::hardware_concurrency(), std::uint32_t { 1 });
     auto time_elapsed = dxmc::Transport::runConsole(world, beam, nThreads, true);
 
@@ -76,7 +77,7 @@ void example()
         std::cout << cylinder.doseScored(i).numberOfEvents() << std::endl;
     }
 
-    // Save some images
+    // Generate some images
     dxmc::VisualizeWorld viz(world);
     auto buffer = viz.template createBuffer<double>(1024, 1024);
     viz.setDistance(60);
