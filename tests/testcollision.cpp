@@ -16,7 +16,7 @@ along with XRayMClib. If not, see < https://www.gnu.org/licenses/>.
 Copyright 2022 Erlend Andersen
 */
 
-#include "xraymc/world/collision.hpp"
+#include "xraymc/xraymc.hpp"
 
 #include <array>
 #include <iostream>
