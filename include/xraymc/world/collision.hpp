@@ -21,6 +21,7 @@ Copyright 2026 Erlend Andersen
 #include "xraymc/vectormath.hpp"
 #include "xraymc/world/worlditems/tetrahedalmesh.hpp"
 #include "xraymc/world/worlditems/triangulatedmesh.hpp"
+#include "xraymc/world/worlditems/triangulatedmesh/triangle.hpp"
 #include "xraymc/world/worlditems/triangulatedopensurface.hpp"
 #include "xraymc/world/worlditems/worldbox.hpp"
 #include "xraymc/world/worlditems/worldsphere.hpp"
@@ -172,8 +173,8 @@ namespace collision {
         // `half`? `vert` is given relative to the box center.
         inline bool planeBoxOverlap(const std::array<double, 3>& normal, const std::array<double, 3>& vert, const std::array<double, 3>& half)
         {
-            std::array<double, 3> vmin {};
-            std::array<double, 3> vmax {};
+            std::array<double, 3> vmin { };
+            std::array<double, 3> vmax { };
             for (std::size_t q = 0; q < 3; ++q) {
                 if (normal[q] > 0.0) {
                     vmin[q] = -half[q] - vert[q];
@@ -332,6 +333,46 @@ namespace collision {
             }
         }
         return false;
+    }
+
+    inline bool testCollision(const std::array<double, 6>& AABB, const std::vector<Triangle>& a)
+    {
+        for (const auto& t : a)
+            if (testCollision(t, AABB))
+                return true;
+        return false;
+    }
+
+    template <WorldItemType A, WorldItemType B>
+    inline bool testCollision(const A& a, const B& b)
+    {
+        const bool AABB_test = testCollision(a.AABB(), b.AABB());
+        if (AABB_test) {
+            constexpr bool has_triangles_a = requires(const A& a1) { a1.triangles(); };
+            constexpr bool has_triangles_b = requires(const B& b1) { b1.triangles(); };
+
+            constexpr bool has_outer_triangles_a = requires(const A& a1) { a1.constructOuterContourTriangles(); };
+            constexpr bool has_outer_triangles_b = requires(const B& b1) { b1.constructOuterContourTriangles(); };
+
+            std::vector<Triangle> tri_a, tri_b;
+            if constexpr (has_triangles_a)
+                tri_a = a.triangles();
+            if constexpr (has_triangles_b)
+                tri_b = b.triangles();
+            if constexpr (has_outer_triangles_a)
+                tri_a = detail::toTriangles(a.constructOuterContourTriangles());
+            if constexpr (has_outer_triangles_b)
+                tri_b = detail::toTriangles(b.constructOuterContourTriangles());
+
+            if constexpr ((has_triangles_a || has_outer_triangles_a) && (has_triangles_b || has_outer_triangles_b)) {
+                return testCollision(tri_a, tri_b);
+            } else if constexpr ((has_triangles_a || has_outer_triangles_a)) {
+                return testCollision(b.AABB(), tri_a);
+            } else if constexpr ((has_triangles_b || has_outer_triangles_b)) {
+                return testCollision(a.AABB(), tri_b);
+            }
+        }
+        return AABB_test;
     }
 
     template <int NMaterialShellsA, int LOWENERGYCORRECTIONA, int NMaterialShellsB, int LOWENERGYCORRECTIONB>

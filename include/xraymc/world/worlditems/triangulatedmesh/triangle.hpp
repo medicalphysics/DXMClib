@@ -13,233 +13,408 @@ GNU General Public License for more details.
 You should have received a copy of the GNU General Public License
 along with XRayMClib. If not, see < https://www.gnu.org/licenses/>.
 
-Copyright 2022 Erlend Andersen
+Copyright 2026 Erlend Andersen
 */
 
 #pragma once
 
-#include "xraymc/particle.hpp"
 #include "xraymc/vectormath.hpp"
+#include "xraymc/world/worlditems/tetrahedalmesh.hpp"
+#include "xraymc/world/worlditems/triangulatedmesh.hpp"
+#include "xraymc/world/worlditems/triangulatedmesh/triangle.hpp"
+#include "xraymc/world/worlditems/triangulatedopensurface.hpp"
+#include "xraymc/world/worlditems/worldbox.hpp"
+#include "xraymc/world/worlditems/worldsphere.hpp"
 
 #include <algorithm>
 #include <array>
-#include <execution>
+#include <cmath>
 #include <optional>
+#include <utility>
+#include <vector>
 
 namespace xraymc {
+namespace collision {
 
-/**
- * @brief A single triangle in 3-D space, used as the primitive element of a triangulated mesh.
- *
- * Stores three vertex positions and provides geometric queries (normal, centroid, AABB,
- * area) as well as affine transformations (translate, scale, rotate, mirror) and a
- * Möller–Trumbore ray–triangle intersection test.
- */
-class Triangle {
-public:
-    /**
-     * @brief Constructs a triangle from three individual vertex positions.
-     * @param first  First vertex in cm.
-     * @param second Second vertex in cm.
-     * @param third  Third vertex in cm.
-     */
-    Triangle(const std::array<double, 3>& first, const std::array<double, 3>& second, const std::array<double, 3>& third)
+    inline bool testCollision(const std::array<double, 6>& AABBa, const std::array<double, 6>& AABBb)
     {
-        m_vertices[0] = first;
-        m_vertices[1] = second;
-        m_vertices[2] = third;
-    }
-
-    /**
-     * @brief Constructs a triangle from a packed array of three vertex positions.
-     * @param vertices Array of three vertices, each as {x, y, z} in cm.
-     */
-    Triangle(const std::array<std::array<double, 3>, 3>& vertices)
-        : m_vertices(vertices)
-    {
-    }
-
-    /**
-     * @brief Constructs a triangle by reading nine consecutive doubles from a raw pointer.
-     *
-     * Vertices are read in row-major order: v0={[0],[1],[2]}, v1={[3],[4],[5]}, v2={[6],[7],[8]}.
-     * @param first_element Pointer to the first of nine contiguous double values.
-     */
-    Triangle(const double* first_element)
-    {
-        for (std::size_t i = 0; i < 3; ++i)
-            for (std::size_t j = 0; j < 3; ++j) {
-                const auto flatIdx = i * 3 + j;
-                m_vertices[i][j] = *(first_element + flatIdx);
-            }
-    }
-
-    /// @brief Defaulted three-way comparison (lexicographic over vertex coordinates).
-    auto operator<=>(const Triangle& other) const = default;
-
-    /**
-     * @brief Translates all three vertices by @p dist.
-     * @param dist Displacement vector in cm along {x, y, z}.
-     */
-    void translate(const std::array<double, 3>& dist)
-    {
-        std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
-            for (std::size_t i = 0; i < 3; ++i) {
-                vert[i] += dist[i];
-            }
-        });
-    }
-
-    /**
-     * @brief Mirrors all three vertices through a world-space point.
-     *
-     * Each vertex v is mapped to v + (-2)(v - point) = 2·point - v.
-     * @param point The point of reflection in cm.
-     */
-    void mirror(const std::array<double, 3>& point)
-    {
+        // AABB layout: {min_x, min_y, min_z, max_x, max_y, max_z}
+        // Overlap requires overlap on all three axes.
         for (std::size_t i = 0; i < 3; ++i) {
-            const auto d = vectormath::subtract(m_vertices[i], point);
-            m_vertices[i] = vectormath::add(m_vertices[i], vectormath::scale(d, -2.0));
+            if (AABBa[i] > AABBb[i + 3] || AABBb[i] > AABBa[i + 3])
+                return false;
         }
+        return true;
     }
 
-    /**
-     * @brief Mirrors all three vertices about a plane perpendicular to axis @p dim at @p value.
-     * @param value Coordinate of the mirror plane along @p dim.
-     * @param dim   Axis index: 0 = x, 1 = y, 2 = z.
-     */
-    void mirror(const double value, const std::uint_fast32_t dim)
-    {
-        for (std::uint_fast32_t i = 0; i < 3; ++i) {
-            const auto d = m_vertices[i][dim] - value;
-            m_vertices[i][dim] += d * -2.0;
-        }
-    }
+    namespace detail {
 
-    /**
-     * @brief Uniformly scales all vertex coordinates by @p scale.
-     * @param scale Scale factor applied to every coordinate of every vertex.
-     */
-    void scale(double scale)
-    {
-        std::for_each(std::execution::unseq, m_vertices.begin(), m_vertices.end(), [&](auto& vert) {
-            for (std::size_t i = 0; i < 3; ++i) {
-                vert[i] *= scale;
+        inline bool coplanarTriTri(const std::array<double, 3>& N, const std::array<std::array<double, 3>, 3>& t1, const std::array<std::array<double, 3>, 3>& t2)
+        {
+            const std::array<double, 3> A { std::abs(N[0]), std::abs(N[1]), std::abs(N[2]) };
+            std::size_t i0 = 0;
+            std::size_t i1 = 1;
+            if (A[0] > A[1]) {
+                if (A[0] > A[2]) {
+                    i0 = 1;
+                    i1 = 2;
+                } else {
+                    i0 = 0;
+                    i1 = 1;
+                }
+            } else {
+                if (A[2] > A[1]) {
+                    i0 = 0;
+                    i1 = 1;
+                } else {
+                    i0 = 0;
+                    i1 = 2;
+                }
             }
-        });
-    }
 
-    /**
-     * @brief Rotates all vertices by @p radians around @p axis (through the origin).
-     * @param radians Rotation angle in radians.
-     * @param axis    Rotation axis (need not be normalized).
-     */
-    void rotate(double radians, const std::array<double, 3>& axis)
-    {
-        std::transform(std::execution::unseq, m_vertices.cbegin(), m_vertices.cend(), m_vertices.begin(), [&](auto& vert) {
-            return vectormath::rotate(vert, axis, radians);
-        });
-    }
+            const auto edgeEdge = [&](const std::array<double, 3>& v0, const std::array<double, 3>& v1,
+                                      const std::array<double, 3>& u0, const std::array<double, 3>& u1) {
+                const auto ax = v1[i0] - v0[i0];
+                const auto ay = v1[i1] - v0[i1];
+                const auto bx = u0[i0] - u1[i0];
+                const auto by = u0[i1] - u1[i1];
+                const auto cx = v0[i0] - u0[i0];
+                const auto cy = v0[i1] - u0[i1];
+                const auto f = ay * bx - ax * by;
+                const auto d = by * cx - bx * cy;
+                if ((f > 0 && d >= 0 && d <= f) || (f < 0 && d <= 0 && d >= f)) {
+                    const auto e = ax * cy - ay * cx;
+                    if (f > 0)
+                        return e >= 0 && e <= f;
+                    return e <= 0 && e >= f;
+                }
+                return false;
+            };
 
-    /**
-     * @brief Returns the normalized surface normal computed from the cross product of two edges.
-     * @return Unit normal vector (v1-v0) × (v2-v0), normalized.
-     */
-    std::array<double, 3> planeVector() const noexcept
-    {
-        const auto a = vectormath::subtract(m_vertices[1], m_vertices[0]);
-        const auto b = vectormath::subtract(m_vertices[2], m_vertices[0]);
-        const auto n = vectormath::cross(a, b);
-        return vectormath::normalized(n);
-    }
+            const auto edgeAgainstTri = [&](const std::array<double, 3>& v0, const std::array<double, 3>& v1,
+                                            const std::array<std::array<double, 3>, 3>& u) {
+                return edgeEdge(v0, v1, u[0], u[1]) || edgeEdge(v0, v1, u[1], u[2]) || edgeEdge(v0, v1, u[2], u[0]);
+            };
 
-    /// @brief Returns the three vertex positions as a packed 3×3 array.
-    const std::array<std::array<double, 3>, 3>& vertices() const
-    {
-        return m_vertices;
-    }
+            const auto pointInTri = [&](const std::array<double, 3>& p,
+                                        const std::array<std::array<double, 3>, 3>& u) {
+                auto a = u[1][i1] - u[0][i1];
+                auto b = -(u[1][i0] - u[0][i0]);
+                auto c = -a * u[0][i0] - b * u[0][i1];
+                const auto d0 = a * p[i0] + b * p[i1] + c;
 
-    /// @brief Returns the centroid of the triangle (mean of the three vertices) in cm.
-    std::array<double, 3> center() const
-    {
-        std::array<double, 3> cent { 0, 0, 0 };
-        for (const auto& vert : m_vertices) {
-            for (std::size_t i = 0; i < 3; i++)
-                cent[i] += vert[i];
+                a = u[2][i1] - u[1][i1];
+                b = -(u[2][i0] - u[1][i0]);
+                c = -a * u[1][i0] - b * u[1][i1];
+                const auto d1 = a * p[i0] + b * p[i1] + c;
+
+                a = u[0][i1] - u[2][i1];
+                b = -(u[0][i0] - u[2][i0]);
+                c = -a * u[2][i0] - b * u[2][i1];
+                const auto d2 = a * p[i0] + b * p[i1] + c;
+
+                return d0 * d1 > 0 && d0 * d2 > 0;
+            };
+
+            if (edgeAgainstTri(t1[0], t1[1], t2) || edgeAgainstTri(t1[1], t1[2], t2) || edgeAgainstTri(t1[2], t1[0], t2))
+                return true;
+            return pointInTri(t1[0], t2) || pointInTri(t2[0], t1);
         }
-        constexpr double factor { 1 / 3.0 };
-        for (std::size_t i = 0; i < 3; i++)
-            cent[i] *= factor;
-        return cent;
-    }
 
-    /// @brief Returns the axis-aligned bounding box of the triangle as {xmin, ymin, zmin, xmax, ymax, zmax} in cm.
-    std::array<double, 6> AABB() const
+        // Computes the interval [isect0, isect1] carved out of the plane-plane
+        // intersection line by a triangle, following Möller's "A Fast Triangle-Triangle
+        // Intersection Test". `proj` holds the triangle vertices projected onto the
+        // dominant axis of the intersection line, `dist` the signed distances of the
+        // vertices to the other triangle's plane. Returns std::nullopt when the two
+        // triangles are coplanar (all distances zero), in which case the caller must
+        // fall back to the coplanar test.
+        inline std::optional<std::array<double, 2>> triangleLineInterval(
+            const std::array<double, 3>& proj, const std::array<double, 3>& dist,
+            double d0d1, double d0d2)
+        {
+            std::array<double, 2> isect { };
+            const auto isectFn = [&](double p0, double p1, double p2, double a0, double a1, double a2) {
+                const auto t0 = a0 / (a0 - a1);
+                const auto t1 = a0 / (a0 - a2);
+                isect[0] = p0 + (p1 - p0) * t0;
+                isect[1] = p0 + (p2 - p0) * t1;
+            };
+
+            if (d0d1 > 0.0) // dist[2] is the vertex on its own side of the plane
+                isectFn(proj[2], proj[0], proj[1], dist[2], dist[0], dist[1]);
+            else if (d0d2 > 0.0)
+                isectFn(proj[1], proj[0], proj[2], dist[1], dist[0], dist[2]);
+            else if (dist[1] * dist[2] > 0.0 || dist[0] != 0.0)
+                isectFn(proj[0], proj[1], proj[2], dist[0], dist[1], dist[2]);
+            else if (dist[1] != 0.0)
+                isectFn(proj[1], proj[0], proj[2], dist[1], dist[0], dist[2]);
+            else if (dist[2] != 0.0)
+                isectFn(proj[2], proj[0], proj[1], dist[2], dist[0], dist[1]);
+            else
+                return std::nullopt; // coplanar
+
+            if (isect[0] > isect[1])
+                std::swap(isect[0], isect[1]);
+            return isect;
+        }
+
+        /// @brief Wraps raw vertex triples (e.g. a tetrahedral-mesh outer contour) as Triangle objects.
+        inline std::vector<Triangle> toTriangles(const std::vector<std::array<std::array<double, 3>, 3>>& verts)
+        {
+            std::vector<Triangle> out;
+            out.reserve(verts.size());
+            for (const auto& v : verts)
+                out.emplace_back(v);
+            return out;
+        }
+
+        // Akenine-Möller plane/box overlap: does the plane through `vert` with the
+        // given `normal` cross the box centered at the origin with half-extents
+        // `half`? `vert` is given relative to the box center.
+        inline bool planeBoxOverlap(const std::array<double, 3>& normal, const std::array<double, 3>& vert, const std::array<double, 3>& half)
+        {
+            std::array<double, 3> vmin { };
+            std::array<double, 3> vmax { };
+            for (std::size_t q = 0; q < 3; ++q) {
+                if (normal[q] > 0.0) {
+                    vmin[q] = -half[q] - vert[q];
+                    vmax[q] = half[q] - vert[q];
+                } else {
+                    vmin[q] = half[q] - vert[q];
+                    vmax[q] = -half[q] - vert[q];
+                }
+            }
+            if (vectormath::dot(normal, vmin) > 0.0)
+                return false;
+            return vectormath::dot(normal, vmax) >= 0.0;
+        }
+
+    } // namespace detail
+
+    inline bool testCollision(const Triangle& a, const Triangle& b)
     {
-        std::array<double, 6> aabb {
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::max(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
-            std::numeric_limits<double>::lowest(),
+        const auto& Va = a.vertices();
+        const auto& Vb = b.vertices();
+
+        // Plane of triangle a
+        const auto Na = vectormath::cross(vectormath::subtract(Va[1], Va[0]), vectormath::subtract(Va[2], Va[0]));
+        const auto da = -vectormath::dot(Na, Va[0]);
+
+        // Signed distances of b's vertices to a's plane
+        std::array<double, 3> db = {
+            vectormath::dot(Na, Vb[0]) + da,
+            vectormath::dot(Na, Vb[1]) + da,
+            vectormath::dot(Na, Vb[2]) + da
         };
-        for (std::size_t j = 0; j < 3; j++) {
-            for (std::size_t i = 0; i < 3; i++) {
-                aabb[i] = std::min(aabb[i], m_vertices[j][i]);
+        for (auto& v : db)
+            if (std::abs(v) < GEOMETRIC_ERROR<>())
+                v = 0.0;
+        const auto db0db1 = db[0] * db[1];
+        const auto db0db2 = db[0] * db[2];
+        if (db0db1 > 0.0 && db0db2 > 0.0)
+            return false; // b lies entirely on one side of a's plane
+
+        // Plane of triangle b
+        const auto Nb = vectormath::cross(vectormath::subtract(Vb[1], Vb[0]), vectormath::subtract(Vb[2], Vb[0]));
+        const auto dbp = -vectormath::dot(Nb, Vb[0]);
+
+        // Signed distances of a's vertices to b's plane
+        std::array<double, 3> dva = {
+            vectormath::dot(Nb, Va[0]) + dbp,
+            vectormath::dot(Nb, Va[1]) + dbp,
+            vectormath::dot(Nb, Va[2]) + dbp
+        };
+        for (auto& v : dva)
+            if (std::abs(v) < GEOMETRIC_ERROR<>())
+                v = 0.0;
+        const auto dva0dva1 = dva[0] * dva[1];
+        const auto dva0dva2 = dva[0] * dva[2];
+        if (dva0dva1 > 0.0 && dva0dva2 > 0.0)
+            return false; // a lies entirely on one side of b's plane
+
+        // Direction of the line where the two planes meet; project onto its
+        // dominant axis so the 3-D problem collapses to a 1-D interval overlap.
+        const auto D = vectormath::cross(Na, Nb);
+        std::size_t index = 0;
+        const std::array<double, 3> absD { std::abs(D[0]), std::abs(D[1]), std::abs(D[2]) };
+        if (absD[1] > absD[index])
+            index = 1;
+        if (absD[2] > absD[index])
+            index = 2;
+
+        const std::array<double, 3> projA { Va[0][index], Va[1][index], Va[2][index] };
+        const std::array<double, 3> projB { Vb[0][index], Vb[1][index], Vb[2][index] };
+
+        const auto isectA = detail::triangleLineInterval(projA, dva, dva0dva1, dva0dva2);
+        const auto isectB = detail::triangleLineInterval(projB, db, db0db1, db0db2);
+
+        if (!isectA || !isectB) // coplanar triangles
+            return detail::coplanarTriTri(Na, Va, Vb);
+
+        // The triangles intersect iff their intervals on the plane-plane line overlap.
+        return !((*isectA)[1] < (*isectB)[0] || (*isectB)[1] < (*isectA)[0]);
+    }
+
+    // Triangle vs axis-aligned box (AABB layout {min_x, min_y, min_z, max_x, max_y, max_z}),
+    // via Akenine-Möller's "Fast 3D Triangle-Box Overlap Test" (separating-axis theorem).
+    inline bool testCollision(const Triangle& a, const std::array<double, 6>& AABB)
+    {
+        const std::array<double, 3> center {
+            (AABB[0] + AABB[3]) * 0.5,
+            (AABB[1] + AABB[4]) * 0.5,
+            (AABB[2] + AABB[5]) * 0.5
+        };
+        const std::array<double, 3> half {
+            (AABB[3] - AABB[0]) * 0.5,
+            (AABB[4] - AABB[1]) * 0.5,
+            (AABB[5] - AABB[2]) * 0.5
+        };
+
+        // Triangle vertices expressed relative to the box center.
+        const auto& V = a.vertices();
+        const std::array<std::array<double, 3>, 3> v {
+            vectormath::subtract(V[0], center),
+            vectormath::subtract(V[1], center),
+            vectormath::subtract(V[2], center)
+        };
+
+        // Bullet 1: the triangle's own AABB against the box (3 axis tests).
+        for (std::size_t i = 0; i < 3; ++i) {
+            const auto mn = std::min({ v[0][i], v[1][i], v[2][i] });
+            const auto mx = std::max({ v[0][i], v[1][i], v[2][i] });
+            if (mn > half[i] || mx < -half[i])
+                return false;
+        }
+
+        const std::array<std::array<double, 3>, 3> edges {
+            vectormath::subtract(v[1], v[0]),
+            vectormath::subtract(v[2], v[1]),
+            vectormath::subtract(v[0], v[2])
+        };
+
+        // Bullet 3: 9 axis tests, axis = boxAxis_k x edge_j.
+        const auto axisTest = [&](const std::array<double, 3>& axis) {
+            auto mn = vectormath::dot(axis, v[0]);
+            auto mx = mn;
+            for (std::size_t k = 1; k < 3; ++k) {
+                const auto d = vectormath::dot(axis, v[k]);
+                mn = std::min(mn, d);
+                mx = std::max(mx, d);
             }
-            for (std::size_t i = 0; i < 3; i++) {
-                const auto idx = i + 3;
-                aabb[idx] = std::max(aabb[idx], m_vertices[j][i]);
+            const auto rad = std::abs(axis[0]) * half[0] + std::abs(axis[1]) * half[1] + std::abs(axis[2]) * half[2];
+            return !(mn > rad || mx < -rad);
+        };
+
+        for (const auto& e : edges) {
+            if (!axisTest({ 0.0, -e[2], e[1] })) // boxAxis (1,0,0) x e
+                return false;
+            if (!axisTest({ e[2], 0.0, -e[0] })) // boxAxis (0,1,0) x e
+                return false;
+            if (!axisTest({ -e[1], e[0], 0.0 })) // boxAxis (0,0,1) x e
+                return false;
+        }
+
+        // Bullet 2: the triangle's plane against the box.
+        const auto normal = vectormath::cross(edges[0], edges[1]);
+        return detail::planeBoxOverlap(normal, v[0], half);
+    }
+
+    inline bool testCollision(const std::array<double, 6>& AABB, const Triangle& a)
+    {
+        return testCollision(a, AABB);
+    }
+
+    inline bool testCollision(const std::vector<Triangle>& trianglesA, const std::vector<Triangle>& trianglesB)
+    {
+        for (const auto& ta : trianglesA) {
+            for (const auto& tb : trianglesB) {
+                if (testCollision(ta, tb))
+                    return true;
             }
         }
-        return aabb;
+        return false;
     }
 
-    /**
-     * @brief Returns the surface area of the triangle in cm².
-     *
-     * Computed as |AB × AC| / 2.
-     * @return Triangle area in cm².
-     */
-    double area() const
-    { // Triangle of ABC, area = |AB x AC|/2
-        const auto AB = vectormath::subtract(m_vertices[1], m_vertices[0]);
-        const auto AC = vectormath::subtract(m_vertices[2], m_vertices[0]);
-        return vectormath::length(vectormath::cross(AB, AC)) / 2;
-    }
-
-    /**
-     * @brief Tests a particle ray against the triangle using the Möller–Trumbore algorithm.
-     * @param p Particle whose position and direction define the ray.
-     * @return The ray parameter t ≥ 0 at the intersection point, or std::nullopt if the
-     *         ray misses the triangle or hits from behind.
-     */
-    std::optional<double> intersect(const ParticleType auto& p) const
+    inline bool testCollision(const std::array<double, 6>& AABB, const std::vector<Triangle>& a)
     {
-        // from moller trombore paper
-        const auto& v0 = m_vertices[0];
-        const auto& v1 = m_vertices[1];
-        const auto& v2 = m_vertices[2];
-
-        const auto E1 = vectormath::subtract(v1, v0);
-        const auto TT = vectormath::subtract(p.pos, v0);
-        const auto Q = vectormath::cross(TT, E1);
-
-        const auto E2 = vectormath::subtract(v2, v0);
-        const auto P = vectormath::cross(p.dir, E2);
-
-        const auto det_inv = 1 / vectormath::dot(P, E1);
-
-        const auto v = vectormath::dot(Q, p.dir) * det_inv;
-        const auto u = vectormath::dot(P, TT) * det_inv;
-
-        return v >= 0 && u >= 0 && (u + v) <= 1 ? std::make_optional(vectormath::dot(Q, E2) * det_inv)
-                                                : std::nullopt;
+        for (const auto& t : a)
+            if (testCollision(t, AABB))
+                return true;
+        return false;
     }
 
-private:
-    std::array<std::array<double, 3>, 3> m_vertices;
-};
+    template <WorldItemType A, WorldItemType B>
+    inline bool testCollision(const A& a, const B& b)
+    {
+        const bool AABB_test = testCollision(a.AABB(), b.AABB());
+        if (AABB_test) {
+            constexpr bool has_triangles_a = requires(const A& a1) { a1.triangles(); };
+            constexpr bool has_triangles_b = requires(const B& b1) { b1.triangles(); };
+
+            constexpr bool has_outer_triangles_a = requires(const A& a1) { a1.constructOuterContourTriangles(); };
+            constexpr bool has_outer_triangles_b = requires(const B& b1) { b1.constructOuterContourTriangles(); };
+
+            std::vector<Triangle> tri_a, tri_b;
+            if constexpr (has_triangles_a)
+                tri_a = a.triangles();
+            if constexpr (has_triangles_b)
+                tri_b = b.triangles();
+            if constexpr (has_outer_triangles_a)
+                tri_a = detail::toTriangles(a.constructOuterContourTriangles());
+            if constexpr (has_outer_triangles_b)
+                tri_b = detail::toTriangles(b.constructOuterContourTriangles());
+
+            if constexpr ((has_triangles_a || has_outer_triangles_a) && (has_triangles_b || has_outer_triangles_b)) {
+                return testCollision(tri_a, tri_b);
+            } else if constexpr ((has_triangles_a || has_outer_triangles_a)) {
+                return testCollision(b.AABB(), tri_a);
+            } else if constexpr ((has_triangles_b || has_outer_triangles_b)) {
+                return testCollision(a.AABB(), tri_b);
+            }
+        }
+        return AABB_test;
+    }
+
+    template <int NMaterialShellsA, int LOWENERGYCORRECTIONA, int NMaterialShellsB, int LOWENERGYCORRECTIONB>
+    inline bool testCollision(const TriangulatedMesh<NMaterialShellsA, LOWENERGYCORRECTIONA>& A, const TriangulatedMesh<NMaterialShellsB, LOWENERGYCORRECTIONB>& B)
+    {
+
+        if (!testCollision(A.AABB(), B.AABB()))
+            return false;
+
+        const auto& trianglesA = A.triangles();
+        const auto& trianglesB = B.triangles();
+
+        return testCollision(trianglesA, trianglesB);
+    }
+
+    template <int NMaterialShellsA, int LOWENERGYCORRECTIONA, bool FORCEDINTERACTIONA, int NMaterialShellsB, int LOWENERGYCORRECTIONB, bool FORCEDINTERACTIONB>
+    inline bool testCollision(const TetrahedalMesh<NMaterialShellsA, LOWENERGYCORRECTIONA, FORCEDINTERACTIONA>& A, const TetrahedalMesh<NMaterialShellsB, LOWENERGYCORRECTIONB, FORCEDINTERACTIONB>& B)
+    {
+        if (!testCollision(A.AABB(), B.AABB()))
+            return false;
+
+        const auto triA = detail::toTriangles(A.constructOuterContourTriangles());
+        const auto triB = detail::toTriangles(B.constructOuterContourTriangles());
+
+        return testCollision(triA, triB);
+    }
+
+    template <int NMaterialShellsA, int LOWENERGYCORRECTIONA, bool FORCEDINTERACTIONA, int NMaterialShellsB, int LOWENERGYCORRECTIONB>
+    inline bool testCollision(const TetrahedalMesh<NMaterialShellsA, LOWENERGYCORRECTIONA, FORCEDINTERACTIONA>& A, const TriangulatedMesh<NMaterialShellsB, LOWENERGYCORRECTIONB>& B)
+    {
+        if (!testCollision(A.AABB(), B.AABB()))
+            return false;
+
+        const auto triA = detail::toTriangles(A.constructOuterContourTriangles());
+
+        return testCollision(triA, B.triangles());
+    }
+
+    template <int NMaterialShellsA, int LOWENERGYCORRECTIONA, bool FORCEDINTERACTIONA, int NMaterialShellsB, int LOWENERGYCORRECTIONB>
+    inline bool testCollision(const TriangulatedMesh<NMaterialShellsB, LOWENERGYCORRECTIONB>& A, const TetrahedalMesh<NMaterialShellsA, LOWENERGYCORRECTIONA, FORCEDINTERACTIONA>& B)
+    {
+        return testCollision(B, A);
+    }
 }
+} // namespace xraymc
