@@ -194,6 +194,35 @@ public:
             tubeChanged();
     }
 
+    /**
+     * @brief Constructs a `DXBeam` from one with a different tracking mode.
+     *
+     * Copies the full beam configuration — position, direction cosines, collimation
+     * half-angles, exposure count, particles per exposure, weight, measured DAP, and
+     * the internal `Tube` — then rebuilds the spectrum cache via `tubeChanged()`. Used
+     * to convert between the tracking and non-tracking variants (`DXBeam<true>` ↔
+     * `DXBeam<false>`). The same-mode copy constructor is still the implicitly
+     * generated one.
+     *
+     * @tparam OTHERTRACKING  Tracking mode of @p other.
+     * @param other  Beam to copy configuration from.
+     */
+    template <bool OTHERTRACKING>
+    DXBeam(const DXBeam<OTHERTRACKING>& other)
+        : m_pos(other.m_pos)
+        , m_dirCosines(other.m_dirCosines)
+        , m_collimationHalfAngles(other.m_collimationHalfAngles)
+        , m_Nexposures(other.m_Nexposures)
+        , m_particlesPerExposure(other.m_particlesPerExposure)
+        , m_weight(other.m_weight)
+        , m_measuredDAP(other.m_measuredDAP)
+        , m_tube(other.m_tube)
+    {
+        tubeChanged();
+    }
+    template <bool>
+    friend class DXBeam;
+
     /// @brief Returns the number of exposures.
     std::uint64_t numberOfExposures() const { return m_Nexposures; }
 
